@@ -55,6 +55,8 @@ import {
     WARM_START_CACHE_SIZE,
     WARM_START_CACHE_MASK,
     PAIR_HASH_CAPACITY,
+    staticWallSegmentSlab,
+    GrowI32,
 } from "../../Core/engineMemory.js";
 import { syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
@@ -1354,24 +1356,24 @@ export function allowsKineticCollisionPair(primary, other, overlaps) {
     return allowsKineticCollisionPairSlab(primary._physId, other._physId, overlaps);
 }
 function kineticOverlapsWallCandidates(px, py, body, candidates) {
-    if (!candidates.length) return false;
+    if (!candidates.used) return false;
     const bodyFacing = entityFacing(body);
     const bodyCos = Math.cos(bodyFacing);
     const bodySin = Math.sin(bodyFacing);
     const compound = entityHasCompoundParts(body);
     const partCount = compound ? body.collisionParts.length : 1;
+    const slab = staticWallSegmentSlab;
     for (let p = 0; p < partCount; p++) {
         const shape = compound ? body.collisionParts[p] : body.shape;
         if (shape.type === "Circle") {
             const radiusSq = shape.radius * shape.radius;
-            for (let i = 0; i < candidates.length; i++) if (distanceSqToSegment(candidates[i], px, py) <= radiusSq) return true;
+            for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
             continue;
         }
-        for (let i = 0; i < candidates.length; i++) {
-            const seg = candidates[i];
-            const segFacing = entityFacing(seg);
-            const segShape = ensureWallSegmentPolygonShape(seg);
-            if (satCheckShapesAtPose(px, py, bodyCos, bodySin, shape, seg.x, seg.y, Math.cos(segFacing), Math.sin(segFacing), segShape)) return true;
+        for (let i = 0; i < candidates.used; i++) {
+            const segId = candidates.buf[i];
+            const segShape = ensureWallSegmentPolygonShape(segId);
+            if (satCheckShapesAtPose(px, py, bodyCos, bodySin, shape, slab.x[segId], slab.y[segId], Math.cos(slab.angle[segId]), Math.sin(slab.angle[segId]), segShape)) return true;
         }
     }
     return false;
@@ -1423,31 +1425,32 @@ function applyStaticSurfaceImpulseSlab(physId, normalX, normalY, cx, cy, restitu
     dyn.w[physId] = newW;
     return approachDot;
 }
-export function ensureWallSegmentPolygonShape(segment) {
-    if (!segment.shape) {
-        const halfX = segment.width !== undefined ? segment.width / 2 : segment.size / 2;
-        const halfY = segment.height !== undefined ? segment.height / 2 : segment.size / 2;
-        segment.shape = new PolygonShape(boxLocalFootprint(halfX, halfY));
-    }
-    return segment.shape;
+export function ensureWallSegmentPolygonShape(segId) {
+    const slab = staticWallSegmentSlab;
+    if (!slab.shapeRefs[segId]) slab.shapeRefs[segId] = new PolygonShape(boxLocalFootprint(slab.width[segId] * 0.5, slab.height[segId] * 0.5));
+    return slab.shapeRefs[segId];
 }
 const MAX_WALL_HITS = 64;
 export function createWallHitBuffer(capacity = MAX_WALL_HITS) {
-    return { count: 0, approachDot: new Float32Array(capacity), normalX: new Float32Array(capacity), normalY: new Float32Array(capacity), contactX: new Float32Array(capacity), contactY: new Float32Array(capacity), segment: new Array(capacity) };
+    return { count: 0, approachDot: new Float32Array(capacity), normalX: new Float32Array(capacity), normalY: new Float32Array(capacity), contactX: new Float32Array(capacity), contactY: new Float32Array(capacity), gridIdx: new Int32Array(capacity), gridSide: new Uint8Array(capacity), flags: new Uint8Array(capacity) };
 }
-function appendWallHit(outHits, approachDot, normalX, normalY, contactX, contactY, segment) {
+function appendWallHit(outHits, approachDot, normalX, normalY, contactX, contactY, segId) {
     const i = outHits.count;
     if (i >= outHits.approachDot.length) throw new Error("wall hit buffer capacity exceeded");
+    const slab = staticWallSegmentSlab;
     outHits.approachDot[i] = approachDot;
     outHits.normalX[i] = normalX;
     outHits.normalY[i] = normalY;
     outHits.contactX[i] = contactX;
     outHits.contactY[i] = contactY;
-    outHits.segment[i] = segment;
+    outHits.gridIdx[i] = slab.gridIdx[segId];
+    outHits.gridSide[i] = slab.gridSide[segId];
+    outHits.flags[i] = slab.flags[segId];
     outHits.count = i + 1;
 }
-function resolveAgainstWallSegmentsSlab(physId, body, shape, segments, restitution, friction, passes, shouldBreakWallHit, outHits) {
+function resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution, friction, passes, shouldBreakWallHit, outHits) {
     const dyn = kineticDynamicSlab;
+    const slab = staticWallSegmentSlab;
     let collided = false;
     const wantHits = shouldBreakWallHit != null && outHits != null;
     const radius = shape.getBoundingRadius();
@@ -1456,26 +1459,27 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segments, restituti
     let bestOverlap = 0;
     let bestCx = NaN;
     let bestCy = NaN;
-    let bestSegment = null;
+    let bestSegId = -1;
     for (let pass = 0; pass < passes; pass++) {
         let hasBest = false;
         const bx0 = dyn.x[physId];
         const by0 = dyn.y[physId];
         const approachVx = dyn.vx[physId];
         const approachVy = dyn.vy[physId];
-        for (const seg of segments) {
-            const maxDist = radius + seg.size * 0.75;
-            if (Math.abs(bx0 - seg.x) > maxDist || Math.abs(by0 - seg.y) > maxDist) continue;
+        for (let si = 0; si < segIds.used; si++) {
+            const segId = segIds.buf[si];
+            const maxDist = radius + slab.size[segId] * 0.75;
+            if (Math.abs(bx0 - slab.x[segId]) > maxDist || Math.abs(by0 - slab.y[segId]) > maxDist) continue;
             let normalX, normalY, overlap;
             let satCollisionFound = false;
             if (shape.type === "Circle") {
-                if (!circleSegmentPenetration(bx0, by0, shape.radius, seg, approachVx, approachVy)) continue;
+                if (!circleSegmentPenetration(bx0, by0, shape.radius, segId, approachVx, approachVy)) continue;
                 normalX = ENGINE_F32[P_OUT_PEN_NX];
                 normalY = ENGINE_F32[P_OUT_PEN_NY];
                 overlap = ENGINE_F32[P_OUT_PEN_OVERLAP];
             } else if (shape.type === "Polygon") {
-                const segShape = ensureWallSegmentPolygonShape(seg);
-                if (!satCheckCollision(bx0, by0, entityFacing(body), shape, seg.x, seg.y, entityFacing(seg), segShape)) continue;
+                const segShape = ensureWallSegmentPolygonShape(segId);
+                if (!satCheckCollision(bx0, by0, entityFacing(body), shape, slab.x[segId], slab.y[segId], slab.angle[segId], segShape)) continue;
                 normalX = -SAT_RESULT[1];
                 normalY = -SAT_RESULT[2];
                 overlap = SAT_RESULT[0];
@@ -1487,7 +1491,7 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segments, restituti
                 bestOverlap = overlap;
                 bestCx = satCollisionFound ? SAT_RESULT[3] : NaN;
                 bestCy = satCollisionFound ? SAT_RESULT[4] : NaN;
-                bestSegment = seg;
+                bestSegId = segId;
                 hasBest = true;
             }
         }
@@ -1504,22 +1508,22 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segments, restituti
         const bw = dyn.w[physId];
         const approachDot = dotXY(bvx - bw * (contactY - by), bvy + bw * (contactX - bx), bestNormalX, bestNormalY);
         if (wantHits && shouldBreakWallHit(approachDot)) {
-            appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegment);
+            appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegId);
             applyStaticSurfaceImpulseSlab(physId, bestNormalX, bestNormalY, contactX, contactY, restitution, friction);
             break;
         }
         applySlabPositionCorrection(physId, bestNormalX, bestNormalY, bestOverlap);
         applyStaticSurfaceImpulseSlab(physId, bestNormalX, bestNormalY, contactX, contactY, restitution, friction);
-        if (wantHits) appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegment);
+        if (wantHits) appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegId);
     }
     return collided;
 }
-export function resolveBodyAgainstWallSegments(body, shape, segments, restitution = 0, friction = 0.9, shouldBreakWallHit = null, outHits = null, passes = 2) {
+export function resolveBodyAgainstWallSegments(body, shape, segIds, restitution = 0, friction = 0.9, shouldBreakWallHit = null, outHits = null, passes = 2) {
     const physId = body._physId;
     if (physId === undefined || physId === -1) throw new Error("resolveBodyAgainstWallSegments requires _physId");
     if (outHits) outHits.count = 0;
     normalizeKineticBody(body);
-    return resolveAgainstWallSegmentsSlab(physId, body, shape, segments, restitution, friction, passes, shouldBreakWallHit, outHits);
+    return resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution, friction, passes, shouldBreakWallHit, outHits);
 }
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
 export function invalidateWallResolveCache(...entities) {
@@ -1538,7 +1542,7 @@ export class WallCollisionResolver {
         const candidateWalls = spatialFrame.getWallCandidates(entity);
         const hits = this.hits;
         hits.count = 0;
-        if (candidateWalls.length === 0) {
+        if (candidateWalls.used === 0) {
             entity._wallResolvedCollided = false;
             return false;
         }
@@ -1560,12 +1564,9 @@ export class WallCollisionResolver {
     }
 }
 const LINK_CAPSULE_WALL_PASSES = 4;
-/** Reused per-island wall candidate list — cleared at the start of each awake island. */
-const islandLinkWallCandidates = [];
-/** Segment identity set paired with islandLinkWallCandidates for O(1) dedup during gather. */
+const islandLinkWallCandidates = new GrowI32(64);
 const islandLinkWallSegmentSet = new Set();
-/** Per-link AABB filter into the current island list before narrow-phase wall tests. */
-const linkFilteredWallCandidates = [];
+const linkFilteredWallCandidates = new GrowI32(32);
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
 const constraintPhysSyncSeen = new Set();
 const constraintBridgePhysIds = [];
@@ -1858,20 +1859,23 @@ export function gatherKineticConstraintSlab(tick) {
     }
     syncConstraintSlabBodies(slab);
 }
-function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segment) {
-    const reach = capsuleRadius + segment.size * 0.75;
+function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segId) {
+    const slab = staticWallSegmentSlab;
+    const reach = capsuleRadius + slab.size[segId] * 0.75;
     const minX = Math.min(ax, bx) - reach;
     const maxX = Math.max(ax, bx) + reach;
     const minY = Math.min(ay, by) - reach;
     const maxY = Math.max(ay, by) + reach;
-    return segment.x >= minX && segment.x <= maxX && segment.y >= minY && segment.y <= maxY;
+    const sx = slab.x[segId];
+    const sy = slab.y[segId];
+    return sx >= minX && sx <= maxX && sy >= minY && sy <= maxY;
 }
 function mergeWallCandidatesInto(candidates, out) {
-    for (let i = 0; i < candidates.length; i++) {
-        const seg = candidates[i];
-        if (islandLinkWallSegmentSet.has(seg)) continue;
-        islandLinkWallSegmentSet.add(seg);
-        out.push(seg);
+    for (let i = 0; i < candidates.used; i++) {
+        const segId = candidates.buf[i];
+        if (islandLinkWallSegmentSet.has(segId)) continue;
+        islandLinkWallSegmentSet.add(segId);
+        out.push(segId);
     }
 }
 function appendBodyWallCandidates(spatialFrame, body, gatherMark, out) {
@@ -1880,7 +1884,7 @@ function appendBodyWallCandidates(spatialFrame, body, gatherMark, out) {
     mergeWallCandidatesInto(spatialFrame.getWallCandidates(body), out);
 }
 function gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, out) {
-    out.length = 0;
+    out.clear();
     islandLinkWallSegmentSet.clear();
     for (let i = start; i < start + count; i++) {
         appendBodyWallCandidates(spatialFrame, constraintBodyAt(slab.physIdA[i]), gatherMark, out);
@@ -1888,10 +1892,10 @@ function gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gather
     }
 }
 function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) {
-    out.length = 0;
-    for (let i = 0; i < walls.length; i++) {
-        const seg = walls[i];
-        if (linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, seg)) out.push(seg);
+    out.clear();
+    for (let i = 0; i < walls.used; i++) {
+        const segId = walls.buf[i];
+        if (linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segId)) out.push(segId);
     }
 }
 function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWalls, linkWallsOut) {
@@ -1900,7 +1904,7 @@ function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWall
     const bodyA = constraintBodyAt(physIdA);
     const bodyB = constraintBodyAt(physIdB);
     if (bodyA.isSleeping && bodyB.isSleeping) {
-        linkWallsOut.length = 0;
+        linkWallsOut.clear();
         return false;
     }
     const dynSlab = kineticDynamicSlab;
@@ -1911,14 +1915,14 @@ function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWall
     const wbX = ENGINE_F32[P_VEC_B];
     const wbY = ENGINE_F32[P_VEC_B + 1];
     collectLinkOverlappingWalls(waX, waY, wbX, wbY, capsuleRadius, islandWalls, linkWallsOut);
-    return linkWallsOut.length > 0;
+    return linkWallsOut.used > 0;
 }
 function translateLinkAwayFromSlabWall(physIdA, physIdB, normalX, normalY, overlap) {
     applySlabPositionCorrection(physIdA, normalX, normalY, overlap);
     applySlabPositionCorrection(physIdB, normalX, normalY, overlap);
 }
 function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame) {
-    if (!linkWalls.length) return;
+    if (!linkWalls.used) return;
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
     const bodyA = constraintBodyAt(physIdA);
@@ -1934,19 +1938,27 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
         const waY = ENGINE_F32[P_VEC_A + 1];
         const wbX = ENGINE_F32[P_VEC_B];
         const wbY = ENGINE_F32[P_VEC_B + 1];
-        let best = null;
-        for (let j = 0; j < linkWalls.length; j++) {
-            const seg = linkWalls[j];
-            if (!linkSegmentOverlapsWall(waX, waY, wbX, wbY, capsuleRadius, seg)) continue;
-            if (getLinkCapsuleSegmentPenetration(waX, waY, wbX, wbY, capsuleRadius, seg, { approachX, approachY })) {
+        let bestOverlap = 0;
+        let bestNx = 0;
+        let bestNy = 0;
+        let hasBest = false;
+        for (let j = 0; j < linkWalls.used; j++) {
+            const segId = linkWalls.buf[j];
+            if (!linkSegmentOverlapsWall(waX, waY, wbX, wbY, capsuleRadius, segId)) continue;
+            if (getLinkCapsuleSegmentPenetration(waX, waY, wbX, wbY, capsuleRadius, segId, { approachX, approachY })) {
                 const nx = ENGINE_F32[P_OUT_PEN_NX];
                 const ny = ENGINE_F32[P_OUT_PEN_NY];
                 const overlap = ENGINE_F32[P_OUT_PEN_OVERLAP];
-                if (overlap > 0 && (!best || overlap > best.overlap)) best = { normalX: nx, normalY: ny, overlap, segment: seg };
+                if (overlap > 0 && (!hasBest || overlap > bestOverlap)) {
+                    hasBest = true;
+                    bestOverlap = overlap;
+                    bestNx = nx;
+                    bestNy = ny;
+                }
             }
         }
-        if (!best) break;
-        translateLinkAwayFromSlabWall(physIdA, physIdB, best.normalX, best.normalY, best.overlap);
+        if (!hasBest) break;
+        translateLinkAwayFromSlabWall(physIdA, physIdB, bestNx, bestNy, bestOverlap);
         wakeKineticBody(bodyA);
         wakeKineticBody(bodyB);
         spatialFrame.scheduleKineticActivation(bodyA);
@@ -1965,7 +1977,7 @@ function projectIslandLinkCapsulesAgainstWalls(spatialFrame) {
         currentGroupStart += count;
         if (start >= slab.activeCount) break;
         gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, islandWalls);
-        if (!islandWalls.length) continue;
+        if (!islandWalls.used) continue;
         for (let pass = 0; pass < 2; pass++)
             for (let i = start; i < start + count; i++) {
                 if (slab.type[i] === "angle") continue;
@@ -3639,39 +3651,47 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
  * @param {number} [restitution]
  */
 /** Ground-plane corners of a wall segment prism (rotated square). */
-export function toSegmentLocal(segment, x, y) {
-    const dx = x - segment.x;
-    const dy = y - segment.y;
-    const cos = Math.cos(-segment.angle);
-    const sin = Math.sin(-segment.angle);
-    const halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
-    const halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
+export function toSegmentLocal(segId, x, y) {
+    const slab = staticWallSegmentSlab;
+    const dx = x - slab.x[segId];
+    const dy = y - slab.y[segId];
+    const angle = slab.angle[segId];
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const halfX = slab.width[segId] * 0.5;
+    const halfY = slab.height[segId] * 0.5;
     ENGINE_F32[P_VEC_A] = halfX;
     ENGINE_F32[P_VEC_A + 1] = halfY;
     ENGINE_F32[P_VEC_B] = dx * cos - dy * sin;
     ENGINE_F32[P_VEC_B + 1] = dx * sin + dy * cos;
 }
-export function closestPointOnSegment(wall, x, y) {
-    const halfX = (wall.width !== undefined ? wall.width : wall.size) * 0.5;
-    const halfY = (wall.height !== undefined ? wall.height : wall.size) * 0.5;
-    const cos = Math.cos(-wall.angle);
-    const sin = Math.sin(-wall.angle);
-    const localX = (x - wall.x) * cos - (y - wall.y) * sin;
-    const localY = (x - wall.x) * sin + (y - wall.y) * cos;
+export function closestPointOnSegment(segId, x, y) {
+    const slab = staticWallSegmentSlab;
+    const halfX = slab.width[segId] * 0.5;
+    const halfY = slab.height[segId] * 0.5;
+    const angle = slab.angle[segId];
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const wx = slab.x[segId];
+    const wy = slab.y[segId];
+    const localX = (x - wx) * cos - (y - wy) * sin;
+    const localY = (x - wx) * sin + (y - wy) * cos;
     const closestLocalX = Math.max(-halfX, Math.min(localX, halfX));
     const closestLocalY = Math.max(-halfY, Math.min(localY, halfY));
-    const invCos = Math.cos(wall.angle);
-    const invSin = Math.sin(wall.angle);
-    ENGINE_F32[P_OUT_DIST_X] = wall.x + closestLocalX * invCos - closestLocalY * invSin;
-    ENGINE_F32[P_OUT_DIST_Y] = wall.y + closestLocalX * invSin + closestLocalY * invCos;
+    const invCos = Math.cos(angle);
+    const invSin = Math.sin(angle);
+    ENGINE_F32[P_OUT_DIST_X] = wx + closestLocalX * invCos - closestLocalY * invSin;
+    ENGINE_F32[P_OUT_DIST_Y] = wy + closestLocalX * invSin + closestLocalY * invCos;
 }
-export function distanceSqToSegment(segment, x, y) {
-    const dx = x - segment.x;
-    const dy = y - segment.y;
-    const cos = Math.cos(-segment.angle);
-    const sin = Math.sin(-segment.angle);
-    const halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
-    const halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
+export function distanceSqToSegment(segId, x, y) {
+    const slab = staticWallSegmentSlab;
+    const dx = x - slab.x[segId];
+    const dy = y - slab.y[segId];
+    const angle = slab.angle[segId];
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const halfX = slab.width[segId] * 0.5;
+    const halfY = slab.height[segId] * 0.5;
     const localX = dx * cos - dy * sin;
     const localY = dx * sin + dy * cos;
     const closestX = Math.max(-halfX, Math.min(localX, halfX));
@@ -3680,8 +3700,8 @@ export function distanceSqToSegment(segment, x, y) {
     const distDY = localY - closestY;
     return distDX * distDX + distDY * distDY;
 }
-export function distanceToSegment(wall, x, y) {
-    const distSq = distanceSqToSegment(wall, x, y);
+export function distanceToSegment(segId, x, y) {
+    const distSq = distanceSqToSegment(segId, x, y);
     return distSq === Infinity ? Infinity : Math.sqrt(distSq);
 }
 function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
@@ -3733,25 +3753,29 @@ function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     return Math.sqrt(minSq);
 }
 /** Minimum distance between a path segment and a wall's collision box. */
-export function minDistanceSegmentToWall(ax, ay, bx, by, wall) {
-    const halfX = (wall.width !== undefined ? wall.width : wall.size) * 0.5;
-    const halfY = (wall.height !== undefined ? wall.height : wall.size) * 0.5;
-    const cos = Math.cos(-wall.angle);
-    const sin = Math.sin(-wall.angle);
-    ENGINE_F32[P_VEC_A] = (ax - wall.x) * cos - (ay - wall.y) * sin;
-    ENGINE_F32[P_VEC_A + 1] = (ax - wall.x) * sin + (ay - wall.y) * cos;
-    ENGINE_F32[P_VEC_B] = (bx - wall.x) * cos - (by - wall.y) * sin;
-    ENGINE_F32[P_VEC_B + 1] = (bx - wall.x) * sin + (by - wall.y) * cos;
+export function minDistanceSegmentToWall(ax, ay, bx, by, segId) {
+    const slab = staticWallSegmentSlab;
+    const halfX = slab.width[segId] * 0.5;
+    const halfY = slab.height[segId] * 0.5;
+    const angle = slab.angle[segId];
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const wx = slab.x[segId];
+    const wy = slab.y[segId];
+    ENGINE_F32[P_VEC_A] = (ax - wx) * cos - (ay - wy) * sin;
+    ENGINE_F32[P_VEC_A + 1] = (ax - wx) * sin + (ay - wy) * cos;
+    ENGINE_F32[P_VEC_B] = (bx - wx) * cos - (by - wy) * sin;
+    ENGINE_F32[P_VEC_B + 1] = (bx - wx) * sin + (by - wy) * cos;
     return minDistanceSegmentToAabb(ENGINE_F32[P_VEC_A], ENGINE_F32[P_VEC_A + 1], ENGINE_F32[P_VEC_B], ENGINE_F32[P_VEC_B + 1], -halfX, -halfY, halfX, halfY);
 }
 /** Closest point on path segment AB to wall box — used for push direction. */
-export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
+export function findClosestPointOnPathToWall(ax, ay, bx, by, segId) {
     const segLen = Math.hypot(bx - ax, by - ay);
     if (segLen < 0.01) {
         ENGINE_F32[P_OUT_DIST_X] = ax;
         ENGINE_F32[P_OUT_DIST_Y] = ay;
         ENGINE_F32[P_OUT_DIST_T] = 0;
-        ENGINE_F32[P_OUT_DIST_DIST] = distanceToSegment(wall, ax, ay);
+        ENGINE_F32[P_OUT_DIST_DIST] = distanceToSegment(segId, ax, ay);
         return;
     }
     const samples = Math.min(256, Math.max(16, Math.ceil(segLen)));
@@ -3761,7 +3785,7 @@ export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
         const t = i / samples;
         const px = ax + (bx - ax) * t;
         const py = ay + (by - ay) * t;
-        const dist = distanceToSegment(wall, px, py);
+        const dist = distanceToSegment(segId, px, py);
         if (dist < bestDist) {
             bestDist = dist;
             bestT = t;
@@ -3772,8 +3796,8 @@ export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
     for (let i = 0; i < 10; i++) {
         const m1 = lo + (hi - lo) / 3;
         const m2 = hi - (hi - lo) / 3;
-        const d1 = distanceToSegment(wall, ax + (bx - ax) * m1, ay + (by - ay) * m1);
-        const d2 = distanceToSegment(wall, ax + (bx - ax) * m2, ay + (by - ay) * m2);
+        const d1 = distanceToSegment(segId, ax + (bx - ax) * m1, ay + (by - ay) * m1);
+        const d2 = distanceToSegment(segId, ax + (bx - ax) * m2, ay + (by - ay) * m2);
         if (d1 < d2) hi = m2;
         else lo = m1;
     }
@@ -3783,11 +3807,11 @@ export function findClosestPointOnPathToWall(ax, ay, bx, by, wall) {
     ENGINE_F32[P_OUT_DIST_X] = x;
     ENGINE_F32[P_OUT_DIST_Y] = y;
     ENGINE_F32[P_OUT_DIST_T] = t;
-    ENGINE_F32[P_OUT_DIST_DIST] = distanceToSegment(wall, x, y);
+    ENGINE_F32[P_OUT_DIST_DIST] = distanceToSegment(segId, x, y);
 }
-export function circleIntersectsSegment(circle, segment) {
+export function circleIntersectsSegment(circle, segId) {
     const radiusSq = circle.radius * circle.radius;
-    return distanceSqToSegment(segment, circle.x, circle.y) < radiusSq;
+    return distanceSqToSegment(segId, circle.x, circle.y) < radiusSq;
 }
 /**
  * Closest point on an axis-aligned box boundary (segment-local space).
@@ -3915,15 +3939,15 @@ function pushNormalFromInsideApproach(localX, localY, halfX, halfY, approachX, a
  * @param {object} segment
  * @param {{ approachX?: number, approachY?: number }} [options] — world-space motion hint for face selection
  */
-export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, segment, { approachX = 0, approachY = 0 } = {}) {
-    if (minDistanceSegmentToWall(ax, ay, bx, by, segment) >= capsuleRadius - 1e-5) return false;
-    findClosestPointOnPathToWall(ax, ay, bx, by, segment);
+export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, segId, { approachX = 0, approachY = 0 } = {}) {
+    if (minDistanceSegmentToWall(ax, ay, bx, by, segId) >= capsuleRadius - 1e-5) return false;
+    findClosestPointOnPathToWall(ax, ay, bx, by, segId);
     const closestX = ENGINE_F32[P_OUT_DIST_X];
     const closestY = ENGINE_F32[P_OUT_DIST_Y];
     const closestDist = ENGINE_F32[P_OUT_DIST_DIST];
-    if (circleSegmentPenetration(closestX, closestY, capsuleRadius, segment, approachX, approachY)) return true;
+    if (circleSegmentPenetration(closestX, closestY, capsuleRadius, segId, approachX, approachY)) return true;
     if (closestDist >= capsuleRadius) return false;
-    closestPointOnSegment(segment, closestX, closestY);
+    closestPointOnSegment(segId, closestX, closestY);
     const wallPointX = ENGINE_F32[P_OUT_DIST_X];
     const wallPointY = ENGINE_F32[P_OUT_DIST_Y];
     let normalX = closestX - wallPointX;
@@ -3938,14 +3962,18 @@ export function getLinkCapsuleSegmentPenetration(ax, ay, bx, by, capsuleRadius, 
     ENGINE_F32[P_OUT_PEN_DIST_SQ] = closestDist * closestDist;
     return true;
 }
-function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approachY = 0) {
-    const halfX = (segment.width !== undefined ? segment.width : segment.size) * 0.5;
-    const halfY = (segment.height !== undefined ? segment.height : segment.size) * 0.5;
-    const cos = Math.cos(-segment.angle);
-    const sin = Math.sin(-segment.angle);
-    const localX = (cx - segment.x) * cos - (cy - segment.y) * sin;
-    const localY = (cx - segment.x) * sin + (cy - segment.y) * cos;
-    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_D, approachX, approachY, segment.angle);
+function circleSegmentPenetration(cx, cy, radius, segId, approachX = 0, approachY = 0) {
+    const slab = staticWallSegmentSlab;
+    const halfX = slab.width[segId] * 0.5;
+    const halfY = slab.height[segId] * 0.5;
+    const angle = slab.angle[segId];
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    const wx = slab.x[segId];
+    const wy = slab.y[segId];
+    const localX = (cx - wx) * cos - (cy - wy) * sin;
+    const localY = (cx - wx) * sin + (cy - wy) * cos;
+    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_D, approachX, approachY, angle);
     const localApproachX = ENGINE_F32[P_VEC_D];
     const localApproachY = ENGINE_F32[P_VEC_D + 1];
     const hasApproach = Math.hypot(localApproachX, localApproachY) > 1e-6;
@@ -3977,8 +4005,8 @@ function circleSegmentPenetration(cx, cy, radius, segment, approachX = 0, approa
         localNormX = toCenterX / distance;
         localNormY = toCenterY / distance;
     }
-    const invCos = Math.cos(segment.angle);
-    const invSin = Math.sin(segment.angle);
+    const invCos = Math.cos(angle);
+    const invSin = Math.sin(angle);
     ENGINE_F32[P_OUT_PEN_NX] = localNormX * invCos - localNormY * invSin;
     ENGINE_F32[P_OUT_PEN_NY] = localNormX * invSin + localNormY * invCos;
     ENGINE_F32[P_OUT_PEN_OVERLAP] = overlap;
@@ -4055,28 +4083,28 @@ export function rayExpandedLocalAabbHit(ox, oy, dx, dy, half, radius) {
  * @param {number} [maxDist]
  * @returns {CircleSegmentSweepHit | null}
  */
-export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segment, maxDist = Infinity) {
-    const half = segment.size / 2;
-    toSegmentLocal(segment, ox, oy);
+export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segId, maxDist = Infinity) {
+    const slab = staticWallSegmentSlab;
+    const half = slab.size[segId] / 2;
+    toSegmentLocal(segId, ox, oy);
     const localX = ENGINE_F32[P_VEC_B];
     const localY = ENGINE_F32[P_VEC_B + 1];
-    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_C, dx, dy, segment.angle);
+    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_C, dx, dy, slab.angle[segId]);
     const localDirX = ENGINE_F32[P_VEC_C];
     const localDirY = ENGINE_F32[P_VEC_C + 1];
     const t = rayExpandedLocalAabbHit(localX, localY, localDirX, localDirY, half, radius);
     if (t == null || t > maxDist) return null;
     const wx = ox + dx * t;
     const wy = oy + dy * t;
-    let hit = circleSegmentPenetration(wx, wy, radius, segment, dx, dy);
+    let hit = circleSegmentPenetration(wx, wy, radius, segId, dx, dy);
     if (!hit) {
         const nudge = 1e-3;
-        hit = circleSegmentPenetration(wx + dx * nudge, wy + dy * nudge, radius, segment, dx, dy);
+        hit = circleSegmentPenetration(wx + dx * nudge, wy + dy * nudge, radius, segId, dx, dy);
     }
     if (!hit) return false;
     ENGINE_F32[P_OUT_SWEEP_T] = t;
     ENGINE_F32[P_OUT_SWEEP_X] = wx;
     ENGINE_F32[P_OUT_SWEEP_Y] = wy;
-    // nx, ny are already in P_OUT_PEN_NX, P_OUT_PEN_NY from circleSegmentPenetration
     return true;
 }
 /** Circle contact geometry — surface points for casts, previews, and impulse hooks. Writes into ENGINE_F32[destOffset..+1]. */

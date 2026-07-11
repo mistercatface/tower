@@ -3,9 +3,7 @@ import { railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeig
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT } from "../../Core/engineMemory.js";
-const sP1 = { x: 0, y: 0 };
-const sP2 = { x: 0, y: 0 };
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y } from "../../Core/engineMemory.js";
 export const RAIL_BOX = { chunkKey: 0, gridIdx: 1, gridSide: 2, minX: 3, minY: 4, maxX: 5, maxY: 6, innerP1x: 7, innerP1y: 8, innerP2x: 9, innerP2y: 10, outerP1x: 11, outerP1y: 12, outerP2x: 13, outerP2y: 14, inwardX: 15, inwardY: 16, wallBaseZ: 17, wallHeight: 18, wallCapHeight: 19, edgeThickness: 20, cx: 21, cy: 22 };
 export const RAIL_BOX_STRIDE = 23;
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
@@ -120,7 +118,7 @@ function fillFlatUvFromF32Bounds(out8, buf, o, side) {
     }
     return out8;
 }
-function railWallSideEndpoints(grid, idx, edge, railSide, p1, p2) {
+function railWallSideEndpoints(grid, idx, edge, railSide, buf, o1, o2) {
     const halfT = railWallFootprintHalfThickness(grid, idx, edge);
     grid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
     const minX = ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL];
@@ -129,28 +127,28 @@ function railWallSideEndpoints(grid, idx, edge, railSide, p1, p2) {
     const maxY = ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL + 3];
     if (edge === 0) {
         const y = railSide === 0 ? minY + halfT : minY - halfT;
-        p1.x = minX;
-        p1.y = y;
-        p2.x = maxX;
-        p2.y = y;
+        buf[o1] = minX;
+        buf[o1 + 1] = y;
+        buf[o2] = maxX;
+        buf[o2 + 1] = y;
     } else if (edge === 2) {
         const y = railSide === 0 ? maxY - halfT : maxY + halfT;
-        p1.x = maxX;
-        p1.y = y;
-        p2.x = minX;
-        p2.y = y;
+        buf[o1] = maxX;
+        buf[o1 + 1] = y;
+        buf[o2] = minX;
+        buf[o2 + 1] = y;
     } else if (edge === 1) {
         const x = railSide === 0 ? maxX - halfT : maxX + halfT;
-        p1.x = x;
-        p1.y = minY;
-        p2.x = x;
-        p2.y = maxY;
+        buf[o1] = x;
+        buf[o1 + 1] = minY;
+        buf[o2] = x;
+        buf[o2 + 1] = maxY;
     } else {
         const x = railSide === 0 ? minX + halfT : minX - halfT;
-        p1.x = x;
-        p1.y = maxY;
-        p2.x = x;
-        p2.y = minY;
+        buf[o1] = x;
+        buf[o1 + 1] = maxY;
+        buf[o2] = x;
+        buf[o2 + 1] = minY;
     }
 }
 function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
@@ -166,7 +164,7 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     const minY = ENGINE_F32[ENGINE_BOUNDS_BASE + B_FOOTPRINT + 1];
     const maxX = ENGINE_F32[ENGINE_BOUNDS_BASE + B_FOOTPRINT + 2];
     const maxY = ENGINE_F32[ENGINE_BOUNDS_BASE + B_FOOTPRINT + 3];
-    railWallSideEndpoints(grid, idx, edge, 0, sP1, sP2);
+    railWallSideEndpoints(grid, idx, edge, 0, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X);
     const base = recordIndex * RAIL_BOX_STRIDE;
     data[base + RAIL_BOX.chunkKey] = cellIdxToChunkKey(idx, grid, gridSettings.minCellsPerChunk);
     data[base + RAIL_BOX.gridIdx] = idx;
@@ -175,15 +173,15 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     data[base + RAIL_BOX.minY] = minY;
     data[base + RAIL_BOX.maxX] = maxX;
     data[base + RAIL_BOX.maxY] = maxY;
-    data[base + RAIL_BOX.innerP1x] = sP1.x;
-    data[base + RAIL_BOX.innerP1y] = sP1.y;
-    data[base + RAIL_BOX.innerP2x] = sP2.x;
-    data[base + RAIL_BOX.innerP2y] = sP2.y;
-    railWallSideEndpoints(grid, idx, edge, 1, sP1, sP2);
-    data[base + RAIL_BOX.outerP1x] = sP1.x;
-    data[base + RAIL_BOX.outerP1y] = sP1.y;
-    data[base + RAIL_BOX.outerP2x] = sP2.x;
-    data[base + RAIL_BOX.outerP2y] = sP2.y;
+    data[base + RAIL_BOX.innerP1x] = ENGINE_F32[S_EDGE_P1X];
+    data[base + RAIL_BOX.innerP1y] = ENGINE_F32[S_EDGE_P1Y];
+    data[base + RAIL_BOX.innerP2x] = ENGINE_F32[S_EDGE_P2X];
+    data[base + RAIL_BOX.innerP2y] = ENGINE_F32[S_EDGE_P2Y];
+    railWallSideEndpoints(grid, idx, edge, 1, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X);
+    data[base + RAIL_BOX.outerP1x] = ENGINE_F32[S_EDGE_P1X];
+    data[base + RAIL_BOX.outerP1y] = ENGINE_F32[S_EDGE_P1Y];
+    data[base + RAIL_BOX.outerP2x] = ENGINE_F32[S_EDGE_P2X];
+    data[base + RAIL_BOX.outerP2y] = ENGINE_F32[S_EDGE_P2Y];
     data[base + RAIL_BOX.inwardX] = -GRID_SIDE_NX[edge];
     data[base + RAIL_BOX.inwardY] = -GRID_SIDE_NY[edge];
     data[base + RAIL_BOX.wallBaseZ] = voxelWallFaceBaseZ(neighborCap, edgeHeight);
@@ -328,19 +326,19 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     if (!voxelWallFaceVisible(neighborCap, faceHeight)) return false;
     const col = idx % cols;
     const row = (idx / cols) | 0;
-    cellEdgeEndpointsIdx(grid, idx, edge, sP1, sP2, 0);
+    cellEdgeEndpointsIdx(grid, idx, edge, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
     grid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
     const cx = (ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL] + ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL + 2]) / 2;
     const cy = (ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL + 1] + ENGINE_F32[ENGINE_BOUNDS_BASE + B_CELL + 3]) / 2;
-    const ecx = (sP1.x + sP2.x) / 2;
-    const ecy = (sP1.y + sP2.y) / 2;
+    const ecx = (ENGINE_F32[S_EDGE_P1X] + ENGINE_F32[S_EDGE_P2X]) / 2;
+    const ecy = (ENGINE_F32[S_EDGE_P1Y] + ENGINE_F32[S_EDGE_P2Y]) / 2;
     const wallBaseZ = voxelWallFaceBaseZ(neighborCap, faceHeight);
     data[base + VOXEL_FACE.gridIdx] = idx;
     data[base + VOXEL_FACE.gridSide] = edge;
-    data[base + VOXEL_FACE.x1] = sP1.x;
-    data[base + VOXEL_FACE.y1] = sP1.y;
-    data[base + VOXEL_FACE.x2] = sP2.x;
-    data[base + VOXEL_FACE.y2] = sP2.y;
+    data[base + VOXEL_FACE.x1] = ENGINE_F32[S_EDGE_P1X];
+    data[base + VOXEL_FACE.y1] = ENGINE_F32[S_EDGE_P1Y];
+    data[base + VOXEL_FACE.x2] = ENGINE_F32[S_EDGE_P2X];
+    data[base + VOXEL_FACE.y2] = ENGINE_F32[S_EDGE_P2Y];
     data[base + VOXEL_FACE.wallBaseZ] = wallBaseZ;
     data[base + VOXEL_FACE.wallHeight] = faceHeight - wallBaseZ;
     data[base + VOXEL_FACE.wallCapHeight] = faceHeight;

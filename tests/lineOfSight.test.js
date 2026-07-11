@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { segmentIntersectionPointIntoF32 } from "../Libraries/Math/math.js";
 import { minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
-import {  hasLineOfSight  } from "../Libraries/Spatial/spatial.js";
+import { hasLineOfSight } from "../Libraries/Spatial/spatial.js";
+import { mockWallSegment } from "./harness/wallSegmentHarness.js";
 const sIntersectionResult = new Float32Array(4);
 function getIntersection(ax, ay, bx, by, cx, cy, dx, dy) {
     const success = segmentIntersectionPointIntoF32(sIntersectionResult, 0, ax, ay, bx, by, cx, cy, dx, dy);
@@ -14,20 +15,19 @@ function getIntersection(ax, ay, bx, by, cx, cy, dx, dy) {
         u: sIntersectionResult[3]
     };
 }
-function obstacleGridWithSegments(segments) {
+function obstacleGridWithSegments(segIds) {
     return {
         cellSize: 16,
-        resetStaticWallProxyPool() {},
-        appendStaticWallProxiesNear(_entity, out) {
-            for (let i = 0; i < segments.length; i++) out.push(segments[i]);
+        appendStaticWallSegmentsNear(_entity, out) {
+            for (let i = 0; i < segIds.length; i++) out.push(segIds[i]);
         },
-        appendStaticWallProxiesNearWorld(_x, _y, _queryRadius, out) {
-            for (let i = 0; i < segments.length; i++) out.push(segments[i]);
+        appendStaticWallSegmentsNearWorld(_x, _y, _queryRadius, out) {
+            for (let i = 0; i < segIds.length; i++) out.push(segIds[i]);
         },
     };
 }
 describe("lineOfSight via Segment2D wall distance", () => {
-    const wall = { x: 50, y: 0, angle: 0, size: 20, isDead: false };
+    const wall = mockWallSegment(50, 0, 20);
     it("minDistanceSegmentToWall uses shared segment distance", () => {
         assert.ok(minDistanceSegmentToWall(0, 0, 100, 0, wall) < 20);
         assert.ok(minDistanceSegmentToWall(0, 40, 100, 40, wall) > 20);

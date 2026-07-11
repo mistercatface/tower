@@ -37,6 +37,10 @@ export const S_OUT_XY = ENGINE_SPATIAL_BASE;
 export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
 export const S_AABB = ENGINE_SPATIAL_BASE + 4;
 export const S_QUAD = ENGINE_SPATIAL_BASE + 8;
+export const S_EDGE_P1X = ENGINE_SPATIAL_BASE + 16;
+export const S_EDGE_P1Y = ENGINE_SPATIAL_BASE + 17;
+export const S_EDGE_P2X = ENGINE_SPATIAL_BASE + 18;
+export const S_EDGE_P2Y = ENGINE_SPATIAL_BASE + 19;
 export const N_OUT_XY = ENGINE_NAV_BASE;
 export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
 export const N_OUT_STEER = ENGINE_NAV_BASE + 4;
@@ -131,6 +135,13 @@ export class GrowI32 {
         this.buf = next;
         return this.buf;
     }
+    clear() {
+        this.used = 0;
+    }
+    push(v) {
+        this.ensure(this.used + 1);
+        this.buf[this.used++] = v;
+    }
 }
 export class GrowF32 {
     constructor(initialCap = 256) {
@@ -220,3 +231,17 @@ export const sleepContactBuffer = { count: 0, physIdA: new Int32Array(MAX_CONTAC
 export const kineticDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_KINETIC_DEBRIS), y: new Float32Array(MAX_KINETIC_DEBRIS), vx: new Float32Array(MAX_KINETIC_DEBRIS), vy: new Float32Array(MAX_KINETIC_DEBRIS), w: new Float32Array(MAX_KINETIC_DEBRIS), facing: new Float32Array(MAX_KINETIC_DEBRIS), ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 export const pendingWallBreaks = { count: 0, keyToRow: new Map(), kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 export const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
+export const MAX_STATIC_WALL_SEGMENTS = 4096;
+export const WALL_SEG_VOXEL = 1;
+export const WALL_SEG_EDGE_RAIL = 2;
+export const WALL_SEG_STATIC_FACE = 4;
+export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), shapeRefs: new Array(MAX_STATIC_WALL_SEGMENTS) };
+export function resetStaticWallSegmentSlab() {
+    staticWallSegmentSlab.count = 0;
+}
+export function allocStaticWallSegment() {
+    const id = staticWallSegmentSlab.count;
+    if (id >= MAX_STATIC_WALL_SEGMENTS) throw new Error("static wall segment slab capacity exceeded");
+    staticWallSegmentSlab.count = id + 1;
+    return id;
+}

@@ -1,7 +1,7 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT, circleIntersectsAabb, createAabb } from "../Math/math.js";
-import { ENGINE_F32, N_OUT_XY, N_OUT_STEER } from "../../Core/engineMemory.js";
+import { ENGINE_F32, N_OUT_XY, N_OUT_STEER, GrowI32, staticWallSegmentSlab } from "../../Core/engineMemory.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
@@ -1143,8 +1143,8 @@ export function sabWaypointArrived(bodyX, bodyY, bodyIdx, worker, slot, i, arriv
     }
     return grid.canStep(bodyIdx, idx, navTopology);
 }
-export const tempWallProxies = [];
-export const tempCornerProxies = [];
+export const tempWallSegIds = new GrowI32(32);
+export const tempCornerSegIds = new GrowI32(32);
 export class PathSteeringEvaluator {
     constructor() {
         this.x = 0;
@@ -1184,16 +1184,17 @@ export class PathSteeringEvaluator {
     }
     resolveClearanceRadius() {
         const bodyRadius = this.radius;
-        tempWallProxies.length = 0;
-        this.grid.appendStaticWallProxiesNearWorld(this.x, this.y, bodyRadius + this.grid.cellSize, tempWallProxies);
-        let wallThickness = 4; // Default thickness fallback
-        for (let i = 0; i < tempWallProxies.length; i++) {
-            const wall = tempWallProxies[i];
-            const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
+        tempWallSegIds.clear();
+        this.grid.appendStaticWallSegmentsNearWorld(this.x, this.y, bodyRadius + this.grid.cellSize, tempWallSegIds);
+        let wallThickness = 4;
+        const slab = staticWallSegmentSlab;
+        for (let i = 0; i < tempWallSegIds.used; i++) {
+            const id = tempWallSegIds.buf[i];
+            const thickness = Math.min(slab.width[id], slab.height[id]);
             if (thickness > 0 && thickness < this.grid.cellSize) wallThickness = Math.max(wallThickness, thickness);
         }
-        this.hasNearWalls = tempWallProxies.length > 0;
-        tempWallProxies.length = 0; // Clear references to prevent memory leaks
+        this.hasNearWalls = tempWallSegIds.used > 0;
+        tempWallSegIds.clear();
         const freeHalfWidth = (this.grid.cellSize - wallThickness) * 0.5;
         const centeredClearance = freeHalfWidth - bodyRadius;
         this.centeredClearance = centeredClearance;
@@ -1237,16 +1238,17 @@ export class PathSteeringEvaluator {
             if (d0 > 0.001 && d1 > 0.001) {
                 const cosTheta = (dx0 * dx1 + dy0 * dy1) / (d0 * d1);
                 if (cosTheta < 0.95) {
-                    tempCornerProxies.length = 0;
-                    this.grid.appendStaticWallProxiesNearWorld(xCurr, yCurr, this.radius + this.grid.cellSize, tempCornerProxies);
+                    tempCornerSegIds.clear();
+                    this.grid.appendStaticWallSegmentsNearWorld(xCurr, yCurr, this.radius + this.grid.cellSize, tempCornerSegIds);
                     let cornerWallThickness = 4;
-                    for (let w = 0; w < tempCornerProxies.length; w++) {
-                        const wall = tempCornerProxies[w];
-                        const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
+                    const slab = staticWallSegmentSlab;
+                    for (let w = 0; w < tempCornerSegIds.used; w++) {
+                        const id = tempCornerSegIds.buf[w];
+                        const thickness = Math.min(slab.width[id], slab.height[id]);
                         if (thickness > 0 && thickness < this.grid.cellSize) cornerWallThickness = Math.max(cornerWallThickness, thickness);
                     }
-                    const hasNearWallsAtCorner = tempCornerProxies.length > 0;
-                    tempCornerProxies.length = 0;
+                    const hasNearWallsAtCorner = tempCornerSegIds.used > 0;
+                    tempCornerSegIds.clear();
                     const cornerFreeHalfWidth = (this.grid.cellSize - cornerWallThickness) * 0.5;
                     const cornerClearance = cornerFreeHalfWidth - this.radius;
                     const maxDev = hasNearWallsAtCorner ? Math.max(0.5, cornerClearance * 0.75) : 4.0;
@@ -1272,16 +1274,17 @@ export class PathSteeringEvaluator {
         const ty = dy / dist;
         const cosAlign = dirX * tx + dirY * ty;
         if (cosAlign < 0.95) {
-            tempCornerProxies.length = 0;
-            this.grid.appendStaticWallProxiesNearWorld(steerX, steerY, this.radius + this.grid.cellSize, tempCornerProxies);
+            tempCornerSegIds.clear();
+            this.grid.appendStaticWallSegmentsNearWorld(steerX, steerY, this.radius + this.grid.cellSize, tempCornerSegIds);
             let targetWallThickness = 4;
-            for (let w = 0; w < tempCornerProxies.length; w++) {
-                const wall = tempCornerProxies[w];
-                const thickness = Math.min(wall.width !== undefined ? wall.width : wall.size, wall.height !== undefined ? wall.height : wall.size);
+            const slab = staticWallSegmentSlab;
+            for (let w = 0; w < tempCornerSegIds.used; w++) {
+                const id = tempCornerSegIds.buf[w];
+                const thickness = Math.min(slab.width[id], slab.height[id]);
                 if (thickness > 0 && thickness < this.grid.cellSize) targetWallThickness = Math.max(targetWallThickness, thickness);
             }
-            const hasNearWallsAtTarget = tempCornerProxies.length > 0;
-            tempCornerProxies.length = 0;
+            const hasNearWallsAtTarget = tempCornerSegIds.used > 0;
+            tempCornerSegIds.clear();
             const targetFreeHalfWidth = (this.grid.cellSize - targetWallThickness) * 0.5;
             const targetClearance = targetFreeHalfWidth - this.radius;
             const maxDevAlign = hasNearWallsAtTarget ? Math.max(0.5, targetClearance * 0.75) : 4.0;

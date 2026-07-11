@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind, entityNext, ensureGrowI32 } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineMemory.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -23,7 +23,7 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
 /** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
-const EMPTY_WALL_CANDIDATES = [];
+const EMPTY_WALL_CANDIDATES = new GrowI32(0);
 /**
  * Duck-typed per-tick spatial frame: entity grid, neighbor cache, wall segment cache.
  * Game adapters call resetFrame / insertEntity then run pair policies.
@@ -36,12 +36,11 @@ export class SpatialFrameCore {
         this._wallBucketRevision = -1;
         this._obstacleGrid = null;
     }
-    /** @param {(import("../Math/Aabb2D.js").Aabb2D & { cols: number, cellSize: number, resetStaticWallProxyPool?: () => void, wallGridRevision?: number }) | null} obstacleGrid */
     resetFrame(obstacleGrid) {
         this.frameId = (this.frameId + 1) | 0;
         invalidateWallCandidateBucketFrame(this._wallBuckets);
-        this._obstacleGrid = obstacleGrid?.appendStaticWallProxiesNearWorld ? obstacleGrid : null;
-        if (obstacleGrid?.resetStaticWallProxyPool) obstacleGrid.resetStaticWallProxyPool();
+        this._obstacleGrid = obstacleGrid?.appendStaticWallSegmentsNearWorld ? obstacleGrid : null;
+        resetStaticWallSegmentSlab();
         this.entityGrid.syncBounds(obstacleGrid);
         this.entityGrid.clear();
     }
@@ -49,7 +48,7 @@ export class SpatialFrameCore {
         const revision = grid.wallGridRevision;
         if (this._wallBucketRevision === revision) return;
         resetWallCandidateBucketSlab(this._wallBuckets);
-        grid.resetStaticWallProxyPool();
+        resetStaticWallSegmentSlab();
         this._wallBucketRevision = revision;
     }
     _wallCandidatesNearWorld(worldX, worldY, queryRadius) {
@@ -60,10 +59,10 @@ export class SpatialFrameCore {
         const keyHi = sWallBucketKey[1];
         const revision = grid.wallGridRevision;
         lookupWallCandidateBucketInto(sWallBucketLookup, this._wallBuckets, keyLo, keyHi, this.frameId, revision);
-        if (sWallBucketLookup.hit) return sWallBucketLookup.segments;
-        grid.appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, sWallBucketLookup.segments);
-        commitWallCandidateBucket(this._wallBuckets, sWallBucketLookup.slot, keyLo, keyHi, this.frameId, revision, sWallBucketLookup.segments);
-        return sWallBucketLookup.segments;
+        if (sWallBucketLookup.hit) return sWallBucketLookup.segIds;
+        grid.appendStaticWallSegmentsNearWorld(worldX, worldY, queryRadius, sWallBucketLookup.segIds);
+        commitWallCandidateBucket(this._wallBuckets, sWallBucketLookup.slot, keyLo, keyHi, this.frameId, revision, sWallBucketLookup.segIds);
+        return sWallBucketLookup.segIds;
     }
     /**
      * @param {{ x: number, y: number, _physId?: number, _gridTileIdx?: number }} entity — mutated
@@ -131,34 +130,33 @@ export function edgeNeighborIdx(idx, side, grid) {
 export function edgeMirrorSide(side) {
     return (side + 2) % 4;
 }
-export function cellEdgeEndpointsIdx(grid, idx, side, p1, p2, inset = 0) {
+export function cellEdgeEndpointsIdx(grid, idx, side, buf, o1, o2, inset = 0) {
     const cols = grid.cols;
     const minX = grid.minX + (idx % cols) * grid.cellSize;
     const minY = grid.minY + ((idx / cols) | 0) * grid.cellSize;
     const maxX = minX + grid.cellSize;
     const maxY = minY + grid.cellSize;
     if (side === 0) {
-        p1.x = minX;
-        p1.y = minY + inset;
-        p2.x = maxX;
-        p2.y = minY + inset;
+        buf[o1] = minX;
+        buf[o1 + 1] = minY + inset;
+        buf[o2] = maxX;
+        buf[o2 + 1] = minY + inset;
     } else if (side === 1) {
-        p1.x = maxX - inset;
-        p1.y = minY;
-        p2.x = maxX - inset;
-        p2.y = maxY;
+        buf[o1] = maxX - inset;
+        buf[o1 + 1] = minY;
+        buf[o2] = maxX - inset;
+        buf[o2 + 1] = maxY;
     } else if (side === 2) {
-        p1.x = minX;
-        p1.y = maxY - inset;
-        p2.x = maxX;
-        p2.y = maxY - inset;
+        buf[o1] = minX;
+        buf[o1 + 1] = maxY - inset;
+        buf[o2] = maxX;
+        buf[o2 + 1] = maxY - inset;
     } else {
-        p1.x = minX + inset;
-        p1.y = minY;
-        p2.x = minX + inset;
-        p2.y = maxY;
+        buf[o1] = minX + inset;
+        buf[o1 + 1] = minY;
+        buf[o2] = minX + inset;
+        buf[o2 + 1] = maxY;
     }
-    return p1;
 }
 export function edgeRailEmitOwner(grid, idx, side) {
     if (side === 2 || side === 1) return true;
@@ -194,11 +192,7 @@ export function cellIsStaticWall(grid, idx) {
     if (idx < 0 || idx >= grid.cols * grid.rows) return false;
     return grid.grid[idx] !== 0;
 }
-const sExposedEdgeP1 = { x: 0, y: 0 };
-const sExposedEdgeP2 = { x: 0, y: 0 };
 function pushExposedWallEdgesForCell(grid, idx, out) {
-    const cols = grid.cols;
-    const rows = grid.rows;
     const level = grid.grid[idx];
     if (level === 0) return;
     const wallTopZ = resolveCellWallHeightAtIdx(grid, idx);
@@ -208,8 +202,8 @@ function pushExposedWallEdgesForCell(grid, idx, out) {
         if (nIdx !== -1) neighborLevel = grid.grid[nIdx];
         if (neighborLevel >= level) continue;
         if (railWallEdgeAt(grid, idx, side)) continue;
-        cellEdgeEndpointsIdx(grid, idx, side, sExposedEdgeP1, sExposedEdgeP2, 0);
-        out.add(sExposedEdgeP1.x, sExposedEdgeP1.y, sExposedEdgeP2.x, sExposedEdgeP2.y, GRID_SIDE_NX[side], GRID_SIDE_NY[side], wallTopZ);
+        cellEdgeEndpointsIdx(grid, idx, side, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
+        out.add(ENGINE_F32[S_EDGE_P1X], ENGINE_F32[S_EDGE_P1Y], ENGINE_F32[S_EDGE_P2X], ENGINE_F32[S_EDGE_P2Y], GRID_SIDE_NX[side], GRID_SIDE_NY[side], wallTopZ);
     }
 }
 /** Perimeter edges where a filled wall cell meets lower or empty neighbor. */
@@ -1066,8 +1060,6 @@ export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerC
 export function resolveChunkSurfaceProfileIdAtKey(grid, chunkKey, baseProfileId) {
     return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, chunkKey);
 }
-const EDGE_PROXY_P1 = { x: 0, y: 0 };
-const EDGE_PROXY_P2 = { x: 0, y: 0 };
 export class WorldObstacleGrid {
     constructor(cellSize) {
         this.cellSize = cellSize;
@@ -1102,8 +1094,6 @@ export class WorldObstacleGrid {
         this._structureZLevelsRevision = -1;
         this._structureZLevels = [];
         this._fillZLevels = [];
-        this._staticWallProxies = [];
-        this._staticWallProxyCount = 0;
         this.floorNavEpoch = 0;
         this.gridTopologyEpoch = 0;
         this._navTopologyRef = null;
@@ -1214,33 +1204,23 @@ export class WorldObstacleGrid {
         if (this._structureZLevelsRevision !== this.wallGridRevision) this._rebuildStaticZLevelCaches();
         return this._fillZLevels;
     }
-    _borrowStaticWallProxy(x, y, idx) {
+    _borrowStaticWallVoxel(x, y, idx) {
         const size = this.cellSize;
-        let proxy = this._staticWallProxies[this._staticWallProxyCount];
-        if (!proxy) {
-            proxy = { _obstacleGrid: undefined, x: 0, y: 0, angle: 0, width: 0, height: 0, size: 0, padding: 0, isDead: false, isStaticGridProxy: false, isStaticGridFace: false, isEdgeRail: false, gridIdx: 0, gridSide: 0, shape: undefined };
-            this._staticWallProxies[this._staticWallProxyCount] = proxy;
-        }
-        this._staticWallProxyCount++;
-        proxy._obstacleGrid = this;
-        proxy.x = x;
-        proxy.y = y;
-        proxy.angle = 0;
-        proxy.size = size;
-        proxy.width = size;
-        proxy.height = size;
-        proxy.shape = undefined;
-        proxy.gridIdx = idx;
-        proxy.isStaticGridProxy = true;
-        proxy.isStaticGridFace = false;
-        proxy.isEdgeRail = false;
-        proxy.gridSide = 0;
-        return proxy;
+        const id = allocStaticWallSegment();
+        const slab = staticWallSegmentSlab;
+        if (slab.shapeRefs[id] && (slab.width[id] !== size || slab.height[id] !== size)) slab.shapeRefs[id] = null;
+        slab.x[id] = x;
+        slab.y[id] = y;
+        slab.angle[id] = 0;
+        slab.width[id] = size;
+        slab.height[id] = size;
+        slab.size[id] = size;
+        slab.gridIdx[id] = idx;
+        slab.gridSide[id] = 0;
+        slab.flags[id] = WALL_SEG_VOXEL;
+        return id;
     }
-    resetStaticWallProxyPool() {
-        this._staticWallProxyCount = 0;
-    }
-    appendStaticWallProxiesNearWorld(worldX, worldY, queryRadius, out) {
+    appendStaticWallSegmentsNearWorld(worldX, worldY, queryRadius, outIds) {
         const ec = this.worldCol(worldX);
         const er = this.worldRow(worldY);
         const pad = 1 + Math.ceil(queryRadius / this.cellSize);
@@ -1248,54 +1228,38 @@ export class WorldObstacleGrid {
         const maxCol = Math.min(this.cols - 1, ec + pad);
         const minRow = Math.max(0, er - pad);
         const maxRow = Math.min(this.rows - 1, er + pad);
+        const slab = staticWallSegmentSlab;
         forEachDenseCellInRect(this, minCol, maxCol, minRow, maxRow, (idx) => {
-            if (this.grid[idx] !== 0) out.push(this._borrowStaticWallProxy(this.gridCenterXByIdx(idx), this.gridCenterYByIdx(idx), idx));
+            if (this.grid[idx] !== 0) outIds.push(this._borrowStaticWallVoxel(this.gridCenterXByIdx(idx), this.gridCenterYByIdx(idx), idx));
             for (let side = 0; side < 4; side++) {
                 if (!railWallEdgeShouldEmit(this, idx, side)) continue;
                 const thickness = edgeRailCollisionThicknessPx(this, idx, side);
-                cellEdgeEndpointsIdx(this, idx, side, EDGE_PROXY_P1, EDGE_PROXY_P2, 0);
-                const p1x = EDGE_PROXY_P1.x;
-                const p1y = EDGE_PROXY_P1.y;
-                const p2x = EDGE_PROXY_P2.x;
-                const p2y = EDGE_PROXY_P2.y;
+                cellEdgeEndpointsIdx(this, idx, side, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
+                const p1x = ENGINE_F32[S_EDGE_P1X];
+                const p1y = ENGINE_F32[S_EDGE_P1Y];
+                const p2x = ENGINE_F32[S_EDGE_P2X];
+                const p2y = ENGINE_F32[S_EDGE_P2Y];
                 const dx = p2x - p1x;
                 const dy = p2y - p1y;
                 const len = Math.hypot(dx, dy);
-                let proxy = this._staticWallProxies[this._staticWallProxyCount];
-                if (!proxy) {
-                    proxy = { _obstacleGrid: undefined, x: 0, y: 0, angle: 0, width: 0, height: 0, size: 0, padding: 0, isDead: false, isStaticGridProxy: false, isStaticGridFace: false, isEdgeRail: false, gridIdx: 0, gridSide: 0, shape: undefined };
-                    this._staticWallProxies[this._staticWallProxyCount] = proxy;
-                } else {
-                    proxy.x = 0;
-                    proxy.y = 0;
-                    proxy.angle = 0;
-                    proxy.width = 0;
-                    proxy.height = 0;
-                    proxy.size = 0;
-                    proxy.padding = 0;
-                    proxy.isDead = false;
-                    proxy.shape = undefined;
-                }
-                this._staticWallProxyCount++;
-                proxy._obstacleGrid = this;
-                proxy.isStaticGridFace = true;
-                proxy.isStaticGridProxy = false;
-                proxy.isEdgeRail = true;
-                proxy.gridIdx = idx;
-                proxy.gridSide = side;
-                proxy.x = (p1x + p2x) * 0.5;
-                proxy.y = (p1y + p2y) * 0.5;
-                proxy.angle = Math.atan2(dy, dx);
-                proxy.width = len;
-                proxy.height = thickness;
-                proxy.size = Math.max(len, thickness);
-                out.push(proxy);
+                const id = allocStaticWallSegment();
+                if (slab.shapeRefs[id] && (slab.width[id] !== len || slab.height[id] !== thickness)) slab.shapeRefs[id] = null;
+                slab.x[id] = (p1x + p2x) * 0.5;
+                slab.y[id] = (p1y + p2y) * 0.5;
+                slab.angle[id] = Math.atan2(dy, dx);
+                slab.width[id] = len;
+                slab.height[id] = thickness;
+                slab.size[id] = Math.max(len, thickness);
+                slab.gridIdx[id] = idx;
+                slab.gridSide[id] = side;
+                slab.flags[id] = WALL_SEG_EDGE_RAIL | WALL_SEG_STATIC_FACE;
+                outIds.push(id);
             }
         });
-        return out;
+        return outIds;
     }
-    appendStaticWallProxiesNear(entity, out) {
-        return this.appendStaticWallProxiesNearWorld(entity.x, entity.y, entityCollisionSpan(entity), out);
+    appendStaticWallSegmentsNear(entity, outIds) {
+        return this.appendStaticWallSegmentsNearWorld(entity.x, entity.y, entityCollisionSpan(entity), outIds);
     }
     rebuildFixed(centerX, centerY, width, height) {
         const halfW = width * 0.5;
@@ -1909,24 +1873,24 @@ export function resolveWallSegmentQueryRadius(obstacleGrid, ...clearanceRadii) {
     return Math.max(clearance, obstacleGrid.cellSize + clearance);
 }
 export function collectWallSegmentsAlongLine(obstacleGrid, x1, y1, x2, y2, queryRadius) {
-    obstacleGrid.resetStaticWallProxyPool();
     const dx = x2 - x1;
     const dy = y2 - y1;
     const len = Math.hypot(dx, dy);
     const steps = Math.max(2, Math.ceil(len / 8));
     const seen = new Set();
-    const result = [];
-    const batch = [];
+    const result = new GrowI32(32);
+    const batch = new GrowI32(32);
+    const slab = staticWallSegmentSlab;
     for (let step = 0; step <= steps; step++) {
         const t = step / steps;
-        batch.length = 0;
-        obstacleGrid.appendStaticWallProxiesNearWorld(x1 + dx * t, y1 + dy * t, queryRadius, batch);
-        for (let i = 0; i < batch.length; i++) {
-            const seg = batch[i];
-            if (!seen.has(seg)) {
-                seen.add(seg);
-                result.push(seg);
-            }
+        batch.clear();
+        obstacleGrid.appendStaticWallSegmentsNearWorld(x1 + dx * t, y1 + dy * t, queryRadius, batch);
+        for (let i = 0; i < batch.used; i++) {
+            const id = batch.buf[i];
+            const key = (slab.flags[id] << 30) | (slab.gridSide[id] << 28) | (slab.gridIdx[id] & 0x0fffffff);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            result.push(id);
         }
     }
     return result;
@@ -1938,10 +1902,7 @@ export function hasLineOfSight(x1, y1, x2, y2, obstacleGrid, sourceRadius = 0, t
     const corridorRadius = Math.max(sourceRadius, targetRadius);
     const segmentQueryRadius = resolveWallSegmentQueryRadius(obstacleGrid, corridorRadius);
     const candidateWalls = collectWallSegmentsAlongLine(obstacleGrid, x1, y1, x2, y2, segmentQueryRadius);
-    for (let i = 0; i < candidateWalls.length; i++) {
-        const seg = candidateWalls[i];
-        if (minDistanceSegmentToWall(x1, y1, x2, y2, seg) <= corridorRadius) return false;
-    }
+    for (let i = 0; i < candidateWalls.used; i++) if (minDistanceSegmentToWall(x1, y1, x2, y2, candidateWalls.buf[i]) <= corridorRadius) return false;
     return true;
 }
 // ==========================================
@@ -1953,17 +1914,19 @@ export function hasLineOfSight(x1, y1, x2, y2, obstacleGrid, sourceRadius = 0, t
  * @param {object[]} segments
  * @returns {object | null}
  */
-function findFirstCircleSegmentHit(circle, segments) {
-    if (!segments || segments.length === 0) return null;
+function findFirstCircleSegmentHit(circle, segIds) {
+    if (!segIds || segIds.used === 0) return -1;
     const radius = circle.radius;
-    for (const seg of segments) {
-        const dx = circle.x - seg.x;
-        const dy = circle.y - seg.y;
-        const maxDist = radius + seg.size * 0.75;
+    const slab = staticWallSegmentSlab;
+    for (let i = 0; i < segIds.used; i++) {
+        const id = segIds.buf[i];
+        const dx = circle.x - slab.x[id];
+        const dy = circle.y - slab.y[id];
+        const maxDist = radius + slab.size[id] * 0.75;
         if (Math.abs(dx) > maxDist || Math.abs(dy) > maxDist) continue;
-        if (circleIntersectsSegment(circle, seg)) return seg;
+        if (circleIntersectsSegment(circle, id)) return id;
     }
-    return null;
+    return -1;
 }
 /** @typedef {"wall" | "none" | string} SteppedCircleRayHitKind */
 /**
@@ -1982,18 +1945,13 @@ function findFirstCircleSegmentHit(circle, segments) {
  */
 const DEFAULT_STEP = 8;
 function collectCandidateWalls(startX, startY, dx, dy, maxDist, obstacleGrid, queryRadius) {
-    if (!obstacleGrid) return [];
+    if (!obstacleGrid) return EMPTY_WALL_CANDIDATES;
     const endX = startX + dx * maxDist;
     const endY = startY + dy * maxDist;
     return collectWallSegmentsAlongLine(obstacleGrid, startX, startY, endX, endY, queryRadius);
 }
-/**
- * @param {{ x: number, y: number, radius: number }} rayCircle
- * @param {object[]} candidateWalls
- * @returns {boolean}
- */
 function rayCircleHitsWall(rayCircle, candidateWalls) {
-    return findFirstCircleSegmentHit(rayCircle, candidateWalls) !== null;
+    return findFirstCircleSegmentHit(rayCircle, candidateWalls) >= 0;
 }
 /**
  * March a circle along a ray in fixed steps; first wall or circle contact wins.
@@ -2052,7 +2010,7 @@ const MAX_WALL_BUCKETS = 4096;
 const BUCKET_MASK = MAX_WALL_BUCKETS - 1;
 const EMPTY_STAMP = -1;
 const sWallBucketKey = new Int32Array(2);
-const sWallBucketLookup = { hit: false, slot: 0, segments: null };
+const sWallBucketLookup = { hit: false, slot: 0, segIds: null };
 export function wallBucketKeyPartsInto(buf, o, grid, worldX, worldY, queryRadius) {
     const col = grid.worldCol(worldX);
     const row = grid.worldRow(worldY);
@@ -2063,31 +2021,31 @@ export function wallBucketKeyPartsInto(buf, o, grid, worldX, worldY, queryRadius
 function bucketSlotForKey(keyLo, keyHi) {
     return (keyLo ^ (keyHi * 0x9e3779b9)) & BUCKET_MASK;
 }
-function acquireBucketSegments(slab, slot) {
-    let segments = slab.segments[slot];
-    if (segments) {
-        segments.length = 0;
-        return segments;
+function acquireBucketSegIds(slab, slot) {
+    let segIds = slab.segIds[slot];
+    if (segIds) {
+        segIds.clear();
+        return segIds;
     }
-    segments = slab.segmentPool.pop();
-    if (!segments) segments = [];
-    else segments.length = 0;
-    slab.segments[slot] = segments;
-    return segments;
+    segIds = slab.segIdPool.pop();
+    if (!segIds) segIds = new GrowI32(32);
+    else segIds.clear();
+    slab.segIds[slot] = segIds;
+    return segIds;
 }
 export function createWallCandidateBucketSlab() {
     const frameStamp = new Int32Array(MAX_WALL_BUCKETS);
     frameStamp.fill(EMPTY_STAMP);
-    return { keyLo: new Int32Array(MAX_WALL_BUCKETS), keyHi: new Int32Array(MAX_WALL_BUCKETS), frameStamp, revisionStamp: new Int32Array(MAX_WALL_BUCKETS), segments: new Array(MAX_WALL_BUCKETS), segmentPool: [] };
+    return { keyLo: new Int32Array(MAX_WALL_BUCKETS), keyHi: new Int32Array(MAX_WALL_BUCKETS), frameStamp, revisionStamp: new Int32Array(MAX_WALL_BUCKETS), segIds: new Array(MAX_WALL_BUCKETS), segIdPool: [] };
 }
 export function resetWallCandidateBucketSlab(slab) {
     for (let i = 0; i < MAX_WALL_BUCKETS; i++) {
         if (slab.frameStamp[i] === EMPTY_STAMP) continue;
-        const segments = slab.segments[i];
-        if (segments) {
-            segments.length = 0;
-            slab.segmentPool.push(segments);
-            slab.segments[i] = null;
+        const segIds = slab.segIds[i];
+        if (segIds) {
+            segIds.clear();
+            slab.segIdPool.push(segIds);
+            slab.segIds[i] = null;
         }
         slab.frameStamp[i] = EMPTY_STAMP;
     }
@@ -2103,30 +2061,30 @@ export function lookupWallCandidateBucketInto(result, slab, keyLo, keyHi, frameI
         if (stamp === EMPTY_STAMP) {
             result.hit = false;
             result.slot = idx;
-            result.segments = acquireBucketSegments(slab, idx);
+            result.segIds = acquireBucketSegIds(slab, idx);
             return result;
         }
         if (slab.keyLo[idx] === keyLo && slab.keyHi[idx] === keyHi) {
-            if (stamp === frameId && slab.revisionStamp[idx] === revision) {
+            if (slab.revisionStamp[idx] === revision && stamp === frameId) {
                 result.hit = true;
                 result.slot = idx;
-                result.segments = slab.segments[idx];
+                result.segIds = slab.segIds[idx];
                 return result;
             }
             result.hit = false;
             result.slot = idx;
-            result.segments = acquireBucketSegments(slab, idx);
+            result.segIds = acquireBucketSegIds(slab, idx);
             return result;
         }
     }
-    throw new Error(`wall candidate bucket slab full (frame ${frameId}, revision ${revision})`);
+    throw new Error("wall candidate bucket slab full");
 }
-export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, revision, segments) {
+export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, revision, segIds) {
     slab.keyLo[slot] = keyLo;
     slab.keyHi[slot] = keyHi;
     slab.frameStamp[slot] = frameId;
     slab.revisionStamp[slot] = revision;
-    slab.segments[slot] = segments;
+    slab.segIds[slot] = segIds;
 }
 /**
  * Packed (col, row) key for sparse unbounded grids.
@@ -2242,10 +2200,8 @@ export function hitTestRailWallEdgeAtWorld(grid, worldX, worldY, hitWorld = grid
     return { idx, side: bestSide };
 }
 export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidth = 3, dash = null }) {
-    const seg = { x: 0, y: 0 };
-    const seg2 = { x: 0, y: 0 };
-    cellEdgeEndpointsIdx(grid, edge.idx, edge.side, seg, seg2, 0);
-    out.push(overlaySegment(seg.x, seg.y, seg2.x, seg2.y, { stroke, lineWidth, dash: dash ?? undefined }));
+    cellEdgeEndpointsIdx(grid, edge.idx, edge.side, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
+    out.push(overlaySegment(ENGINE_F32[S_EDGE_P1X], ENGINE_F32[S_EDGE_P1Y], ENGINE_F32[S_EDGE_P2X], ENGINE_F32[S_EDGE_P2Y], { stroke, lineWidth, dash: dash ?? undefined }));
 }
 export function ensureObstacleGridAtWorld(grid, worldX, worldY) {
     centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, worldX, worldY, grid.cellSize, grid.cellSize);
