@@ -1,14 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp, applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckPolygonVsWallSegment, entityFacing, SAT_RESULT, resolveBodyAgainstWallSegments, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { satCheckPolygonVsWallSegment, readEntityFacing, SAT_RESULT, resolveBodyAgainstWallSegments, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { computeWallBreakStrength } from "../Libraries/Physics/fracture.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { staticWallSegmentSlab } from "../Core/engineMemory.js";
 import { mockWallSegment, wallSegIds } from "./harness/wallSegmentHarness.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 function shapeOverlapsWall(prop, segId) {
-    return satCheckPolygonVsWallSegment(prop.x, prop.y, entityFacing(prop), prop.shape, segId);
+    return satCheckPolygonVsWallSegment(prop.x, prop.y, readEntityFacing(prop), prop.shape, segId);
 }
 function resolveWallUntilClear(prop, segIds, maxPasses = 6) {
     const wp = prop.strategy?.wallPhysics;
@@ -51,7 +51,7 @@ describe("polygon wall resolution", () => {
         assert.ok(shapeOverlapsWall(wedge, floor));
         resolveWallUntilClear(wedge, segs);
         const slab = staticWallSegmentSlab;
-        const collided = satCheckPolygonVsWallSegment(wedge.x, wedge.y, entityFacing(wedge), wedge.shape, floor);
+        const collided = satCheckPolygonVsWallSegment(wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape, floor);
         if (collided) assert.ok(SAT_RESULT[2] < -0.5 || dotXY(SAT_RESULT[1], SAT_RESULT[2], 0, wedge.y - slab.y[floor]) > 0);
         assert.ok(!shapeOverlapsWall(wedge, floor));
     });

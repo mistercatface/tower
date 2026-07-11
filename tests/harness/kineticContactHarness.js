@@ -1,5 +1,5 @@
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
-import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, checkEntityPairCollisionAtSlabPose, writebackActiveKineticBodySlab } from "../../Libraries/Physics/physics.js";
+import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, checkEntityPairCollisionAtSlabPose } from "../../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 
 export function checkPairAtSlabPose(bodyA, bodyB) {
@@ -10,9 +10,7 @@ export function checkPairAtSlabPose(bodyA, bodyB) {
 /** Single-shot contact resolve for tests (gather once, solve once). */
 export function resolveKineticContactPass(tick) {
     const pairs = gatherKineticContactPairs(tick);
-    const contacts = resolveKineticContactPassWithPairs(tick, pairs);
-    writebackActiveKineticBodySlab(tick.frame._activeKineticBodies);
-    return contacts;
+    return resolveKineticContactPassWithPairs(tick, pairs);
 }
 
 /** Single-shot contact resolve plus fracture side effects (tests only). */

@@ -46,12 +46,12 @@ import {
     sBucketFillIdx,
     sIslandAwake,
     orderOrderedIdxs,
-    sleepIslandParent as parent,
-    sleepIslandRank as rank,
-    sleepComponentRoot as componentRoot,
-    sleepComponentMaxSpeedSq as componentMaxSpeedSq,
-    sleepComponentHasBlocker as componentHasBlocker,
-    sleepComponentMemberCount as componentMemberCount,
+    sleepIslandParent,
+    sleepIslandRank,
+    sleepComponentRoot,
+    sleepComponentMaxSpeedSq,
+    sleepComponentHasBlocker,
+    sleepComponentMemberCount,
     sleepNeighborEids,
     pairHashKeys,
     sleepContactBuffer,
@@ -71,7 +71,6 @@ import {
     SHAPE_TYPE_POLYGON,
 } from "../../Core/engineMemory.js";
 export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON };
-import { writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -345,7 +344,7 @@ export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
 }
 export function stampKineticBodyFromEntity(physId, entity) {
     const slab = kineticDynamicSlab;
-    const angle = entityFacing(entity);
+    const angle = readEntityFacing(entity);
     const compound = entity.collisionParts;
     const dirty = entity._broadphaseDirty === true;
     if (compound?.length > 1) {
@@ -470,13 +469,6 @@ function stampShapeGeomParts(physId, parts) {
         slab.partRadius[row] = 0;
         slab.partVertOffset[row] = vo;
         slab.partVertFloatCount[row] = floatCount;
-    }
-}
-export function writebackActiveKineticBodySlab(bodies) {
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        if (!body.isKineticDebris) continue;
-        writebackEntitySlotPoseToRef(body._physId, body);
     }
 }
 export function clearActiveKineticBodySlab() {
@@ -1006,7 +998,7 @@ function buildPolyPolyContactManifoldF32(xA, yA, cosA, sinA, vertsA, normsA, voA
     if (pointCount === 0) return null;
     return pointCount;
 }
-export function entityFacing(entity) {
+export function readEntityFacing(entity) {
     if (entity == null) return 0;
     return entity.facing ?? entity.angle ?? 0;
 }
@@ -1156,8 +1148,8 @@ function bestEntityPairContactAtPose(partsA, partsB, xA, yA, cosA, sinA, xB, yB,
     return false;
 }
 export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.y, xB = bodyB.x, yB = bodyB.y) {
-    const facingA = entityFacing(bodyA);
-    const facingB = entityFacing(bodyB);
+    const facingA = readEntityFacing(bodyA);
+    const facingB = readEntityFacing(bodyB);
     const cosA = Math.cos(facingA);
     const sinA = Math.sin(facingA);
     const cosB = Math.cos(facingB);
@@ -1437,7 +1429,7 @@ function obbWorldAabbF32(buf, o, cx, cy, hx, hy, cos, sin) {
 function entityWorldAabbFromShapeF32(buf, o, entity) {
     const x = entity.x;
     const y = entity.y;
-    const angle = entityFacing(entity);
+    const angle = readEntityFacing(entity);
     if (entityHasCompoundParts(entity)) {
         computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, entity.collisionParts);
         const hx = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
@@ -1590,7 +1582,7 @@ export function refreshActiveKineticBodySlabPose(bodies) {
         const entity = bodies[i];
         const physId = entity._physId;
         if (slab.shapeKind[physId] !== SHAPE_TYPE_CIRCLE) {
-            const angle = entityFacing(entity);
+            const angle = readEntityFacing(entity);
             slab.cos[physId] = Math.cos(angle);
             slab.sin[physId] = Math.sin(angle);
         }
@@ -1599,11 +1591,15 @@ export function refreshActiveKineticBodySlabPose(bodies) {
 export function shouldResolveKineticPair(a, b, overlaps) {
     return overlaps && (isKinematicallyActive(a) || isKinematicallyActive(b));
 }
-export function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
+export function allowsKineticCollisionPairOrderSlab(physIdA, physIdB) {
     if (physIdA === physIdB) return false;
     const dyn = kineticDynamicSlab;
     const stat = kineticStaticSlab;
     if (dyn.activeSlot[physIdB] >= 0 && stat.entityId[physIdA] >= stat.entityId[physIdB]) return false;
+    return true;
+}
+export function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
+    if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) return false;
     return overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
 }
 export function allowsKineticCollisionPair(primary, other, overlaps) {
@@ -1611,7 +1607,7 @@ export function allowsKineticCollisionPair(primary, other, overlaps) {
 }
 function kineticOverlapsWallCandidates(px, py, body, candidates) {
     if (!candidates.used) return false;
-    const bodyFacing = entityFacing(body);
+    const bodyFacing = readEntityFacing(body);
     const bodyCos = Math.cos(bodyFacing);
     const bodySin = Math.sin(bodyFacing);
     const compound = entityHasCompoundParts(body);
@@ -1713,7 +1709,7 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution
         const by0 = dyn.y[physId];
         const approachVx = dyn.vx[physId];
         const approachVy = dyn.vy[physId];
-        const bodyAngle = entityFacing(body);
+        const bodyAngle = readEntityFacing(body);
         const bodyCos = Math.cos(bodyAngle);
         const bodySin = Math.sin(bodyAngle);
         for (let si = 0; si < segIds.used; si++) {
@@ -2241,8 +2237,8 @@ function projectAngleConstraint(slab, index) {
     const bodyA = constraintBodyAt(slab.physIdA[index]);
     const bodyB = constraintBodyAt(slab.physIdB[index]);
     if (bodyA.isSleeping && bodyB.isSleeping) return;
-    const facingA = entityFacing(bodyA);
-    const facingB = entityFacing(bodyB);
+    const facingA = readEntityFacing(bodyA);
+    const facingB = readEntityFacing(bodyB);
     const refAngle = slab.static.referenceAngle[index];
     const error = normalizeAngle(facingB - facingA - refAngle);
     if (Math.abs(error) < 1e-4) return;
@@ -2387,8 +2383,8 @@ function warmStartAngleConstraint(slab, i, dynSlab) {
     const bodyB = constraintBodyAt(slab.physIdB[i]);
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const facingA = entityFacing(bodyA);
-    const facingB = entityFacing(bodyB);
+    const facingA = readEntityFacing(bodyA);
+    const facingB = readEntityFacing(bodyB);
     const refAngle = slab.static.referenceAngle[i];
     const error = normalizeAngle(facingB - facingA - refAngle);
     const invIA = slab.static.invIA[i];
@@ -2727,14 +2723,14 @@ export function kineticPairTopologyStale(spatialFrame) {
     return gatherGen !== getKineticTopologyGeneration(session);
 }
 export function worldAnchorFromBodyIntoF32(body, localX, localY, destOffset) {
-    const angle = entityFacing(body);
+    const angle = readEntityFacing(body);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     ENGINE_F32[destOffset] = body.x + localX * cos - localY * sin;
     ENGINE_F32[destOffset + 1] = body.y + localX * sin + localY * cos;
 }
 export function worldAnchorFromSlab(body, physId, localX, localY, slab, destOffset) {
-    const angle = entityFacing(body);
+    const angle = readEntityFacing(body);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     ENGINE_F32[destOffset] = slab.x[physId] + localX * cos - localY * sin;
@@ -3206,6 +3202,7 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
         if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
+        if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) continue;
         const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
         if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
         if (write !== i) {
@@ -3241,6 +3238,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const physIdB = neighborEids[offset + j];
             const key = pairPhysKey(physIdA, physIdB);
             if (hasPairHash(key)) continue;
+            if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) continue;
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
             if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
@@ -3270,6 +3268,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
         const neighborCount = slab.spatialNeighborCount[physIdA];
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[offset + j];
+            if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) continue;
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
             if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
@@ -3335,7 +3334,6 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
             clampActiveKineticBodySlabSpeed(1000);
             if (settled) break;
         }
-        writebackActiveKineticBodySlab(activeBodies);
         refreshActiveKineticBodySlabPose(activeBodies);
         sKineticSolverStats.outerIterations = outerIterationsRun;
         sKineticSolverStats.maxIterations = kineticIterations;
@@ -3702,11 +3700,11 @@ export function areKineticLinkNeighbors(bodyA, bodyB) {
 }
 function find(i) {
     let root = i;
-    while (parent[root] !== root) root = parent[root];
+    while (sleepIslandParent[root] !== root) root = sleepIslandParent[root];
     let curr = i;
     while (curr !== root) {
-        let nxt = parent[curr];
-        parent[curr] = root;
+        let nxt = sleepIslandParent[curr];
+        sleepIslandParent[curr] = root;
         curr = nxt;
     }
     return root;
@@ -3715,24 +3713,24 @@ function union(i, j) {
     let rootI = find(i);
     let rootJ = find(j);
     if (rootI !== rootJ)
-        if (rank[rootI] < rank[rootJ]) parent[rootI] = rootJ;
-        else if (rank[rootI] > rank[rootJ]) parent[rootJ] = rootI;
+        if (sleepIslandRank[rootI] < sleepIslandRank[rootJ]) sleepIslandParent[rootI] = rootJ;
+        else if (sleepIslandRank[rootI] > sleepIslandRank[rootJ]) sleepIslandParent[rootJ] = rootI;
         else {
-            parent[rootJ] = rootI;
-            rank[rootI]++;
+            sleepIslandParent[rootJ] = rootI;
+            sleepIslandRank[rootI]++;
         }
 }
 const bodyByPhysId = new Array(MAX_PHYS_BODIES);
 export function advanceKineticSleepIslands(frame, session, contacts = sleepContactBuffer) {
     const activeBodies = frame._activeKineticBodies;
     if (!activeBodies || activeBodies.length === 0) return;
-    parent.fill(-1);
-    rank.fill(0);
+    sleepIslandParent.fill(-1);
+    sleepIslandRank.fill(0);
     for (let i = 0; i < activeBodies.length; i++) {
         const body = activeBodies[i];
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
-        parent[physId] = physId;
+        sleepIslandParent[physId] = physId;
         bodyByPhysId[physId] = body;
     }
     for (let i = 0; i < activeBodies.length; i++) {
@@ -3746,7 +3744,7 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
                 if (peer === body) continue;
                 const peerPhysId = peer._physId;
                 if (peerPhysId === undefined || peerPhysId === -1) continue;
-                if (parent[peerPhysId] === -1) parent[peerPhysId] = peerPhysId;
+                if (sleepIslandParent[peerPhysId] === -1) sleepIslandParent[peerPhysId] = peerPhysId;
                 union(physId, peerPhysId);
             }
     }
@@ -3754,7 +3752,7 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
         for (let i = 0; i < contacts.count; i++) {
             const physIdA = contacts.physIdA[i];
             const physIdB = contacts.physIdB[i];
-            if (parent[physIdA] === -1 || parent[physIdB] === -1) continue;
+            if (sleepIslandParent[physIdA] === -1 || sleepIslandParent[physIdB] === -1) continue;
             const bodyA = bodyByPhysId[physIdA];
             const bodyB = bodyByPhysId[physIdB];
             if (!bodyA || !bodyB) continue;
@@ -3767,29 +3765,29 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
         const root = find(physId);
-        componentRoot[physId] = root;
-        componentMaxSpeedSq[root] = 0;
-        componentHasBlocker[root] = 0;
-        componentMemberCount[root] = 0;
+        sleepComponentRoot[physId] = root;
+        sleepComponentMaxSpeedSq[root] = 0;
+        sleepComponentHasBlocker[root] = 0;
+        sleepComponentMemberCount[root] = 0;
     }
     for (let i = 0; i < activeBodies.length; i++) {
         const body = activeBodies[i];
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
-        const root = componentRoot[physId];
-        const vx = body.vx || 0;
-        const vy = body.vy || 0;
+        const root = sleepComponentRoot[physId];
+        const vx = kineticDynamicSlab.vx[physId] || 0;
+        const vy = kineticDynamicSlab.vy[physId] || 0;
         const speedSq = vx * vx + vy * vy;
-        if (speedSq > componentMaxSpeedSq[root]) componentMaxSpeedSq[root] = speedSq;
-        if (!canSleepKinetic(body)) componentHasBlocker[root] = 1;
-        componentMemberCount[root]++;
+        if (speedSq > sleepComponentMaxSpeedSq[root]) sleepComponentMaxSpeedSq[root] = speedSq;
+        if (!canSleepKinetic(body)) sleepComponentHasBlocker[root] = 1;
+        sleepComponentMemberCount[root]++;
     }
     for (let i = 0; i < activeBodies.length; i++) {
         const body = activeBodies[i];
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
-        const root = componentRoot[physId];
-        const eligible = componentHasBlocker[root] === 0;
+        const root = sleepComponentRoot[physId];
+        const eligible = sleepComponentHasBlocker[root] === 0;
         advanceKineticSleep(body, eligible);
     }
     for (let i = 0; i < activeBodies.length; i++) {
@@ -3901,6 +3899,32 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
  * @param {{ friction?: number, integrateFacing?: boolean, snapSpeed?: number }} [options]
  */
 export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFacing = true, snapSpeed = 1 } = {}) {
+    const physId = body._physId;
+    if (physId !== undefined) {
+        const dyn = kineticDynamicSlab;
+        let vx = dyn.vx[physId];
+        let vy = dyn.vy[physId];
+        if (vx || vy) {
+            addXY(body, vx * (dtMs / 1000), vy * (dtMs / 1000));
+            const dragFactor = Math.exp(-friction * (dtMs / 1000));
+            vx *= dragFactor;
+            vy *= dragFactor;
+            if (lengthXY(vx, vy) < snapSpeed) {
+                vx = 0;
+                vy = 0;
+            }
+            dyn.vx[physId] = vx;
+            dyn.vy[physId] = vy;
+        }
+        if (integrateFacing && dyn.w[physId]) {
+            body.facing = readEntityFacing(body) + dyn.w[physId] * (dtMs / 1000);
+            const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
+            let w = dyn.w[physId] * angularDrag;
+            if (Math.abs(w) < 0.1) w = 0;
+            dyn.w[physId] = w;
+        }
+        return;
+    }
     if (body.vx || body.vy) {
         addXY(body, (body.vx ?? 0) * (dtMs / 1000), (body.vy ?? 0) * (dtMs / 1000));
         const dragFactor = Math.exp(-friction * (dtMs / 1000));
@@ -3912,7 +3936,7 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
         }
     }
     if (integrateFacing && body.angularVelocity) {
-        body.facing = entityFacing(body) + body.angularVelocity * (dtMs / 1000);
+        body.facing = readEntityFacing(body) + body.angularVelocity * (dtMs / 1000);
         const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
         body.angularVelocity *= angularDrag;
         if (Math.abs(body.angularVelocity) < 0.1) body.angularVelocity = 0;

@@ -3,7 +3,7 @@ import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRim
 import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius, CircleShape } from "../Physics/physics.js";
+import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius, CircleShape } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
@@ -199,14 +199,14 @@ export function createDragLaunchBehaviors(state) {
 function resolveGrabDragAnchor(prop, world) {
     const asset = propCatalog[prop.type];
     if (asset?.primitive === "polygon" && asset.physics?.isKinetic !== false && prop.shape?.vertices?.length >= 6) {
-        const facing = entityFacing(prop);
+        const facing = readEntityFacing(prop);
         findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
         GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
         GRAB_ANCHOR_SCRATCH[G_OY] = GRAB_ANCHOR_SCRATCH[G_WY] - world.y;
         return;
     }
     if (asset?.primitive === "sphere" && asset.physics?.isKinetic !== false) {
-        const facing = entityFacing(prop);
+        const facing = readEntityFacing(prop);
         const radius = resolveBodyRadius(prop);
         findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.x, prop.y, facing, radius, world.x, world.y);
         GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
@@ -221,10 +221,10 @@ function resolveGrabDragAnchor(prop, world) {
 function grabDragAnchorWorld(prop, run) {
     if (prop.strategy?.rolls) {
         const radius = resolveBodyRadius(prop);
-        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.x, prop.y, entityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
+        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.x, prop.y, readEntityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
         return;
     }
-    const angle = entityFacing(prop);
+    const angle = readEntityFacing(prop);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     const lx = run.anchorLocalX;

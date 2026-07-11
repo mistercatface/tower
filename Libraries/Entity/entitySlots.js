@@ -50,14 +50,6 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityR[eid] = r;
     entityRefs[eid] = ref;
 }
-export function writebackEntitySlotPoseToRef(eid, ref) {
-    ref.x = entityX[eid];
-    ref.y = entityY[eid];
-    ref.vx = entityVx[eid];
-    ref.vy = entityVy[eid];
-    ref.angularVelocity = entityW[eid];
-    ref.facing = entityFacing[eid];
-}
 export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnX;
     delete ref._spawnY;

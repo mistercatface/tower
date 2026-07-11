@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { satCheckCollision, checkEntityPairCollision, circleCircleContact, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { satCheckCollision, checkEntityPairCollision, circleCircleContact, readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER, classifyKineticPairTier } from "../Libraries/Physics/physics.js";
@@ -41,7 +41,7 @@ describe("kinetic narrow phase tiers", () => {
         const b = mockKineticCircle(15, 0, 10);
         const fastCollided = circleCircleContact(a.x, a.y, a.shape, b.x, b.y, b.shape);
         const fastRes = new Float32Array(SAT_RESULT);
-        const satCollided = satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
+        const satCollided = satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
         assert.equal(fastCollided, satCollided);
         if (fastCollided) {
             assert.deepEqual(fastRes, SAT_RESULT);
@@ -67,10 +67,10 @@ describe("kinetic narrow phase tiers", () => {
         const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -20;
-        assert.ok(satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));
+        assert.ok(satCheckCollision(ball.x, ball.y, readEntityFacing(ball), ball.shape, wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape));
         const tick = createKineticTestTick([ball, wedge]);
         resolveKineticContactPass(tick);
-        assert.ok(!satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));
+        assert.ok(!satCheckCollision(ball.x, ball.y, readEntityFacing(ball), ball.shape, wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape));
     });
     it("contact pass still separates poly-poly pairs", () => {
         const left = new WorldProp(0, 0, "crate", 0);

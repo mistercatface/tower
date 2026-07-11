@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { satCheckCollision, checkEntityPairCollision, entityFacing } from "../Libraries/Physics/physics.js";
+import { satCheckCollision, checkEntityPairCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_TIER } from "../Libraries/Physics/physics.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
@@ -23,7 +23,7 @@ describe("kinetic contact pipeline", () => {
         const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -20;
-        assert.ok(satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, wedge.x, wedge.y, entityFacing(wedge), wedge.shape));
+        assert.ok(satCheckCollision(ball.x, ball.y, readEntityFacing(ball), ball.shape, wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape));
         const tick = createKineticTestTick([ball, wedge]);
         const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(contacts.count, 1);

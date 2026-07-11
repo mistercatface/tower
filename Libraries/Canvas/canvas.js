@@ -2,7 +2,7 @@ import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
-import { packRollOrientId, resolveBodyRadius, entityFacing } from "../Physics/physics.js";
+import { packRollOrientId, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
 import { visualOverrideCacheId } from "../Color/visualOverride.js";
@@ -616,7 +616,7 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
  * @param {number} [animFrame]
  */
 function getPropStaticKey(prop, renderKey) {
-    const facing = entityFacing(prop);
+    const facing = readEntityFacing(prop);
     const voId = visualOverrideCacheId(prop);
     const attachmentId = getVisualAttachmentSpriteCacheId(prop, { quantizeAngleIndex });
     const rolls = !!prop.strategy?.rolls;
@@ -661,7 +661,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     return propSpriteCache.getOrBake(key, () => {
         const qDx = quantizedViewAxisOffset(dx, viewStep);
         const qDy = quantizedViewAxisOffset(dy, viewStep);
-        const parentFacing = quantizeAngle(entityFacing(prop), resolvePropQuantizeSteps(prop).facing);
+        const parentFacing = quantizeAngle(readEntityFacing(prop), resolvePropQuantizeSteps(prop).facing);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         const baseR = Math.max(resolveBodyRadius(prop), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         const stageR = Math.max(baseR, resolveVisualAttachmentBakeRadius(prop, parentFacing));

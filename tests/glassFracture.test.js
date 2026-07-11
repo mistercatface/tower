@@ -11,7 +11,7 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
 import { GLASS_MAX_SHARDS_PER_SHATTER, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA } from "../Libraries/Physics/fracture.js";
 import { transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32 } from "../Core/engineMemory.js";
-import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
+import { satCheckCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { liveGlassCount, createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, shatterGlassFootprint, shatterGlassPolygon, materializeDebrisGeometries, readImpactFracture } from "./harness/fractureHarness.js";
@@ -73,7 +73,7 @@ function makeOverlappingGlassShards() {
     b._fractureCooldown = 0;
     a.vx = 120;
     b.vx = -120;
-    assert.ok(satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape));
+    assert.ok(satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape));
     return { a, b };
 }
 describe("glass fracture", () => {
@@ -228,7 +228,7 @@ describe("glass fracture", () => {
         glass.vx = 120;
         crate.vx = -40;
         const tick = createKineticTestTick([glass, crate]);
-        assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, crate.x, crate.y, entityFacing(crate), crate.shape));
+        assert.ok(satCheckCollision(glass.x, glass.y, readEntityFacing(glass), glass.shape, crate.x, crate.y, readEntityFacing(crate), crate.shape));
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveGlassCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
@@ -239,7 +239,7 @@ describe("glass fracture", () => {
         applyPropBoxFootprint(glass, 24, 18);
         glass.vx = 0;
         ball.vx = -200;
-        assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
+        assert.ok(satCheckCollision(glass.x, glass.y, readEntityFacing(glass), glass.shape, ball.x, ball.y, readEntityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
         const count = liveGlassCount(tick.world);

@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { entityFacing, wakeKineticBody, KINETIC_PAIR_TIER, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, SHAPE_TYPE_POLYGON } from "./physics.js";
-import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../../Core/engineMemory.js";
+import { readEntityFacing, wakeKineticBody, KINETIC_PAIR_TIER, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, SHAPE_TYPE_POLYGON } from "./physics.js";
+import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../../Core/engineMemory.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";
@@ -320,52 +320,58 @@ class KineticDebrisBody {
         this._footprintKey = undefined;
     }
     get x() {
-        return kineticDebrisSlab.x[this._row];
+        const eid = this._physId;
+        return eid !== undefined ? entityX[eid] : this._spawnX;
     }
     set x(v) {
-        kineticDebrisSlab.x[this._row] = v;
         const eid = this._physId;
         if (eid !== undefined) entityX[eid] = v;
+        else this._spawnX = v;
     }
     get y() {
-        return kineticDebrisSlab.y[this._row];
+        const eid = this._physId;
+        return eid !== undefined ? entityY[eid] : this._spawnY;
     }
     set y(v) {
-        kineticDebrisSlab.y[this._row] = v;
         const eid = this._physId;
         if (eid !== undefined) entityY[eid] = v;
+        else this._spawnY = v;
     }
     get vx() {
-        return kineticDebrisSlab.vx[this._row];
+        const eid = this._physId;
+        return eid !== undefined ? entityVx[eid] : this._spawnVx;
     }
     set vx(v) {
-        kineticDebrisSlab.vx[this._row] = v;
         const eid = this._physId;
         if (eid !== undefined) entityVx[eid] = v;
+        else this._spawnVx = v;
     }
     get vy() {
-        return kineticDebrisSlab.vy[this._row];
+        const eid = this._physId;
+        return eid !== undefined ? entityVy[eid] : this._spawnVy;
     }
     set vy(v) {
-        kineticDebrisSlab.vy[this._row] = v;
         const eid = this._physId;
         if (eid !== undefined) entityVy[eid] = v;
+        else this._spawnVy = v;
     }
     get angularVelocity() {
-        return kineticDebrisSlab.w[this._row];
+        const eid = this._physId;
+        return eid !== undefined ? entityW[eid] : this._spawnW;
     }
     set angularVelocity(v) {
-        kineticDebrisSlab.w[this._row] = v;
         const eid = this._physId;
         if (eid !== undefined) entityW[eid] = v;
+        else this._spawnW = v;
     }
     get facing() {
-        return kineticDebrisSlab.facing[this._row];
+        const eid = this._physId;
+        return eid !== undefined ? entityFacing[eid] : this._spawnFacing;
     }
     set facing(v) {
-        kineticDebrisSlab.facing[this._row] = v;
         const eid = this._physId;
-        if (eid !== undefined) entityFacingCol[eid] = v;
+        if (eid !== undefined) entityFacing[eid] = v;
+        else this._spawnFacing = v;
     }
     get ageMs() {
         return kineticDebrisSlab.ageMs[this._row];
@@ -458,12 +464,13 @@ class KineticDebrisStore {
         body._neighborEidCount = 0;
         body._neighborsFrameId = -1;
         body._listIndex = -1;
-        kineticDebrisSlab.x[row] = x;
-        kineticDebrisSlab.y[row] = y;
-        kineticDebrisSlab.vx[row] = 0;
-        kineticDebrisSlab.vy[row] = 0;
-        kineticDebrisSlab.w[row] = 0;
-        kineticDebrisSlab.facing[row] = facing;
+        delete body._physId;
+        body._spawnX = x;
+        body._spawnY = y;
+        body._spawnVx = 0;
+        body._spawnVy = 0;
+        body._spawnW = 0;
+        body._spawnFacing = facing;
         normalizeKineticBody(body);
         return body;
     }
@@ -951,7 +958,7 @@ export class FractureEngine {
         const originY = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
         const dx = worldHitX - originX;
         const dy = worldHitY - originY;
-        const facing = entityFacing(prop);
+        const facing = readEntityFacing(prop);
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
         const impactLocalX = dx * cos + dy * sin;
@@ -1175,13 +1182,6 @@ export class FractureEngine {
         ENGINE_F32[F_OUT_POS_Y] = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
     }
     static _currentPropMotion(prop) {
-        if (prop.isKineticDebris) {
-            const row = prop._row;
-            ENGINE_F32[F_OUT_MOTION_VX] = kineticDebrisSlab.vx[row];
-            ENGINE_F32[F_OUT_MOTION_VY] = kineticDebrisSlab.vy[row];
-            ENGINE_F32[F_OUT_MOTION_W] = kineticDebrisSlab.w[row];
-            return;
-        }
         const physId = prop._physId;
         if (physId !== undefined) {
             ENGINE_F32[F_OUT_MOTION_VX] = kineticDynamicSlab.vx[physId];

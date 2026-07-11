@@ -1,4 +1,4 @@
-import { pruneKineticConstraintsForBody, resolveBodyRadius, entityFacing, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, resolveBodyRadius, readEntityFacing, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, ensureGrowI32, pickWorldPoly } from "../Core/engineMemory.js";
@@ -7,7 +7,7 @@ import { entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX
 const EMPTY_KINDS = ["worldProp"];
 const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
 function worldPropFootprintInto(prop, shape) {
-    const facing = entityFacing(prop);
+    const facing = readEntityFacing(prop);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const verts = shape.vertices;

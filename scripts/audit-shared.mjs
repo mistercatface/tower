@@ -40,6 +40,8 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "writeStaticKineticSlabSlot",
     "syncEntitySlotPoseFromRef",
     "kineticSleepScratch",
+    "writebackActiveKineticBodySlab",
+    "writebackEntitySlotPoseToRef",
 ];
 
 export const LEGACY_SCALAR_SYMBOLS = [

@@ -3,11 +3,10 @@ import assert from "node:assert/strict";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { entityVx, entityVy, entityW, entityFacing, entityX, entityY } from "../Core/engineMemory.js";
-import { snapshotKineticBodySlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 
 describe("kinetic debris damping", () => {
-    it("pose setters dual-write entity* when _physId is set", () => {
+    it("pose accessors read and write entity columns when _physId is set", () => {
         const world = createFractureWorld();
         const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 8);
@@ -20,55 +19,27 @@ describe("kinetic debris damping", () => {
         assert.equal(entityVy[0], -50);
         assert.equal(entityW[0], 3);
         assert.ok(Math.abs(entityFacing[0] - 1.1) < 1e-6);
-    });
-
-    it("tickPropSubstep damping clears velocity on debris slab and entity*", () => {
-        const world = createFractureWorld();
-        const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
-        applyPropBoxFootprint(body, 8, 8);
-        assignPhysIdWithPose(body, 0);
-        body.vx = 200;
-        body.vy = 200;
-        for (let i = 0; i < 120; i++) body.tickPropSubstep(16);
-        assert.equal(body.vx, 0);
-        assert.equal(body.vy, 0);
-        assert.equal(entityVx[0], 0);
-        assert.equal(entityVy[0], 0);
-    });
-
-    it("writeback after damping does not reintroduce velocity", () => {
-        const world = createFractureWorld();
-        const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
-        applyPropBoxFootprint(body, 8, 8);
-        assignPhysIdWithPose(body, 0);
-        body.vx = 200;
-        body.vy = 200;
-        for (let i = 0; i < 120; i++) body.tickPropSubstep(16);
-        snapshotKineticBodySlab([body]);
-        writebackActiveKineticBodySlab([body]);
-        assert.equal(body.vx, 0);
-        assert.equal(body.vy, 0);
-        assert.equal(entityVx[0], 0);
-        assert.equal(entityVy[0], 0);
-    });
-
-    it("writeback copies slab pose onto debris store after physics mutates entity columns", () => {
-        const world = createFractureWorld();
-        const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
-        applyPropBoxFootprint(body, 8, 8);
-        assignPhysIdWithPose(body, 0);
-        body.x = 10;
-        body.y = 20;
-        body.vx = 5;
-        body.vy = -3;
-        entityX[0] = 99;
-        entityY[0] = 88;
         entityVx[0] = 40;
         entityVy[0] = -10;
-        writebackActiveKineticBodySlab([body]);
-        assert.equal(body.x, 99);
-        assert.equal(body.y, 88);
+        entityX[0] = 99;
+        entityY[0] = 88;
         assert.equal(body.vx, 40);
         assert.equal(body.vy, -10);
+        assert.equal(body.x, 99);
+        assert.equal(body.y, 88);
+    });
+
+    it("tickPropSubstep damping clears velocity on entity columns", () => {
+        const world = createFractureWorld();
+        const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
+        applyPropBoxFootprint(body, 8, 8);
+        assignPhysIdWithPose(body, 0);
+        body.vx = 200;
+        body.vy = 200;
+        for (let i = 0; i < 120; i++) body.tickPropSubstep(16);
+        assert.equal(body.vx, 0);
+        assert.equal(body.vy, 0);
+        assert.equal(entityVx[0], 0);
+        assert.equal(entityVy[0], 0);
     });
 });

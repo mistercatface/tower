@@ -12,7 +12,7 @@ import { removeChainLinkBetween } from "../Libraries/Sandbox/sandbox.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
+import { satCheckCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { liveGlassCount } from "./harness/fractureHarness.js";
 
@@ -87,7 +87,7 @@ describe("kinetic topology lifecycle", () => {
         const ball = new WorldProp(18, 0, "ball", 0);
         applyPropBoxFootprint(glass, 24, 18);
         ball.vx = -200;
-        assert.ok(satCheckCollision(glass.x, glass.y, entityFacing(glass), glass.shape, ball.x, ball.y, entityFacing(ball), ball.shape));
+        assert.ok(satCheckCollision(glass.x, glass.y, readEntityFacing(glass), glass.shape, ball.x, ball.y, readEntityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
         assert.ok(liveGlassCount(tick.world) > 2);

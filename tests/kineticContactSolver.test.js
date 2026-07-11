@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckCollision, checkEntityPairCollision, entityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { satCheckCollision, checkEntityPairCollision, readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
@@ -11,7 +11,7 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { dotXY } from "../Libraries/Math/math.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function pairStillOverlaps(a, b) {
-    return satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
+    return satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
 }
 function slabPairStillOverlaps(a, b) {
     return checkPairAtSlabPose(a, b);
@@ -19,7 +19,7 @@ function slabPairStillOverlaps(a, b) {
 function separatePairUntilClear(a, b, maxPasses = 8) {
     let last = null;
     for (let pass = 0; pass < maxPasses; pass++) {
-        const collided = satCheckCollision(a.x, a.y, entityFacing(a), a.shape, b.x, b.y, entityFacing(b), b.shape);
+        const collided = satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
         if (!collided) return last;
         last = {
             overlap: SAT_RESULT[0],

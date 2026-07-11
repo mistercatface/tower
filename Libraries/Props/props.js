@@ -1,7 +1,7 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, readEntityFacing, KINETIC_PAIR_TIER, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
@@ -248,7 +248,7 @@ const sPartsVerts = [];
 const sDrawOpts = { height: 0, facing: 0, faceColors: sFaceColors, backFaceColors: sBackFaceColors, bottomColors: null, topColors: sTopColors, stroke: null, seamStroke: null, lineWidth: 1, plankTs: null, topCross: null, flatFill: false, localVerts: null, partsVerts: null, faceOrder: "convexCull" };
 function fillExtrudeDrawOpts(out, prop, tinted, height, lineWidth, plankTs, topCross, flatFill) {
     out.height = height;
-    out.facing = entityFacing(prop);
+    out.facing = readEntityFacing(prop);
     sFaceColors.shadow = tinted.sideShadow;
     sFaceColors.mid = tinted.side;
     sFaceColors.highlight = tinted.top;
@@ -297,7 +297,7 @@ export function getBaseSpriteCacheId(prop, deps) {
     const steps = resolvePropQuantizeSteps(prop);
     let orient;
     if (prop.strategy?.rolls) orient = packRollOrientId(prop, steps.facing);
-    else orient = quantizeAngleIndex(entityFacing(prop), steps.facing);
+    else orient = quantizeAngleIndex(readEntityFacing(prop), steps.facing);
     const foot = propShapeFootprintId(prop);
     const vo = visualOverrideCacheId(prop);
     let h = 2166136261;
@@ -317,7 +317,7 @@ export function getPropStageBakeState(prop) {
     sStageProp.radius = prop.radius;
     sHalfExtents.x = ENGINE_F32[M_VEC_A];
     sHalfExtents.y = ENGINE_F32[M_VEC_A + 1];
-    sStageProp.facing = quantizeAngle(entityFacing(prop), steps.facing);
+    sStageProp.facing = quantizeAngle(readEntityFacing(prop), steps.facing);
     if (prop.strategy?.rolls) {
         quantizeBodyRollQuatF32(prop, steps.facing);
         sStageProp.rollQw = ENGINE_F32[M_OUT_QW];
@@ -487,11 +487,11 @@ export class WorldProp {
     }
     get facing() {
         const eid = this._physId;
-        return eid !== undefined ? entityFacingCol[eid] : this._spawnFacing;
+        return eid !== undefined ? entityFacing[eid] : this._spawnFacing;
     }
     set facing(v) {
         const eid = this._physId;
-        if (eid !== undefined) entityFacingCol[eid] = v;
+        if (eid !== undefined) entityFacing[eid] = v;
         else this._spawnFacing = v;
     }
     get rollQw() {
@@ -578,7 +578,7 @@ export class WorldProp {
                 const moveAngle = Math.atan2(this.vy, this.vx);
                 const turnRadPerSec = Math.PI * 1.5;
                 const maxStep = turnRadPerSec * (dt / 1000);
-                this.facing = rotateAngleTowards(entityFacing(this), moveAngle, maxStep);
+                this.facing = rotateAngleTowards(readEntityFacing(this), moveAngle, maxStep);
             }
         }
     }
@@ -631,7 +631,7 @@ function resolveAttachmentHeading(prop, cfg) {
         const minSpeed = cfg.minHeadingSpeed ?? 0.25;
         if (speed >= minSpeed) return Math.atan2(vy, vx);
     }
-    return entityFacing(prop);
+    return readEntityFacing(prop);
 }
 function resolveQuantizedAttachmentHeading(prop, cfg) {
     return quantizeAngle(resolveAttachmentHeading(prop, cfg), resolvePropQuantizeSteps(prop).facing);
