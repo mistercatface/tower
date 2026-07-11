@@ -155,11 +155,11 @@ describe("kinetic islands", () => {
         linkChain(state, bodies, 18);
         const frame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
-        assert.equal(a._linkNeighborEidCount, 1);
-        assert.equal(a._linkNeighborEids[0], b._physId);
-        assert.equal(b._linkNeighborEidCount, 2);
-        assert.equal(c._linkNeighborEidCount, 1);
-        assert.equal(c._linkNeighborEids[0], b._physId);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[a._physId], 1);
+        assert.equal(kineticDynamicSlab.linkNeighborEids[kineticDynamicSlab.linkNeighborOffset[a._physId]], b._physId);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[b._physId], 2);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[c._physId], 1);
+        assert.equal(kineticDynamicSlab.linkNeighborEids[kineticDynamicSlab.linkNeighborOffset[c._physId]], b._physId);
     });
 
     it("bakeKineticIslandPlan fills islandRootByPhysId for in-frame bodies", () => {

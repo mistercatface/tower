@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
-import { bakeKineticIslandPlan, ensureKineticIslandPlan } from "../Libraries/Physics/physics.js";
+import { bakeKineticIslandPlan, ensureKineticIslandPlan, kineticDynamicSlab } from "../Libraries/Physics/physics.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology, kineticPairTopologyStale } from "../Libraries/Physics/physics.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { entityRefs } from "../Libraries/Entity/entitySlots.js";
@@ -78,7 +78,7 @@ describe("kinetic topology lifecycle", () => {
         assert.ok(getKineticTopologyGeneration(world.kinetic) > genBefore);
         ensureKineticIslandPlan(world.kinetic, frame._kineticBodies);
         assert.equal(c._kineticIslandPeers, undefined);
-        assert.equal(b._linkNeighborEidCount, 1);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[b._physId], 1);
     });
 
     it("runCollisionPipeline does not reproduce glass after persisted pair gather", () => {

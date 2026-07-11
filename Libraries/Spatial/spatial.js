@@ -3507,17 +3507,22 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._activationScheduled.add(prop);
     }
     _wakeConstraintLinkedPeers(prop, patchOut) {
-        const eids = prop._linkNeighborEids;
-        const count = prop._linkNeighborEidCount ?? 0;
-        if (eids && count > 0) {
-            for (let i = 0; i < count; i++) {
-                const peer = entityRefs[eids[i]];
-                if (!peer || peer === prop || peer._physId === undefined || peer._physId !== eids[i]) continue;
-                if (peer.isSleeping) wakeKineticBody(peer);
-                this._ensureActive(peer);
-                if (patchOut) patchOut.push(peer);
+        const physId = prop._physId;
+        if (physId !== undefined && physId !== -1) {
+            const count = kineticDynamicSlab.linkNeighborCount[physId];
+            if (count > 0) {
+                const offset = kineticDynamicSlab.linkNeighborOffset[physId];
+                const eids = kineticDynamicSlab.linkNeighborEids;
+                for (let i = 0; i < count; i++) {
+                    const peerEid = eids[offset + i];
+                    const peer = entityRefs[peerEid];
+                    if (!peer || peer === prop || peer._physId === undefined || peer._physId !== peerEid) continue;
+                    if (peer.isSleeping) wakeKineticBody(peer);
+                    this._ensureActive(peer);
+                    if (patchOut) patchOut.push(peer);
+                }
+                return;
             }
-            return;
         }
         const peers = prop._kineticIslandPeers;
         if (!peers) return;

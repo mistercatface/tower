@@ -224,10 +224,15 @@ export function normalizeKineticBody(body) {
 }
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
-export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
+export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), linkNeighborOffset: new Int32Array(MAX_PHYS_BODIES), linkNeighborCount: new Int32Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
+kineticDynamicSlab.linkNeighborOffset.fill(0);
+kineticDynamicSlab.linkNeighborCount.fill(0);
+let linkNeighborEidsArena = new Int32Array(256);
+kineticDynamicSlab.linkNeighborEids = linkNeighborEidsArena;
+let linkNeighborEidsArenaUsed = 0;
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
     const slab = kineticDynamicSlab;
     const aCos = slab.cos[physIdA];
@@ -348,6 +353,8 @@ export function invalidateKineticSlabSlot(physId) {
     dyn.hy[physId] = 0;
     dyn.activeSlot[physId] = -1;
     dyn.islandRoot[physId] = -1;
+    dyn.linkNeighborOffset[physId] = 0;
+    dyn.linkNeighborCount[physId] = 0;
     const stat = kineticStaticSlab;
     stat.mass[physId] = 0;
     stat.invMass[physId] = 0;
@@ -1290,15 +1297,15 @@ export function refreshActiveKineticBodySlabPose(bodies) {
 export function shouldResolveKineticPair(a, b, overlaps) {
     return overlaps && (isKinematicallyActive(a) || isKinematicallyActive(b));
 }
-function shouldResolveKineticPairSlab(physIdA, physIdB, overlaps) {
+export function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
+    if (physIdA === physIdB) return false;
+    const dyn = kineticDynamicSlab;
+    const stat = kineticStaticSlab;
+    if (dyn.activeSlot[physIdB] >= 0 && stat.entityId[physIdA] >= stat.entityId[physIdB]) return false;
     return overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
 }
 export function allowsKineticCollisionPair(primary, other, overlaps) {
-    if (primary === other) return false;
-    if (!other.strategy?.isKinetic) return false;
-    const otherActive = other._activeSlot != null && other._activeSlot >= 0;
-    if (otherActive && primary.id >= other.id) return false;
-    return shouldResolveKineticPairSlab(primary._physId, other._physId, overlaps);
+    return allowsKineticCollisionPairSlab(primary._physId, other._physId, overlaps);
 }
 function kineticOverlapsWallCandidates(px, py, body, candidates) {
     if (!candidates.length) return false;
@@ -1576,11 +1583,11 @@ function orderIslandConstraintItems(startIdx, count) {
     for (let i = 0; i < orderUniquePhysIds.length; i++) {
         const physId = orderUniquePhysIds[i];
         const body = constraintBodyAt(physId);
-        const eids = body._linkNeighborEids;
-        const nCount = body._linkNeighborEidCount ?? 0;
+        const offset = kineticDynamicSlab.linkNeighborOffset[physId];
+        const nCount = kineticDynamicSlab.linkNeighborCount[physId];
         let inIslandCount = 0;
         for (let j = 0; j < nCount; j++) {
-            const neighborPhys = eids[j];
+            const neighborPhys = linkNeighborEidsArena[offset + j];
             if (neighborPhys !== -1 && orderSeenPhysIds[neighborPhys] === 1) inIslandCount++;
         }
         if (inIslandCount <= 1) {
@@ -1606,11 +1613,11 @@ function orderIslandConstraintItems(startIdx, count) {
     let currentPhysId = startPhysId;
     while (orderOrdered.length < count) {
         const body = constraintBodyAt(currentPhysId);
-        const eids = body._linkNeighborEids;
-        const nCount = body._linkNeighborEidCount ?? 0;
+        const offset = kineticDynamicSlab.linkNeighborOffset[currentPhysId];
+        const nCount = kineticDynamicSlab.linkNeighborCount[currentPhysId];
         let advanced = false;
         for (let i = 0; i < nCount; i++) {
-            const neighborPhys = eids[i];
+            const neighborPhys = linkNeighborEidsArena[offset + i];
             if (neighborPhys === -1 || orderSeenPhysIds[neighborPhys] === 0) continue;
             let itemIdx = -1;
             for (let k = 0; k < count; k++) {
@@ -2928,12 +2935,9 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
     for (let i = 0; i < pairs.count; i++) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
-        const bodyA = entityRefs[physIdA]?._physId === physIdA ? entityRefs[physIdA] : null;
-        const bodyB = entityRefs[physIdB]?._physId === physIdB ? entityRefs[physIdB] : null;
-        if (bodyA && bodyB && areKineticLinkNeighbors(bodyA, bodyB)) continue;
+        if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
         const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-        if (!overlaps) continue;
-        if (!shouldResolveKineticPairSlab(physIdA, physIdB, overlaps)) continue;
+        if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
         if (write !== i) {
             pairs.physIdA[write] = physIdA;
             pairs.physIdB[write] = physIdB;
@@ -2963,13 +2967,11 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
         const neighborEids = primary._neighborEids;
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[j];
-            const neighbor = entityRefs[physIdB];
             const key = pairPhysKey(physIdA, physIdB);
             if (hasPairHash(key)) continue;
-            const tier = classifyKineticPairTierSlab(physIdA, physIdB);
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (areKineticLinkNeighbors(primary, neighbor)) continue;
-            if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
+            if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
+            if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) {
                 for (let k = 0; k < seenCount; k++) seenPrimary[seenPrimaryIds[k]] = 0;
                 return added;
@@ -2977,7 +2979,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
-            pairs.static.tier[idx] = tier;
+            pairs.static.tier[idx] = classifyKineticPairTierSlab(physIdA, physIdB);
             addPairHash(key);
             added++;
         }
@@ -2995,16 +2997,14 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
         const neighborEids = primary._neighborEids;
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[j];
-            const neighbor = entityRefs[physIdB];
-            const tier = classifyKineticPairTierSlab(physIdA, physIdB);
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (areKineticLinkNeighbors(primary, neighbor)) continue;
-            if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
+            if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
+            if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
             const idx = pairs.count++;
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
-            pairs.static.tier[idx] = tier;
+            pairs.static.tier[idx] = classifyKineticPairTierSlab(physIdA, physIdB);
         }
     }
 }
@@ -3277,28 +3277,66 @@ export function maxActiveKineticSpeedSq(bodies) {
     return max;
 }
 function clearBodyIslandFields(body) {
-    body._linkNeighborEidCount = 0;
     delete body._kineticIslandPeers;
     delete body._kineticIslandRoot;
-}
-function ensureLinkNeighborEids(body, needed) {
-    let buf = body._linkNeighborEids;
-    if (!buf || buf.length < needed) {
-        const next = new Int32Array(Math.max(needed, buf ? buf.length * 2 : 4));
-        if (buf) next.set(buf.subarray(0, body._linkNeighborEidCount ?? 0));
-        body._linkNeighborEids = next;
-        buf = next;
+    const physId = body._physId;
+    if (physId !== undefined && physId !== -1) {
+        kineticDynamicSlab.linkNeighborOffset[physId] = 0;
+        kineticDynamicSlab.linkNeighborCount[physId] = 0;
+        kineticDynamicSlab.islandRoot[physId] = -1;
     }
-    return buf;
+}
+function ensureLinkNeighborArena(needed) {
+    if (linkNeighborEidsArena.length >= needed) return;
+    const next = new Int32Array(Math.max(needed, linkNeighborEidsArena.length * 2));
+    next.set(linkNeighborEidsArena.subarray(0, linkNeighborEidsArenaUsed));
+    linkNeighborEidsArena = next;
+    kineticDynamicSlab.linkNeighborEids = next;
+}
+function sortLinkNeighborSlice(offset, count) {
+    if (count <= 1) return;
+    const arena = linkNeighborEidsArena;
+    for (let i = offset + 1; i < offset + count; i++) {
+        const key = arena[i];
+        let j = i - 1;
+        while (j >= offset && arena[j] > key) {
+            arena[j + 1] = arena[j];
+            j--;
+        }
+        arena[j + 1] = key;
+    }
+}
+export function resetKineticLinkNeighborArena() {
+    linkNeighborEidsArenaUsed = 0;
+}
+export function writeKineticLinkNeighbors(physId, neighborPhysIds) {
+    const slab = kineticDynamicSlab;
+    if (!neighborPhysIds || neighborPhysIds.length === 0) {
+        slab.linkNeighborOffset[physId] = 0;
+        slab.linkNeighborCount[physId] = 0;
+        return;
+    }
+    ensureLinkNeighborArena(linkNeighborEidsArenaUsed + neighborPhysIds.length);
+    const offset = linkNeighborEidsArenaUsed;
+    let count = 0;
+    for (let i = 0; i < neighborPhysIds.length; i++) {
+        const n = neighborPhysIds[i];
+        if (n === undefined || n === -1) continue;
+        linkNeighborEidsArena[offset + count++] = n;
+    }
+    sortLinkNeighborSlice(offset, count);
+    slab.linkNeighborOffset[physId] = offset;
+    slab.linkNeighborCount[physId] = count;
+    linkNeighborEidsArenaUsed = offset + count;
 }
 export function bakeKineticIslandPlan(session, kineticBodies) {
     const adjacent = getGraphCache(session).adjacency;
     const bodyById = new Map();
+    resetKineticLinkNeighborArena();
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
         bodyById.set(body.id, body);
         clearBodyIslandFields(body);
-        if (body._physId !== undefined) kineticDynamicSlab.islandRoot[body._physId] = -1;
     }
     const constraints = session.kineticConstraints;
     for (let i = 0; i < constraints.length; i++) {
@@ -3308,19 +3346,21 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         entry.physIdA = a?._physId ?? -1;
         entry.physIdB = b?._physId ?? -1;
     }
+    const slab = kineticDynamicSlab;
+    const neighborScratch = [];
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
+        const physId = body._physId;
+        if (physId === undefined || physId === -1) continue;
         const neighborIds = adjacent.get(body.id);
-        let count = 0;
-        if (neighborIds) {
-            const eids = ensureLinkNeighborEids(body, neighborIds.length);
+        neighborScratch.length = 0;
+        if (neighborIds)
             for (let j = 0; j < neighborIds.length; j++) {
                 const neighbor = bodyById.get(neighborIds[j]);
-                if (!neighbor || neighbor._physId === undefined) continue;
-                eids[count++] = neighbor._physId;
+                if (!neighbor || neighbor._physId === undefined || neighbor._physId === -1) continue;
+                neighborScratch.push(neighbor._physId);
             }
-        }
-        body._linkNeighborEidCount = count;
+        writeKineticLinkNeighbors(physId, neighborScratch);
     }
     const assigned = new Set();
     for (let i = 0; i < kineticBodies.length; i++) {
@@ -3349,7 +3389,7 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
             const body = memberBodies[m];
             assigned.add(body.id);
             body._kineticIslandRoot = root;
-            if (body._physId !== undefined) kineticDynamicSlab.islandRoot[body._physId] = root;
+            if (body._physId !== undefined) slab.islandRoot[body._physId] = root;
             if (multiBody) body._kineticIslandPeers = memberBodies;
         }
     }
@@ -3366,13 +3406,31 @@ export function shareKineticIsland(bodyA, bodyB) {
     if (bodyA._kineticIslandRoot !== bodyB._kineticIslandRoot) return false;
     return Boolean(bodyA._kineticIslandPeers);
 }
-export function areKineticLinkNeighbors(bodyA, bodyB) {
-    const eids = bodyA._linkNeighborEids;
-    const count = bodyA._linkNeighborEidCount ?? 0;
-    if (!eids || count === 0) return false;
-    const eidB = bodyB._physId;
-    for (let i = 0; i < count; i++) if (eids[i] === eidB) return true;
+export function areKineticLinkNeighborsSlab(physIdA, physIdB) {
+    const count = kineticDynamicSlab.linkNeighborCount[physIdA];
+    if (count === 0) return false;
+    const offset = kineticDynamicSlab.linkNeighborOffset[physIdA];
+    const arena = linkNeighborEidsArena;
+    if (count <= 4) {
+        for (let i = 0; i < count; i++) if (arena[offset + i] === physIdB) return true;
+        return false;
+    }
+    let lo = offset;
+    let hi = offset + count - 1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        const v = arena[mid];
+        if (v === physIdB) return true;
+        if (v < physIdB) lo = mid + 1;
+        else hi = mid - 1;
+    }
     return false;
+}
+export function areKineticLinkNeighbors(bodyA, bodyB) {
+    const physIdA = bodyA._physId;
+    const physIdB = bodyB._physId;
+    if (physIdA === undefined || physIdA === -1 || physIdB === undefined || physIdB === -1) return false;
+    return areKineticLinkNeighborsSlab(physIdA, physIdB);
 }
 const parent = new Int32Array(MAX_PHYS_BODIES);
 const rank = new Int32Array(MAX_PHYS_BODIES);
@@ -3495,16 +3553,19 @@ export function wakeKineticBody(entity) {
     if (!entity.isSleeping && entity._sleepFrames === 0) return;
     entity._sleepFrames = 0;
     entity.isSleeping = false;
-    const eids = entity._linkNeighborEids;
-    const count = entity._linkNeighborEidCount ?? 0;
-    if (eids && count > 0) {
-        for (let i = 0; i < count; i++) {
-            const peer = constraintBodyAt(eids[i]);
-            if (!peer || peer === entity) continue;
-            peer._sleepFrames = 0;
-            peer.isSleeping = false;
+    const physId = entity._physId;
+    if (physId !== undefined && physId !== -1) {
+        const count = kineticDynamicSlab.linkNeighborCount[physId];
+        if (count > 0) {
+            const offset = kineticDynamicSlab.linkNeighborOffset[physId];
+            for (let i = 0; i < count; i++) {
+                const peer = constraintBodyAt(linkNeighborEidsArena[offset + i]);
+                if (!peer || peer === entity) continue;
+                peer._sleepFrames = 0;
+                peer.isSleeping = false;
+            }
+            return;
         }
-        return;
     }
     const peers = entity._kineticIslandPeers;
     if (!peers) return;
