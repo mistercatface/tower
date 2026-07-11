@@ -14,7 +14,7 @@ import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { FractureEngine, FRACTURE_TUNING } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { WallCollisionResolver, createWallHitBuffer } from "../Libraries/Physics/physics.js";
+import { WallCollisionResolver, createWallHitBuffer, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
@@ -375,6 +375,8 @@ describe("kinetic wall damage", () => {
         const ballProp = new WorldProp(14, 8, "ball", 0);
         ballProp.vx = 560;
         ballProp.vy = 0;
+        ballProp._physId = 0;
+        snapshotKineticBodySlab([ballProp]);
         
         const resolver = new WallCollisionResolver();
         const candidates = [];
@@ -410,6 +412,8 @@ describe("kinetic wall damage", () => {
         const ball = new WorldProp(cellX - 6, cellY, "ball", 0);
         ball.vx = 560;
         ball.vy = 0;
+        ball._physId = 0;
+        snapshotKineticBodySlab([ball]);
         const candidates = [];
         state.obstacleGrid.appendStaticWallProxiesNearWorld(ball.x, ball.y, ball.radius + 32, candidates);
         assert.ok(candidates.length > 0);

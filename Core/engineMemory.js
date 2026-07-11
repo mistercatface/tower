@@ -82,8 +82,22 @@ export const MAX_ISLAND_GROUPS = 256;
 export const WARM_START_CACHE_SIZE = 16384;
 export const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
 export const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2;
+export const MAX_KINETIC_DEBRIS = 4096 * 4;
+export const MAX_PENDING_WALL_BREAKS = 256;
+export const F_SHATTER_SEEDS = ENGINE_FRAC_BASE + 34;
+export const G_WX = ENGINE_PHYS_BASE + 104;
+export const G_WY = ENGINE_PHYS_BASE + 105;
+export const G_LX = ENGINE_PHYS_BASE + 106;
+export const G_LY = ENGINE_PHYS_BASE + 107;
+export const G_OX = ENGINE_PHYS_BASE + 108;
+export const G_OY = ENGINE_PHYS_BASE + 109;
 export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     const cur = obj[key];
+    if (!cur) {
+        const next = new Int32Array(Math.max(minCap, 16));
+        obj[key] = next;
+        return next;
+    }
     if (cur.length >= minCap) return cur;
     const next = new Int32Array(Math.max(minCap, cur.length * 2));
     const n = copyLen < 0 ? cur.length : copyLen;
@@ -91,6 +105,47 @@ export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     obj[key] = next;
     return next;
 }
+export function ensureGrowF32(obj, key, minCap, copyLen = -1) {
+    const cur = obj[key];
+    if (!cur) {
+        const next = new Float32Array(Math.max(minCap, 16));
+        obj[key] = next;
+        return next;
+    }
+    if (cur.length >= minCap) return cur;
+    const next = new Float32Array(Math.max(minCap, cur.length * 2));
+    const n = copyLen < 0 ? cur.length : copyLen;
+    if (n > 0) next.set(cur.subarray(0, Math.min(n, cur.length)));
+    obj[key] = next;
+    return next;
+}
+export class GrowI32 {
+    constructor(initialCap = 256) {
+        this.buf = new Int32Array(initialCap);
+        this.used = 0;
+    }
+    ensure(minCap) {
+        if (this.buf.length >= minCap) return this.buf;
+        const next = new Int32Array(Math.max(minCap, this.buf.length * 2));
+        if (this.used > 0) next.set(this.buf.subarray(0, this.used));
+        this.buf = next;
+        return this.buf;
+    }
+}
+export class GrowF32 {
+    constructor(initialCap = 256) {
+        this.buf = new Float32Array(initialCap);
+        this.used = 0;
+    }
+    ensure(minCap) {
+        if (this.buf.length >= minCap) return this.buf;
+        const next = new Float32Array(Math.max(minCap, this.buf.length * 2));
+        if (this.used > 0) next.set(this.buf.subarray(0, this.used));
+        this.buf = next;
+        return this.buf;
+    }
+}
+export const pickWorldPoly = new GrowF32(64);
 export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), linkNeighborOffset: new Int32Array(MAX_PHYS_BODIES), linkNeighborCount: new Int32Array(MAX_PHYS_BODIES), linkNeighborEids: new Int32Array(256), linkNeighborEidsUsed: 0, r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
@@ -160,3 +215,8 @@ export const sleepComponentHasBlocker = new Uint8Array(MAX_PHYS_BODIES);
 export const sleepComponentMemberCount = new Int32Array(MAX_PHYS_BODIES);
 export const kineticSleepScratch = { neighborEids: new Int32Array(256) };
 export const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
+export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
+export const sleepContactBuffer = { count: 0, physIdA: new Int32Array(MAX_CONTACTS), physIdB: new Int32Array(MAX_CONTACTS), resting: new Uint8Array(MAX_CONTACTS), _index: new Map() };
+export const kineticDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_KINETIC_DEBRIS), y: new Float32Array(MAX_KINETIC_DEBRIS), vx: new Float32Array(MAX_KINETIC_DEBRIS), vy: new Float32Array(MAX_KINETIC_DEBRIS), w: new Float32Array(MAX_KINETIC_DEBRIS), facing: new Float32Array(MAX_KINETIC_DEBRIS), ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
+export const pendingWallBreaks = { count: 0, keyToRow: new Map(), kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
+export const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };

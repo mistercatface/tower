@@ -1,19 +1,18 @@
 import { pruneKineticConstraintsForBody, resolveBodyRadius, entityFacing } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY } from "../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, ensureGrowI32, pickWorldPoly } from "../Core/engineMemory.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
 import { entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
 const EMPTY_KINDS = ["worldProp"];
 const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
-let PICK_WORLD_POLY = new Float32Array(64);
-function worldPropFootprintInto(out, prop, shape) {
+function worldPropFootprintInto(prop, shape) {
     const facing = entityFacing(prop);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const verts = shape.vertices;
     const count = verts.length;
-    if (out.length < count) out = new Float32Array(count);
+    const out = pickWorldPoly.ensure(count);
     for (let i = 0; i < count; i += 2) {
         const lx = verts[i];
         const ly = verts[i + 1];
@@ -36,8 +35,7 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
         }
         if (shape.type === "Polygon") {
             sawPolygon = true;
-            PICK_WORLD_POLY = worldPropFootprintInto(PICK_WORLD_POLY, prop, shape);
-            const worldPoly = PICK_WORLD_POLY;
+            const worldPoly = worldPropFootprintInto(prop, shape);
             const floatCount = shape.vertices.length;
             if (pointInPolygon(worldX, worldY, worldPoly.subarray(0, floatCount))) return true;
             if (padding <= 0) continue;
@@ -122,10 +120,7 @@ export class EntityArena {
         return allocateEntityEid();
     }
     _ensureLiveCap(n) {
-        if (this._liveEids.length >= n) return;
-        const next = new Int32Array(Math.max(n, this._liveEids.length * 2));
-        next.set(this._liveEids);
-        this._liveEids = next;
+        ensureGrowI32(this, "_liveEids", n);
     }
     _addLiveEid(eid) {
         this._ensureLiveCap(this._liveCount + 1);
@@ -149,12 +144,8 @@ export class EntityArena {
     }
     _borrowIdBuffer(filterId, minCap) {
         const key = filterId ?? "";
-        let buf = this._idSlotByFilterId[key];
-        if (!buf || buf.length < minCap) {
-            buf = new Int32Array(Math.max(minCap, buf ? buf.length * 2 : 256));
-            this._idSlotByFilterId[key] = buf;
-        }
-        return buf;
+        ensureGrowI32(this._idSlotByFilterId, key, minCap);
+        return this._idSlotByFilterId[key];
     }
     _materializeIds(ids, count, filterId) {
         const out = this._borrowQueryResultBuffer(filterId);
@@ -307,10 +298,7 @@ export class EntityArena {
         return this._materializeIds(packed.ids, packed.count, filterId);
     }
     _ensureCandidateCap(n) {
-        if (this._candidateEids.length >= n) return;
-        const next = new Int32Array(Math.max(n, this._candidateEids.length * 2));
-        next.set(this._candidateEids);
-        this._candidateEids = next;
+        ensureGrowI32(this, "_candidateEids", n);
     }
     _pushCandidateEid(eid) {
         this._ensureCandidateCap(this._candidateCount + 1);

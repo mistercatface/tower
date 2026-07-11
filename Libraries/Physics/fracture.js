@@ -1,10 +1,8 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { entityFacing, wakeKineticBody, KINETIC_PAIR_TIER, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
-import { kineticDynamicSlab } from "../../Core/engineMemory.js";
-import { entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../../Core/engineMemory.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
-import { ENGINE_F32, ENGINE_FRAC_BASE } from "../../Core/engineMemory.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
@@ -13,13 +11,11 @@ const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
 const GLASS_MIN_SHARD_AREA = FRACTURE_TUNING.glass.minShardArea;
 export const GLASS_MAX_SHARDS_PER_SHATTER = FRACTURE_TUNING.glass.maxShardsPerShatter;
 const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
-const SHATTER_SEEDS = new Float32Array(GLASS_MAX_SHARDS_PER_SHATTER * 2);
+const SHATTER_SEEDS = ENGINE_F32.subarray(F_SHATTER_SEEDS, F_SHATTER_SEEDS + GLASS_MAX_SHARDS_PER_SHATTER * 2);
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
 export const MAX_SHARD_FOOTPRINT_FLOATS = GEOM_VERT_BUCKETS[GEOM_VERT_BUCKETS.length - 1] * 2;
 const MAX_FRACTURE_DEBRIS = 64;
 const MAX_CLIP_VERTS = 512;
-const MAX_KINETIC_DEBRIS = 4096 * 4;
-const MAX_PENDING_WALL_BREAKS = 256;
 const WALL_KIND_VOXEL = 0;
 const WALL_KIND_RAIL = 1;
 const WALL_KEY_RAIL_BIT = 1 << 30;
@@ -40,7 +36,6 @@ function copyDebrisPolygonGeometry(dst, src) {
     dst.radius = src.radius;
     invalidatePropFootprintKey(dst);
 }
-const kineticDebrisSlab = { activeCount: 0, x: new Float32Array(MAX_KINETIC_DEBRIS), y: new Float32Array(MAX_KINETIC_DEBRIS), vx: new Float32Array(MAX_KINETIC_DEBRIS), vy: new Float32Array(MAX_KINETIC_DEBRIS), w: new Float32Array(MAX_KINETIC_DEBRIS), facing: new Float32Array(MAX_KINETIC_DEBRIS), ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 const kineticDebrisFreePool = [];
 let kineticDebrisNextId = 0x50000000;
 export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
@@ -334,14 +329,10 @@ function dropShatterSeed(seeds, seedIndex, seedCount) {
     }
     return last;
 }
-function createPendingWallBreaks() {
-    return { count: 0, keyToRow: new Map(), kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
-}
 function clearPendingWallBreaks(pending) {
     pending.keyToRow.clear();
     pending.count = 0;
 }
-const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 class KineticDebrisBody {
     constructor(store) {
         this.isKineticDebris = true;
@@ -757,7 +748,8 @@ function pendingTargetStillValid(grid, pending, row) {
     return isRailWallEdge(edge);
 }
 export function createGridWallDamage(state, config) {
-    return { config, pending: createPendingWallBreaks(), commit: createDeferredGridWallCommit(state), spatialFrame: null, lastCommitBounds: null, lastSpawned: [], lastSpawnedCount: 0 };
+    clearPendingWallBreaks(pendingWallBreaks);
+    return { config, pending: pendingWallBreaks, commit: createDeferredGridWallCommit(state), spatialFrame: null, lastCommitBounds: null, lastSpawned: [], lastSpawnedCount: 0 };
 }
 export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
     const wallDamage = state.gridWallDamage;

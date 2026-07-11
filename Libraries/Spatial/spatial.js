@@ -1,9 +1,8 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind, entityNext, ensureGrowI32 } from "../../Core/engineMemory.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
-import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -11,7 +10,6 @@ import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
 import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, bindEntitySlot, clearWorldPropSpawnPose, ENTITY_FLAG_KINETIC } from "../Entity/entitySlots.js";
-import { entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind } from "../../Core/engineMemory.js";
 export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
     return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
 }
@@ -100,10 +98,10 @@ export class SpatialFrameCore {
     }
     ensureNeighborEids(entity) {
         if (entity._neighborsFrameId === this.frameId) return entity._neighborEidCount;
-        if (!entity._neighborEids) entity._neighborEids = new Int32Array(16);
+        ensureGrowI32(entity, "_neighborEids", 16);
         let count = this.entityGrid.collectNearbyEidsInto(entity, entity._neighborEids, entity._neighborEids.length);
         while (count < 0) {
-            entity._neighborEids = new Int32Array(entity._neighborEids.length * 2);
+            ensureGrowI32(entity, "_neighborEids", entity._neighborEids.length * 2);
             count = this.entityGrid.collectNearbyEidsInto(entity, entity._neighborEids, entity._neighborEids.length);
         }
         entity._neighborEidCount = count;
@@ -1610,7 +1608,7 @@ export class EntityGrid {
         this.cols = 0;
         this.rows = 0;
         this.cellHead = new Int32Array(0);
-        this.entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
+        this.entityNext = entityNext;
         this.activeEids = new Int32Array(256);
         this.activeEidCount = 0;
         this.queryGen = 0;
@@ -1654,10 +1652,7 @@ export class EntityGrid {
         return idx;
     }
     _ensureActiveEidCap(n) {
-        if (this.activeEids.length >= n) return;
-        const next = new Int32Array(Math.max(n, this.activeEids.length * 2));
-        next.set(this.activeEids);
-        this.activeEids = next;
+        ensureGrowI32(this, "activeEids", n);
     }
     insert(entity) {
         if (entity._physId === undefined) {
@@ -1665,11 +1660,6 @@ export class EntityGrid {
             return;
         }
         const eid = entity._physId;
-        if (eid >= this.entityNext.length) {
-            const newNext = new Int32Array(this.entityNext.length * 2).fill(-1);
-            newNext.set(this.entityNext);
-            this.entityNext = newNext;
-        }
         const x = entity.x;
         const y = entity.y;
         entityRefs[eid] = entity;

@@ -46,6 +46,7 @@ import {
     sleepComponentMemberCount as componentMemberCount,
     kineticSleepScratch,
     pairHashKeys,
+    sleepContactBuffer,
     MAX_PHYS_BODIES,
     MAX_CONTACTS,
     MAX_KINETIC_PAIRS,
@@ -2809,32 +2810,25 @@ export function ensureKineticContactPairs(tick, outPairs) {
     }
     return outPairs;
 }
-export const sleepContactBuffer = {
-    count: 0,
-    physIdA: new Int32Array(MAX_CONTACTS),
-    physIdB: new Int32Array(MAX_CONTACTS),
-    resting: new Uint8Array(MAX_CONTACTS),
-    _index: new Map(),
-    reset() {
-        this.count = 0;
-        this._index.clear();
-    },
-    add(idA, idB, isResting) {
-        const key = pairPhysKey(idA, idB);
-        const existing = this._index.get(key);
-        if (existing !== undefined) {
-            if (isResting) this.resting[existing] = 1;
-            return;
-        }
-        if (this.count < MAX_CONTACTS) {
-            this._index.set(key, this.count);
-            this.physIdA[this.count] = idA;
-            this.physIdB[this.count] = idB;
-            this.resting[this.count] = isResting ? 1 : 0;
-            this.count++;
-        }
-    },
-};
+function resetSleepContactBuffer() {
+    sleepContactBuffer.count = 0;
+    sleepContactBuffer._index.clear();
+}
+function addSleepContact(idA, idB, isResting) {
+    const key = pairPhysKey(idA, idB);
+    const existing = sleepContactBuffer._index.get(key);
+    if (existing !== undefined) {
+        if (isResting) sleepContactBuffer.resting[existing] = 1;
+        return;
+    }
+    if (sleepContactBuffer.count < MAX_CONTACTS) {
+        sleepContactBuffer._index.set(key, sleepContactBuffer.count);
+        sleepContactBuffer.physIdA[sleepContactBuffer.count] = idA;
+        sleepContactBuffer.physIdB[sleepContactBuffer.count] = idB;
+        sleepContactBuffer.resting[sleepContactBuffer.count] = isResting ? 1 : 0;
+        sleepContactBuffer.count++;
+    }
+}
 const sKineticContactStats = { innerIterations: 0, maxImpulse: 0, restingCount: 0, contactCount: 0 };
 const sKineticSolverStats = { outerIterations: 0, maxIterations: 0, pairCount: 0 };
 export function resolveKineticContactPassWithPairs(tick, pairs) {
@@ -2852,7 +2846,7 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     tick.world.kinetic.kineticContactStats = sKineticContactStats;
     storeKineticWarmStartCache(contacts);
     applyKineticContactWake(contacts, spatialFrame);
-    for (let i = 0; i < contacts.count; i++) sleepContactBuffer.add(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
+    for (let i = 0; i < contacts.count; i++) addSleepContact(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
     return contacts;
 }
 export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
@@ -3029,7 +3023,7 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
     const hasActiveBodies = activeBodies.length > 0;
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
-        sleepContactBuffer.reset();
+        resetSleepContactBuffer();
         gatherKineticConstraintSlab(tick);
         ensureKineticContactPairs(tick, persistedKineticPairBuffer);
         const patchBodies = tick.world.kinetic.substepPairPatchBodies ?? (tick.world.kinetic.substepPairPatchBodies = []);

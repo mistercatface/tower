@@ -1,5 +1,6 @@
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache } from "../Canvas/canvas.js";
 import { forEachCardinalNeighborIdx } from "./spatial.js";
+import { ensureGrowI32 } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const PORTAL_NONE = -1;
 const PORTAL_STRIP_KEYS = ["exit", "entry"];
@@ -8,10 +9,7 @@ function bumpFloorNavEpoch(grid) {
     grid.invalidateNavTopology();
 }
 function growActivePortalPairsIfNeeded(grid, minLength) {
-    if (minLength <= grid.activePortalPairs.length) return;
-    const grown = new Int32Array(Math.max(minLength, grid.activePortalPairs.length * 2));
-    grown.set(grid.activePortalPairs);
-    grid.activePortalPairs = grown;
+    ensureGrowI32(grid, "activePortalPairs", minLength);
 }
 function upsertActivePortalPair(grid, exitIdx, entryIdx) {
     const pairs = grid.activePortalPairs;
