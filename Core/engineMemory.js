@@ -324,3 +324,50 @@ export function allocStaticWallSegment() {
     staticWallSegmentSlab.count = id + 1;
     return id;
 }
+export const SPRITE_CACHE_FLAG_LIVE = 1;
+export const SPRITE_CACHE_FLAG_BITMAP = 2;
+export const SPRITE_CACHE_PROP_INIT = 2560;
+export const SPRITE_CACHE_GRID_INIT = 512;
+export const SPRITE_CACHE_OVERLAY_INIT = 1024;
+export function createSpriteCacheSlab(initialLive) {
+    const capacity = initialLive * 4;
+    const hashCap = 1 << (32 - Math.clz32(Math.max(8, capacity * 2 - 1)));
+    const slab = {
+        capacity,
+        initialLive,
+        maxLive: initialLive,
+        liveCount: 0,
+        lruHead: -1,
+        lruTail: -1,
+        keyLo: new Uint32Array(capacity),
+        keyHi: new Uint32Array(capacity),
+        bakeScale: new Float32Array(capacity),
+        anchorX: new Float32Array(capacity),
+        anchorY: new Float32Array(capacity),
+        drawW: new Float32Array(capacity),
+        drawH: new Float32Array(capacity),
+        flags: new Uint8Array(capacity),
+        frameCount: new Uint16Array(capacity),
+        frameWidthCanvas: new Uint16Array(capacity),
+        lruPrev: new Int32Array(capacity),
+        lruNext: new Int32Array(capacity),
+        slotGen: new Uint32Array(capacity),
+        hashTable: new Int32Array(hashCap),
+        hashCap,
+        keys: new Array(capacity),
+        handles: new Array(capacity),
+        freeSlots: new Int32Array(capacity),
+        freeCount: 0,
+        telemetryRequests: 0,
+        telemetryMisses: 0,
+        telemetryEvictions: 0,
+    };
+    slab.lruPrev.fill(-1);
+    slab.lruNext.fill(-1);
+    slab.hashTable.fill(-1);
+    for (let i = 0; i < capacity; i++) slab.freeSlots[slab.freeCount++] = capacity - 1 - i;
+    return slab;
+}
+export const propSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_PROP_INIT);
+export const gridStampSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_GRID_INIT);
+export const overlaySpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_OVERLAY_INIT);

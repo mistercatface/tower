@@ -1,7 +1,6 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
-import { LruMap } from "../DataStructures/LruMap.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
-import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, createSpriteCacheSlab, SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP } from "../../Core/engineMemory.js";
 import { packRollOrientId, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
@@ -368,73 +367,231 @@ export class SpriteCache {
         this.cache.clear();
     }
 }
-/**
- * Dispose a cache entry's canvas/bitmap handle correctly.
- * ImageBitmaps must be explicitly closed; OffscreenCanvases go back to the pool.
- * @param {object} entry
- */
-function disposeEntry(entry) {
-    entry.disposed = true;
-    if (entry._isBitmap) entry.canvas.close();
-    else releaseOffscreenCanvas(entry.canvas);
+function disposeSpriteSlot(slab, slot) {
+    const handle = slab.handles[slot];
+    const flags = slab.flags[slot];
+    slab.slotGen[slot] = (slab.slotGen[slot] + 1) >>> 0 || 1;
+    slab.flags[slot] = 0;
+    slab.handles[slot] = null;
+    slab.keys[slot] = null;
+    if (!handle) return;
+    if (flags & SPRITE_CACHE_FLAG_BITMAP) handle.close();
+    else releaseOffscreenCanvas(handle);
 }
-/**
- * LRU cache of offscreen canvas sprites (bake once, blit many).
- * Entries are asynchronously promoted to GPU-resident ImageBitmap after the
- * first bake, so subsequent blits avoid per-frame texture uploads.
- *
- * @param {{ maxItems?: number }} [options]
- */
+function spriteCacheKeyParts(key) {
+    if (typeof key === "bigint") {
+        let lo = 0;
+        let hi = 0;
+        let k = key < 0n ? -key : key;
+        lo = Number(k & 0xffffffffn) >>> 0;
+        k >>= 32n;
+        hi = Number(k & 0xffffffffn) >>> 0;
+        k >>= 32n;
+        while (k > 0n) {
+            lo ^= Number(k & 0xffffffffn) >>> 0;
+            lo = Math.imul(lo, 16777619) >>> 0;
+            k >>= 32n;
+        }
+        return { lo, hi };
+    }
+    const s = String(key);
+    let lo = 2166136261;
+    let hi = 2166136261 ^ 0x9e3779b9;
+    for (let i = 0; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        lo ^= c;
+        lo = Math.imul(lo, 16777619) >>> 0;
+        hi ^= c;
+        hi = Math.imul(hi, 2246822519) >>> 0;
+    }
+    return { lo, hi };
+}
+function spriteCacheHashIndex(slab, lo, hi) {
+    return ((lo ^ Math.imul(hi, 0x9e3779b1)) >>> 0) & (slab.hashCap - 1);
+}
+function spriteCacheLruUnlink(slab, slot) {
+    const prev = slab.lruPrev[slot];
+    const next = slab.lruNext[slot];
+    if (prev >= 0) slab.lruNext[prev] = next;
+    else slab.lruHead = next;
+    if (next >= 0) slab.lruPrev[next] = prev;
+    else slab.lruTail = prev;
+    slab.lruPrev[slot] = -1;
+    slab.lruNext[slot] = -1;
+}
+function spriteCacheLruAppend(slab, slot) {
+    const tail = slab.lruTail;
+    slab.lruPrev[slot] = tail;
+    slab.lruNext[slot] = -1;
+    if (tail >= 0) slab.lruNext[tail] = slot;
+    else slab.lruHead = slot;
+    slab.lruTail = slot;
+}
+function spriteCacheLruTouch(slab, slot) {
+    if (slab.lruTail === slot) return;
+    spriteCacheLruUnlink(slab, slot);
+    spriteCacheLruAppend(slab, slot);
+}
+function spriteCacheHashRemove(slab, slot) {
+    const lo = slab.keyLo[slot];
+    const hi = slab.keyHi[slot];
+    let idx = spriteCacheHashIndex(slab, lo, hi);
+    const cap = slab.hashCap;
+    for (let probe = 0; probe < cap; probe++) {
+        const at = slab.hashTable[idx];
+        if (at === -1) return;
+        if (at === slot) {
+            slab.hashTable[idx] = -2;
+            return;
+        }
+        idx = (idx + 1) & (cap - 1);
+    }
+}
+function spriteCacheHashInsert(slab, slot) {
+    let idx = spriteCacheHashIndex(slab, slab.keyLo[slot], slab.keyHi[slot]);
+    const cap = slab.hashCap;
+    for (let probe = 0; probe < cap; probe++) {
+        const at = slab.hashTable[idx];
+        if (at < 0) {
+            slab.hashTable[idx] = slot;
+            return;
+        }
+        idx = (idx + 1) & (cap - 1);
+    }
+    throw new Error("spriteCacheHashInsert: hash table full");
+}
+function spriteCacheFindSlot(slab, key, lo, hi) {
+    let idx = spriteCacheHashIndex(slab, lo, hi);
+    const cap = slab.hashCap;
+    for (let probe = 0; probe < cap; probe++) {
+        const at = slab.hashTable[idx];
+        if (at === -1) return -1;
+        if (at >= 0 && slab.keyLo[at] === lo && slab.keyHi[at] === hi && slab.keys[at] === key && slab.flags[at] & SPRITE_CACHE_FLAG_LIVE) return at;
+        idx = (idx + 1) & (cap - 1);
+    }
+    return -1;
+}
+function spriteCacheEvictHead(slab) {
+    const slot = slab.lruHead;
+    if (slot < 0) return;
+    spriteCacheHashRemove(slab, slot);
+    spriteCacheLruUnlink(slab, slot);
+    disposeSpriteSlot(slab, slot);
+    slab.freeSlots[slab.freeCount++] = slot;
+    slab.liveCount--;
+    slab.telemetryEvictions++;
+}
+function spriteCacheMaybeGrowMaxLive(slab) {
+    slab.telemetryRequests++;
+    if (slab.telemetryRequests < 2000) return;
+    const missRate = slab.telemetryMisses / slab.telemetryRequests;
+    if (slab.telemetryEvictions > 0 && missRate > 0.2 && slab.maxLive < slab.capacity) slab.maxLive = Math.min(slab.capacity, Math.ceil(slab.maxLive * 1.5));
+    slab.telemetryRequests = 0;
+    slab.telemetryMisses = 0;
+    slab.telemetryEvictions = 0;
+}
+export function spriteCacheGet(slab, key) {
+    const { lo, hi } = spriteCacheKeyParts(key);
+    const slot = spriteCacheFindSlot(slab, key, lo, hi);
+    if (slot < 0) return -1;
+    spriteCacheLruTouch(slab, slot);
+    return slot;
+}
+export function spriteCacheHas(slab, key) {
+    const { lo, hi } = spriteCacheKeyParts(key);
+    return spriteCacheFindSlot(slab, key, lo, hi) >= 0;
+}
+export function spriteCacheSet(slab, key, sourceCanvas, meta = {}) {
+    const { lo, hi } = spriteCacheKeyParts(key);
+    const existing = spriteCacheFindSlot(slab, key, lo, hi);
+    if (existing >= 0) {
+        spriteCacheHashRemove(slab, existing);
+        spriteCacheLruUnlink(slab, existing);
+        disposeSpriteSlot(slab, existing);
+        slab.freeSlots[slab.freeCount++] = existing;
+        slab.liveCount--;
+    }
+    while (slab.liveCount >= slab.maxLive) spriteCacheEvictHead(slab);
+    if (slab.freeCount <= 0) throw new Error("spriteCacheSet: slab capacity exceeded");
+    const slot = slab.freeSlots[--slab.freeCount];
+    const bakeScale = meta.bakeScale ?? 1;
+    const gen = (slab.slotGen[slot] + 1) >>> 0 || 1;
+    slab.slotGen[slot] = gen;
+    slab.keys[slot] = key;
+    slab.keyLo[slot] = lo;
+    slab.keyHi[slot] = hi;
+    slab.handles[slot] = sourceCanvas;
+    slab.bakeScale[slot] = bakeScale;
+    slab.anchorX[slot] = meta.anchorX ?? 0;
+    slab.anchorY[slot] = meta.anchorY ?? 0;
+    slab.drawW[slot] = meta.drawW ?? sourceCanvas.width / bakeScale;
+    slab.drawH[slot] = meta.drawH ?? sourceCanvas.height / bakeScale;
+    slab.frameCount[slot] = meta.frameCount ?? 1;
+    slab.frameWidthCanvas[slot] = meta.frameWidthCanvas ?? (meta.frameCount > 1 ? sourceCanvas.width / meta.frameCount : sourceCanvas.width);
+    slab.flags[slot] = SPRITE_CACHE_FLAG_LIVE;
+    spriteCacheHashInsert(slab, slot);
+    spriteCacheLruAppend(slab, slot);
+    slab.liveCount++;
+    createImageBitmap(sourceCanvas)
+        .then((bitmap) => {
+            if (!(slab.flags[slot] & SPRITE_CACHE_FLAG_LIVE) || slab.slotGen[slot] !== gen || slab.keys[slot] !== key) {
+                bitmap.close();
+                return;
+            }
+            const prev = slab.handles[slot];
+            slab.handles[slot] = bitmap;
+            slab.flags[slot] = SPRITE_CACHE_FLAG_LIVE | SPRITE_CACHE_FLAG_BITMAP;
+            if (prev && prev !== bitmap) releaseOffscreenCanvas(prev);
+        })
+        .catch(() => {});
+    return slot;
+}
+export function spriteCacheClear(slab) {
+    let slot = slab.lruHead;
+    while (slot >= 0) {
+        const next = slab.lruNext[slot];
+        disposeSpriteSlot(slab, slot);
+        slot = next;
+    }
+    slab.lruHead = -1;
+    slab.lruTail = -1;
+    slab.liveCount = 0;
+    slab.freeCount = 0;
+    for (let i = 0; i < slab.capacity; i++) {
+        slab.freeSlots[slab.freeCount++] = slab.capacity - 1 - i;
+        slab.lruPrev[i] = -1;
+        slab.lruNext[i] = -1;
+    }
+    slab.hashTable.fill(-1);
+    slab.telemetryRequests = 0;
+    slab.telemetryMisses = 0;
+    slab.telemetryEvictions = 0;
+}
+function spriteCacheGetOrBake(slab, key, bakeFn) {
+    spriteCacheMaybeGrowMaxLive(slab);
+    let slot = spriteCacheGet(slab, key);
+    if (slot >= 0) return slot;
+    slab.telemetryMisses++;
+    const result = bakeFn();
+    if (result instanceof OffscreenCanvas || (typeof HTMLCanvasElement !== "undefined" && result instanceof HTMLCanvasElement)) return spriteCacheSet(slab, key, result, { drawRatio: result.drawRatio, verticalShift: result.verticalShift });
+    const { canvas, meta = {} } = result;
+    return spriteCacheSet(slab, key, canvas, meta);
+}
+/** Test/harness factory — wraps an isolated SoA slab with set/get/clear. */
 export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
-    const cache = new LruMap(maxItems, {
-        onEvict: (key, entry) => {
-            disposeEntry(entry);
-        },
-    });
+    const slab = createSpriteCacheSlab(maxItems);
     return {
-        maxItems,
-        cache,
-        get(key) {
-            return cache.get(key) ?? null;
-        },
-        /**
-         * @param {string} key
-         * @param {OffscreenCanvas | HTMLCanvasElement} sourceCanvas
-         * @param {Record<string, unknown>} [meta]
-         */
+        maxItems: slab.maxLive,
         set(key, sourceCanvas, meta = {}) {
-            const existing = cache.peek(key);
-            if (existing) disposeEntry(existing);
-            const bakeScale = meta.bakeScale ?? 1;
-            const entry = { canvas: sourceCanvas, _isBitmap: false, bakeScale, anchorX: meta.anchorX ?? 0, anchorY: meta.anchorY ?? 0, drawW: sourceCanvas.width / bakeScale, drawH: sourceCanvas.height / bakeScale, ...meta };
-            cache.set(key, entry);
-            // Asynchronously promote to a GPU-resident ImageBitmap so that
-            // subsequent ctx.drawImage calls are zero-copy.
-            createImageBitmap(sourceCanvas)
-                .then((bitmap) => {
-                    if (entry.disposed) {
-                        bitmap.close();
-                        return;
-                    }
-                    // Only apply if this entry is still the live one in the cache.
-                    const live = cache.get(key);
-                    if (live === entry) {
-                        entry.canvas = bitmap;
-                        entry._isBitmap = true;
-                        // The OffscreenCanvas is no longer needed — return it to the pool.
-                        releaseOffscreenCanvas(sourceCanvas);
-                    } else
-                        // Entry was already evicted or replaced; discard the bitmap.
-                        bitmap.close();
-                })
-                .catch(() => {
-                    // Promotion failed (e.g. canvas was closed). Keep OffscreenCanvas as-is.
-                });
-            return entry;
+            return spriteCacheSet(slab, key, sourceCanvas, meta);
+        },
+        get(key) {
+            const slot = spriteCacheGet(slab, key);
+            if (slot < 0) return null;
+            return { canvas: slab.handles[slot], bakeScale: slab.bakeScale[slot], anchorX: slab.anchorX[slot], anchorY: slab.anchorY[slot], drawW: slab.drawW[slot], drawH: slab.drawH[slot], frameCount: slab.frameCount[slot], frameWidthCanvas: slab.frameWidthCanvas[slot] };
         },
         clear() {
-            for (const entry of cache.values()) disposeEntry(entry);
-            cache.clear();
+            spriteCacheClear(slab);
         },
     };
 }
@@ -446,10 +603,6 @@ function packQuantizedViewBucket(dx, dy, step = SPRITE_VIEW_STEP, limit = SPRITE
     const keyDx = Math.round(clampedX / step);
     const keyDy = Math.round(clampedY / step);
     return ((keyDx + 32) << 6) | (keyDy + 32);
-}
-function quantizedViewAxisOffset(offset, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
-    const clamped = offset < -limit ? -limit : offset > limit ? limit : offset;
-    return Math.round(clamped / step) * step;
 }
 const SPRITE_KEY_PART_MASK = 0xfffff;
 const spriteKeyIntern = new Map();
@@ -496,84 +649,20 @@ function packZoomKeyBucket(zoom) {
     return Math.round(quantizePropBakeZoom(zoom) * 8);
 }
 const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex };
-/**
- * LRU baked-sprite cache with shared viewer-offset quantization.
- * Radial-elevation props use this; domain key/bake helpers live below.
- *
- * @param {{ maxItems?: number }} [options]
- */
-function createQuantizedSpriteCache({ maxItems = 2000 } = {}) {
-    const baked = createBakedSpriteCache({ maxItems });
-    const initialMaxItems = maxItems;
-    const telemetry = { requests: 0, misses: 0, evictions: 0 };
-    const originalOnEvict = baked.cache.onEvict;
-    baked.cache.onEvict = (key, value) => {
-        telemetry.evictions++;
-        if (originalOnEvict) originalOnEvict(key, value);
-    };
-    return {
-        maxItems: baked.maxItems,
-        cache: baked.cache,
-        telemetry,
-        get(key) {
-            return baked.get(key);
-        },
-        set(key, sourceCanvas, meta = {}) {
-            return baked.set(key, sourceCanvas, meta);
-        },
-        /**
-         * @param {string} key
-         * @param {() => OffscreenCanvas | { canvas: OffscreenCanvas, meta?: Record<string, unknown> }} bakeFn
-         */
-        getOrBake(key, bakeFn) {
-            this.telemetry.requests++;
-            const cached = baked.get(key);
-            if (!cached) this.telemetry.misses++;
-            // Evaluate cache pressure every 2000 requests.
-            // Grow the LRU only when the miss rate is high (>20%) AND we are still
-            // evicting entries — that combination reliably indicates the working set
-            // is genuinely larger than the current capacity.
-            // Hard cap at 4× the initial size so a pathological working set cannot
-            // exhaust GPU memory with unbounded ImageBitmap accumulation.
-            if (this.telemetry.requests >= 2000) {
-                const missRate = this.telemetry.misses / this.telemetry.requests;
-                if (this.telemetry.evictions > 0 && missRate > 0.2) {
-                    const cap = initialMaxItems * 4;
-                    if (baked.cache.maxSize < cap) {
-                        baked.cache.maxSize = Math.min(cap, Math.ceil(baked.cache.maxSize * 1.5));
-                        this.maxItems = baked.cache.maxSize;
-                    }
-                }
-                this.telemetry.requests = 0;
-                this.telemetry.misses = 0;
-                this.telemetry.evictions = 0;
-            }
-            if (cached) return cached;
-            const result = bakeFn();
-            if (result instanceof OffscreenCanvas || (typeof HTMLCanvasElement !== "undefined" && result instanceof HTMLCanvasElement)) return baked.set(key, result, { drawRatio: result.drawRatio, verticalShift: result.verticalShift });
-            const { canvas, meta = {} } = result;
-            return baked.set(key, canvas, meta);
-        },
-        clear() {
-            baked.clear();
-        },
-    };
-}
-export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null, frameIndex = 0) {
-    const bakeScale = sprite.bakeScale ?? 1;
-    const anchorX = sprite.anchorX ?? 0;
-    const anchorY = sprite.anchorY ?? 0;
-    const canvas = sprite.canvas ?? sprite;
-    const frameCount = sprite.frameCount ?? 1;
-    const frameWidthCanvas = sprite.frameWidthCanvas ?? canvas.width / frameCount;
-    const drawW = sprite.drawW ?? (frameCount > 1 ? frameWidthCanvas / bakeScale : canvas.width / bakeScale);
-    const drawH = sprite.drawH ?? canvas.height / bakeScale;
+export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, modifier = null, frameIndex = 0) {
+    const bakeScale = slab.bakeScale[slot];
+    const anchorX = slab.anchorX[slot];
+    const anchorY = slab.anchorY[slot];
+    const canvas = slab.handles[slot];
+    const frameCount = slab.frameCount[slot] || 1;
+    const frameWidthCanvas = slab.frameWidthCanvas[slot] || canvas.width / frameCount;
+    const drawW = slab.drawW[slot];
+    const drawH = slab.drawH[slot];
     const destX = worldX - anchorX;
     const destY = worldY - anchorY;
     const sx = frameCount > 1 ? (frameIndex % frameCount) * frameWidthCanvas : 0;
     const sw = frameCount > 1 ? frameWidthCanvas : canvas.width;
     const sh = canvas.height;
-    // Fast path for 99% of sprites that have no modifier — avoid any optional-chain reads.
     if (!modifier) {
         ctx.drawImage(canvas, sx, 0, sw, sh, destX, destY, drawW, drawH);
         return;
@@ -597,8 +686,6 @@ export function blitAnchoredSprite(ctx, sprite, worldX, worldY, modifier = null,
     }
     ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
 }
-// ─── Radial elevation prop preset ────────────────────────────────────────────
-const propSpriteCache = createQuantizedSpriteCache({ maxItems: 2560 });
 const PROP_STAGE_PADDING = 40;
 function drawVisualAttachmentList(ctx, attachments, viewport) {
     for (let i = 0; i < attachments.length; i++) {
@@ -608,13 +695,6 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
         if (childDraw) childDraw(ctx, child, viewport);
     }
 }
-/**
- * @param {object} prop
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- * @param {string} renderKey
- * @param {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} draw
- * @param {number} [animFrame]
- */
 function getPropStaticKey(prop, renderKey) {
     const facing = readEntityFacing(prop);
     const voId = visualOverrideCacheId(prop);
@@ -637,13 +717,6 @@ function getPropStaticKey(prop, renderKey) {
     prop._cachedStaticKey = staticKey;
     return staticKey;
 }
-/**
- * @param {object} prop
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- * @param {string} renderKey
- * @param {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} draw
- * @param {number} [animFrame]
- */
 function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     const px = viewport.x;
     const py = viewport.y;
@@ -658,9 +731,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     key = (key << 16n) | BigInt(animFrame & 0xffff);
     key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
-    return propSpriteCache.getOrBake(key, () => {
-        const qDx = quantizedViewAxisOffset(dx, viewStep);
-        const qDy = quantizedViewAxisOffset(dy, viewStep);
+    return spriteCacheGetOrBake(propSpriteCacheSlab, key, () => {
         const parentFacing = quantizeAngle(readEntityFacing(prop), resolvePropQuantizeSteps(prop).facing);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         const baseR = Math.max(resolveBodyRadius(prop), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
@@ -686,9 +757,9 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     });
 }
 export function clearPropSpriteCache() {
-    propSpriteCache.clear();
-    overlaySpriteCache.clear();
-    gridStampSpriteCache.clear();
+    spriteCacheClear(propSpriteCacheSlab);
+    spriteCacheClear(overlaySpriteCacheSlab);
+    spriteCacheClear(gridStampSpriteCacheSlab);
     clearSpriteKeyIntern();
 }
 /** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
@@ -696,7 +767,6 @@ export const GRID_STAMP_RENDER_KEY = { FloorBelt: "grid_floor_belt", Portal: "gr
 export const BELT_FILMSTRIP_FRAMES = 8;
 export const BELT_FRAME_MS = 60;
 const GRID_STAMP_STAGE_PADDING = 40;
-const gridStampSpriteCache = createQuantizedSpriteCache({ maxItems: 512 });
 function buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize) {
     let key = BigInt(internSpriteKeyPart(renderKey));
     key = (key << 20n) | BigInt(internSpriteKeyPart(stripKey));
@@ -710,7 +780,7 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfEx
     const worldDiameter = stageR * 2;
     const pixelSize = Math.round(worldDiameter * zoom);
     const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
-    return gridStampSpriteCache.getOrBake(key, () => {
+    return spriteCacheGetOrBake(gridStampSpriteCacheSlab, key, () => {
         const bakeScale = resolvePropBakeScale(worldDiameter, undefined, false, zoom);
         const frameSpan = Math.ceil((stageR * 2.6 + GRID_STAMP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
@@ -733,7 +803,7 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfEx
 export function hasSharedGridStampFilmstrip(renderKey, stripKey, halfExtents, zoom) {
     const pixelSize = Math.round(halfExtents.x * 2 * (zoom ?? 1));
     const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom ?? 1, pixelSize);
-    return gridStampSpriteCache.get(key) != null;
+    return spriteCacheHas(gridStampSpriteCacheSlab, key);
 }
 export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey, packedList, packedCount, flowAngleForPacked, drawForPacked, frameCount = BELT_FILMSTRIP_FRAMES) {
     const halfExtents = { x: cellHalf, y: cellHalf };
@@ -744,29 +814,17 @@ export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey,
         const facing = flowAngleForPacked(packed);
         const pixelSize = Math.round(cellHalf * 2 * zoom);
         const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
-        if (gridStampSpriteCache.get(key)) continue;
+        if (spriteCacheHas(gridStampSpriteCacheSlab, key)) continue;
         getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, drawForPacked(packed), frameCount);
     }
 }
 export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfExtents, viewport, renderKey, stripKey, facing, draw, frameIndex, frameCount) {
-    const sprite = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount);
-    blitAnchoredSprite(ctx, sprite, worldX, worldY, null, frameIndex);
+    const slot = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount);
+    blitAnchoredSprite(ctx, gridStampSpriteCacheSlab, slot, worldX, worldY, null, frameIndex);
 }
 /** Render keys for baked sandbox/editor overlay glyphs. */
 export const OVERLAY_RENDER_KEY = { SelectionRing: "overlay_selection_ring", PathDestination: "overlay_path_destination", PathArrowHead: "overlay_path_arrow_head", FlowDirectionArrow: "overlay_flow_direction_arrow", WireEndpoint: "overlay_wire_endpoint", GridCellHighlight: "overlay_grid_cell_highlight", PathDebugNode: "overlay_path_debug_node" };
 const OVERLAY_STAGE_PADDING = 6;
-const overlaySpriteCache = createQuantizedSpriteCache({ maxItems: 1024 });
-/** @typedef {(ctx: CanvasRenderingContext2D, anchorX: number, anchorY: number) => void} OverlayDrawRecipe */
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} worldX
- * @param {number} worldY
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- * @param {string} renderKey
- * @param {string} customKey
- * @param {number} worldSpan
- * @param {OverlayDrawRecipe} draw
- */
 export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey, customKey, worldSpan, draw) {
     const px = viewport.x;
     const py = viewport.y;
@@ -775,7 +833,7 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
     key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
     key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
-    const sprite = overlaySpriteCache.getOrBake(key, () => {
+    const slot = spriteCacheGetOrBake(overlaySpriteCacheSlab, key, () => {
         const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
         const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
         const anchorX = worldSpan / 2 + OVERLAY_STAGE_PADDING;
@@ -788,23 +846,12 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
         bakeCtx.restore();
         return { canvas, meta: { anchorX, anchorY, bakeScale } };
     });
-    blitAnchoredSprite(ctx, sprite, worldX, worldY);
+    blitAnchoredSprite(ctx, overlaySpriteCacheSlab, slot, worldX, worldY);
 }
-/** @typedef {(ctx: CanvasRenderingContext2D, prop: object, viewport: import("../Viewport/Viewport.js").Viewport) => void} PropDrawRecipe */
-/**
- * Mandatory draw path for grid stamps and world props (except 3D building walls).
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {object} prop
- * @param {import("../Viewport/Viewport.js").Viewport} viewport
- * @param {string} renderKey
- * @param {PropDrawRecipe} draw
- * @param {number} [animFrame]
- */
 export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0) {
-    const sprite = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
+    const slot = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame);
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
-    blitAnchoredSprite(ctx, sprite, prop.x, prop.y, modifier);
+    blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, prop.x, prop.y, modifier);
 }
 /**
  * Post-bake draw transforms (alpha, clip, scale, position).
