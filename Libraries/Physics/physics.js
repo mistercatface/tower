@@ -203,16 +203,21 @@ export function normalizeKineticBody(body) {
     if (body.vy === undefined) body.vy = 0;
     if (body.angularVelocity === undefined) body.angularVelocity = 0;
     if (body.mass == null) body.mass = kineticMassFromFootprint(body);
-    body._kineticInvMass = 1 / body.mass;
+    const physId = body._physId;
+    if (physId === undefined || physId === -1) return body;
     const moment = body.momentOfInertia;
-    body._kineticInvI = moment ? 1 / moment : 0;
-    body._kineticRestitution = strategy.pairRestitution ?? -1;
-    body._kineticFriction = strategy.pairFriction ?? (strategy.wallPhysics ? strategy.wallPhysics.friction : -1);
+    const slab = kineticStaticSlab;
+    slab.mass[physId] = body.mass;
+    slab.invMass[physId] = 1 / body.mass;
+    slab.invI[physId] = moment ? 1 / moment : 0;
+    slab.entityId[physId] = body.id ?? -1;
+    slab.restitution[physId] = strategy.pairRestitution ?? -1;
+    slab.friction[physId] = strategy.pairFriction ?? (strategy.wallPhysics ? strategy.wallPhysics.friction : -1);
     return body;
 }
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
-export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
+export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
@@ -270,9 +275,11 @@ export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
 export function stampBroadphaseSlabFromEntity(physId, entity) {
     const slab = kineticDynamicSlab;
     const angle = entityFacing(entity);
-    const parts = getEntityCollisionParts(entity);
-    if (parts.length > 1) {
-        computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, parts);
+    const compound = entity.collisionParts;
+    if (compound?.length > 1) {
+        slab.partCount[physId] = compound.length;
+        slab.shapeKind[physId] = 0;
+        computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, compound);
         const hx = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
         const hy = (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5;
         const cos = Math.cos(angle);
@@ -284,13 +291,16 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
         slab.sin[physId] = sin;
         return;
     }
+    slab.partCount[physId] = 1;
     const shape = entity.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
+        slab.shapeKind[physId] = SHAPE_TYPE_ID.Circle;
         slab.bpKind[physId] = BP_KIND_CIRCLE;
         slab.r[physId] = shape.radius;
         return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
+        slab.shapeKind[physId] = SHAPE_TYPE_ID.Polygon;
         convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         slab.bpKind[physId] = BP_KIND_OBB;
         slab.hx[physId] = ENGINE_F32[P_VEC_A];
@@ -299,6 +309,7 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
         slab.sin[physId] = Math.sin(angle);
         return;
     }
+    slab.shapeKind[physId] = shape?.shapeTypeId ?? 0;
     slab.bpKind[physId] = BP_KIND_CIRCLE;
     slab.r[physId] = shape.radius || 0;
 }
@@ -306,14 +317,7 @@ export function writebackActiveKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) writebackEntitySlotPoseToRef(bodies[i]._physId, bodies[i]);
 }
 export function writeStaticKineticSlabSlot(body) {
-    const physId = body._physId;
-    const slab = kineticStaticSlab;
-    slab.mass[physId] = body.mass;
-    slab.invMass[physId] = body._kineticInvMass;
-    slab.invI[physId] = body._kineticInvI;
-    slab.entityId[physId] = body.id;
-    slab.restitution[physId] = body._kineticRestitution;
-    slab.friction[physId] = body._kineticFriction;
+    normalizeKineticBody(body);
 }
 export function clearActiveKineticBodySlab() {
     const slab = kineticDynamicSlab;
@@ -330,6 +334,8 @@ export function invalidateKineticSlabSlot(physId) {
     dyn.cos[physId] = 1;
     dyn.sin[physId] = 0;
     dyn.bpKind[physId] = 0;
+    dyn.partCount[physId] = 0;
+    dyn.shapeKind[physId] = 0;
     dyn.r[physId] = 0;
     dyn.hx[physId] = 0;
     dyn.hy[physId] = 0;
@@ -613,8 +619,7 @@ export function writeLivePolygon(body, src, floatCount) {
     if (!(shape instanceof LivePolygonShape)) {
         shape = new LivePolygonShape();
         body.shape = shape;
-        body._cachedCollisionPartsShape = undefined;
-        body._cachedCollisionPartsArray = undefined;
+        body._singleCollisionPart = undefined;
     }
     shape.vertices = floatCount === span.cap ? span.verts : span.verts.subarray(0, floatCount);
     shape.normals = floatCount === span.cap ? span.normals : span.normals.subarray(0, floatCount);
@@ -637,8 +642,7 @@ export function ensureLivePolygonCapacity(body, floatCount) {
     if (!(shape instanceof LivePolygonShape)) {
         shape = new LivePolygonShape();
         body.shape = shape;
-        body._cachedCollisionPartsShape = undefined;
-        body._cachedCollisionPartsArray = undefined;
+        body._singleCollisionPart = undefined;
     }
     const n = prevN >= 6 ? prevN : 0;
     if (n >= 6) {
@@ -803,14 +807,11 @@ export function getEntityCollisionParts(entity) {
     if (!entity) return EMPTY_ARRAY;
     if (entity.collisionParts?.length) return entity.collisionParts;
     const shape = entity.shape;
-    if (shape) {
-        if (entity._cachedCollisionPartsShape !== shape) {
-            entity._cachedCollisionPartsShape = shape;
-            entity._cachedCollisionPartsArray = [shape];
-        }
-        return entity._cachedCollisionPartsArray;
-    }
-    return EMPTY_ARRAY;
+    if (!shape) return EMPTY_ARRAY;
+    let arr = entity._singleCollisionPart;
+    if (!arr) entity._singleCollisionPart = arr = [shape];
+    else arr[0] = shape;
+    return arr;
 }
 export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
     const dx = xB - xA;
@@ -1285,10 +1286,7 @@ export function allowsKineticCollisionPair(primary, other, overlaps) {
     if (!other.strategy?.isKinetic) return false;
     const otherActive = other._activeSlot != null && other._activeSlot >= 0;
     if (otherActive && primary.id >= other.id) return false;
-    const physIdA = primary._physId;
-    const physIdB = other._physId;
-    if (physIdA !== undefined && physIdA !== -1 && physIdB !== undefined && physIdB !== -1) return shouldResolveKineticPairSlab(physIdA, physIdB, overlaps);
-    return shouldResolveKineticPair(primary, other, overlaps);
+    return shouldResolveKineticPairSlab(primary._physId, other._physId, overlaps);
 }
 function kineticOverlapsWallCandidates(px, py, body, candidates) {
     if (!candidates.length) return false;
@@ -1341,13 +1339,20 @@ const sBodyImpulseMotion = {
         return this._body.angularVelocity;
     },
     get invMass() {
-        return this._body._kineticInvMass;
+        const physId = this._body._physId;
+        if (physId !== undefined && physId !== -1) return kineticStaticSlab.invMass[physId];
+        return 1 / this._body.mass;
     },
     get invI() {
-        return this._body._kineticInvI;
+        const physId = this._body._physId;
+        if (physId !== undefined && physId !== -1) return kineticStaticSlab.invI[physId];
+        const moment = this._body.momentOfInertia;
+        return moment ? 1 / moment : 0;
     },
     get hasMoment() {
-        return this._body._kineticInvI !== 0;
+        const physId = this._body._physId;
+        if (physId !== undefined && physId !== -1) return kineticStaticSlab.invI[physId] !== 0;
+        return !!this._body.momentOfInertia;
     },
     velocityDefined() {
         return this._body.vx !== undefined && this._body.vy !== undefined;
@@ -1825,12 +1830,13 @@ function appendConstraintEntry(slab, item) {
     }
     normalizeKineticBody(bodyA);
     normalizeKineticBody(bodyB);
-    slab.static.massA[idx] = bodyA.mass;
-    slab.static.massB[idx] = bodyB.mass;
-    slab.static.invMassA[idx] = bodyA._kineticInvMass;
-    slab.static.invMassB[idx] = bodyB._kineticInvMass;
-    slab.static.invIA[idx] = bodyA._kineticInvI;
-    slab.static.invIB[idx] = bodyB._kineticInvI;
+    const stat = kineticStaticSlab;
+    slab.static.massA[idx] = stat.mass[physIdA];
+    slab.static.massB[idx] = stat.mass[physIdB];
+    slab.static.invMassA[idx] = stat.invMass[physIdA];
+    slab.static.invMassB[idx] = stat.invMass[physIdB];
+    slab.static.invIA[idx] = stat.invI[physIdA];
+    slab.static.invIB[idx] = stat.invI[physIdB];
     slab.dynamic.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
     slab.entry[idx] = item.entry;
 }
@@ -2095,8 +2101,8 @@ function projectAngleConstraint(slab, index) {
     const bodyA = constraintBodyAt(slab.physIdA[index]);
     const bodyB = constraintBodyAt(slab.physIdB[index]);
     if (bodyA.isSleeping && bodyB.isSleeping) return;
-    const facingA = bodyA.facing ?? 0;
-    const facingB = bodyB.facing ?? 0;
+    const facingA = entityFacing(bodyA);
+    const facingB = entityFacing(bodyB);
     const refAngle = slab.static.referenceAngle[index];
     const error = normalizeAngle(facingB - facingA - refAngle);
     if (Math.abs(error) < 1e-4) return;
@@ -2241,8 +2247,8 @@ function warmStartAngleConstraint(slab, i, dynSlab) {
     const bodyB = constraintBodyAt(slab.physIdB[i]);
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const facingA = bodyA.facing ?? 0;
-    const facingB = bodyB.facing ?? 0;
+    const facingA = entityFacing(bodyA);
+    const facingB = entityFacing(bodyB);
     const refAngle = slab.static.referenceAngle[i];
     const error = normalizeAngle(facingB - facingA - refAngle);
     const invIA = slab.static.invIA[i];
@@ -2965,7 +2971,19 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     return contacts;
 }
 export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
+export function classifyKineticPairTierSlab(physIdA, physIdB) {
+    const slab = kineticDynamicSlab;
+    if (slab.partCount[physIdA] > 1 || slab.partCount[physIdB] > 1) return KINETIC_PAIR_TIER.COMPOUND;
+    const kindA = slab.shapeKind[physIdA];
+    const kindB = slab.shapeKind[physIdB];
+    if (kindA === SHAPE_TYPE_ID.Circle && kindB === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
+    if (kindA === SHAPE_TYPE_ID.Circle || kindB === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_POLY;
+    return KINETIC_PAIR_TIER.POLY_POLY;
+}
 export function classifyKineticPairTier(bodyA, bodyB) {
+    const physIdA = bodyA._physId;
+    const physIdB = bodyB._physId;
+    if (physIdA !== undefined && physIdA !== -1 && physIdB !== undefined && physIdB !== -1 && kineticDynamicSlab.partCount[physIdA] > 0 && kineticDynamicSlab.partCount[physIdB] > 0) return classifyKineticPairTierSlab(physIdA, physIdB);
     if (bodyA.collisionParts?.length > 1 || bodyB.collisionParts?.length > 1) return KINETIC_PAIR_TIER.COMPOUND;
     const shapeA = bodyA.collisionParts?.[0] ?? bodyA.shape;
     const shapeB = bodyB.collisionParts?.[0] ?? bodyB.shape;
@@ -3069,7 +3087,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const neighbor = entityRefs[physIdB];
             const key = pairPhysKey(physIdA, physIdB);
             if (hasPairHash(key)) continue;
-            const tier = classifyKineticPairTier(primary, neighbor);
+            const tier = classifyKineticPairTierSlab(physIdA, physIdB);
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (areKineticLinkNeighbors(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
@@ -3099,7 +3117,7 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[j];
             const neighbor = entityRefs[physIdB];
-            const tier = classifyKineticPairTier(primary, neighbor);
+            const tier = classifyKineticPairTierSlab(physIdA, physIdB);
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (areKineticLinkNeighbors(primary, neighbor)) continue;
             if (!allowsKineticCollisionPair(primary, neighbor, overlaps)) continue;
@@ -3685,7 +3703,7 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
         }
     }
     if (integrateFacing && body.angularVelocity) {
-        body.facing = (body.facing ?? 0) + body.angularVelocity * (dtMs / 1000);
+        body.facing = entityFacing(body) + body.angularVelocity * (dtMs / 1000);
         const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
         body.angularVelocity *= angularDrag;
         if (Math.abs(body.angularVelocity) < 0.1) body.angularVelocity = 0;
@@ -4367,14 +4385,33 @@ export function getKineticRollConfig(prop, overrides = null) {
     if (overrides && Object.keys(overrides).length > 0) return { ...base, ...overrides };
     return base;
 }
-export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null) {
+export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null, accelOverride = null, maxSpeedOverride = null) {
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
-    const limitSpeed = targetSpeed !== null ? Math.min(config.maxSpeed, targetSpeed) : config.maxSpeed;
-    prop._groundRollDrive = { kind: "thrust", dirX, dirY, accel: config.accel, maxSpeed: limitSpeed };
+    const accel = accelOverride ?? config.accel;
+    const maxSpeed = maxSpeedOverride ?? config.maxSpeed;
+    const limitSpeed = targetSpeed !== null ? Math.min(maxSpeed, targetSpeed) : maxSpeed;
+    let drive = prop._groundRollDrive;
+    if (!drive) {
+        drive = { kind: "thrust", dirX, dirY, accel, maxSpeed: limitSpeed };
+        prop._groundRollDrive = drive;
+    } else {
+        drive.kind = "thrust";
+        drive.dirX = dirX;
+        drive.dirY = dirY;
+        drive.accel = accel;
+        drive.maxSpeed = limitSpeed;
+    }
     wakeKineticBody(prop);
 }
 export function decelerateRoll(prop, config) {
-    prop._groundRollDrive = { kind: "brake", accel: config.accel };
+    let drive = prop._groundRollDrive;
+    if (!drive) {
+        drive = { kind: "brake", accel: config.accel };
+        prop._groundRollDrive = drive;
+    } else {
+        drive.kind = "brake";
+        drive.accel = config.accel;
+    }
     wakeKineticBody(prop);
 }
 export function clearGroundRollDrive(prop) {

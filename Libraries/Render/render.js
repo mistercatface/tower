@@ -2,7 +2,7 @@ import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircl
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight, ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../Math/math.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts } from "../Physics/physics.js";
+import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, entityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
@@ -686,7 +686,7 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const drawPass = (order, count) => {
         for (let i = 0; i < count; i++) {
             const f = order[i];
-            const fill = getFaceColor ? getFaceColor({ panel: sSphereFacePanel[f], depth: sSphereFaceDepth[f] }) : panelColors[sSphereFacePanel[f] % panelColors.length];
+            const fill = getFaceColor ? getFaceColor(sSphereFacePanel[f], sSphereFaceDepth[f]) : panelColors[sSphereFacePanel[f] % panelColors.length];
             drawSphereFace(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], fill, stroke, lineWidth);
         }
     };
@@ -719,7 +719,7 @@ function fillBoxFootprintInto(out, hx, hy) {
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
-function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, colors, { stroke, lineWidth, plankTs, drawPlanks, flatFill }) {
+function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, colors, stroke, lineWidth, plankTs, drawPlanks, flatFill) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
     const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
@@ -814,7 +814,23 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha, 
     ctx.restore();
 }
 function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
-    const { height = DEFAULT_PROP_HEIGHT, facing = prop.facing, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, lineWidth = 1.0, plankTs, topCross, textures = null, faceOrder = "convexCull", prismPass = "all", topHalfSize = null, baseGradCornerB = 1, flatFill = false } = opts;
+    const height = opts.height ?? DEFAULT_PROP_HEIGHT;
+    const facing = opts.facing ?? entityFacing(prop);
+    const faceColors = opts.faceColors;
+    const backFaceColors = opts.backFaceColors ?? null;
+    const bottomColors = opts.bottomColors ?? null;
+    const topColors = opts.topColors;
+    const stroke = opts.stroke;
+    const lineWidth = opts.lineWidth ?? 1.0;
+    const plankTs = opts.plankTs;
+    const topCross = opts.topCross;
+    const textures = opts.textures ?? null;
+    const faceOrder = opts.faceOrder ?? "convexCull";
+    const prismPass = opts.prismPass ?? "all";
+    const topHx = opts.topHx;
+    const topHy = opts.topHy;
+    const baseGradCornerB = opts.baseGradCornerB ?? 1;
+    const flatFill = opts.flatFill === true;
     const count = localVerts.length / 2;
     if (count < 3) return;
     ensurePrismScratch(count);
@@ -852,13 +868,12 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         ctx.fill();
         if (stroke) ctx.stroke();
     }
-    const sideOpts = { stroke, lineWidth, plankTs, flatFill };
     if (drawSides)
         if (faceOrder === "midY")
             for (let o = 0; o < count; o++) {
                 const i = rFaceOrder[o];
                 const colors = rFaceVisible[i] ? faceColors : backColors;
-                drawSideFaceFlat(ctx, i, count, cx, cy, colors, { ...sideOpts, drawPlanks: rFaceVisible[i] === 1 });
+                drawSideFaceFlat(ctx, i, count, cx, cy, colors, stroke, lineWidth, plankTs, rFaceVisible[i] === 1, flatFill);
             }
         else
             for (let pass = 0; pass < 2; pass++) {
@@ -866,18 +881,15 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
                 for (let i = 0; i < count; i++) {
                     if ((rFaceVisible[i] === 1) !== wantFront) continue;
                     const colors = wantFront ? faceColors : backColors;
-                    drawSideFaceFlat(ctx, i, count, cx, cy, colors, { ...sideOpts, drawPlanks: wantFront });
+                    drawSideFaceFlat(ctx, i, count, cx, cy, colors, stroke, lineWidth, plankTs, wantFront, flatFill);
                 }
             }
     if (drawTop) {
         if (flatFill) ctx.fillStyle = topColors.mid;
         else {
             let topGrad;
-            if (topHalfSize) {
-                const topHx = topHalfSize.x ?? topHalfSize.hx;
-                const topHy = topHalfSize.y ?? topHalfSize.hy;
-                topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
-            } else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
+            if (topHx != null && topHy != null) topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
+            else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
             topGrad.addColorStop(0.0, topColors.light);
             topGrad.addColorStop(0.5, topColors.mid);
             topGrad.addColorStop(1.0, topColors.dark);
@@ -899,19 +911,39 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         }
     }
 }
-export function drawBox(ctx, prop, viewport, { halfSize, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing }) {
+const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, stroke: null, lineWidth: 1, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHx: null, topHy: null, baseGradCornerB: 1, flatFill: false };
+const sBeltProp = { x: 0, y: 0, facing: 0 };
+const sBeltHalf = { x: 0, y: 0 };
+const sBeltDrawOpts = { halfSize: sBeltHalf, height: 0, facing: 0, faceColors: null, topColors: null, stroke: null, lineWidth: 1 };
+export function drawBox(ctx, prop, viewport, opts) {
+    const halfSize = opts.halfSize;
     const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
     const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
+    const height = opts.height ?? DEFAULT_PROP_HEIGHT;
     fillBoxFootprintInto(rBoxFootprint, hx, hy);
     const alpha = resolveElevationAlpha(height, viewport);
-    const topHx = scaleAtHeight(hx, alpha, 1);
-    const topHy = scaleAtHeight(hy, alpha, 1);
-    drawExtrudedPrism(ctx, prop, viewport, rBoxFootprint, { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, faceOrder: "convexCull", baseGradCornerB: 2, topHalfSize: { x: topHx, y: topHy } });
+    sPrismOpts.height = height;
+    sPrismOpts.facing = opts.facing ?? entityFacing(prop);
+    sPrismOpts.faceColors = opts.faceColors;
+    sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
+    sPrismOpts.bottomColors = opts.bottomColors ?? null;
+    sPrismOpts.topColors = opts.topColors;
+    sPrismOpts.stroke = opts.stroke;
+    sPrismOpts.lineWidth = opts.lineWidth ?? 1.0;
+    sPrismOpts.plankTs = opts.plankTs;
+    sPrismOpts.topCross = opts.topCross;
+    sPrismOpts.textures = null;
+    sPrismOpts.faceOrder = "convexCull";
+    sPrismOpts.prismPass = "all";
+    sPrismOpts.topHx = scaleAtHeight(hx, alpha, 1);
+    sPrismOpts.topHy = scaleAtHeight(hy, alpha, 1);
+    sPrismOpts.baseGradCornerB = 2;
+    sPrismOpts.flatFill = false;
+    drawExtrudedPrism(ctx, prop, viewport, rBoxFootprint, sPrismOpts);
 }
-const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, stroke: null, lineWidth: 1, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHalfSize: null, baseGradCornerB: 1, flatFill: false };
 function fillPrismOptsFromDraw(opts, prop, textures) {
     sPrismOpts.height = opts.height ?? DEFAULT_PROP_HEIGHT;
-    sPrismOpts.facing = opts.facing ?? prop.facing;
+    sPrismOpts.facing = opts.facing ?? entityFacing(prop);
     sPrismOpts.faceColors = opts.faceColors;
     sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
     sPrismOpts.bottomColors = opts.bottomColors ?? null;
@@ -923,7 +955,8 @@ function fillPrismOptsFromDraw(opts, prop, textures) {
     sPrismOpts.textures = textures;
     sPrismOpts.faceOrder = opts.faceOrder ?? "convexCull";
     sPrismOpts.prismPass = opts.prismPass ?? "all";
-    sPrismOpts.topHalfSize = opts.topHalfSize ?? null;
+    sPrismOpts.topHx = opts.topHx ?? null;
+    sPrismOpts.topHy = opts.topHy ?? null;
     sPrismOpts.baseGradCornerB = opts.baseGradCornerB ?? 1;
     sPrismOpts.flatFill = opts.flatFill === true;
     return sPrismOpts;
@@ -940,14 +973,14 @@ export function getWallChunkSpriteCacheKey(prop) {
     const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
     return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}`;
 }
-export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing) {
+export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = entityFacing(prop)) {
     const textures = prop._wallChunkTextures;
     if (!textures?.ready) return;
     const count = localVerts.length / 2;
     if (count < 3) return;
     ensurePrismScratch(count);
-    const cos = Math.cos(facing ?? 0);
-    const sin = Math.sin(facing ?? 0);
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
     const px = prop.x;
     const py = prop.y;
     const textureScale = textures.scale;
@@ -1507,17 +1540,25 @@ export function createConveyorDraw(options = {}) {
         dark: "#141414",
     };
     return (ctx, prop, viewport) => {
-        const subProp = (x, y, facing) => ({ x, y, facing });
         const hx = prop.halfExtents?.x ?? 8;
         const hy = prop.halfExtents?.y ?? 8;
         const lineScale = getCanvasLineScale(ctx);
         if (!turnDirection) {
-            const angle = prop.facing ?? 0;
+            const angle = entityFacing(prop);
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
-            // Draw full-tile belt bed
-            const beltProp = subProp(prop.x, prop.y, angle);
-            drawBox(ctx, beltProp, viewport, { halfSize: { x: hx, y: hy }, height: CONVEYOR_BELT_HEIGHT, facing: angle, faceColors: beltColors, topColors: beltTopColors, stroke: beltStroke, lineWidth: 1.0 * lineScale });
+            sBeltProp.x = prop.x;
+            sBeltProp.y = prop.y;
+            sBeltProp.facing = angle;
+            sBeltHalf.x = hx;
+            sBeltHalf.y = hy;
+            sBeltDrawOpts.height = CONVEYOR_BELT_HEIGHT;
+            sBeltDrawOpts.facing = angle;
+            sBeltDrawOpts.faceColors = beltColors;
+            sBeltDrawOpts.topColors = beltTopColors;
+            sBeltDrawOpts.stroke = beltStroke;
+            sBeltDrawOpts.lineWidth = 1.0 * lineScale;
+            drawBox(ctx, sBeltProp, viewport, sBeltDrawOpts);
             function projectLocalFlat(out8, offset, lx, ly, lz) {
                 const rx = lx * cos - ly * sin;
                 const ry = lx * sin + ly * cos;
@@ -1567,7 +1608,7 @@ export function createConveyorDraw(options = {}) {
             ctx.restore();
             return;
         }
-        const angle = prop.facing ?? 0;
+        const angle = entityFacing(prop);
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         const isLeft = turnDirection === "left";
@@ -1575,8 +1616,18 @@ export function createConveyorDraw(options = {}) {
         const pivotY = isLeft ? 8 : -8;
         const startAngle = Math.PI;
         const dir = isLeft ? 1 : -1;
-        const beltProp = subProp(prop.x, prop.y, angle);
-        drawBox(ctx, beltProp, viewport, { halfSize: { x: hx, y: hy }, height: CONVEYOR_BELT_HEIGHT, facing: angle, faceColors: beltColors, topColors: beltTopColors, stroke: beltStroke, lineWidth: 1.0 * lineScale });
+        sBeltProp.x = prop.x;
+        sBeltProp.y = prop.y;
+        sBeltProp.facing = angle;
+        sBeltHalf.x = hx;
+        sBeltHalf.y = hy;
+        sBeltDrawOpts.height = CONVEYOR_BELT_HEIGHT;
+        sBeltDrawOpts.facing = angle;
+        sBeltDrawOpts.faceColors = beltColors;
+        sBeltDrawOpts.topColors = beltTopColors;
+        sBeltDrawOpts.stroke = beltStroke;
+        sBeltDrawOpts.lineWidth = 1.0 * lineScale;
+        drawBox(ctx, sBeltProp, viewport, sBeltDrawOpts);
         function projectLocalFlat(out8, offset, lx, ly, lz) {
             const rx = lx * cos - ly * sin;
             const ry = lx * sin + ly * cos;

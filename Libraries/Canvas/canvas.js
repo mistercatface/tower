@@ -1,7 +1,7 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { quantizeAngle, quantizeAngleIndex, ENGINE_F32, M_VEC_A } from "../Math/math.js";
-import { buildRollOrientKey, quantizeRollQuat, resolveBodyRadius } from "../Physics/physics.js";
+import { buildRollOrientKey, quantizeRollQuat, resolveBodyRadius, entityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
 import { visualOverrideCacheKey } from "../Color/visualOverride.js";
@@ -591,7 +591,7 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
  * @param {number} [animFrame]
  */
 function getPropStaticKey(prop, renderKey) {
-    const facing = prop.facing ?? 0;
+    const facing = entityFacing(prop);
     const voKey = visualOverrideCacheKey(prop);
     const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
     const rolls = !!prop.strategy?.rolls;
@@ -636,7 +636,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     return propSpriteCache.getOrBake(key, () => {
         const qDx = quantizedViewAxisOffset(dx, viewStep);
         const qDy = quantizedViewAxisOffset(dy, viewStep);
-        const parentFacing = quantizeAngle(prop.facing ?? 0, resolvePropQuantizeSteps(prop).facing);
+        const parentFacing = quantizeAngle(entityFacing(prop), resolvePropQuantizeSteps(prop).facing);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         const baseR = Math.max(resolveBodyRadius(prop), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         const stageR = Math.max(baseR, resolveVisualAttachmentBakeRadius(prop, parentFacing));

@@ -17,7 +17,7 @@ describe("cross pinwheel prop", () => {
         assert.ok(pinwheel.mass > 0);
         assert.ok(kineticInertiaFromBody(pinwheel) > 0);
         normalizeKineticBody(pinwheel);
-        assert.ok(pinwheel._kineticInvMass > 0);
+        assert.ok(1 / pinwheel.mass > 0);
     });
 
     it("absorbs angular velocity and rotates when hit", () => {
@@ -74,7 +74,7 @@ describe("cross pinwheel prop", () => {
         assert.equal(part0.vertices[4], 24);
         assert.equal(part0.vertices[5], 5);
         assert.equal(kineticFootprintArea(pinwheel), 960);
-        assert.ok(pinwheel._kineticInvMass > 0);
+        assert.ok(1 / pinwheel.mass > 0);
         assert.equal(pinwheel.drawOutline.length, 24);
     });
 

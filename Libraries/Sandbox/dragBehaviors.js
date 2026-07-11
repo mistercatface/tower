@@ -266,7 +266,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             return;
         }
         const ratio = power / grabConfig.maxPower;
-        steerRollToward(prop, dx / dist, dy / dist, { ...rollConfig, accel: rollConfig.accel * (0.5 + ratio), maxSpeed: rollConfig.maxSpeed * (0.3 + ratio * 0.7) });
+        steerRollToward(prop, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
         if (prop.strategy?.rolls) return;
         grabDragAnchorWorld(prop, run);
         const rx = GRAB_ANCHOR_SCRATCH[G_WX] - prop.x;
