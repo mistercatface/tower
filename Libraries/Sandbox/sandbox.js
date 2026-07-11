@@ -4,7 +4,7 @@ import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall,
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
 import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER } from "../../Core/engineMemory.js";
-import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
+import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
@@ -12,7 +12,7 @@ import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRad
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropIdsInView, appendPathOverlayCommands } from "../Render/render.js";
-import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
+import { serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
@@ -744,11 +744,6 @@ const PLACEABLE = {
                 if (idx === -1) return false;
                 const chain = spawnLinkedBallChain(state, idx, { headBallType: "snake", ballType: "ball", segmentCount: ctx.spawnSnakeLength, segmentRadius: ctx.spawnBallRadius, faction: ctx.spawnFaction, spacing: ctx.spawnBallRadius * 2, linkSlack: 1.0 });
                 if (chain && chain.leader) {
-                    const visualOverride = ctx.resolveSpawnVisualOverride(propCatalog["snake"]);
-                    if (visualOverride) {
-                        if (visualOverride.tint) setPropVisualTint(chain.leader, visualOverride.tint);
-                        if (visualOverride.brightness != null) setPropVisualBrightness(chain.leader, visualOverride.brightness);
-                    }
                     ctx.placement.touchPropPlacement(chain.leader.id);
                     if (ctx.selectSpawned !== false) ctx.pickSelection({ kind: "prop", ids: [chain.leader.id] });
                 }
@@ -1071,17 +1066,9 @@ export function createSandboxSession(state) {
     let spawnCrossLength = 32;
     let spawnCrossThickness = 8;
     let spawnBallRadius = null;
-    let spawnVisualOverrideTint = null;
-    let spawnVisualOverrideBrightness = 1;
     let spawnSnakeLength = 5;
     let spawnFractureEnabled = false;
-    const resolveSpawnVisualOverride = (asset) => {
-        if (!isBallFamilyAsset(asset)) return null;
-        const tint = spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset);
-        const visualOverride = { tint };
-        if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
-        return visualOverride;
-    };
+    const resolveSpawnVisualOverride = () => null;
     const spawnCtx = (options = {}) => ({
         spawnPropId: spawnPropIdFromPalette(),
         spawnFaction,
@@ -1448,14 +1435,6 @@ export function createSandboxSession(state) {
         setSpawnBallRadius: (radius) => {
             spawnBallRadius = Math.max(1, Math.min(32, Math.round(radius)));
             notifyUi();
-        },
-        getSpawnVisualOverrideTint: (asset) => spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset),
-        setSpawnVisualOverrideTint: (hex) => {
-            spawnVisualOverrideTint = hex;
-        },
-        getSpawnVisualOverrideBrightness: () => spawnVisualOverrideBrightness,
-        setSpawnVisualOverrideBrightness: (brightness) => {
-            spawnVisualOverrideBrightness = Math.max(0.25, Math.min(2, brightness));
         },
         getSpawnCrossLength: () => spawnCrossLength,
         setSpawnCrossLength: (len) => {
@@ -2529,50 +2508,6 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
     if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(commands, selectedProp);
     return commands;
 }
-function brightnessToPercent(brightness) {
-    return Math.round(brightness * 100);
-}
-function percentToBrightness(percent) {
-    return percent / 100;
-}
-function appendCoatFields(body, state, { tint, brightness, onTintChange, onBrightnessChange }) {
-    appendColorField(body, "Tint", {
-        value: tint,
-        onChange: (hex) => {
-            onTintChange(hex);
-            notifySandboxVisualDirty(state);
-        },
-    });
-    appendNumberField(body, "Brightness %", {
-        value: brightnessToPercent(brightness),
-        step: 5,
-        min: 25,
-        max: 200,
-        onChange: (percent) => {
-            onBrightnessChange(percentToBrightness(percent));
-            notifySandboxVisualDirty(state);
-        },
-    });
-}
-function spawnShapeCoatAccessors(state, session, spawnAsset) {
-    return { tint: session.getSpawnVisualOverrideTint(spawnAsset), brightness: session.getSpawnVisualOverrideBrightness(), onTintChange: (hex) => session.setSpawnVisualOverrideTint(hex), onBrightnessChange: (brightness) => session.setSpawnVisualOverrideBrightness(brightness) };
-}
-function selectedShapeCoatAccessors(state, selectedProp, asset) {
-    return { tint: resolvePickerHex(selectedProp, asset), brightness: getPropVisualBrightness(selectedProp), onTintChange: (hex) => setPropVisualTint(selectedProp, hex), onBrightnessChange: (brightness) => setPropVisualBrightness(selectedProp, brightness) };
-}
-function appendShapeFamilyCoatBlock(body, state, coatAccessors, resetProp = null) {
-    appendCoatFields(body, state, coatAccessors);
-    if (resetProp)
-        appendActionRow(body, [
-            {
-                label: "Reset coat",
-                onClick: () => {
-                    clearPropVisualOverride(resetProp);
-                    notifySandboxVisualDirty(state);
-                },
-            },
-        ]);
-}
 function appendShapeFamilyRadiusField(body, value, onChange) {
     appendNumberField(body, "Radius", { value, step: 1, min: 1, max: 32, onChange });
 }
@@ -2605,7 +2540,6 @@ function appendShapeFamilyFields(body, state, spec) {
         }
         if (isBallFamilyAsset(spawnAsset)) {
             appendShapeFamilyRadiusField(body, session.getSpawnBallRadius(spawnAsset), (radius) => session.setSpawnBallRadius(radius));
-            appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
             return;
         }
         if (isPolygonFamilyAsset(spawnAsset)) {
@@ -2649,7 +2583,6 @@ function appendShapeFamilyFields(body, state, spec) {
             setCirclePropRadius(selectedProp, radius);
             dirty();
         });
-        appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
         return;
     }
     if (isPolygonFamilyAsset(asset)) {
@@ -3029,7 +2962,6 @@ export function appendPropPlaceParams(body, state, controller, spawnId, refreshP
                 session.setSpawnBallRadius(Math.max(1, Math.min(4, radius)));
             },
         });
-        appendCoatFields(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
     } else if (isBallFamilyAsset(spawnAsset) || isPolygonFamilyAsset(spawnAsset)) appendShapeFamilyFields(body, state, { mode: "spawn", controller, spawnId });
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }

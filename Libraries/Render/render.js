@@ -1,4 +1,4 @@
-import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
+import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
@@ -484,6 +484,8 @@ export function projectPropVertexScalarsInto(out8, offset, prop, viewport, lx, l
 let sSphereVertLx = new Float32Array(0);
 let sSphereVertLy = new Float32Array(0);
 let sSphereVertZ = new Float32Array(0);
+let sSphereVertU = new Float32Array(0);
+let sSphereVertV = new Float32Array(0);
 let sSphereVertCount = 0;
 let sSphereRowStart = new Int32Array(0);
 let sSphereRowCount = new Int32Array(0);
@@ -500,6 +502,8 @@ function ensureSphereVertCapacity(count) {
     sSphereVertLx = new Float32Array(count);
     sSphereVertLy = new Float32Array(count);
     sSphereVertZ = new Float32Array(count);
+    sSphereVertU = new Float32Array(count);
+    sSphereVertV = new Float32Array(count);
 }
 function ensureSphereRowCapacity(rowCount) {
     if (sSphereRowStart.length >= rowCount) return;
@@ -516,11 +520,13 @@ function ensureSphereFaceCapacity(count) {
     sSphereBackOrder = new Int32Array(count);
     sSphereFrontOrder = new Int32Array(count);
 }
-function pushSphereVert(lx, ly, z) {
+function pushSphereVert(lx, ly, z, u = 0, v = 0) {
     const i = sSphereVertCount++;
     sSphereVertLx[i] = lx;
     sSphereVertLy[i] = ly;
     sSphereVertZ[i] = z;
+    sSphereVertU[i] = u;
+    sSphereVertV[i] = v;
     return i;
 }
 function pushSphereFace(i0, i1, i2, panel) {
@@ -568,6 +574,65 @@ function drawSphereFace(ctx, prop, viewport, i0, i1, i2, fill) {
     traceClosedFlatPolygon(ctx, flatProjectedVerts, 3);
     ctx.fill();
 }
+function drawSphereFaceTextured(ctx, prop, viewport, i0, i1, i2, textures) {
+    const canvas = textures.capCanvas;
+    if (!canvas) return;
+    ensureFlatProjectedVertScratch(3);
+    projectPropVertexScalarsInto(flatProjectedVerts, 0, prop, viewport, sSphereVertLx[i0], sSphereVertLy[i0], sSphereVertZ[i0]);
+    projectPropVertexScalarsInto(flatProjectedVerts, 2, prop, viewport, sSphereVertLx[i1], sSphereVertLy[i1], sSphereVertZ[i1]);
+    projectPropVertexScalarsInto(flatProjectedVerts, 4, prop, viewport, sSphereVertLx[i2], sSphereVertLy[i2], sSphereVertZ[i2]);
+    let minX = flatProjectedVerts[0];
+    let maxX = minX;
+    let minY = flatProjectedVerts[1];
+    let maxY = minY;
+    for (let i = 2; i < 6; i += 2) {
+        const x = flatProjectedVerts[i];
+        const y = flatProjectedVerts[i + 1];
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+    }
+    const destW = maxX - minX;
+    const destH = maxY - minY;
+    if (destW <= 0 || destH <= 0) return;
+    let u0 = sSphereVertU[i0];
+    let u1 = sSphereVertU[i1];
+    let u2 = sSphereVertU[i2];
+    const v0 = sSphereVertV[i0];
+    const v1 = sSphereVertV[i1];
+    const v2 = sSphereVertV[i2];
+    if (Math.max(u0, u1, u2) - Math.min(u0, u1, u2) > 0.5) {
+        if (u0 < 0.5) u0 += 1;
+        if (u1 < 0.5) u1 += 1;
+        if (u2 < 0.5) u2 += 1;
+    }
+    const texW = canvas.width;
+    const texH = canvas.height;
+    const su0 = (u0 % 1) * texW;
+    const su1 = (u1 % 1) * texW;
+    const su2 = (u2 % 1) * texW;
+    const sv0 = v0 * texH;
+    const sv1 = v1 * texH;
+    const sv2 = v2 * texH;
+    let sx = Math.min(su0, su1, su2);
+    let sy = Math.min(sv0, sv1, sv2);
+    let sw = Math.max(su0, su1, su2) - sx;
+    let sh = Math.max(sv0, sv1, sv2) - sy;
+    if (sw < 1) sw = 1;
+    if (sh < 1) sh = 1;
+    sx = Math.max(0, Math.min(texW - 1, sx));
+    sy = Math.max(0, Math.min(texH - 1, sy));
+    if (sx + sw > texW) sw = texW - sx;
+    if (sy + sh > texH) sh = texH - sy;
+    if (sw <= 0 || sh <= 0) return;
+    ctx.save();
+    ctx.beginPath();
+    traceClosedFlatPolygon(ctx, flatProjectedVerts, 3);
+    ctx.clip();
+    ctx.drawImage(canvas, sx, sy, sw, sh, minX, minY, destW, destH);
+    ctx.restore();
+}
 function sortSphereFaceOrder(order, count) {
     for (let i = 1; i < count; i++) {
         const key = order[i];
@@ -595,6 +660,7 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
     sSphereFaceCount = 0;
     for (let lat = 0; lat <= latBands; lat++) {
         const phi = (lat / latBands) * Math.PI;
+        const v = lat / latBands;
         const rowStart = sSphereVertCount;
         if (Math.sin(phi) < 1e-6) {
             const sinPhi = Math.sin(phi);
@@ -603,7 +669,7 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
             const ly = 0;
             const z = radius * (1 + cosPhi);
             transformRollVertexInto(ENGINE_F32, M_OUT_VX, lx, ly, z, radius, qw, qx, qy, qz);
-            pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ]);
+            pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ], 0.5, v);
         } else
             for (let lon = 0; lon < lonBands; lon++) {
                 const theta = (lon / lonBands) * Math.PI * 2;
@@ -613,7 +679,7 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
                 const ly = radius * sinPhi * Math.sin(theta);
                 const z = radius * (1 + cosPhi);
                 transformRollVertexInto(ENGINE_F32, M_OUT_VX, lx, ly, z, radius, qw, qx, qy, qz);
-                pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ]);
+                pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ], lon / lonBands, v);
             }
         sSphereRowStart[lat] = rowStart;
         sSphereRowCount[lat] = sSphereVertCount - rowStart;
@@ -653,14 +719,25 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
     }
     return sSphereFaceCount;
 }
-const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF9800", "#FFFFFF"];
+export function drawFlatSphereDisc(ctx, prop, radius, pendingFill) {
+    const textures = prop._wallChunkTextures;
+    if (textures?.ready && textures.capCanvas && fillCapPathWithChunkTexture(ctx, textures, prop.x, prop.y)) {
+        traceCircle(ctx, prop.x, prop.y, radius);
+        ctx.closePath();
+        ctx.fill();
+        return;
+    }
+    ctx.fillStyle = pendingFill;
+    fillCircle(ctx, prop.x, prop.y, radius);
+}
 export function drawSphere(ctx, prop, viewport, options = {}) {
     const radius = options.baseRadius ?? resolveBodyRadius(prop);
     const panelCount = Math.max(3, options.panelCount ?? 6);
     const latBands = Math.max(3, options.latBands ?? 5);
     const lonBands = panelCount;
-    const panelColors = options.panelColors ?? DEFAULT_PANEL_COLORS;
-    const getFaceColor = options.getFaceColor;
+    const pendingFill = options.pendingFill ?? "#9A9A9A";
+    const textures = options.textures;
+    const textured = !!(textures?.ready && textures.capCanvas);
     const qw = prop.rollQw ?? 1;
     const qx = prop.rollQx ?? 0;
     const qy = prop.rollQy ?? 0;
@@ -676,8 +753,8 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const drawPass = (order, count) => {
         for (let i = 0; i < count; i++) {
             const f = order[i];
-            const fill = getFaceColor ? getFaceColor(sSphereFacePanel[f], sSphereFaceDepth[f]) : panelColors[sSphereFacePanel[f] % panelColors.length];
-            drawSphereFace(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], fill);
+            if (textured) drawSphereFaceTextured(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], textures);
+            else drawSphereFace(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], pendingFill);
         }
     };
     drawPass(sSphereBackOrder, backN);

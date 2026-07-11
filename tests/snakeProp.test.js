@@ -6,7 +6,7 @@ import { kineticConstraintStore } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 
 describe("snake prop kinetic chain spawning", () => {
-    it("spawns a snake chain prop using the configured length parameter, custom radius, and visual overrides", () => {
+    it("spawns a snake chain prop using the configured length parameter and custom radius", () => {
         const state = createSandboxKineticWorld();
         const meta = state.sandbox.entityMeta;
 
@@ -14,8 +14,6 @@ describe("snake prop kinetic chain spawning", () => {
         session.setPlacePaletteKey("prop:snake");
         session.setSpawnSnakeLength(7);
         session.setSpawnBallRadius(3);
-        session.setSpawnVisualOverrideTint("#aabbcc");
-        session.setSpawnVisualOverrideBrightness(1.5);
         session.setSpawnFaction("alpha");
 
         const success = session.spawnAt(160, 160);
@@ -26,10 +24,8 @@ describe("snake prop kinetic chain spawning", () => {
         assert.equal(head.type, "snake");
         assert.ok(meta.isChainHead(head.id));
         assert.ok(isChainSteeringTarget(state, meta, head.id));
-
-        // Verify visual overrides applied to the snake head
-        assert.equal(head.visualOverride?.tint, "#aabbcc");
-        assert.equal(head.visualOverride?.brightness, 1.5);
+        assert.equal(head.wallChunkProfileId, "poolTableFelt");
+        assert.equal(head.visualOverride?.tint, undefined);
 
         // Verify radii of segments are set to the custom spawn radius
         for (let i = 0; i < 7; i++) {

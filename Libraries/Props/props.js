@@ -3,14 +3,15 @@ import { PolygonShape, writeLivePolygon, releaseLivePolygon, resolveBodyRadius, 
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
-import { drawSphere, createWallChunkDraw, getWallChunkSpriteCacheKey } from "../Render/render.js";
+import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, getWallChunkSpriteCacheKey } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
-import { resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
+import { visualOverrideCacheId } from "../Color/visualOverride.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
+import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -27,9 +28,23 @@ export function createPolygonPrimitive(visuals) {
     return createWallChunkDraw(visuals);
 }
 export function createSpherePrimitive(visuals) {
-    return (ctx, prop, viewport) => {
-        drawSphere(ctx, prop, viewport, { baseRadius: resolveBodyRadius(prop, visuals.defaultRadius ?? 7), panelCount: visuals.panelCount, latBands: visuals.latBands, panelColors: resolveVisualOverridePanels(prop, visuals.panels) });
+    const pendingFill = visuals.pendingFill ?? NEUTRAL_SPHERE_PENDING_FILL;
+    const panelCount = visuals.panelCount ?? 6;
+    const latBands = visuals.latBands ?? 5;
+    const defaultRadius = visuals.defaultRadius ?? 7;
+    return (ctx, prop, viewport, flatPresentation) => {
+        const radius = resolveBodyRadius(prop, defaultRadius);
+        if (flatPresentation) {
+            drawFlatSphereDisc(ctx, prop, radius, pendingFill);
+            return;
+        }
+        drawSphere(ctx, prop, viewport, { baseRadius: radius, panelCount, latBands, pendingFill, textures: prop._wallChunkTextures });
     };
+}
+function stampSurfaceProfileFields(prop, asset) {
+    if (!(asset?.primitive === "polygon" || asset?.primitive === "sphere" || asset?.draw === "wallChunk")) return;
+    prop.wallChunkProfileId = asset.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
+    prop.wallChunkHeightPx = prop.height ?? asset.visuals?.world?.height ?? 12;
 }
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
 export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive };
@@ -269,7 +284,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
         });
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
-    if ((asset.primitive === "polygon" || asset.draw === "wallChunk") && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
+    if ((asset.primitive === "polygon" || asset.primitive === "sphere" || asset.draw === "wallChunk") && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
     return built;
 }
 const worldPropStrategyByType = new Map();
@@ -339,11 +354,8 @@ export class WorldProp {
         this.wallChunkHeightPx = undefined;
         this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
-        if (asset?.primitive === "polygon" || asset?.draw === "wallChunk") {
-            this.wallChunkProfileId = asset.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
-            if (asset.draw !== "wallChunk") this.height = gridSettings.cellSize;
-            this.wallChunkHeightPx = this.height;
-        }
+        if (asset?.primitive === "polygon" && asset?.draw !== "wallChunk") this.height = gridSettings.cellSize;
+        stampSurfaceProfileFields(this, asset);
         this._footprintKey = undefined;
         initWorldPropShape(this);
         if (type === "cross_pinwheel") applyCrossPinwheelFootprint(this, this.crossLength ?? 32, this.crossThickness ?? 8);
@@ -627,7 +639,12 @@ function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const localX = (offset.x ?? 0) * offsetScale;
     const localY = (offset.y ?? 0) * offsetScale;
     rotateXYIntoF32(ENGINE_F32, M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
-    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: childAsset.visuals?.world?.height ?? 12, visualOverride: cfg.inheritTint === true && parentProp.visualOverride ? { ...parentProp.visualOverride } : undefined, _visualAttachmentId: cfg.id, _footprintKey: undefined };
+    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: childAsset.visuals?.world?.height ?? 12, visualOverride: undefined, _visualAttachmentId: cfg.id, _footprintKey: undefined };
+    stampSurfaceProfileFields(prop, childAsset);
+    if (prop.wallChunkProfileId && prop.wallChunkProfileId === parentProp.wallChunkProfileId && parentProp._wallChunkTextures) {
+        prop._wallChunkTextures = parentProp._wallChunkTextures;
+        prop._wallChunkTextureReady = parentProp._wallChunkTextureReady;
+    }
     initWorldPropShape(prop);
     scaleVirtualPropShape(prop, resolveVirtualPropScale(parentProp, prop, cfg));
     return prop;

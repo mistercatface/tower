@@ -1,30 +1,33 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { getCirclePropRadius, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
+import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
+import { getCirclePropRadius, propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive, resolveVisualAttachmentProps } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
+import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
+import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
+import propCatalog from "../Assets/props/index.js";
 
 function createSpawnTestState() {
     return createSandboxKineticWorld(32, 32, { viewport: { x: 128, y: 128 } });
 }
 
 describe("spawn shape family defaults", () => {
-    it("places ball with spawn radius, tint, and brightness", () => {
+    it("places ball with spawn radius and poolTableFelt profile (no coat)", () => {
         const state = createSpawnTestState();
         const session = createSandboxSession(state);
         session.setPlacePaletteKey("prop:ball");
         session.setSpawnBallRadius(6);
-        session.setSpawnVisualOverrideTint("#ff0000");
-        session.setSpawnVisualOverrideBrightness(1.25);
         assert.equal(session.spawnAt(64, 64), true);
         const prop = state.worldProps[0];
         assert.equal(prop.type, "ball");
         assert.equal(getCirclePropRadius(prop), 6);
-        assert.equal(getPropVisualTint(prop), "#ff0000");
-        assert.equal(getPropVisualBrightness(prop), 1.25);
+        assert.equal(prop.wallChunkProfileId, "poolTableFelt");
+        assert.ok(prop.wallChunkHeightPx > 0);
+        assert.equal(getPropVisualTint(prop), null);
+        assert.match(getWallChunkSpriteCacheKey(prop), /^wallchunk:poolTableFelt:/);
     });
 
     it("places box with resizable footprint, surface profile, and fracture off by default", () => {
@@ -33,7 +36,6 @@ describe("spawn shape family defaults", () => {
         session.setPlacePaletteKey("prop:box");
         session.setSpawnBoxWidth(24);
         session.setSpawnBoxHeight(32);
-        session.setSpawnVisualOverrideTint("#00aa88");
         assert.equal(session.spawnAt(96, 96), true);
         const prop = state.worldProps[0];
         assert.equal(prop.type, "box");
@@ -66,5 +68,83 @@ describe("spawn shape family defaults", () => {
         const base = visualOverrideCacheKey(prop);
         prop.visualOverride.brightness = 1.5;
         assert.notEqual(visualOverrideCacheKey(prop), base);
+    });
+});
+
+describe("sphere surface profile draw", () => {
+    const viewport = {
+        x: 0,
+        y: 0,
+        zoom: 1,
+        cameraHeight: DEFAULT_CAMERA_HEIGHT,
+        perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
+    };
+
+    it("flat sphere disc fills a circle path with pattern when textured", () => {
+        const prop = new WorldProp(10, 20, "ball", 0);
+        prop._wallChunkTextures = { ready: true, scale: 1, chunkSizePx: 128, capCanvas: { width: 128, height: 128 } };
+        const draw = createSpherePrimitive(propCatalog.ball.visuals);
+        let arcs = 0;
+        let fills = 0;
+        let patterns = 0;
+        let meshFills = 0;
+        const ctx = {
+            fillStyle: "",
+            beginPath() {},
+            arc() { arcs++; },
+            closePath() {},
+            fill() { fills++; },
+            moveTo() { meshFills++; },
+            lineTo() { meshFills++; },
+            createPattern() {
+                patterns++;
+                return { setTransform() {} };
+            },
+            save() {},
+            restore() {},
+            clip() {},
+            drawImage() {},
+        };
+        draw(ctx, prop, viewport, true);
+        assert.equal(patterns, 1);
+        assert.equal(arcs, 1);
+        assert.equal(fills, 1);
+        assert.equal(meshFills, 0);
+    });
+
+    it("radial pending sphere fills faces without coat panels", () => {
+        const prop = new WorldProp(0, 0, "ball", 0);
+        const draw = createSpherePrimitive(propCatalog.ball.visuals);
+        let fills = 0;
+        const fillStyles = new Set();
+        const ctx = {
+            get fillStyle() { return ""; },
+            set fillStyle(v) { fillStyles.add(v); },
+            beginPath() {},
+            moveTo() {},
+            lineTo() {},
+            closePath() {},
+            fill() { fills++; },
+            save() {},
+            restore() {},
+            clip() {},
+            drawImage() {},
+            createPattern() { return null; },
+        };
+        draw(ctx, prop, viewport, false);
+        assert.ok(fills > 4);
+        assert.equal(fillStyles.size, 1);
+    });
+
+    it("boid attachment stamps profile and copies parent textures", () => {
+        const parent = new WorldProp(0, 0, "boid_triangle", 0);
+        parent._wallChunkTextures = { ready: true, scale: 1, chunkSizePx: 64, capCanvas: { width: 64, height: 64 } };
+        parent._wallChunkTextureReady = true;
+        const { after } = resolveVisualAttachmentProps(parent);
+        assert.ok(after.length >= 1);
+        const wedge = after[0];
+        assert.equal(wedge.type, "tri_wedge");
+        assert.equal(wedge.wallChunkProfileId, "poolTableFelt");
+        assert.equal(wedge._wallChunkTextures, parent._wallChunkTextures);
     });
 });
