@@ -2,7 +2,7 @@ import { createKineticSession } from "../../GameState/KineticSession.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
@@ -13,12 +13,14 @@ export function assignPhysIdWithPose(body, physId) {
     const vx = body.vx ?? 0;
     const vy = body.vy ?? 0;
     const w = body.angularVelocity ?? 0;
+    const facing = body.facing ?? 0;
     body._physId = physId;
     entityX[physId] = x;
     entityY[physId] = y;
     entityVx[physId] = vx;
     entityVy[physId] = vy;
     entityW[physId] = w;
+    entityFacing[physId] = facing;
     clearWorldPropSpawnPose(body);
 }
 export function mockKineticBody(isSleeping = false) {

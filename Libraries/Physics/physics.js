@@ -2532,23 +2532,15 @@ export function kineticPairTopologyStale(spatialFrame) {
     if (!session) return false;
     return gatherGen !== getKineticTopologyGeneration(session);
 }
-export function worldAnchorFromBody(body, localX, localY, out = {}) {
-    const angle = body.facing ?? body.angle ?? 0;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    out.x = body.x + localX * cos - localY * sin;
-    out.y = body.y + localX * sin + localY * cos;
-    return out;
-}
 export function worldAnchorFromBodyIntoF32(body, localX, localY, destOffset) {
-    const angle = body.facing ?? body.angle ?? 0;
+    const angle = entityFacing(body);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     ENGINE_F32[destOffset] = body.x + localX * cos - localY * sin;
     ENGINE_F32[destOffset + 1] = body.y + localX * sin + localY * cos;
 }
 export function worldAnchorFromSlab(body, physId, localX, localY, slab, destOffset) {
-    const angle = body.facing ?? body.angle ?? 0;
+    const angle = entityFacing(body);
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     ENGINE_F32[destOffset] = slab.x[physId] + localX * cos - localY * sin;

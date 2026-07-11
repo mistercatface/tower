@@ -2,7 +2,7 @@ import propCatalog from "../../Assets/props/index.js";
 import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN } from "../Math/math.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, worldAnchorFromBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius } from "../Physics/physics.js";
+import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
@@ -15,7 +15,13 @@ const REFERENCE_GRAB_INERTIA = (() => {
     body.mass = kineticMassFromFootprint(body);
     return kineticInertiaFromBody(body);
 })();
-const GRAB_ANCHOR_SCRATCH = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
+const G_WX = 0;
+const G_WY = 1;
+const G_LX = 2;
+const G_LY = 3;
+const G_OX = 4;
+const G_OY = 5;
+const GRAB_ANCHOR_SCRATCH = new Float32Array(6);
 function hueFromPullRatio(ratio) {
     return 180 - ratio * 180;
 }
@@ -202,26 +208,37 @@ function resolveGrabDragAnchor(prop, world) {
     const asset = propCatalog[prop.type];
     if (asset?.primitive === "polygon" && asset.physics?.isKinetic !== false && prop.shape?.vertices?.length >= 6) {
         const facing = entityFacing(prop);
-        findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
-        return { anchorLocalX: GRAB_ANCHOR_SCRATCH.localX, anchorLocalY: GRAB_ANCHOR_SCRATCH.localY, offsetX: GRAB_ANCHOR_SCRATCH.worldX - world.x, offsetY: GRAB_ANCHOR_SCRATCH.worldY - world.y };
+        findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, 0, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
+        GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
+        GRAB_ANCHOR_SCRATCH[G_OY] = GRAB_ANCHOR_SCRATCH[G_WY] - world.y;
+        return;
     }
     if (asset?.primitive === "sphere" && asset.physics?.isKinetic !== false) {
         const facing = entityFacing(prop);
         const radius = resolveBodyRadius(prop);
-        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, prop.x, prop.y, facing, radius, world.x, world.y);
-        return { anchorLocalX: GRAB_ANCHOR_SCRATCH.localX, anchorLocalY: GRAB_ANCHOR_SCRATCH.localY, offsetX: GRAB_ANCHOR_SCRATCH.worldX - world.x, offsetY: GRAB_ANCHOR_SCRATCH.worldY - world.y };
+        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, 0, prop.x, prop.y, facing, radius, world.x, world.y);
+        GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
+        GRAB_ANCHOR_SCRATCH[G_OY] = GRAB_ANCHOR_SCRATCH[G_WY] - world.y;
+        return;
     }
-    return { anchorLocalX: 0, anchorLocalY: 0, offsetX: prop.x - world.x, offsetY: prop.y - world.y };
+    GRAB_ANCHOR_SCRATCH[G_LX] = 0;
+    GRAB_ANCHOR_SCRATCH[G_LY] = 0;
+    GRAB_ANCHOR_SCRATCH[G_OX] = prop.x - world.x;
+    GRAB_ANCHOR_SCRATCH[G_OY] = prop.y - world.y;
 }
-function grabDragAnchorWorld(prop, run, out) {
+function grabDragAnchorWorld(prop, run) {
     if (prop.strategy?.rolls) {
         const radius = resolveBodyRadius(prop);
-        findCircleRimGrabPointInto(out, prop.x, prop.y, entityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
-        out.x = out.worldX;
-        out.y = out.worldY;
-        return out;
+        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, 0, prop.x, prop.y, entityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
+        return;
     }
-    return worldAnchorFromBody(prop, run.anchorLocalX, run.anchorLocalY, out);
+    const angle = entityFacing(prop);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const lx = run.anchorLocalX;
+    const ly = run.anchorLocalY;
+    GRAB_ANCHOR_SCRATCH[G_WX] = prop.x + lx * cos - ly * sin;
+    GRAB_ANCHOR_SCRATCH[G_WY] = prop.y + lx * sin + ly * cos;
 }
 export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
     const propRuns = new Map();
@@ -237,9 +254,9 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             dx = tx - prop.x;
             dy = ty - prop.y;
         } else {
-            grabDragAnchorWorld(prop, run, GRAB_ANCHOR_SCRATCH);
-            dx = tx - GRAB_ANCHOR_SCRATCH.x;
-            dy = ty - GRAB_ANCHOR_SCRATCH.y;
+            grabDragAnchorWorld(prop, run);
+            dx = tx - GRAB_ANCHOR_SCRATCH[G_WX];
+            dy = ty - GRAB_ANCHOR_SCRATCH[G_WY];
         }
         const dist = Math.hypot(dx, dy);
         if (dist < rollConfig.stopRadius) {
@@ -254,9 +271,9 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         const ratio = power / grabConfig.maxPower;
         steerRollToward(prop, dx / dist, dy / dist, { ...rollConfig, accel: rollConfig.accel * (0.5 + ratio), maxSpeed: rollConfig.maxSpeed * (0.3 + ratio * 0.7) });
         if (prop.strategy?.rolls) return;
-        grabDragAnchorWorld(prop, run, GRAB_ANCHOR_SCRATCH);
-        const rx = GRAB_ANCHOR_SCRATCH.x - prop.x;
-        const ry = GRAB_ANCHOR_SCRATCH.y - prop.y;
+        grabDragAnchorWorld(prop, run);
+        const rx = GRAB_ANCHOR_SCRATCH[G_WX] - prop.x;
+        const ry = GRAB_ANCHOR_SCRATCH[G_WY] - prop.y;
         const leverArmSq = rx * rx + ry * ry;
         if (leverArmSq > 0.25) {
             const fx = (dx / dist) * power;
@@ -276,8 +293,8 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             if (grid && FloorBelt.isEntityOnBelt(grid, prop.x, prop.y)) return false;
             for (const id of groundNavBehaviorIds) state.sandbox.behaviorById.get(id)?.clearMoveTarget?.(prop);
             state.sandbox.entityMeta.clearActiveBehaviorId(prop.id);
-            const anchor = resolveGrabDragAnchor(prop, world);
-            propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: anchor.offsetX, offsetY: anchor.offsetY, anchorLocalX: anchor.anchorLocalX, anchorLocalY: anchor.anchorLocalY, dragging: true });
+            resolveGrabDragAnchor(prop, world);
+            propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: GRAB_ANCHOR_SCRATCH[G_OX], offsetY: GRAB_ANCHOR_SCRATCH[G_OY], anchorLocalX: GRAB_ANCHOR_SCRATCH[G_LX], anchorLocalY: GRAB_ANCHOR_SCRATCH[G_LY], dragging: true });
             if (activeRunIds.indexOf(prop.id) === -1) activeRunIds.push(prop.id);
             wakeKineticBody(prop);
             return true;
@@ -321,15 +338,16 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             const run = propRuns.get(prop.id);
             if (!run?.dragging) return;
             const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
-            grabDragAnchorWorld(prop, run, GRAB_ANCHOR_SCRATCH);
-            const anchor = GRAB_ANCHOR_SCRATCH;
+            grabDragAnchorWorld(prop, run);
+            const ax = GRAB_ANCHOR_SCRATCH[G_WX];
+            const ay = GRAB_ANCHOR_SCRATCH[G_WY];
             const tx = run.targetWorld.x + run.offsetX;
             const ty = run.targetWorld.y + run.offsetY;
-            const dist = Math.hypot(tx - anchor.x, ty - anchor.y);
+            const dist = Math.hypot(tx - ax, ty - ay);
             const ratio = resolveDragLaunchPullRatio(dist, grabConfig);
             const hue = hueFromPullRatio(ratio);
-            commands.push(overlaySegment(anchor.x, anchor.y, tx, ty, { stroke: `hsla(${hue}, 90%, 55%, 0.35)`, lineWidth: 1.5, dash: [3, 3] }));
-            commands.push(overlayCircleFillStroke(anchor.x, anchor.y, 3, { fill: `hsla(${hue}, 90%, 55%, 0.45)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
+            commands.push(overlaySegment(ax, ay, tx, ty, { stroke: `hsla(${hue}, 90%, 55%, 0.35)`, lineWidth: 1.5, dash: [3, 3] }));
+            commands.push(overlayCircleFillStroke(ax, ay, 3, { fill: `hsla(${hue}, 90%, 55%, 0.45)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
             commands.push(overlayCircleFillStroke(tx, ty, 4, { fill: `hsla(${hue}, 90%, 55%, 0.35)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
         },
         reset() {

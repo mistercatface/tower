@@ -2,7 +2,7 @@ import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircl
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, transformPoint2DInto, aabbFromTwoPointsF32, distanceSqToAabb, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight, ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../Math/math.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, distanceBetweenAnchors, worldAnchorFromBody, listKineticConstraints } from "../Physics/physics.js";
+import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
@@ -546,87 +546,189 @@ export function drawPropMeshFace(ctx, prop, viewport, verts3d, fill, stroke, lin
         ctx.stroke();
     }
 }
+let sSphereVertLx = new Float32Array(0);
+let sSphereVertLy = new Float32Array(0);
+let sSphereVertZ = new Float32Array(0);
+let sSphereVertCount = 0;
+let sSphereRowStart = new Int32Array(0);
+let sSphereRowCount = new Int32Array(0);
+let sSphereFaceI0 = new Int32Array(0);
+let sSphereFaceI1 = new Int32Array(0);
+let sSphereFaceI2 = new Int32Array(0);
+let sSphereFacePanel = new Uint16Array(0);
+let sSphereFaceDepth = new Float32Array(0);
+let sSphereFaceCount = 0;
+let sSphereBackOrder = new Int32Array(0);
+let sSphereFrontOrder = new Int32Array(0);
+function ensureSphereVertCapacity(count) {
+    if (sSphereVertLx.length >= count) return;
+    sSphereVertLx = new Float32Array(count);
+    sSphereVertLy = new Float32Array(count);
+    sSphereVertZ = new Float32Array(count);
+}
+function ensureSphereRowCapacity(rowCount) {
+    if (sSphereRowStart.length >= rowCount) return;
+    sSphereRowStart = new Int32Array(rowCount);
+    sSphereRowCount = new Int32Array(rowCount);
+}
+function ensureSphereFaceCapacity(count) {
+    if (sSphereFaceI0.length >= count) return;
+    sSphereFaceI0 = new Int32Array(count);
+    sSphereFaceI1 = new Int32Array(count);
+    sSphereFaceI2 = new Int32Array(count);
+    sSphereFacePanel = new Uint16Array(count);
+    sSphereFaceDepth = new Float32Array(count);
+    sSphereBackOrder = new Int32Array(count);
+    sSphereFrontOrder = new Int32Array(count);
+}
+function pushSphereVert(lx, ly, z) {
+    const i = sSphereVertCount++;
+    sSphereVertLx[i] = lx;
+    sSphereVertLy[i] = ly;
+    sSphereVertZ[i] = z;
+    return i;
+}
+function pushSphereFace(i0, i1, i2, panel) {
+    const f = sSphereFaceCount++;
+    sSphereFaceI0[f] = i0;
+    sSphereFaceI1[f] = i1;
+    sSphereFaceI2[f] = i2;
+    sSphereFacePanel[f] = panel;
+    sSphereFaceDepth[f] = (sSphereVertZ[i0] + sSphereVertZ[i1] + sSphereVertZ[i2]) / 3;
+}
+function isSphereFaceVisible(prop, viewport, i0, i1, i2) {
+    const v0lx = sSphereVertLx[i0];
+    const v0ly = sSphereVertLy[i0];
+    const v0z = sSphereVertZ[i0];
+    const v1lx = sSphereVertLx[i1];
+    const v1ly = sSphereVertLy[i1];
+    const v1z = sSphereVertZ[i1];
+    const v2lx = sSphereVertLx[i2];
+    const v2ly = sSphereVertLy[i2];
+    const v2z = sSphereVertZ[i2];
+    const ax = v1lx - v0lx;
+    const ay = v1ly - v0ly;
+    const az = v1z - v0z;
+    const bx = v2lx - v0lx;
+    const by = v2ly - v0ly;
+    const bz = v2z - v0z;
+    const nx = ay * bz - az * by;
+    const ny = az * bx - ax * bz;
+    const nz = ax * by - ay * bx;
+    const cx = prop.x + (v0lx + v1lx + v2lx) / 3;
+    const cy = prop.y + (v0ly + v1ly + v2ly) / 3;
+    const cz = (v0z + v1z + v2z) / 3;
+    const vx = viewport.x - cx;
+    const vy = viewport.y - cy;
+    const vz = viewport.cameraHeight - cz;
+    return nx * vx + ny * vy + nz * vz > 0;
+}
+function drawSphereFace(ctx, prop, viewport, i0, i1, i2, fill, stroke, lineWidth) {
+    ensureFlatProjectedVertScratch(3);
+    projectPropVertexScalarsInto(flatProjectedVerts, 0, prop, viewport, sSphereVertLx[i0], sSphereVertLy[i0], sSphereVertZ[i0]);
+    projectPropVertexScalarsInto(flatProjectedVerts, 2, prop, viewport, sSphereVertLx[i1], sSphereVertLy[i1], sSphereVertZ[i1]);
+    projectPropVertexScalarsInto(flatProjectedVerts, 4, prop, viewport, sSphereVertLx[i2], sSphereVertLy[i2], sSphereVertZ[i2]);
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    traceClosedFlatPolygon(ctx, flatProjectedVerts, 3);
+    ctx.fill();
+    if (stroke != null && stroke !== false && lineWidth > 0) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.lineJoin = "round";
+        ctx.stroke();
+    }
+}
+function sortSphereFaceOrder(order, count) {
+    for (let i = 1; i < count; i++) {
+        const key = order[i];
+        const keyDepth = sSphereFaceDepth[key];
+        let j = i - 1;
+        while (j >= 0 && sSphereFaceDepth[order[j]] > keyDepth) {
+            order[j + 1] = order[j];
+            j--;
+        }
+        order[j + 1] = key;
+    }
+}
 /**
  * Build lat/long sphere mesh resting on the ground, then apply roll orientation.
- * Each face carries normalized UV bounds for texture mapping.
- *
- * @param {number} radius
- * @param {number} latBands
- * @param {number} lonBands
- * @param {{ w: number, x: number, y: number, z: number }} rollQuat
+ * Writes into module grow-only typed columns; face count is sSphereFaceCount.
  */
 export function buildSphereMesh(radius, latBands, lonBands, rollQuat) {
-    const rows = [];
+    const rowCount = latBands + 1;
+    const maxVerts = 2 + latBands * lonBands;
+    const maxFaces = latBands * lonBands * 2;
+    ensureSphereVertCapacity(maxVerts);
+    ensureSphereRowCapacity(rowCount);
+    ensureSphereFaceCapacity(maxFaces);
+    sSphereVertCount = 0;
+    sSphereFaceCount = 0;
+    const qw = rollQuat.w;
+    const qx = rollQuat.x;
+    const qy = rollQuat.y;
+    const qz = rollQuat.z;
     for (let lat = 0; lat <= latBands; lat++) {
         const phi = (lat / latBands) * Math.PI;
-        const row = [];
+        const rowStart = sSphereVertCount;
         if (Math.sin(phi) < 1e-6) {
-            const pole = sphereLocalVertex(radius, phi, 0);
-            transformRollVertexInto(ENGINE_F32, M_OUT_VX, pole.lx, pole.ly, pole.z, radius, rollQuat.w, rollQuat.x, rollQuat.y, rollQuat.z);
-            row.push({ lx: ENGINE_F32[M_OUT_VX], ly: ENGINE_F32[M_OUT_VY], z: ENGINE_F32[M_OUT_VZ], lon: 0 });
+            const sinPhi = Math.sin(phi);
+            const cosPhi = Math.cos(phi);
+            const lx = radius * sinPhi;
+            const ly = 0;
+            const z = radius * (1 + cosPhi);
+            transformRollVertexInto(ENGINE_F32, M_OUT_VX, lx, ly, z, radius, qw, qx, qy, qz);
+            pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ]);
         } else
             for (let lon = 0; lon < lonBands; lon++) {
                 const theta = (lon / lonBands) * Math.PI * 2;
-                const local = sphereLocalVertex(radius, phi, theta);
-                transformRollVertexInto(ENGINE_F32, M_OUT_VX, local.lx, local.ly, local.z, radius, rollQuat.w, rollQuat.x, rollQuat.y, rollQuat.z);
-                row.push({ lx: ENGINE_F32[M_OUT_VX], ly: ENGINE_F32[M_OUT_VY], z: ENGINE_F32[M_OUT_VZ], lon });
+                const sinPhi = Math.sin(phi);
+                const cosPhi = Math.cos(phi);
+                const lx = radius * sinPhi * Math.cos(theta);
+                const ly = radius * sinPhi * Math.sin(theta);
+                const z = radius * (1 + cosPhi);
+                transformRollVertexInto(ENGINE_F32, M_OUT_VX, lx, ly, z, radius, qw, qx, qy, qz);
+                pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ]);
             }
-        rows.push(row);
+        sSphereRowStart[lat] = rowStart;
+        sSphereRowCount[lat] = sSphereVertCount - rowStart;
     }
-    const faces = [];
     for (let lat = 0; lat < latBands; lat++) {
-        const rowA = rows[lat];
-        const rowB = rows[lat + 1];
-        const northPole = rowA.length === 1;
-        const southPole = rowB.length === 1;
-        const lat0 = lat / latBands;
-        const lat1 = (lat + 1) / latBands;
+        const rowAStart = sSphereRowStart[lat];
+        const rowBStart = sSphereRowStart[lat + 1];
+        const rowACount = sSphereRowCount[lat];
+        const rowBCount = sSphereRowCount[lat + 1];
+        const northPole = rowACount === 1;
+        const southPole = rowBCount === 1;
         if (northPole) {
-            const apex = rowA[0];
+            const apex = rowAStart;
             for (let lon = 0; lon < lonBands; lon++) {
                 const ln = (lon + 1) % lonBands;
-                faces.push({ verts: [apex, rowB[ln], rowB[lon]], panel: lon, lat0, lat1, lon0: lon / lonBands, lon1: (lon + 1) / lonBands, depth: (apex.z + rowB[lon].z + rowB[ln].z) / 3 });
+                pushSphereFace(apex, rowBStart + ln, rowBStart + lon, lon);
             }
             continue;
         }
         if (southPole) {
-            const apex = rowB[0];
+            const apex = rowBStart;
             for (let lon = 0; lon < lonBands; lon++) {
                 const ln = (lon + 1) % lonBands;
-                faces.push({ verts: [rowA[lon], rowA[ln], apex], panel: lon, lat0, lat1, lon0: lon / lonBands, lon1: (lon + 1) / lonBands, depth: (apex.z + rowA[lon].z + rowA[ln].z) / 3 });
+                pushSphereFace(rowAStart + lon, rowAStart + ln, apex, lon);
             }
             continue;
         }
         for (let lon = 0; lon < lonBands; lon++) {
             const ln = (lon + 1) % lonBands;
-            const v00 = rowA[lon];
-            const v01 = rowA[ln];
-            const v10 = rowB[lon];
-            const v11 = rowB[ln];
-            const lon0 = lon / lonBands;
-            const lon1 = (lon + 1) / lonBands;
-            faces.push({ verts: [v00, v01, v11], panel: lon, lat0, lat1, lon0, lon1, depth: (v00.z + v01.z + v11.z) / 3 });
-            faces.push({ verts: [v00, v11, v10], panel: lon, lat0, lat1, lon0, lon1, depth: (v00.z + v11.z + v10.z) / 3 });
+            const v00 = rowAStart + lon;
+            const v01 = rowAStart + ln;
+            const v10 = rowBStart + lon;
+            const v11 = rowBStart + ln;
+            pushSphereFace(v00, v01, v11, lon);
+            pushSphereFace(v00, v11, v10, lon);
         }
     }
-    return faces;
+    return sSphereFaceCount;
 }
 const DEFAULT_PANEL_COLORS = ["#F44336", "#FFEB3B", "#2196F3", "#4CAF50", "#FF9800", "#FFFFFF"];
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {object} prop
- * @param {number} px
- * @param {number} py
- * @param {{
- *   baseRadius?: number,
- *   panelCount?: number,
- *   latBands?: number,
- *   panelColors?: string[],
- *   getFaceColor?: (face: object) => string,
- *   stroke?: string | null | false,
- *   lineWidth?: number,
- * }} [options]
- */
 export function drawSphere(ctx, prop, viewport, options = {}) {
     const radius = options.baseRadius ?? resolveBodyRadius(prop);
     const panelCount = Math.max(3, options.panelCount ?? 6);
@@ -637,21 +739,23 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const stroke = "stroke" in options ? options.stroke : "#2a2a2a";
     const lineWidth = options.lineWidth ?? 1.2;
     const rollQuat = prop.rollQuat ?? IDENTITY_ROLL_QUAT;
-    const mesh = buildSphereMesh(radius, latBands, lonBands, rollQuat);
-    const backFaces = [];
-    const frontFaces = [];
-    for (const face of mesh)
-        if (isPropMeshFaceVisible(prop, viewport, face.verts)) frontFaces.push(face);
-        else backFaces.push(face);
-    const drawPass = (faces) => {
-        const sorted = [...faces].sort((a, b) => a.depth - b.depth);
-        for (const face of sorted) {
-            const fill = getFaceColor ? getFaceColor(face) : panelColors[face.panel % panelColors.length];
-            drawPropMeshFace(ctx, prop, viewport, face.verts, fill, stroke, lineWidth);
+    buildSphereMesh(radius, latBands, lonBands, rollQuat);
+    let backN = 0;
+    let frontN = 0;
+    for (let f = 0; f < sSphereFaceCount; f++)
+        if (isSphereFaceVisible(prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f])) sSphereFrontOrder[frontN++] = f;
+        else sSphereBackOrder[backN++] = f;
+    sortSphereFaceOrder(sSphereBackOrder, backN);
+    sortSphereFaceOrder(sSphereFrontOrder, frontN);
+    const drawPass = (order, count) => {
+        for (let i = 0; i < count; i++) {
+            const f = order[i];
+            const fill = getFaceColor ? getFaceColor({ panel: sSphereFacePanel[f], depth: sSphereFaceDepth[f] }) : panelColors[sSphereFacePanel[f] % panelColors.length];
+            drawSphereFace(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], fill, stroke, lineWidth);
         }
     };
-    drawPass(backFaces);
-    drawPass(frontFaces);
+    drawPass(sSphereBackOrder, backN);
+    drawPass(sSphereFrontOrder, frontN);
 }
 export const DEFAULT_PROP_HEIGHT = 14;
 let sBaseRing = new Float32Array(0);
@@ -868,9 +972,30 @@ export function drawBox(ctx, prop, viewport, { halfSize, height = DEFAULT_PROP_H
     const topHy = scaleAtHeight(hy, alpha, 1);
     drawExtrudedPrism(ctx, prop, viewport, rBoxFootprint, { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, faceOrder: "convexCull", baseGradCornerB: 2, topHalfSize: { x: topHx, y: topHy } });
 }
-export function drawExtrudedConvexPolygon(ctx, prop, viewport, { localVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing, flatFill = false, faceOrder = "convexCull" }) {
+const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, stroke: null, lineWidth: 1, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHalfSize: null, baseGradCornerB: 1, flatFill: false };
+function fillPrismOptsFromDraw(opts, prop, textures) {
+    sPrismOpts.height = opts.height ?? DEFAULT_PROP_HEIGHT;
+    sPrismOpts.facing = opts.facing ?? prop.facing;
+    sPrismOpts.faceColors = opts.faceColors;
+    sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
+    sPrismOpts.bottomColors = opts.bottomColors ?? null;
+    sPrismOpts.topColors = opts.topColors;
+    sPrismOpts.stroke = opts.stroke;
+    sPrismOpts.lineWidth = opts.lineWidth ?? 1;
+    sPrismOpts.plankTs = opts.plankTs;
+    sPrismOpts.topCross = opts.topCross;
+    sPrismOpts.textures = textures;
+    sPrismOpts.faceOrder = opts.faceOrder ?? "convexCull";
+    sPrismOpts.prismPass = opts.prismPass ?? "all";
+    sPrismOpts.topHalfSize = opts.topHalfSize ?? null;
+    sPrismOpts.baseGradCornerB = opts.baseGradCornerB ?? 1;
+    sPrismOpts.flatFill = opts.flatFill === true;
+    return sPrismOpts;
+}
+export function drawExtrudedConvexPolygon(ctx, prop, viewport, opts) {
     const textures = prop.wallChunkProfileId && prop._wallChunkTextures?.ready ? prop._wallChunkTextures : null;
-    drawExtrudedPrism(ctx, prop, viewport, localVerts, { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, textures, faceOrder, flatFill });
+    fillPrismOptsFromDraw(opts, prop, textures);
+    drawExtrudedPrism(ctx, prop, viewport, opts.localVerts, sPrismOpts);
 }
 export function getWallChunkSpriteCacheKey(prop) {
     if (!prop.wallChunkProfileId) return "";
@@ -918,11 +1043,16 @@ export function drawFlatWallChunkProp(ctx, prop) {
     drawFlatWallChunkCap(ctx, prop, verts);
     return true;
 }
-export function drawExtrudedCompoundPolygon(ctx, prop, viewport, { partsVerts, height = DEFAULT_PROP_HEIGHT, faceColors, backFaceColors = null, bottomColors = null, topColors, stroke, plankTs, topCross, lineWidth = 1.0, facing = prop.facing, flatFill = false }) {
-    const prismOpts = { height, facing, faceColors, backFaceColors, bottomColors, topColors, stroke, lineWidth, plankTs, topCross, faceOrder: "convexCull", flatFill };
-    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "base" });
-    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "sides" });
-    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], { ...prismOpts, prismPass: "top" });
+export function drawExtrudedCompoundPolygon(ctx, prop, viewport, opts) {
+    fillPrismOptsFromDraw(opts, prop, null);
+    sPrismOpts.faceOrder = "convexCull";
+    const partsVerts = opts.partsVerts;
+    sPrismOpts.prismPass = "base";
+    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], sPrismOpts);
+    sPrismOpts.prismPass = "sides";
+    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], sPrismOpts);
+    sPrismOpts.prismPass = "top";
+    for (let i = 0; i < partsVerts.length; i++) drawExtrudedPrism(ctx, prop, viewport, partsVerts[i], sPrismOpts);
 }
 export const DRAW_KIND_PROP = 1;
 export const DRAW_KIND_VOXEL = 3;

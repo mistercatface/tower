@@ -379,7 +379,7 @@ export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX
     }
     return bestIndex;
 }
-export function findCircleRimGrabPointInto(out, posX, posY, facing, radius, targetX, targetY) {
+export function findCircleRimGrabPointInto(buf, o, posX, posY, facing, radius, targetX, targetY) {
     let dx = targetX - posX;
     let dy = targetY - posY;
     let len = Math.hypot(dx, dy);
@@ -396,15 +396,12 @@ export function findCircleRimGrabPointInto(out, posX, posY, facing, radius, targ
     const wdy = worldY - posY;
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    out.worldX = worldX;
-    out.worldY = worldY;
-    out.x = worldX;
-    out.y = worldY;
-    out.localX = wdx * cos + wdy * sin;
-    out.localY = -wdx * sin + wdy * cos;
-    return out;
+    buf[o] = worldX;
+    buf[o + 1] = worldY;
+    buf[o + 2] = wdx * cos + wdy * sin;
+    buf[o + 3] = -wdx * sin + wdy * cos;
 }
-export function findClosestPolygonBoundaryGrabPointInto(out, vertices, posX, posY, facing, targetX, targetY) {
+export function findClosestPolygonBoundaryGrabPointInto(buf, o, vertices, posX, posY, facing, targetX, targetY) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const count = vertices.length / 2;
@@ -433,13 +430,10 @@ export function findClosestPolygonBoundaryGrabPointInto(out, vertices, posX, pos
     }
     const wdx = bestWorldX - posX;
     const wdy = bestWorldY - posY;
-    out.worldX = bestWorldX;
-    out.worldY = bestWorldY;
-    out.x = bestWorldX;
-    out.y = bestWorldY;
-    out.localX = wdx * cos + wdy * sin;
-    out.localY = -wdx * sin + wdy * cos;
-    return out;
+    buf[o] = bestWorldX;
+    buf[o + 1] = bestWorldY;
+    buf[o + 2] = wdx * cos + wdy * sin;
+    buf[o + 3] = -wdx * sin + wdy * cos;
 }
 function pointOnPolygonRing(px, py, count, xAt, yAt) {
     for (let i = 0, j = count - 1; i < count; j = i++) if (distanceSqToLineSegment(px, py, xAt(j), yAt(j), xAt(i), yAt(i)) <= POLYGON_EDGE_EPS_SQ) return true;

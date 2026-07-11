@@ -1,6 +1,6 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../Entity/entitySlots.js";
 import { transformPoint2DInto, ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, pointInPolygon, polygonSignedArea2D, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
@@ -39,14 +39,24 @@ export function createPolygonPrimitive(visuals) {
         }
         const baseLineWidth = lineWidth ?? 1.0;
         const resolvedLineWidth = Math.max(0.35, baseLineWidth * scale);
-        const drawOpts = { height, facing: prop.facing, faceColors: { shadow: tinted.sideShadow, mid: tinted.side, highlight: tinted.top }, backFaceColors: { shadow: tinted.sideShadow, mid: tinted.sideShadow, highlight: tinted.side }, bottomColors: tinted.bottom ? { light: tinted.sideShadow, mid: tinted.bottom, dark: tinted.sideShadow } : null, topColors: tinted.bottom ? { light: tinted.topHighlight ?? tinted.top, mid: tinted.top, dark: tinted.side } : { light: tinted.top, mid: tinted.top, dark: tinted.side }, stroke: tinted.stroke, seamStroke: tinted.seamStroke, lineWidth: resolvedLineWidth, plankTs, topCross, flatFill: visuals.flatFill === true };
+        fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, resolvedLineWidth, plankTs, topCross, visuals.flatFill === true);
         if (prop.drawOutline) {
-            drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: prop.drawOutline, faceOrder: "midY" });
+            sDrawOpts.localVerts = prop.drawOutline;
+            sDrawOpts.faceOrder = "midY";
+            drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
             return;
         }
         const parts = getEntityCollisionParts(prop);
-        if (parts.length > 1) drawExtrudedCompoundPolygon(ctx, prop, viewport, { ...drawOpts, partsVerts: parts.map((p) => p.vertices) });
-        else if (parts.length === 1) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[0].vertices });
+        if (parts.length > 1) {
+            sPartsVerts.length = parts.length;
+            for (let i = 0; i < parts.length; i++) sPartsVerts[i] = parts[i].vertices;
+            sDrawOpts.partsVerts = sPartsVerts;
+            drawExtrudedCompoundPolygon(ctx, prop, viewport, sDrawOpts);
+        } else if (parts.length === 1) {
+            sDrawOpts.localVerts = parts[0].vertices;
+            sDrawOpts.faceOrder = "convexCull";
+            drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
+        }
     };
 }
 export function createSpherePrimitive(visuals) {
@@ -55,10 +65,18 @@ export function createSpherePrimitive(visuals) {
         if (shape?.type === "Polygon") {
             const tinted = resolveVisualOverrideColorTree(prop, NEUTRAL_BOX_COLORS);
             const height = prop.height ?? 12;
-            const drawOpts = { height, facing: prop.facing, faceColors: { shadow: tinted.sideShadow, mid: tinted.side, highlight: tinted.top }, backFaceColors: { shadow: tinted.sideShadow, mid: tinted.sideShadow, highlight: tinted.side }, bottomColors: tinted.bottom ? { light: tinted.sideShadow, mid: tinted.bottom, dark: tinted.sideShadow } : null, topColors: tinted.bottom ? { light: tinted.topHighlight ?? tinted.top, mid: tinted.top, dark: tinted.side } : { light: tinted.top, mid: tinted.top, dark: tinted.side }, stroke: tinted.stroke, seamStroke: tinted.seamStroke, lineWidth: 1.0 };
+            fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, 1.0, null, null, false);
             const parts = getEntityCollisionParts(prop);
-            if (parts.length > 1) drawExtrudedCompoundPolygon(ctx, prop, viewport, { ...drawOpts, partsVerts: parts.map((p) => p.vertices) });
-            else if (parts.length === 1) drawExtrudedConvexPolygon(ctx, prop, viewport, { ...drawOpts, localVerts: parts[0].vertices });
+            if (parts.length > 1) {
+                sPartsVerts.length = parts.length;
+                for (let i = 0; i < parts.length; i++) sPartsVerts[i] = parts[i].vertices;
+                sDrawOpts.partsVerts = sPartsVerts;
+                drawExtrudedCompoundPolygon(ctx, prop, viewport, sDrawOpts);
+            } else if (parts.length === 1) {
+                sDrawOpts.localVerts = parts[0].vertices;
+                sDrawOpts.faceOrder = "convexCull";
+                drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
+            }
             return;
         }
         drawSphere(ctx, prop, viewport, { baseRadius: resolveBodyRadius(prop, visuals.defaultRadius ?? 7), panelCount: visuals.panelCount, latBands: visuals.latBands, panelColors: resolveVisualOverridePanels(prop, visuals.panels), stroke: visuals.stroke });
@@ -114,9 +132,6 @@ export function setCirclePropRadius(prop, radius) {
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
 export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
-}
-export function ensurePropPolygonFootprintCapacity(prop, floatCount) {
-    ensureLivePolygonCapacity(prop, floatCount);
 }
 export function applyPropBoxFootprint(prop, hx, hy) {
     const n = 8;
@@ -215,6 +230,50 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
     return Math.min(FACING_STEPS_MAX, scaled);
 }
 const sQuantizeSteps = { facing: 0, view: 0 };
+const sHalfExtents = { x: 0, y: 0 };
+const sStageProp = Object.create(null);
+const sStagePropKeys = [];
+const sFaceColors = { shadow: null, mid: null, highlight: null };
+const sBackFaceColors = { shadow: null, mid: null, highlight: null };
+const sBottomColors = { light: null, mid: null, dark: null };
+const sTopColors = { light: null, mid: null, dark: null };
+const sPartsVerts = [];
+const sDrawOpts = { height: 0, facing: 0, faceColors: sFaceColors, backFaceColors: sBackFaceColors, bottomColors: null, topColors: sTopColors, stroke: null, seamStroke: null, lineWidth: 1, plankTs: null, topCross: null, flatFill: false, localVerts: null, partsVerts: null, faceOrder: "convexCull" };
+function fillExtrudeDrawOpts(out, prop, tinted, height, lineWidth, plankTs, topCross, flatFill) {
+    out.height = height;
+    out.facing = entityFacing(prop);
+    sFaceColors.shadow = tinted.sideShadow;
+    sFaceColors.mid = tinted.side;
+    sFaceColors.highlight = tinted.top;
+    sBackFaceColors.shadow = tinted.sideShadow;
+    sBackFaceColors.mid = tinted.sideShadow;
+    sBackFaceColors.highlight = tinted.side;
+    if (tinted.bottom) {
+        sBottomColors.light = tinted.sideShadow;
+        sBottomColors.mid = tinted.bottom;
+        sBottomColors.dark = tinted.sideShadow;
+        out.bottomColors = sBottomColors;
+        sTopColors.light = tinted.topHighlight ?? tinted.top;
+        sTopColors.mid = tinted.top;
+        sTopColors.dark = tinted.side;
+    } else {
+        out.bottomColors = null;
+        sTopColors.light = tinted.top;
+        sTopColors.mid = tinted.top;
+        sTopColors.dark = tinted.side;
+    }
+    out.topColors = sTopColors;
+    out.stroke = tinted.stroke;
+    out.seamStroke = tinted.seamStroke;
+    out.lineWidth = lineWidth;
+    out.plankTs = plankTs;
+    out.topCross = topCross;
+    out.flatFill = flatFill === true;
+    out.localVerts = null;
+    out.partsVerts = null;
+    out.faceOrder = "convexCull";
+    return out;
+}
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
     const override = prop.strategy?.quantizeSteps;
@@ -228,16 +287,28 @@ export function getBaseSpriteCacheKey(prop, deps) {
     const steps = resolvePropQuantizeSteps(prop);
     let orientKey = "";
     if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, steps.facing);
-    else orientKey = `f${quantizeAngleIndex(prop.facing ?? 0, steps.facing)}`;
+    else orientKey = `f${quantizeAngleIndex(entityFacing(prop), steps.facing)}`;
     let key = `${orientKey}_${propShapeFootprintKey(prop)}`;
     key += visualOverrideCacheKey(prop);
     return key;
 }
 export function getPropStageBakeState(prop, deps) {
-    const { quantizeAngle, quantizeRollQuat, anchorX, anchorY } = deps;
+    const { quantizeAngle, quantizeRollQuat } = deps;
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
     const steps = resolvePropQuantizeSteps(prop);
-    return { ...prop, x: prop.x, y: prop.y, radius: prop.radius, halfExtents: { x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] }, facing: quantizeAngle(prop.facing ?? 0, steps.facing), rollQuat: prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, steps.facing) : prop.rollQuat };
+    for (let i = 0; i < sStagePropKeys.length; i++) delete sStageProp[sStagePropKeys[i]];
+    sStagePropKeys.length = 0;
+    Object.assign(sStageProp, prop);
+    for (const k of Object.keys(sStageProp)) sStagePropKeys.push(k);
+    sStageProp.x = prop.x;
+    sStageProp.y = prop.y;
+    sStageProp.radius = prop.radius;
+    sHalfExtents.x = ENGINE_F32[M_VEC_A];
+    sHalfExtents.y = ENGINE_F32[M_VEC_A + 1];
+    sStageProp.halfExtents = sHalfExtents;
+    sStageProp.facing = quantizeAngle(entityFacing(prop), steps.facing);
+    sStageProp.rollQuat = prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, steps.facing) : prop.rollQuat;
+    return sStageProp;
 }
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) {
@@ -298,7 +369,7 @@ export class WorldProp {
         this.stateTimer = 0;
         this.stateData = {};
         this.height = asset?.visuals?.world?.height ?? 12;
-        this.facing = resolvePropSpawnFacing(this, facing);
+        this._spawnFacing = resolvePropSpawnFacing(this, facing);
         if (this.strategy.rolls) this.rollQuat = { ...IDENTITY_ROLL_QUAT };
         this.chunks = undefined;
         this.collisionParts = undefined;
@@ -374,6 +445,15 @@ export class WorldProp {
         if (eid !== undefined) entityW[eid] = v;
         else this._spawnW = v;
     }
+    get facing() {
+        const eid = this._physId;
+        return eid !== undefined ? entityFacingCol[eid] : this._spawnFacing;
+    }
+    set facing(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityFacingCol[eid] = v;
+        else this._spawnFacing = v;
+    }
     get momentOfInertia() {
         return kineticInertiaFromBody(this);
     }
@@ -422,7 +502,7 @@ export class WorldProp {
                 const moveAngle = Math.atan2(this.vy, this.vx);
                 const turnRadPerSec = Math.PI * 1.5;
                 const maxStep = turnRadPerSec * (dt / 1000);
-                this.facing = rotateAngleTowards(this.facing ?? moveAngle, moveAngle, maxStep);
+                this.facing = rotateAngleTowards(entityFacing(this), moveAngle, maxStep);
             }
         }
     }
@@ -474,7 +554,7 @@ function resolveAttachmentHeading(prop, cfg) {
         const minSpeed = cfg.minHeadingSpeed ?? 0.25;
         if (speed >= minSpeed) return Math.atan2(vy, vx);
     }
-    return prop.facing ?? 0;
+    return entityFacing(prop);
 }
 function resolveQuantizedAttachmentHeading(prop, cfg) {
     return quantizeAngle(resolveAttachmentHeading(prop, cfg), resolvePropQuantizeSteps(prop).facing);

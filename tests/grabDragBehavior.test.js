@@ -91,24 +91,24 @@ describe("grabDrag behavior", () => {
     });
 
     it("findCircleRimGrabPointInto places grab on rim toward cursor", () => {
-        const out = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
-        findCircleRimGrabPointInto(out, 0, 0, 0, 8, 12, 0);
-        assert.ok(Math.abs(out.worldX - 8) < 0.01);
-        assert.ok(Math.abs(out.worldY) < 0.01);
-        assert.ok(Math.abs(out.localX - 8) < 0.01);
-        findCircleRimGrabPointInto(out, 0, 0, 0, 8, 0, 0);
-        assert.ok(Math.abs(out.worldX - 8) < 0.01);
+        const out = new Float32Array(4);
+        findCircleRimGrabPointInto(out, 0, 0, 0, 0, 8, 12, 0);
+        assert.ok(Math.abs(out[0] - 8) < 0.01);
+        assert.ok(Math.abs(out[1]) < 0.01);
+        assert.ok(Math.abs(out[2] - 8) < 0.01);
+        findCircleRimGrabPointInto(out, 0, 0, 0, 0, 8, 0, 0);
+        assert.ok(Math.abs(out[0] - 8) < 0.01);
     });
 
     it("findClosestPolygonBoundaryGrabPointInto snaps to corner or edge", () => {
-        const out = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
+        const out = new Float32Array(4);
         const box = boxLocalFootprint(12, 8);
-        findClosestPolygonBoundaryGrabPointInto(out, box, 0, 0, 0, 12, 8);
-        assert.ok(Math.abs(out.localX - 12) < 0.01);
-        assert.ok(Math.abs(out.localY - 8) < 0.01);
-        findClosestPolygonBoundaryGrabPointInto(out, box, 0, 0, 0, 0, 8);
-        assert.ok(Math.abs(out.localX) < 0.01);
-        assert.ok(Math.abs(out.localY - 8) < 0.01);
+        findClosestPolygonBoundaryGrabPointInto(out, 0, box, 0, 0, 0, 12, 8);
+        assert.ok(Math.abs(out[2] - 12) < 0.01);
+        assert.ok(Math.abs(out[3] - 8) < 0.01);
+        findClosestPolygonBoundaryGrabPointInto(out, 0, box, 0, 0, 0, 0, 8);
+        assert.ok(Math.abs(out[2]) < 0.01);
+        assert.ok(Math.abs(out[3] - 8) < 0.01);
     });
 
     it("polygon grab uses off-center anchor and applies grab torque", () => {
@@ -127,10 +127,10 @@ describe("grabDrag behavior", () => {
     it("rolling sphere rim anchor tracks cursor not rollQuat", () => {
         const prop = mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" });
         prop.rollQuat = { w: 0.9239, x: 0, y: 0.3827, z: 0 };
-        const rim = { x: 0, y: 0, localX: 0, localY: 0, worldX: 0, worldY: 0 };
-        findCircleRimGrabPointInto(rim, 0, 0, 0, 8, 10, 0);
-        assert.ok(Math.abs(rim.worldX - 8) < 0.01);
-        assert.ok(Math.abs(rim.worldY) < 0.01);
+        const rim = new Float32Array(4);
+        findCircleRimGrabPointInto(rim, 0, 0, 0, 0, 8, 10, 0);
+        assert.ok(Math.abs(rim[0] - 8) < 0.01);
+        assert.ok(Math.abs(rim[1]) < 0.01);
     });
 
     it("sphere rim grab steers from rolled contact", () => {

@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
-import { entityRefs, entityX, entityY, entityVx, entityVy, entityW } from "../Entity/entitySlots.js";
+import { entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../Entity/entitySlots.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { ENGINE_F32, ENGINE_FRAC_BASE } from "../Math/math.js";
 import { transformPoint2DInto, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -414,6 +414,8 @@ class KineticDebrisBody {
     }
     set facing(v) {
         kineticDebrisSlab.facing[this._row] = v;
+        const eid = this._physId;
+        if (eid !== undefined) entityFacingCol[eid] = v;
     }
     get ageMs() {
         return kineticDebrisSlab.ageMs[this._row];

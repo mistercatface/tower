@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { entityVx, entityVy, entityW } from "../Libraries/Entity/entitySlots.js";
+import { entityVx, entityVy, entityW, entityFacing } from "../Libraries/Entity/entitySlots.js";
 import { snapshotKineticBodySlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 
@@ -15,9 +15,11 @@ describe("kinetic debris damping", () => {
         body.vx = 200;
         body.vy = -50;
         body.angularVelocity = 3;
+        body.facing = 1.1;
         assert.equal(entityVx[0], 200);
         assert.equal(entityVy[0], -50);
         assert.equal(entityW[0], 3);
+        assert.ok(Math.abs(entityFacing[0] - 1.1) < 1e-6);
     });
 
     it("tickPropSubstep damping clears velocity on debris slab and entity*", () => {

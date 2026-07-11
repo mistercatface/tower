@@ -9,6 +9,7 @@ export const entityY = new Float32Array(MAX_ENTITIES);
 export const entityVx = new Float32Array(MAX_ENTITIES);
 export const entityVy = new Float32Array(MAX_ENTITIES);
 export const entityW = new Float32Array(MAX_ENTITIES);
+export const entityFacing = new Float32Array(MAX_ENTITIES);
 export const entityR = new Float32Array(MAX_ENTITIES);
 export const entityKind = new Uint8Array(MAX_ENTITIES);
 export const entityFlags = new Uint32Array(MAX_ENTITIES);
@@ -51,9 +52,10 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityGameId[eid] = gameId;
     entityX[eid] = x;
     entityY[eid] = y;
-    entityVx[eid] = ref.vx ?? 0;
-    entityVy[eid] = ref.vy ?? 0;
-    entityW[eid] = ref.angularVelocity ?? 0;
+    entityVx[eid] = ref._spawnVx ?? ref.vx ?? 0;
+    entityVy[eid] = ref._spawnVy ?? ref.vy ?? 0;
+    entityW[eid] = ref._spawnW ?? ref.angularVelocity ?? 0;
+    entityFacing[eid] = ref._spawnFacing ?? ref.facing ?? 0;
     entityR[eid] = r;
     entityRefs[eid] = ref;
 }
@@ -63,6 +65,7 @@ export function syncEntitySlotPoseFromRef(eid, ref) {
     entityVx[eid] = ref.vx ?? 0;
     entityVy[eid] = ref.vy ?? 0;
     entityW[eid] = ref.angularVelocity ?? 0;
+    entityFacing[eid] = ref.facing ?? 0;
 }
 export function writebackEntitySlotPoseToRef(eid, ref) {
     ref.x = entityX[eid];
@@ -70,6 +73,7 @@ export function writebackEntitySlotPoseToRef(eid, ref) {
     ref.vx = entityVx[eid];
     ref.vy = entityVy[eid];
     ref.angularVelocity = entityW[eid];
+    ref.facing = entityFacing[eid];
 }
 export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnX;
@@ -77,6 +81,7 @@ export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnVx;
     delete ref._spawnVy;
     delete ref._spawnW;
+    delete ref._spawnFacing;
 }
 export function entitySlotRef(eid) {
     return entityAlive[eid] ? entityRefs[eid] : null;

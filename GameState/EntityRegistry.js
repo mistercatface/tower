@@ -1,17 +1,17 @@
-import { pruneKineticConstraintsForBody, getEntityCollisionParts, resolveBodyRadius } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, getEntityCollisionParts, resolveBodyRadius, entityFacing } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
 const EMPTY_KINDS = ["worldProp"];
 const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
-const PICK_WORLD_POLY = [];
+let PICK_WORLD_POLY = new Float32Array(64);
 function worldPropFootprintInto(out, prop, shape) {
-    const facing = prop.facing ?? prop.angle ?? 0;
+    const facing = entityFacing(prop);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const verts = shape.vertices;
     const count = verts.length;
-    out.length = count;
+    if (out.length < count) out = new Float32Array(count);
     for (let i = 0; i < count; i += 2) {
         const lx = verts[i];
         const ly = verts[i + 1];
@@ -33,11 +33,13 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
         }
         if (shape.type === "Polygon") {
             sawPolygon = true;
-            const worldPoly = worldPropFootprintInto(PICK_WORLD_POLY, prop, shape);
-            if (pointInPolygon(worldX, worldY, worldPoly)) return true;
+            PICK_WORLD_POLY = worldPropFootprintInto(PICK_WORLD_POLY, prop, shape);
+            const worldPoly = PICK_WORLD_POLY;
+            const floatCount = shape.vertices.length;
+            if (pointInPolygon(worldX, worldY, worldPoly.subarray(0, floatCount))) return true;
             if (padding <= 0) continue;
             const padSq = padding * padding;
-            const count = worldPoly.length / 2;
+            const count = floatCount / 2;
             for (let i = 0, j = count - 1; i < count; j = i++) {
                 const ax = worldPoly[j * 2];
                 const ay = worldPoly[j * 2 + 1];
