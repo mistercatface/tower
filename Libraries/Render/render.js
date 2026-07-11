@@ -559,7 +559,7 @@ function isSphereFaceVisible(prop, viewport, i0, i1, i2) {
     const vz = viewport.cameraHeight - cz;
     return nx * vx + ny * vy + nz * vz > 0;
 }
-function drawSphereFace(ctx, prop, viewport, i0, i1, i2, fill, stroke, lineWidth) {
+function drawSphereFace(ctx, prop, viewport, i0, i1, i2, fill) {
     ensureFlatProjectedVertScratch(3);
     projectPropVertexScalarsInto(flatProjectedVerts, 0, prop, viewport, sSphereVertLx[i0], sSphereVertLy[i0], sSphereVertZ[i0]);
     projectPropVertexScalarsInto(flatProjectedVerts, 2, prop, viewport, sSphereVertLx[i1], sSphereVertLy[i1], sSphereVertZ[i1]);
@@ -568,12 +568,6 @@ function drawSphereFace(ctx, prop, viewport, i0, i1, i2, fill, stroke, lineWidth
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, flatProjectedVerts, 3);
     ctx.fill();
-    if (stroke != null && stroke !== false && lineWidth > 0) {
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.lineJoin = "round";
-        ctx.stroke();
-    }
 }
 function sortSphereFaceOrder(order, count) {
     for (let i = 1; i < count; i++) {
@@ -668,8 +662,6 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const lonBands = panelCount;
     const panelColors = options.panelColors ?? DEFAULT_PANEL_COLORS;
     const getFaceColor = options.getFaceColor;
-    const stroke = "stroke" in options ? options.stroke : "#2a2a2a";
-    const lineWidth = options.lineWidth ?? 1.2;
     const qw = prop.rollQw ?? 1;
     const qx = prop.rollQx ?? 0;
     const qy = prop.rollQy ?? 0;
@@ -686,7 +678,7 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
         for (let i = 0; i < count; i++) {
             const f = order[i];
             const fill = getFaceColor ? getFaceColor(sSphereFacePanel[f], sSphereFaceDepth[f]) : panelColors[sSphereFacePanel[f] % panelColors.length];
-            drawSphereFace(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], fill, stroke, lineWidth);
+            drawSphereFace(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], fill);
         }
     };
     drawPass(sSphereBackOrder, backN);
@@ -718,7 +710,7 @@ function fillBoxFootprintInto(out, hx, hy) {
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
-function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, shadow, mid, highlight, stroke, lineWidth, plankTs, drawPlanks) {
+function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, shadow, mid, highlight, plankTs, drawPlanks) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
     const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
@@ -728,11 +720,6 @@ function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, shadow, mid, 
     ctx.beginPath();
     traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
     ctx.fill();
-    if (stroke) {
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
-        ctx.stroke();
-    }
     if (drawPlanks && plankTs) {
         ctx.strokeStyle = plankTs.stroke ?? "rgba(0,0,0,0.55)";
         ctx.lineWidth = plankTs.lineWidth ?? 0.8;
@@ -821,8 +808,6 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const backFaceColors = opts.backFaceColors ?? null;
     const bottomColors = opts.bottomColors ?? null;
     const topColors = opts.topColors;
-    const stroke = opts.stroke;
-    const lineWidth = opts.lineWidth ?? 1.0;
     const plankTs = opts.plankTs;
     const topCross = opts.topCross;
     const textures = opts.textures ?? null;
@@ -865,11 +850,6 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         ctx.beginPath();
         traceClosedFlatPolygon(ctx, sBaseRing, count);
         ctx.fill();
-        if (stroke) {
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = lineWidth;
-            ctx.stroke();
-        }
     }
     if (drawSides)
         if (faceOrder === "midY")
@@ -879,7 +859,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
                 const shadow = front ? faceColors.shadow : backShadow;
                 const mid = front ? faceColors.mid : backMid;
                 const highlight = front ? faceColors.highlight : backHighlight;
-                drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, front);
+                drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, plankTs, front);
             }
         else
             for (let pass = 0; pass < 2; pass++) {
@@ -889,7 +869,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
                     const shadow = wantFront ? faceColors.shadow : backShadow;
                     const mid = wantFront ? faceColors.mid : backMid;
                     const highlight = wantFront ? faceColors.highlight : backHighlight;
-                    drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, wantFront);
+                    drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, plankTs, wantFront);
                 }
             }
     if (drawTop) {
@@ -903,11 +883,6 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         ctx.beginPath();
         traceClosedFlatPolygon(ctx, sTopRing, count);
         ctx.fill();
-        if (stroke) {
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = lineWidth;
-            ctx.stroke();
-        }
         if (topCross && count === 4) {
             ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
             ctx.lineWidth = topCross.lineWidth ?? 0.8;
@@ -918,10 +893,10 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         }
     }
 }
-const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, stroke: null, lineWidth: 1, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHx: null, topHy: null, baseGradCornerB: 1 };
+const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHx: null, topHy: null, baseGradCornerB: 1 };
 const sBeltProp = { x: 0, y: 0, facing: 0 };
 const sBeltHalf = { x: 0, y: 0 };
-const sBeltDrawOpts = { halfSize: sBeltHalf, height: 0, facing: 0, faceColors: null, topColors: null, stroke: null, lineWidth: 1 };
+const sBeltDrawOpts = { halfSize: sBeltHalf, height: 0, facing: 0, faceColors: null, topColors: null };
 export function drawBox(ctx, prop, viewport, opts) {
     const halfSize = opts.halfSize;
     const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
@@ -935,8 +910,6 @@ export function drawBox(ctx, prop, viewport, opts) {
     sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
     sPrismOpts.bottomColors = opts.bottomColors ?? null;
     sPrismOpts.topColors = opts.topColors;
-    sPrismOpts.stroke = opts.stroke;
-    sPrismOpts.lineWidth = opts.lineWidth ?? 1.0;
     sPrismOpts.plankTs = opts.plankTs;
     sPrismOpts.topCross = opts.topCross;
     sPrismOpts.textures = null;
@@ -954,8 +927,6 @@ function fillPrismOptsFromDraw(opts, prop, textures) {
     sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
     sPrismOpts.bottomColors = opts.bottomColors ?? null;
     sPrismOpts.topColors = opts.topColors;
-    sPrismOpts.stroke = opts.stroke ?? null;
-    sPrismOpts.lineWidth = opts.lineWidth ?? 1;
     sPrismOpts.plankTs = opts.plankTs;
     sPrismOpts.topCross = opts.topCross;
     sPrismOpts.textures = textures;
@@ -1596,7 +1567,6 @@ export function createConveyorDraw(options = {}) {
         mid: "#212121", // charcoal side
         highlight: "#373737", // slightly lighter highlights
     };
-    const beltStroke = "#111111"; // dark outline
     const beltTopColors = {
         light: "#2b2b2b", // dark rubber bed
         mid: "#1e1e1e",
@@ -1619,8 +1589,6 @@ export function createConveyorDraw(options = {}) {
             sBeltDrawOpts.facing = angle;
             sBeltDrawOpts.faceColors = beltColors;
             sBeltDrawOpts.topColors = beltTopColors;
-            sBeltDrawOpts.stroke = beltStroke;
-            sBeltDrawOpts.lineWidth = 1.0 * lineScale;
             drawBox(ctx, sBeltProp, viewport, sBeltDrawOpts);
             function projectLocalFlat(out8, offset, lx, ly, lz) {
                 const rx = lx * cos - ly * sin;
@@ -1688,8 +1656,6 @@ export function createConveyorDraw(options = {}) {
         sBeltDrawOpts.facing = angle;
         sBeltDrawOpts.faceColors = beltColors;
         sBeltDrawOpts.topColors = beltTopColors;
-        sBeltDrawOpts.stroke = beltStroke;
-        sBeltDrawOpts.lineWidth = 1.0 * lineScale;
         drawBox(ctx, sBeltProp, viewport, sBeltDrawOpts);
         function projectLocalFlat(out8, offset, lx, ly, lz) {
             const rx = lx * cos - ly * sin;
