@@ -37,6 +37,14 @@ export function parseGameLaunchQuery(search = window.location.search) {
     const game = new URLSearchParams(search).get("game");
     return game || null;
 }
+const DEFAULT_GLASS_SIZE_PX = 1024;
+export function parseGlassLaunchSizePx(search = window.location.search) {
+    const raw = new URLSearchParams(search).get("size");
+    if (raw == null || raw === "") return DEFAULT_GLASS_SIZE_PX;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) throw new Error(`glass launch: invalid size "${raw}"`);
+    return n;
+}
 const SNAKE_RAIL_MAZE_COLS = 64;
 const SNAKE_RAIL_MAZE_ROWS = 64;
 const CHAIN_GROW_DIRS = [
@@ -171,9 +179,11 @@ async function runGlassLaunch(state, ctx) {
     getMapGenBoundsCenterWorldF32(ENGINE_F32, M_VEC_A, grid, railConfig);
     const cx = ENGINE_F32[M_VEC_A];
     const cy = ENGINE_F32[M_VEC_A + 1];
+    const glassSizePx = parseGlassLaunchSizePx();
+    const glassHalf = glassSizePx * 0.5;
     const pane = spawnPlacedSandboxProp(state, cx, cy, "glass_pane", "alpha");
-    applyPropBoxFootprint(pane, 512, 512);
-    const star = spawnPlacedSandboxProp(state, cx, cy - (512 + 24), "star_block", "alpha");
+    applyPropBoxFootprint(pane, glassHalf, glassHalf);
+    const star = spawnPlacedSandboxProp(state, cx, cy - (glassHalf + 24), "star_block", "alpha");
     state.appLaunch?.session?.bind(ctx);
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [star.id] });

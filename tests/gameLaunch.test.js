@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseGameLaunchQuery, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
+import { parseGameLaunchQuery, parseGlassLaunchSizePx, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 
 describe("parseGameLaunchQuery", () => {
     it("returns null when game param is absent", () => {
@@ -9,6 +9,22 @@ describe("parseGameLaunchQuery", () => {
     });
     it("returns the game id from the query string", () => {
         assert.equal(parseGameLaunchQuery("?game=snake"), "snake");
+    });
+});
+
+describe("parseGlassLaunchSizePx", () => {
+    it("defaults to 1024 when size is absent", () => {
+        assert.equal(parseGlassLaunchSizePx("?game=glass"), 1024);
+        assert.equal(parseGlassLaunchSizePx(""), 1024);
+    });
+    it("reads size as full side length in world px", () => {
+        assert.equal(parseGlassLaunchSizePx("?game=glass&size=512"), 512);
+        assert.equal(parseGlassLaunchSizePx("?size=256"), 256);
+    });
+    it("rejects non-positive sizes", () => {
+        assert.throws(() => parseGlassLaunchSizePx("?size=0"), /invalid size/);
+        assert.throws(() => parseGlassLaunchSizePx("?size=-10"), /invalid size/);
+        assert.throws(() => parseGlassLaunchSizePx("?size=nope"), /invalid size/);
     });
 });
 
