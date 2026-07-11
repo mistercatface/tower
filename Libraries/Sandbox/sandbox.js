@@ -8,6 +8,7 @@ import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
+import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
@@ -100,6 +101,28 @@ export class SandboxWorldState {
 }
 function notifySandboxVisualDirty(state) {
     state.sandbox.onVisualDirty?.();
+}
+const SHIPPED_SURFACE_PROFILE_OPTIONS = shippedSurfaceProfileIds().map((id) => ({ value: id, label: id }));
+function appendSurfaceProfileSelect(parent, { value, onChange }) {
+    appendSelectField(parent, "Surface profile", { value, options: SHIPPED_SURFACE_PROFILE_OPTIONS, onChange });
+}
+function appendMapGenSurfaceProfileSelect(panel, config, state, regionKind, onPreviewChange) {
+    appendSurfaceProfileSelect(panel, {
+        value: config.surfaceProfileId,
+        onChange: (profileId) => {
+            config.surfaceProfileId = profileId;
+            repaintMapGenRegionSurfaceIfStamped(state, regionKind);
+            onPreviewChange();
+        },
+    });
+}
+function applyPropSurfaceProfile(prop, profileId) {
+    prop.wallChunkProfileId = profileId;
+    prop._wallChunkTextures = null;
+    prop._wallChunkTextureReady = false;
+}
+function assetDefaultSurfaceProfileId(asset) {
+    return asset?.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
 }
 export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
@@ -308,16 +331,7 @@ function buildCavernGenEditor(panel, state, onPreviewChange, onGenerated, genera
     const { cavernConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, cavernConfig, state, "Orange overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
-    const profileOptions = shippedSurfaceProfileIds().map((id) => ({ value: id, label: id }));
-    appendSelectField(panel, "Surface profile", {
-        value: cavernConfig.surfaceProfileId,
-        options: profileOptions,
-        onChange: (value) => {
-            cavernConfig.surfaceProfileId = value;
-            repaintMapGenRegionSurfaceIfStamped(state, "cavern");
-            onPreviewChange();
-        },
-    });
+    appendMapGenSurfaceProfileSelect(panel, cavernConfig, state, "cavern", onPreviewChange);
     appendMapGenRockSliders(panel, cavernConfig, maxWallHeightLevel);
     const seedLine = document.createElement("p");
     seedLine.className = "editor-hint";
@@ -349,16 +363,7 @@ function buildRailGenEditor(panel, state, onPreviewChange, onGenerated, generate
     const { railConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, railConfig, state, "Purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
-    const profileOptions = shippedSurfaceProfileIds().map((id) => ({ value: id, label: id }));
-    appendSelectField(panel, "Surface profile", {
-        value: railConfig.surfaceProfileId,
-        options: profileOptions,
-        onChange: (value) => {
-            railConfig.surfaceProfileId = value;
-            repaintMapGenRegionSurfaceIfStamped(state, "rail");
-            onPreviewChange();
-        },
-    });
+    appendMapGenSurfaceProfileSelect(panel, railConfig, state, "rail", onPreviewChange);
     appendMapGenRockSliders(panel, railConfig, maxWallHeightLevel);
     panel.appendChild(
         new SliderControl("Wall thickness", 1, 4, 1, railConfig.edgeThickness, (val) => {
@@ -384,16 +389,7 @@ function buildRailMazeGenEditor(panel, state, onPreviewChange, onGenerated, gene
     const { railMazeConfig } = state.editor;
     const maxWallHeightLevel = state.worldSurfaces.settings.maxWallHeightLevel;
     appendMapGenBoundsControls(panel, railMazeConfig, state, "Light purple overlay on map overview — drag inside to move, drag edges/rings to resize.", onPreviewChange);
-    const profileOptions = shippedSurfaceProfileIds().map((id) => ({ value: id, label: id }));
-    appendSelectField(panel, "Surface profile", {
-        value: railMazeConfig.surfaceProfileId,
-        options: profileOptions,
-        onChange: (value) => {
-            railMazeConfig.surfaceProfileId = value;
-            repaintMapGenRegionSurfaceIfStamped(state, "railMaze");
-            onPreviewChange();
-        },
-    });
+    appendMapGenSurfaceProfileSelect(panel, railMazeConfig, state, "railMaze", onPreviewChange);
     panel.appendChild(
         new SliderControl("Wall thickness", 1, 4, 1, railMazeConfig.edgeThickness, (val) => {
             railMazeConfig.edgeThickness = val;
@@ -492,6 +488,8 @@ function serializePlacedProp(prop) {
     }
     const visualOverride = serializeVisualOverride(prop);
     if (visualOverride) entry.visualOverride = visualOverride;
+    const defaultProfile = assetDefaultSurfaceProfileId(propCatalog[prop.type]);
+    if (prop.wallChunkProfileId != null && prop.wallChunkProfileId !== defaultProfile) entry.wallChunkProfileId = prop.wallChunkProfileId;
     return entry;
 }
 export function collectFlatPlacedSandboxPropEntries(state) {
@@ -744,6 +742,7 @@ const PLACEABLE = {
                 if (idx === -1) return false;
                 const chain = spawnLinkedBallChain(state, idx, { headBallType: "snake", ballType: "ball", segmentCount: ctx.spawnSnakeLength, segmentRadius: ctx.spawnBallRadius, faction: ctx.spawnFaction, spacing: ctx.spawnBallRadius * 2, linkSlack: 1.0 });
                 if (chain && chain.leader) {
+                    for (let i = 0; i < chain.members.length; i++) applyPropSurfaceProfile(chain.members[i], ctx.spawnSurfaceProfileId);
                     ctx.placement.touchPropPlacement(chain.leader.id);
                     if (ctx.selectSpawned !== false) ctx.pickSelection({ kind: "prop", ids: [chain.leader.id] });
                 }
@@ -751,10 +750,11 @@ const PLACEABLE = {
             }
             const placedAsset = propCatalog[propTypeId];
             const halfExtents = isResizableBoxSpawnAsset(placedAsset) ? ctx.spawnBoxHalfExtents : undefined;
-            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
+            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents);
             if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
             if (spawned && propTypeId === "cross_pinwheel") applyCrossPinwheelFootprint(spawned, ctx.spawnCrossLength, ctx.spawnCrossThickness);
             if (spawned && isPolygonFamilyAsset(placedAsset) && !placedAsset.physics?.fracture) spawned.fractureEnabled = ctx.spawnFractureEnabled;
+            if (spawned && spawned.wallChunkProfileId != null) applyPropSurfaceProfile(spawned, ctx.spawnSurfaceProfileId);
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
                 if (ctx.selectSpawned !== false) ctx.pickSelection({ kind: "prop", ids: [spawned.id] });
@@ -960,6 +960,7 @@ function spawnSnapshotProp(state, entry) {
         if (entry.crossLength == null || entry.crossThickness == null) throw new Error("cross_pinwheel snapshot entry requires crossLength and crossThickness");
         applyCrossPinwheelFootprint(prop, entry.crossLength, entry.crossThickness);
     }
+    if (prop && entry.wallChunkProfileId) applyPropSurfaceProfile(prop, entry.wallChunkProfileId);
     return prop;
 }
 /** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
@@ -1068,12 +1069,12 @@ export function createSandboxSession(state) {
     let spawnBallRadius = null;
     let spawnSnakeLength = 5;
     let spawnFractureEnabled = false;
-    const resolveSpawnVisualOverride = () => null;
+    let spawnSurfaceProfileId = SURFACE_PROFILE_ID.poolTableFelt;
     const spawnCtx = (options = {}) => ({
         spawnPropId: spawnPropIdFromPalette(),
         spawnFaction,
         resolveSpawnPropTypeId: spawnPropIdFromPalette,
-        resolveSpawnVisualOverride,
+        spawnSurfaceProfileId,
         get spawnBallRadius() {
             return spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]);
         },
@@ -1451,7 +1452,11 @@ export function createSandboxSession(state) {
             spawnSnakeLength = Math.max(3, Math.min(999, Math.round(len)));
             notifyUi();
         },
-        resolveSpawnVisualOverride,
+        getSpawnSurfaceProfileId: () => spawnSurfaceProfileId,
+        setSpawnSurfaceProfileId: (profileId) => {
+            spawnSurfaceProfileId = profileId;
+            notifyUi();
+        },
         spawnAt,
         spawnAtCameraOrigin() {
             return spawnAt(state.viewport.x, state.viewport.y);
@@ -1528,8 +1533,6 @@ export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
     const spawnId = spawnerWorldProp.sandboxSpawnerPropId ?? asset.sandbox.spawner.defaultPropId;
     const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
     spawned.faction = spawnerWorldProp.faction;
-    const spawnVisualOverride = asset.sandbox.spawner.defaultVisualOverride;
-    if (spawnVisualOverride) stampPropVisualOverride(spawned, spawnVisualOverride);
     applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
     addWorldPropToState(state, spawned);
     return spawned;
@@ -2536,10 +2539,18 @@ function appendShapeFamilyFields(body, state, spec) {
                 (val) => session.setSpawnCrossThickness(val),
             );
             appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
+            appendSurfaceProfileSelect(body, {
+                value: session.getSpawnSurfaceProfileId(),
+                onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
+            });
             return;
         }
         if (isBallFamilyAsset(spawnAsset)) {
             appendShapeFamilyRadiusField(body, session.getSpawnBallRadius(spawnAsset), (radius) => session.setSpawnBallRadius(radius));
+            appendSurfaceProfileSelect(body, {
+                value: session.getSpawnSurfaceProfileId(),
+                onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
+            });
             return;
         }
         if (isPolygonFamilyAsset(spawnAsset)) {
@@ -2552,12 +2563,20 @@ function appendShapeFamilyFields(body, state, spec) {
                     (height) => session.setSpawnBoxHeight(height),
                 );
             appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
+            appendSurfaceProfileSelect(body, {
+                value: session.getSpawnSurfaceProfileId(),
+                onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
+            });
         }
         return;
     }
     if (!selectedProp) return;
     const asset = propCatalog[selectedProp.type];
     const dirty = () => notifySandboxVisualDirty(state);
+    const onProfileChange = (profileId) => {
+        applyPropSurfaceProfile(selectedProp, profileId);
+        dirty();
+    };
     if (selectedProp.type === "cross_pinwheel") {
         appendCrossPinwheelDimensionFields(
             body,
@@ -2576,6 +2595,8 @@ function appendShapeFamilyFields(body, state, spec) {
             selectedProp.fractureEnabled = checked;
             dirty();
         });
+        if (selectedProp.wallChunkProfileId != null)
+            appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
         return;
     }
     if (isBallFamilyAsset(asset)) {
@@ -2583,6 +2604,8 @@ function appendShapeFamilyFields(body, state, spec) {
             setCirclePropRadius(selectedProp, radius);
             dirty();
         });
+        if (selectedProp.wallChunkProfileId != null)
+            appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
         return;
     }
     if (isPolygonFamilyAsset(asset)) {
@@ -2610,6 +2633,8 @@ function appendShapeFamilyFields(body, state, spec) {
             selectedProp.fractureEnabled = checked;
             dirty();
         });
+        if (selectedProp.wallChunkProfileId != null)
+            appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
     }
 }
 export function appendShapeFamilySelectedFields(body, state, selectedProp) {
@@ -2961,6 +2986,10 @@ export function appendPropPlaceParams(body, state, controller, spawnId, refreshP
             onChange: (radius) => {
                 session.setSpawnBallRadius(Math.max(1, Math.min(4, radius)));
             },
+        });
+        appendSurfaceProfileSelect(body, {
+            value: session.getSpawnSurfaceProfileId(),
+            onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
         });
     } else if (isBallFamilyAsset(spawnAsset) || isPolygonFamilyAsset(spawnAsset)) appendShapeFamilyFields(body, state, { mode: "spawn", controller, spawnId });
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });

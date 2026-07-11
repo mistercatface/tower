@@ -42,9 +42,12 @@ export function createSpherePrimitive(visuals) {
     };
 }
 function stampSurfaceProfileFields(prop, asset) {
-    if (!(asset?.primitive === "polygon" || asset?.primitive === "sphere" || asset?.draw === "wallChunk")) return;
+    if (!assetUsesWallChunkSurface(asset)) return;
     prop.wallChunkProfileId = asset.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
     prop.wallChunkHeightPx = prop.height ?? asset.visuals?.world?.height ?? 12;
+}
+function assetUsesWallChunkSurface(asset) {
+    return asset?.primitive === "polygon" || asset?.primitive === "sphere" || asset?.draw === "wallChunk";
 }
 /** @type {Record<string, (visuals: object, opts?: object) => Function>} */
 export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive };
@@ -284,7 +287,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
         });
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
-    if ((asset.primitive === "polygon" || asset.primitive === "sphere" || asset.draw === "wallChunk") && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
+    if (assetUsesWallChunkSurface(asset) && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
     return built;
 }
 const worldPropStrategyByType = new Map();
@@ -640,6 +643,7 @@ function createVirtualAttachmentProp(parentProp, cfg, heading) {
     rotateXYIntoF32(ENGINE_F32, M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
     const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: childAsset.visuals?.world?.height ?? 12, visualOverride: undefined, _visualAttachmentId: cfg.id, _footprintKey: undefined };
     stampSurfaceProfileFields(prop, childAsset);
+    if (parentProp.wallChunkProfileId) prop.wallChunkProfileId = parentProp.wallChunkProfileId;
     if (prop.wallChunkProfileId && prop.wallChunkProfileId === parentProp.wallChunkProfileId && parentProp._wallChunkTextures) {
         prop._wallChunkTextures = parentProp._wallChunkTextures;
         prop._wallChunkTextureReady = parentProp._wallChunkTextureReady;

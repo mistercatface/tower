@@ -48,6 +48,20 @@ describe("sandbox editor inspector wiring", () => {
         assert.ok(body.children.length > 0);
     });
 
+    it("appendShapeFamilySelectedFields includes surface profile for ball", () => {
+        const state = createEditorTestState();
+        const prop = spawnBall(state);
+        const body = mockPanelBody();
+        appendShapeFamilySelectedFields(body, state, prop);
+        const labels = [];
+        const walk = (node) => {
+            if (node.textContent) labels.push(node.textContent);
+            for (const child of node.children ?? []) walk(child);
+        };
+        walk(body);
+        assert.ok(labels.some((t) => String(t).includes("Surface profile")));
+    });
+
     it("selected prop tint mutations apply to the live registry object", () => {
         const state = createEditorTestState();
         const prop = spawnBall(state);

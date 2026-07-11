@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getCirclePropRadius, propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive, resolveVisualAttachmentProps } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
-import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxSession, collectFlatPlacedSandboxPropEntries } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
@@ -28,6 +28,34 @@ describe("spawn shape family defaults", () => {
         assert.ok(prop.wallChunkHeightPx > 0);
         assert.equal(getPropVisualTint(prop), null);
         assert.match(getWallChunkSpriteCacheKey(prop), /^wallchunk:poolTableFelt:/);
+    });
+
+    it("places ball with session surface profile override", () => {
+        const state = createSpawnTestState();
+        const session = createSandboxSession(state);
+        session.setPlacePaletteKey("prop:ball");
+        session.setSpawnSurfaceProfileId("tomatoGarden");
+        assert.equal(session.spawnAt(64, 64), true);
+        const prop = state.worldProps[0];
+        assert.equal(prop.wallChunkProfileId, "tomatoGarden");
+        assert.equal(prop._wallChunkTextures, null);
+        assert.equal(prop._wallChunkTextureReady, false);
+        assert.match(getWallChunkSpriteCacheKey(prop), /^wallchunk:tomatoGarden:/);
+    });
+
+    it("serialize keeps non-default wallChunkProfileId and omits default", () => {
+        const overridden = createSpawnTestState();
+        const sessionA = createSandboxSession(overridden);
+        sessionA.setPlacePaletteKey("prop:box");
+        sessionA.setSpawnSurfaceProfileId("toxicSludge");
+        assert.equal(sessionA.spawnAt(80, 80), true);
+        assert.equal(collectFlatPlacedSandboxPropEntries(overridden).props[0].wallChunkProfileId, "toxicSludge");
+        const defaults = createSpawnTestState();
+        const sessionB = createSandboxSession(defaults);
+        sessionB.setPlacePaletteKey("prop:box");
+        assert.equal(sessionB.getSpawnSurfaceProfileId(), "poolTableFelt");
+        assert.equal(sessionB.spawnAt(96, 96), true);
+        assert.equal(collectFlatPlacedSandboxPropEntries(defaults).props[0].wallChunkProfileId, undefined);
     });
 
     it("places box with resizable footprint, surface profile, and fracture off by default", () => {
@@ -146,5 +174,15 @@ describe("sphere surface profile draw", () => {
         assert.equal(wedge.type, "tri_wedge");
         assert.equal(wedge.wallChunkProfileId, "poolTableFelt");
         assert.equal(wedge._wallChunkTextures, parent._wallChunkTextures);
+    });
+
+    it("boid attachment inherits parent surface profile override", () => {
+        const parent = new WorldProp(0, 0, "boid_triangle", 0);
+        parent.wallChunkProfileId = "tomatoGarden";
+        parent._wallChunkTextures = { ready: true, scale: 1, chunkSizePx: 64, capCanvas: { width: 64, height: 64 } };
+        parent._wallChunkTextureReady = true;
+        const { after } = resolveVisualAttachmentProps(parent);
+        assert.equal(after[0].wallChunkProfileId, "tomatoGarden");
+        assert.equal(after[0]._wallChunkTextures, parent._wallChunkTextures);
     });
 });
