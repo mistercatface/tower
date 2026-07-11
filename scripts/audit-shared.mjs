@@ -34,6 +34,12 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "snapshotWorldCol",
     "snapshotWorldRow",
     "mapGenerationCellBounds",
+    "agentPose",
+    "SCRATCH_PATH_STEERING",
+    "SCRATCH_AGENT_POSE",
+    "writeStaticKineticSlabSlot",
+    "syncEntitySlotPoseFromRef",
+    "kineticSleepScratch",
 ];
 
 export const LEGACY_SCALAR_SYMBOLS = [

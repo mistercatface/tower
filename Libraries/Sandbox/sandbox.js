@@ -3,14 +3,14 @@ import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, entityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
-import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
-import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager, agentPose } from "../Navigation/navigation.js";
+import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropIdsInView, appendPathOverlayCommands } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride, sampleAssetBaseTintHex, setPropVisualBrightness, setPropVisualTint, clearPropVisualOverride, getPropVisualBrightness, resolvePickerHex } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
@@ -1761,13 +1761,13 @@ export function driveGroundNav({ prop, targetWorld, nav, state, dtMs, pathSettin
     snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
     const steerX = ENGINE_F32[N_OUT_XY];
     const steerY = ENGINE_F32[N_OUT_XY + 1];
-    const { steering, replanReason } = nav.update(prop, steerX, steerY, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
-    return { vx: steering?.desiredX ?? 0, vy: steering?.desiredY ?? 0, steering, replanReason };
+    const { hasSteering, replanReason } = nav.update(prop, steerX, steerY, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
+    return { vx: hasSteering ? ENGINE_F32[N_OUT_STEER] : 0, vy: hasSteering ? ENGINE_F32[N_OUT_STEER + 1] : 0, desiredSpeed: hasSteering ? ENGINE_F32[N_OUT_STEER + 2] : null, hasSteering, replanReason };
 }
-function computeFlowFieldSteering(pose, targetX, targetY, flowFieldGrid) {
+function computeFlowFieldSteering(prop, targetX, targetY, flowFieldGrid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
     if (!flowField) return false;
-    return sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, pose.x, pose.y, flowField, flowFieldGrid.frame);
+    return sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, prop.x, prop.y, flowField, flowFieldGrid.frame);
 }
 function createGroundNavBehavior(state, config) {
     const { id, initRun, applyMoveTarget, tickSteering } = config;
@@ -1990,7 +1990,7 @@ const FLOW_GROUND_NAV_CONFIG = {
             FLOW_GROUND_NAV_CONFIG.clearRunTarget(state, run);
             return;
         }
-        if (!computeFlowFieldSteering(agentPose(prop), steerX, steerY, flowFieldGrid)) return;
+        if (!computeFlowFieldSteering(prop, steerX, steerY, flowFieldGrid)) return;
         steerRollToward(prop, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
     },
     getPathOverlay(state, prop, run) {
@@ -2040,10 +2040,10 @@ const HPA_GROUND_NAV_CONFIG = {
             HPA_GROUND_NAV_CONFIG.clearRunTarget(state, run);
             return;
         }
-        const { vx, vy, steering } = driveGroundNav({ prop, targetWorld: run.targetWorld, nav: run.hpaNav, state, dtMs, pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius) });
-        if (!steering) return;
+        const { vx, vy, hasSteering, desiredSpeed } = driveGroundNav({ prop, targetWorld: run.targetWorld, nav: run.hpaNav, state, dtMs, pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius) });
+        if (!hasSteering) return;
         if (vx === 0 && vy === 0) return;
-        steerRollToward(prop, vx, vy, config, steering?.desiredSpeed);
+        steerRollToward(prop, vx, vy, config, desiredSpeed);
     },
     getTargetCellIdx(state, run) {
         return run.targetCellIdx;

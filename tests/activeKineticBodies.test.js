@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
-import { writebackActiveKineticBodySlab, clearActiveKineticBodySlab, writeKineticLinkNeighbors, resetKineticLinkNeighborArena } from "../Libraries/Physics/physics.js";
+import { clearActiveKineticBodySlab, writeKineticLinkNeighbors, resetKineticLinkNeighborArena } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { mockKineticBody, mockCircleProp } from "./harness/kineticTickHarness.js";
 import { createKineticAdmitTestState } from "./harness/stateFactories.js";
@@ -108,7 +108,7 @@ describe("active kinetic bodies", () => {
         assert.ok(frame._activeKineticBodies.includes(fragment));
         assert.equal(kineticDynamicSlab.activeSlot[fragment._physId], fragment._activeSlot);
     });
-    it("mid-frame admit syncs slab pose so writeback does not snap spawns to origin", () => {
+    it("mid-frame admit syncs slab pose so spawns are not at origin", () => {
         const frame = new KineticSpatialFrame(50);
         frame.resetFrame(mockGrid);
         clearActiveKineticBodySlab();
@@ -120,7 +120,6 @@ describe("active kinetic bodies", () => {
         frame.admitKineticProps([fragment], mockState);
         assert.equal(kineticDynamicSlab.x[fragment._physId], 240);
         assert.equal(kineticDynamicSlab.y[fragment._physId], 180);
-        writebackActiveKineticBodySlab(frame._activeKineticBodies);
         assert.equal(fragment.x, 240);
         assert.equal(fragment.y, 180);
     });

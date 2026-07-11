@@ -7,23 +7,31 @@ export class HpaBufferManager {
         this.maxPathLen = 0;
         this.sabPathMetaPool = null;
         this.sabPathIdxPool = null;
+        this._pathMetaViews = null;
+        this._pathIdxViews = null;
     }
     init(data) {
         this.maxSlots = data.maxSlots;
         this.maxPathLen = data.maxPathLen;
         this.sabPathMetaPool = data.sabPathMetaPool;
         this.sabPathIdxPool = data.sabPathIdxPool;
+        this._rebuildPathSlotViews();
+    }
+    _rebuildPathSlotViews() {
+        this._pathMetaViews = new Array(this.maxSlots);
+        this._pathIdxViews = new Array(this.maxSlots);
+        for (let s = 0; s < this.maxSlots; s++) {
+            this._pathMetaViews[s] = hpaPathSlotMeta(this.sabPathMetaPool, s);
+            this._pathIdxViews[s] = hpaPathSlotIdx(this.sabPathIdxPool, s, this.maxPathLen);
+        }
     }
     writeCellPath(slot, pathScratch, len) {
-        const pathMeta = hpaPathSlotMeta(this.sabPathMetaPool, slot);
-        pathMeta[0] = len;
+        this._pathMetaViews[slot][0] = len;
         if (len === 0) return;
-        const pathIdx = hpaPathSlotIdx(this.sabPathIdxPool, slot, this.maxPathLen);
-        pathIdx.set(pathScratch.subarray(0, len));
+        this._pathIdxViews[slot].set(pathScratch.subarray(0, len));
     }
-
     buildReplanResult(slot) {
-        const pathLen = hpaPathSlotMeta(this.sabPathMetaPool, slot)[0];
+        const pathLen = this._pathMetaViews[slot][0];
         return pathLen > 0 ? { pathLen } : null;
     }
 }
@@ -167,6 +175,7 @@ export class HpaPathfindingWorker {
         if (!data.maxPathLen || data.maxPathLen <= this.buffers.maxPathLen) return;
         this.buffers.sabPathIdxPool = data.sabPathIdxPool;
         this.buffers.maxPathLen = data.maxPathLen;
+        this.buffers._rebuildPathSlotViews();
         this.planner.localPathScratch = new Int32Array(this.buffers.maxPathLen);
     }
     runReplan(slot, data) {

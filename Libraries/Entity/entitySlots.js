@@ -50,14 +50,6 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityR[eid] = r;
     entityRefs[eid] = ref;
 }
-export function syncEntitySlotPoseFromRef(eid, ref) {
-    entityX[eid] = ref.x;
-    entityY[eid] = ref.y;
-    entityVx[eid] = ref.vx ?? 0;
-    entityVy[eid] = ref.vy ?? 0;
-    entityW[eid] = ref.angularVelocity ?? 0;
-    entityFacing[eid] = ref.facing ?? 0;
-}
 export function writebackEntitySlotPoseToRef(eid, ref) {
     ref.x = entityX[eid];
     ref.y = entityY[eid];

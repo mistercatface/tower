@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { entityVx, entityVy, entityW, entityFacing } from "../Core/engineMemory.js";
+import { entityVx, entityVy, entityW, entityFacing, entityX, entityY } from "../Core/engineMemory.js";
 import { snapshotKineticBodySlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 
@@ -50,5 +50,25 @@ describe("kinetic debris damping", () => {
         assert.equal(body.vy, 0);
         assert.equal(entityVx[0], 0);
         assert.equal(entityVy[0], 0);
+    });
+
+    it("writeback copies slab pose onto debris store after physics mutates entity columns", () => {
+        const world = createFractureWorld();
+        const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
+        applyPropBoxFootprint(body, 8, 8);
+        assignPhysIdWithPose(body, 0);
+        body.x = 10;
+        body.y = 20;
+        body.vx = 5;
+        body.vy = -3;
+        entityX[0] = 99;
+        entityY[0] = 88;
+        entityVx[0] = 40;
+        entityVy[0] = -10;
+        writebackActiveKineticBodySlab([body]);
+        assert.equal(body.x, 99);
+        assert.equal(body.y, 88);
+        assert.equal(body.vx, 40);
+        assert.equal(body.vy, -10);
     });
 });

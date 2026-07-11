@@ -26,9 +26,9 @@ node scripts/audit-codebase.mjs Libraries/<area>   # path filter on changed dirs
 npm run audit:all                                   # full gate before merge
 ```
 
-`node scripts/audit-codebase.mjs --help` lists rules. Fail on: non-index re-export barrels, deleted passthrough symbols in monoliths, legacy sandbox drag APIs, test-only library exports, inline `mock*` factories in test files (use harness).
+`node scripts/audit-codebase.mjs --help` lists rules. Fail on: non-index re-export barrels, deleted passthrough symbols in monoliths, legacy sandbox drag APIs, test-only library exports, inline `mock*` factories in test files (use harness), new XY/AABB bag exports from `Core/engineMemory.js`.
 
-Warnings (`--warn`) are baseline debt — do not introduce new failures.
+Warnings (`--warn`) are baseline debt — do not introduce new failures. Also warn on: F32→object rebox, object-bag `*Into*`, dual bag+F32 APIs, hot-path `.push({`.
 
 ## 4. Style Guards (do not reintroduce)
 
@@ -55,3 +55,26 @@ Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch
 - View → registry queries use `queryViewF32` / F32 spatial collect; do not reintroduce `BRIDGE_AABB` on that path.
 - Zoom/position changes go through `setZoom` / `setPosition` / `snapTo` / `follow` so bounds recompute.
 - Tests/harnesses mock `circleInBounds` / F32 mapping — no production branches for Node.
+
+## 7. engineMemory bar + object diet
+
+`Core/engineMemory.js` is not a junk drawer for bags. Three layers:
+
+| Layer | Put here | Do not put here |
+|-------|----------|-----------------|
+| `ENGINE_F32` named slots | Ephemeral outs (snap XY, steer, closest, AABB scratch) | Growable paths, topology, session clocks, camera tiers |
+| Dedicated slabs / SoA | Persistent columns (`entityX`, kinetic slabs, wall segments) | One-off `{x,y}` helpers, dual bag+F32 twins |
+| Session / SAB / local | Worker paths, HPA graphs, editor caches | Parking more object bags in Core “for convenience” |
+
+Illegal diet patterns (audits should catch; do not introduce):
+
+- `*Into*` that writes `out.x` / `out.minX` instead of `(buf, o)` / named `ENGINE_F32` slots
+- Reboxing: `{ x: ENGINE_F32[…], y: ENGINE_F32[…] }` after an Into/F32 write
+- Dual APIs: `foo` (bag) + `fooF32` / object `fooInto` — delete the bag path
+- New `export const *_SCRATCH = { x, y }` or AABB bag factories in hot libs / `engineMemory`
+- Hot-path `.push({ … })` in Spatial/Physics/Navigation/Math/Sandbox
+
+Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `GrowI32`/`GrowF32`; viewport instance `boundsBuf` (not `ENGINE_F32`).
+
+Before adding exports under `Libraries/` or `Core/engineMemory.js`:
+`npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.

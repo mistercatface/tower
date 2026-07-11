@@ -4,12 +4,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math", "Libraries/Viewport"];
+const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math", "Libraries/Viewport", "Libraries/Sandbox"];
 const allowDirs = ["Libraries/Input", "Libraries/Procedural", "Libraries/Workers"];
 
 const bannedExportRe = /^export (?:async )?(?:function|const|class) (\w+)/gm;
 const scratchNameRe = /_SCRATCH$/;
-const pairReturnRe = /return \{ (?:x|col|cx|desiredX|nx|worldX):/;
+const pairReturnRe = /return\s*\{\s*(?:x|y|x1|y1|col|row|minX|cx|desiredX|nx|worldX)\s*:/;
+const f32AssignReboxRe = /\w+\s*=\s*\{\s*(?:x|y|x1|minX|desiredX)\s*:\s*ENGINE_F32\[/;
+const intoBagWriteRe = /\bout\.(?:x|y|minX|minY|maxX|maxY|col|row|cx|cy)\s*=/;
 
 function walk(dir, pred) {
     const out = [];
@@ -47,12 +49,18 @@ for (const hot of hotDirs) {
             const name = m[1];
             if (scratchNameRe.test(name)) failures.push({ file: relPath, kind: "scratch-export", symbol: name });
             if (name.includes("Into")) {
-                const sig = new RegExp(`export (?:async )?function ${name}\\((\\w+)`).exec(src);
-                if (sig && sig[1] === "out") warnings.push({ file: relPath, kind: "into-export", symbol: name });
+                const fnStart = m.index;
+                const slice = src.slice(fnStart, fnStart + 800);
+                const sig = new RegExp(`export (?:async )?function ${name}\\(([^)]*)\\)`).exec(slice);
+                const params = sig ? sig[1] : "";
+                const bufO = /^\s*buf\b/.test(params) || /,\s*o\b/.test(params);
+                if (!bufO && intoBagWriteRe.test(slice)) warnings.push({ file: relPath, kind: "into-object-bag", symbol: name });
+                else if (sig && /^\s*out\b/.test(params)) warnings.push({ file: relPath, kind: "into-export", symbol: name });
             }
         }
         if (/\bconst [A-Z][A-Z0-9_]*_SCRATCH\b/.test(src)) warnings.push({ file: relPath, kind: "module-scratch", symbol: "const *_SCRATCH" });
         if (pairReturnRe.test(src)) warnings.push({ file: relPath, kind: "pair-return", symbol: "return { x|col|cx|desiredX|nx|worldX" });
+        if (f32AssignReboxRe.test(src)) warnings.push({ file: relPath, kind: "f32-rebox", symbol: "= { x: ENGINE_F32[" });
         if (/\.push\(\{/.test(src)) warnings.push({ file: relPath, kind: "push-object", symbol: ".push({" });
     }
 }

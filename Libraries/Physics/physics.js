@@ -52,7 +52,7 @@ import {
     sleepComponentMaxSpeedSq as componentMaxSpeedSq,
     sleepComponentHasBlocker as componentHasBlocker,
     sleepComponentMemberCount as componentMemberCount,
-    kineticSleepScratch,
+    sleepNeighborEids,
     pairHashKeys,
     sleepContactBuffer,
     MAX_PHYS_BODIES,
@@ -71,7 +71,7 @@ import {
     SHAPE_TYPE_POLYGON,
 } from "../../Core/engineMemory.js";
 export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON };
-import { syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
+import { writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -473,10 +473,11 @@ function stampShapeGeomParts(physId, parts) {
     }
 }
 export function writebackActiveKineticBodySlab(bodies) {
-    for (let i = 0; i < bodies.length; i++) writebackEntitySlotPoseToRef(bodies[i]._physId, bodies[i]);
-}
-export function writeStaticKineticSlabSlot(body) {
-    normalizeKineticBody(body);
+    for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
+        if (!body.isKineticDebris) continue;
+        writebackEntitySlotPoseToRef(body._physId, body);
+    }
 }
 export function clearActiveKineticBodySlab() {
     const slab = kineticDynamicSlab;
@@ -1580,8 +1581,6 @@ export function snapshotKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) {
         const entity = bodies[i];
         normalizeKineticBody(entity);
-        writeStaticKineticSlabSlot(entity);
-        syncEntitySlotPoseFromRef(entity._physId, entity);
         stampKineticBodyFromEntity(entity._physId, entity);
     }
 }
@@ -1981,21 +1980,6 @@ function appendIslandConstraintGroup(slab, count, store) {
     slab.groupCounts[slab.groupCount] = addedCount;
     slab.groupCount++;
 }
-function syncConstraintSlabBodies(slab) {
-    constraintPhysSyncSeen.clear();
-    for (let i = 0; i < slab.count; i++) {
-        const physIdA = slab.physIdA[i];
-        const physIdB = slab.physIdB[i];
-        if (!constraintPhysSyncSeen.has(physIdA)) {
-            constraintPhysSyncSeen.add(physIdA);
-            syncEntitySlotPoseFromRef(physIdA, constraintBodyAt(physIdA));
-        }
-        if (!constraintPhysSyncSeen.has(physIdB)) {
-            constraintPhysSyncSeen.add(physIdB);
-            syncEntitySlotPoseFromRef(physIdB, constraintBodyAt(physIdB));
-        }
-    }
-}
 function collectActiveConstraintPhysIds(slab, out) {
     constraintPhysSyncSeen.clear();
     out.length = 0;
@@ -2105,7 +2089,6 @@ export function gatherKineticConstraintSlab(tick) {
         orderIslandConstraintItems(start, count);
         appendIslandConstraintGroup(slab, count, store);
     }
-    syncConstraintSlabBodies(slab);
 }
 function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segId) {
     const slab = staticWallSegmentSlab;
@@ -3892,12 +3875,12 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     }
     const eg = spatialFrame.entityGrid;
     padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, eg.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
-    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, kineticSleepScratch.neighborEids, kineticSleepScratch.neighborEids.length);
+    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, sleepNeighborEids.buf.length);
     while (n < 0) {
-        ensureGrowI32(kineticSleepScratch, "neighborEids", kineticSleepScratch.neighborEids.length * 2);
-        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, kineticSleepScratch.neighborEids, kineticSleepScratch.neighborEids.length);
+        sleepNeighborEids.ensure(sleepNeighborEids.buf.length * 2);
+        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, sleepNeighborEids.buf.length);
     }
-    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], kineticSleepScratch.neighborEids, n)) return false;
+    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], sleepNeighborEids.buf, n)) return false;
     return true;
 }
 /**

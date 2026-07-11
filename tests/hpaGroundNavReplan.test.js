@@ -51,10 +51,10 @@ describe("hpa ground nav replan policy", () => {
         manager.trackStuck({x:10,y:10}, false, false, 0); // stuck frames = 1. softReplan requires > 10
         for (let i = 0; i < 15; i++) manager.trackStuck({x:10,y:10}, false, false, 2); // 15 stuck frames
         
-        assert.equal(manager.evaluateOffPath({ offPath: true }, {x:0,y:0}, state).reason, "offPath");
+        assert.equal(manager.evaluateOffPath(true, {x:0,y:0}, state).reason, "offPath");
         
         manager.updateClock(10);
-        assert.equal(manager.evaluateOffPath({ offPath: true }, {x:0,y:0}, state).shouldReplan, false);
+        assert.equal(manager.evaluateOffPath(true, {x:0,y:0}, state).shouldReplan, false);
     });
 
     it("sandboxReplanReason and sandboxReplanAllowed gate off-screen idle replans", () => {

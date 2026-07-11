@@ -37,11 +37,19 @@ export class HpaPathWorker {
         Object.assign(this, createHpaWorkerSabPools({ maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: MAX_HPA_PATH_LEN }));
         this._slotFree = [];
         for (let i = 0; i < MAX_HPA_REPLAN_SLOTS; i++) this._slotFree.push(i);
-        /** @type {(object | null)[]} */
         this._replanResults = new Array(MAX_HPA_REPLAN_SLOTS).fill(null);
+        this._pathMetaViews = new Array(MAX_HPA_REPLAN_SLOTS);
+        this._pathIdxViews = new Array(MAX_HPA_REPLAN_SLOTS);
+        this._rebuildPathSlotViews();
         this.protocol = new PathfindingWorkerClient(workerUrl, MAX_HPA_REPLAN_SLOTS, "HpaPathWorker", (data) => this._handleWorkerMessage(data));
         this.host = this.protocol.host;
         this.protocol.postMessage({ type: "init", data: this._workerInitData() });
+    }
+    _rebuildPathSlotViews() {
+        for (let s = 0; s < MAX_HPA_REPLAN_SLOTS; s++) {
+            this._pathMetaViews[s] = hpaPathSlotMeta(this.sabPathMetaPool, s);
+            this._pathIdxViews[s] = hpaPathSlotIdx(this.sabPathIdxPool, s, this.maxPathLen);
+        }
     }
     _workerInitData() {
         return { maxSlots: MAX_HPA_REPLAN_SLOTS, maxPathLen: this.maxPathLen, sabPathMetaPool: this.sabPathMetaPool, sabPathIdxPool: this.sabPathIdxPool };
@@ -84,6 +92,7 @@ export class HpaPathWorker {
         if (stitchedMax > this.maxPathLen) {
             this.sabPathIdxPool = growHpaPathIdxSab(this.sabPathIdxPool, MAX_HPA_REPLAN_SLOTS, stitchedMax);
             this.maxPathLen = stitchedMax;
+            this._rebuildPathSlotViews();
             this.protocol.invalidateSlots();
             this._pathSabGrowChain = this._pathSabGrowChain.then(() => this._postPathSabGrow());
         }
@@ -154,16 +163,10 @@ export class HpaPathWorker {
         }
     }
     pathLength(slot) {
-        return this._pathMeta(slot)[0];
+        return this._pathMetaViews[slot][0];
     }
     pathIdx(slot, i) {
-        return this._pathIdx(slot)[i];
-    }
-    _pathMeta(slot) {
-        return hpaPathSlotMeta(this.sabPathMetaPool, slot);
-    }
-    _pathIdx(slot) {
-        return hpaPathSlotIdx(this.sabPathIdxPool, slot, this.maxPathLen);
+        return this._pathIdxViews[slot][i];
     }
     _ensureNavEdgePoolSab(refCount) {
         const byteLen = navEdgePoolSabByteLength(refCount);

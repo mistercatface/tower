@@ -4,16 +4,15 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
-import { writebackActiveKineticBodySlab, P_OUT_PEN_OVERLAP } from "../Libraries/Physics/physics.js";
+import { P_OUT_PEN_OVERLAP } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, GrowI32, ENGINE_F32 } from "../Core/engineMemory.js";
 import { mockWallSegment, wallSegIds } from "./harness/wallSegmentHarness.js";
 
 const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });
 const EMPTY_WALLS = new GrowI32(0);
 
-function resolveLinkConstraints(tick, bodies) {
+function resolveLinkConstraints(tick) {
     resolveGatheredKineticConstraintSlab(tick);
-    writebackActiveKineticBodySlab(bodies);
 }
 
 describe("link capsule wall projection", () => {
@@ -38,7 +37,7 @@ describe("link capsule wall projection", () => {
         tick.frame.getWallCandidates = () => wallSegIds(wall);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraints(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
     it("gathers wall candidates once per unique body in an island", () => {
@@ -52,7 +51,7 @@ describe("link capsule wall projection", () => {
             return EMPTY_WALLS;
         };
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraints(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick);
         assert.equal(wallQueries, 2, "one wall gather per unique body in the island");
     });
     it("dedupes wall gathers across a multi-link chain island", () => {
@@ -68,7 +67,7 @@ describe("link capsule wall projection", () => {
             return EMPTY_WALLS;
         };
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraints(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick);
         assert.equal(wallQueries, 3, "three unique bodies in a two-link chain");
     });
     it("does not disturb a fast-moving link in open space with distant gathered walls", () => {
@@ -81,7 +80,7 @@ describe("link capsule wall projection", () => {
         const decoyWalls = wallSegIds(...Array.from({ length: 32 }, (_, i) => mockWallSegment(400 + i * 8, 400, 16)));
         tick.frame.getWallCandidates = () => decoyWalls;
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraints(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick);
         assert.equal(bodyA.x, startAx);
         assert.equal(bodyB.x, startBx);
     });
@@ -95,7 +94,7 @@ describe("link capsule wall projection", () => {
         tick.frame.getWallCandidates = () => wallSegIds(nearWall, farWall);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) < 4);
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraints(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) >= 4 - 0.05);
     });
     it("still projects a nearly-static wedged link", () => {
@@ -106,7 +105,7 @@ describe("link capsule wall projection", () => {
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
         tick.frame.getWallCandidates = () => wallSegIds(wall);
         gatherKineticConstraintSlab(tick);
-        resolveLinkConstraints(tick, [bodyA, bodyB]);
+        resolveLinkConstraints(tick);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
     });
     it("link wall correction survives constraint solve on kinetic slab", () => {

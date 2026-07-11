@@ -47,6 +47,12 @@ const deletedPassthroughExports = [
     "snapshotWorldCol",
     "snapshotWorldRow",
     "mapGenerationCellBounds",
+    "agentPose",
+    "SCRATCH_PATH_STEERING",
+    "SCRATCH_AGENT_POSE",
+    "writeStaticKineticSlabSlot",
+    "syncEntitySlotPoseFromRef",
+    "kineticSleepScratch",
 ];
 
 function walkGameStateJs(dir, out = []) {

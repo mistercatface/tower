@@ -463,8 +463,6 @@ export function bfsTypedIndices(startIdx, gridSize, visit) {
     }
 }
 // --- NavUtils.js ---
-export const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
-export const SCRATCH_PATH_STEERING = { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
 export function _removeEdgeByTargetId(node, targetId) {
     const edges = node.edges;
     if (!edges || !edges.buffer) return;
@@ -1487,16 +1485,6 @@ export function computeSabPathSteering(buf, o, pose, worker, slot, pathLen, targ
     return dist > offPathDistance;
 }
 // --- NavRuntime.js ---
-export function agentPose(source) {
-    SCRATCH_AGENT_POSE.x = source.x;
-    SCRATCH_AGENT_POSE.y = source.y;
-    SCRATCH_AGENT_POSE.vx = source.vx ?? 0;
-    SCRATCH_AGENT_POSE.vy = source.vy ?? 0;
-    SCRATCH_AGENT_POSE.desiredX = source.desiredX ?? 0;
-    SCRATCH_AGENT_POSE.desiredY = source.desiredY ?? 0;
-    SCRATCH_AGENT_POSE.radius = source.radius ?? 8;
-    return SCRATCH_AGENT_POSE;
-}
 export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, state = null) {
     return new HpaReplanRequest({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, state });
 }
@@ -1644,8 +1632,8 @@ export class PathReplanManager {
         }
         return { shouldReplan: false };
     }
-    evaluateOffPath(steering, prop, state) {
-        if (steering && steering.offPath && this.replanClockMs - (this.navState.lastOffPathReplan || 0) >= REPLAN_OFF_PATH_COOLDOWN_MS) {
+    evaluateOffPath(offPath, prop, state) {
+        if (offPath && this.replanClockMs - (this.navState.lastOffPathReplan || 0) >= REPLAN_OFF_PATH_COOLDOWN_MS) {
             const stuckFrames = this.navState.stuckFrames;
             const stuckReplanFrames = state.nav.settings.stuckReplanFrames;
             const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, VIEW_TIER.PROPS);
@@ -2296,9 +2284,9 @@ export class HpaNavSession {
             this.pendingTargetReplan = false;
             this.navState.pendingReplanReason = reason;
             this.navState.stuckFrames = 0;
-            return { steering: null, replanReason: reason };
+            return { hasSteering: false, replanReason: reason };
         }
-        return { steering: null, replanReason: "cooldown" };
+        return { hasSteering: false, replanReason: "cooldown" };
     }
     syncRouteCommitState() {
         if (!navHasPath(this.navState)) {
@@ -2332,15 +2320,11 @@ export class HpaNavSession {
             const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible: state.viewport.circleInBounds(prop.x, prop.y, prop.radius, VIEW_TIER.PROPS), stuckFrames: this.navState.stuckFrames, stuckReplanFrames: nav.settings.stuckReplanFrames });
             if (sandboxResult) return sandboxResult;
         }
-        if (!navHasPath(this.navState)) return { steering: null, replanReason: routePending ? "pending" : "noPath" };
-        const offPath = computeSabPathSteering(ENGINE_F32, N_OUT_STEER, agentPose(prop), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
-        SCRATCH_PATH_STEERING.desiredX = ENGINE_F32[N_OUT_STEER];
-        SCRATCH_PATH_STEERING.desiredY = ENGINE_F32[N_OUT_STEER + 1];
-        SCRATCH_PATH_STEERING.desiredSpeed = ENGINE_F32[N_OUT_STEER + 2];
-        SCRATCH_PATH_STEERING.offPath = offPath;
-        const offPathDecision = this.replanManager.evaluateOffPath(SCRATCH_PATH_STEERING, prop, state);
+        if (!navHasPath(this.navState)) return { hasSteering: false, replanReason: routePending ? "pending" : "noPath" };
+        const offPath = computeSabPathSteering(ENGINE_F32, N_OUT_STEER, prop, nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
+        const offPathDecision = this.replanManager.evaluateOffPath(offPath, prop, state);
         if (offPathDecision.shouldReplan) return this.requestReplan(prop, targetX, targetY, state, offPathDecision.priority, offPathDecision.reason);
-        return { steering: SCRATCH_PATH_STEERING, replanReason: null };
+        return { hasSteering: true, replanReason: null };
     }
     getCommitStatus() {
         return { routeCommitFrames: this.routeCommitFrames };

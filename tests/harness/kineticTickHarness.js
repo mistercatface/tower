@@ -55,17 +55,81 @@ function attachRollAccessors(body) {
         },
     });
 }
+function attachPoseAccessors(body) {
+    Object.defineProperties(body, {
+        x: {
+            get() {
+                return entityX[this._physId];
+            },
+            set(v) {
+                entityX[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        y: {
+            get() {
+                return entityY[this._physId];
+            },
+            set(v) {
+                entityY[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        vx: {
+            get() {
+                return entityVx[this._physId];
+            },
+            set(v) {
+                entityVx[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        vy: {
+            get() {
+                return entityVy[this._physId];
+            },
+            set(v) {
+                entityVy[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        angularVelocity: {
+            get() {
+                return entityW[this._physId];
+            },
+            set(v) {
+                entityW[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        facing: {
+            get() {
+                return entityFacing[this._physId];
+            },
+            set(v) {
+                entityFacing[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+    });
+}
 export function assignPhysIdWithPose(body, physId) {
     const x = body.x;
     const y = body.y;
-    const vx = body.vx;
-    const vy = body.vy;
-    const w = body.angularVelocity;
-    const facing = body.facing;
-    const rqw = body._spawnRollQw ?? 1;
-    const rqx = body._spawnRollQx ?? 0;
-    const rqy = body._spawnRollQy ?? 0;
-    const rqz = body._spawnRollQz ?? 0;
+    const vx = body.vx ?? 0;
+    const vy = body.vy ?? 0;
+    const w = body.angularVelocity ?? 0;
+    const facing = body.facing ?? 0;
+    const rqw = body.rollQw ?? body._spawnRollQw ?? 1;
+    const rqx = body.rollQx ?? body._spawnRollQx ?? 0;
+    const rqy = body.rollQy ?? body._spawnRollQy ?? 0;
+    const rqz = body.rollQz ?? body._spawnRollQz ?? 0;
     body._physId = physId;
     entityX[physId] = x;
     entityY[physId] = y;
@@ -77,6 +141,7 @@ export function assignPhysIdWithPose(body, physId) {
     entityRollQx[physId] = rqx;
     entityRollQy[physId] = rqy;
     entityRollQz[physId] = rqz;
+    if (!body.isKineticDebris) attachPoseAccessors(body);
     clearWorldPropSpawnPose(body);
 }
 export function mockKineticBody(isSleeping = false) {
@@ -92,7 +157,6 @@ export function mockKineticBody(isSleeping = false) {
         isDead: false,
         strategy: { isKinetic: true },
         _sleepFrames: 0,
-        _physId: nextMockPhysId++,
         mass: radius,
         get momentOfInertia() {
             return this.mass * this.radius * this.radius * 0.5;
@@ -100,6 +164,7 @@ export function mockKineticBody(isSleeping = false) {
         shape: new CircleShape(radius),
     };
     normalizeKineticBody(body);
+    assignPhysIdWithPose(body, nextMockPhysId++);
     return body;
 }
 export function mockCircleProp(x, y, radius) {

@@ -1,7 +1,6 @@
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
-import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, checkEntityPairCollisionAtSlabPose } from "../../Libraries/Physics/physics.js";
+import { gatherKineticContactPairs, resolveKineticContactPassWithPairs, checkEntityPairCollisionAtSlabPose, writebackActiveKineticBodySlab } from "../../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
-import { writebackActiveKineticBodySlab } from "../../Libraries/Physics/physics.js";
 
 export function checkPairAtSlabPose(bodyA, bodyB) {
     const slab = kineticDynamicSlab;
