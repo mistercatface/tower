@@ -6,6 +6,7 @@ import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, shatterGlassFootprint } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
+import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 
 const spriteCacheKeyDeps = { quantizeAngleIndex };
 
@@ -70,5 +71,44 @@ describe("glass debris slab spawn", () => {
         const result = spawnGlassFractureShards(world, pane, 30);
         assert.ok(result);
         assert.ok(result.shards.every((s) => s.isKineticDebris));
+    });
+
+    it("tinted WorldProp glass shards get matching own visualOverride copies", () => {
+        const world = createFractureWorld();
+        const prop = new WorldProp(0, 0, "glass_pane", 0);
+        setupGlassPaneForFracture(prop, 32, 32);
+        setPropVisualTint(prop, "#c44a22");
+        const parentVo = prop.visualOverride;
+        const result = spawnGlassFractureShards(world, prop, 30);
+        assert.ok(result);
+        assert.ok(result.shards.length >= 2);
+        for (const shard of result.shards) {
+            assert.equal(shard.visualOverride.tint, "#c44a22");
+            assert.notEqual(shard.visualOverride, parentVo);
+        }
+        assert.equal(new Set(result.shards.map((s) => s.visualOverride)).size, result.shards.length);
+    });
+
+    it("tinted kinetic debris cascade keeps tint after pool reuse", () => {
+        const world = createFractureWorld();
+        const prop = new WorldProp(0, 0, "glass_pane", 0);
+        setupGlassPaneForFracture(prop, 64, 64);
+        setPropVisualTint(prop, "#3366aa");
+        const first = spawnGlassFractureShards(world, prop, 30);
+        assert.ok(first);
+        const parent = first.shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
+        const siblingCount = first.shards.length;
+        assert.equal(parent.visualOverride.tint, "#3366aa");
+        parent._fractureCooldown = 0;
+        assert.ok(FractureEngine.fracturePropOnImpact(parent, parent.x, parent.y, 40, world.fractureEngine));
+        world.fractureEngine.enqueueDeferredFracture(parent);
+        const spatialFrame = { evictKineticProp() {}, admitKineticProps() {} };
+        world.fractureEngine.flushDeferredFractures(world, spatialFrame);
+        const after = world.fractureEngine.debris.list();
+        assert.ok(after.length > siblingCount - 1);
+        for (const shard of after) {
+            assert.equal(shard.visualOverride.tint, "#3366aa");
+        }
+        assert.equal(new Set(after.map((s) => s.visualOverride)).size, after.length);
     });
 });

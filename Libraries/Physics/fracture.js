@@ -5,6 +5,7 @@ import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScra
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";
+import { stampPropVisualOverride } from "../Color/visualOverride.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const GLASS_FRACTURE_IMPACT_THRESHOLD = FRACTURE_TUNING.glass.impactThreshold;
@@ -448,6 +449,13 @@ class KineticDebrisStore {
         const asset = propCatalog[type];
         body.height = asset?.visuals?.world?.height ?? 12;
         body.visualOverride = undefined;
+        body.faction = undefined;
+        body._cachedStaticKey = undefined;
+        body._staticKeyFacing = undefined;
+        body._staticKeyVo = undefined;
+        body._staticKeyAttachment = undefined;
+        body._staticKeyPhysicsKey = undefined;
+        body._staticKeyRoll = undefined;
         body.wallChunkProfileId = undefined;
         body.wallChunkHeightPx = undefined;
         body._wallChunkTextures = undefined;
@@ -581,6 +589,8 @@ class KineticDebrisStore {
         const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
         const shardHeight = sourceProp.height;
         const shardType = sourceProp.type;
+        const inheritedVo = sourceProp.visualOverride ? { ...sourceProp.visualOverride } : null;
+        const inheritedFaction = sourceProp.faction;
         const debris = stores.debris;
         spawnedScratch.length = 0;
         for (let i = fracture.debrisStart; i < fracture.debrisStart + fracture.debrisCount; i++) {
@@ -596,8 +606,8 @@ class KineticDebrisStore {
             body.vy = motionVy;
             body.angularVelocity = motionW;
             body._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
-            if (sourceProp.faction !== undefined) body.faction = sourceProp.faction;
-            if (sourceProp.visualOverride !== undefined) body.visualOverride = sourceProp.visualOverride;
+            if (inheritedFaction !== undefined) body.faction = inheritedFaction;
+            if (inheritedVo) stampPropVisualOverride(body, inheritedVo);
             if (wallChunkProfileId !== undefined) {
                 body.wallChunkProfileId = wallChunkProfileId;
                 body.wallChunkHeightPx = wallChunkHeightPx;
