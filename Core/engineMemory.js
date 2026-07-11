@@ -331,32 +331,7 @@ export const SPRITE_CACHE_GRID_INIT = 512;
 export const SPRITE_CACHE_OVERLAY_INIT = 1024;
 export function createSpriteCacheSlab(capacity) {
     const hashCap = 1 << (32 - Math.clz32(Math.max(8, capacity * 2 - 1)));
-    const slab = {
-        capacity,
-        maxLive: capacity,
-        liveCount: 0,
-        lruHead: -1,
-        lruTail: -1,
-        keyLo: new Uint32Array(capacity),
-        keyHi: new Uint32Array(capacity),
-        bakeScale: new Float32Array(capacity),
-        anchorX: new Float32Array(capacity),
-        anchorY: new Float32Array(capacity),
-        drawW: new Float32Array(capacity),
-        drawH: new Float32Array(capacity),
-        flags: new Uint8Array(capacity),
-        frameCount: new Uint16Array(capacity),
-        frameWidthCanvas: new Uint16Array(capacity),
-        lruPrev: new Int32Array(capacity),
-        lruNext: new Int32Array(capacity),
-        slotGen: new Uint32Array(capacity),
-        hashTable: new Int32Array(hashCap),
-        hashCap,
-        keys: new Array(capacity),
-        handles: new Array(capacity),
-        freeSlots: new Int32Array(capacity),
-        freeCount: 0,
-    };
+    const slab = { capacity, maxLive: capacity, liveCount: 0, lruHead: -1, lruTail: -1, keyLo: new Uint32Array(capacity), keyHi: new Uint32Array(capacity), bakeScale: new Float32Array(capacity), anchorX: new Float32Array(capacity), anchorY: new Float32Array(capacity), drawW: new Float32Array(capacity), drawH: new Float32Array(capacity), flags: new Uint8Array(capacity), frameCount: new Uint16Array(capacity), frameWidthCanvas: new Uint16Array(capacity), lruPrev: new Int32Array(capacity), lruNext: new Int32Array(capacity), slotGen: new Uint32Array(capacity), hashTable: new Int32Array(hashCap), hashCap, keys: new Array(capacity), handles: new Array(capacity), freeSlots: new Int32Array(capacity), freeCount: 0 };
     slab.lruPrev.fill(-1);
     slab.lruNext.fill(-1);
     slab.hashTable.fill(-1);
@@ -366,3 +341,31 @@ export function createSpriteCacheSlab(capacity) {
 export const propSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_PROP_INIT);
 export const gridStampSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_GRID_INIT);
 export const overlaySpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_OVERLAY_INIT);
+export const I_SPRITE_KEY_LO = 64;
+export const I_SPRITE_KEY_HI = 65;
+export const R_SPRITE_BAKE_SCALE = ENGINE_RENDER_BASE + 132;
+export const R_SPRITE_ANCHOR_X = ENGINE_RENDER_BASE + 133;
+export const R_SPRITE_ANCHOR_Y = ENGINE_RENDER_BASE + 134;
+export const R_SPRITE_DRAW_W = ENGINE_RENDER_BASE + 135;
+export const R_SPRITE_DRAW_H = ENGINE_RENDER_BASE + 136;
+export const R_SPRITE_FRAME_COUNT = ENGINE_RENDER_BASE + 137;
+export const R_SPRITE_FRAME_WIDTH = ENGINE_RENDER_BASE + 138;
+export const WALL_FACE_DRAW_MEMO_INIT = 2048;
+export const WALL_FACE_ATLAS_MISS = -1;
+export const WALL_FACE_ATLAS_SOLID = -2;
+export const WALL_FACE_SUBDIV_NONE = -3;
+export function createWallFaceDrawMemoSlab(capacity) {
+    const hashCap = 1 << (32 - Math.clz32(Math.max(8, capacity * 2 - 1)));
+    const slab = { capacity, liveCount: 0, wallRev: -1, surfRev: -1, memoKey: new Int32Array(capacity), camKey: new Int32Array(capacity), perspKey: new Int32Array(capacity), subdivX: new Int32Array(capacity), subdivY: new Int32Array(capacity), capPx: new Float32Array(capacity), alphaBase: new Float32Array(capacity), alphaBandMax: new Float32Array(capacity), capHeight: new Float32Array(capacity), bandHeight: new Float32Array(capacity), wallBaseZ: new Float32Array(capacity), edgeLen: new Float32Array(capacity), wallCx: new Float32Array(capacity), wallCy: new Float32Array(capacity), handles: new Array(capacity), hashTable: new Int32Array(hashCap), hashCap, freeSlots: new Int32Array(capacity), freeCount: 0 };
+    slab.hashTable.fill(-1);
+    for (let i = 0; i < capacity; i++) slab.freeSlots[slab.freeCount++] = capacity - 1 - i;
+    return slab;
+}
+export function clearWallFaceDrawMemoSlab(slab) {
+    for (let i = 0; i < slab.capacity; i++) slab.handles[i] = null;
+    slab.liveCount = 0;
+    slab.freeCount = 0;
+    for (let i = 0; i < slab.capacity; i++) slab.freeSlots[slab.freeCount++] = slab.capacity - 1 - i;
+    slab.hashTable.fill(-1);
+}
+export const wallFaceDrawMemoSlab = createWallFaceDrawMemoSlab(WALL_FACE_DRAW_MEMO_INIT);

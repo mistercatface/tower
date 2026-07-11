@@ -8,8 +8,6 @@ import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { createSurfaceBakeTestState } from "./harness/stateFactories.js";
 
-const EMPTY_META = {};
-
 describe("SpriteCacheSlab Leak Auditing", () => {
     let createdBitmaps = [];
     let closedBitmaps = 0;
@@ -31,10 +29,10 @@ describe("SpriteCacheSlab Leak Auditing", () => {
         closedBitmaps = 0;
 
         const canvas1 = acquireOffscreenCanvas(987, 654);
-        cache.set("item1", canvas1, EMPTY_META);
+        cache.set("item1", canvas1, 1, 0, 0);
 
         const canvas2 = acquireOffscreenCanvas(987, 654);
-        cache.set("item1", canvas2, EMPTY_META);
+        cache.set("item1", canvas2, 1, 0, 0);
 
         await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -56,10 +54,10 @@ describe("SpriteCacheSlab Leak Auditing", () => {
         closedBitmaps = 0;
 
         const canvas1 = acquireOffscreenCanvas(876, 543);
-        cache.set("item1", canvas1, EMPTY_META);
+        cache.set("item1", canvas1, 1, 0, 0);
 
         const canvas2 = acquireOffscreenCanvas(876, 543);
-        cache.set("item2", canvas2, EMPTY_META);
+        cache.set("item2", canvas2, 1, 0, 0);
 
         await new Promise((resolve) => setTimeout(resolve, 50));
 

@@ -1,7 +1,7 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { transformRollVertexInto, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -719,13 +719,13 @@ function fillBoxFootprintInto(out, hx, hy) {
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
-function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, colors, stroke, lineWidth, plankTs, drawPlanks, flatFill) {
+function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, shadow, mid, highlight, stroke, lineWidth, plankTs, drawPlanks, flatFill) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
     const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
     const edgeMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
     const shadeAngle = Math.atan2(edgeMidY - originY, edgeMidX - originX);
-    ctx.fillStyle = flatFill ? colors.mid : createSideGradientAt(ctx, sBaseRing[ai], sBaseRing[ai + 1], sBaseRing[bi], sBaseRing[bi + 1], shadeAngle, colors);
+    ctx.fillStyle = flatFill ? mid : createSideGradientAt(ctx, sBaseRing[ai], sBaseRing[ai + 1], sBaseRing[bi], sBaseRing[bi + 1], shadeAngle, shadow, mid, highlight);
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
@@ -842,8 +842,12 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const topY = ENGINE_F32[S_OUT_XY + 1];
     extrudeLocalVertsInto(sBaseRing, sTopRing, localVerts, cx, cy, topX, topY, alpha, facing);
     classifyPrismFaces(count, viewport, cx, cy, faceOrder, localVerts, facing);
-    const backColors = backFaceColors ?? { shadow: faceColors.shadow, mid: faceColors.shadow, highlight: faceColors.mid };
-    const baseColors = bottomColors ?? { light: faceColors.shadow, mid: faceColors.shadow, dark: faceColors.shadow };
+    const backShadow = backFaceColors ? backFaceColors.shadow : faceColors.shadow;
+    const backMid = backFaceColors ? backFaceColors.mid : faceColors.shadow;
+    const backHighlight = backFaceColors ? backFaceColors.highlight : faceColors.mid;
+    const baseLight = bottomColors ? bottomColors.light : faceColors.shadow;
+    const baseMid = bottomColors ? bottomColors.mid : faceColors.shadow;
+    const baseDark = bottomColors ? bottomColors.dark : faceColors.shadow;
     const drawBase = prismPass === "all" || prismPass === "base";
     const drawSides = prismPass === "all" || prismPass === "sides";
     const drawTop = prismPass === "all" || prismPass === "top";
@@ -852,13 +856,13 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         return;
     }
     if (drawBase) {
-        if (flatFill) ctx.fillStyle = baseColors.mid;
+        if (flatFill) ctx.fillStyle = baseMid;
         else {
             const gradB = Math.min(baseGradCornerB, count - 1);
             const baseGrad = ctx.createLinearGradient(sBaseRing[0], sBaseRing[1], sBaseRing[gradB * 2], sBaseRing[gradB * 2 + 1]);
-            baseGrad.addColorStop(0.0, baseColors.light);
-            baseGrad.addColorStop(0.5, baseColors.mid);
-            baseGrad.addColorStop(1.0, baseColors.dark);
+            baseGrad.addColorStop(0.0, baseLight);
+            baseGrad.addColorStop(0.5, baseMid);
+            baseGrad.addColorStop(1.0, baseDark);
             ctx.fillStyle = baseGrad;
         }
         ctx.strokeStyle = stroke;
@@ -872,16 +876,21 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         if (faceOrder === "midY")
             for (let o = 0; o < count; o++) {
                 const i = rFaceOrder[o];
-                const colors = rFaceVisible[i] ? faceColors : backColors;
-                drawSideFaceFlat(ctx, i, count, cx, cy, colors, stroke, lineWidth, plankTs, rFaceVisible[i] === 1, flatFill);
+                const front = rFaceVisible[i] === 1;
+                const shadow = front ? faceColors.shadow : backShadow;
+                const mid = front ? faceColors.mid : backMid;
+                const highlight = front ? faceColors.highlight : backHighlight;
+                drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, front, flatFill);
             }
         else
             for (let pass = 0; pass < 2; pass++) {
                 const wantFront = pass === 1;
                 for (let i = 0; i < count; i++) {
                     if ((rFaceVisible[i] === 1) !== wantFront) continue;
-                    const colors = wantFront ? faceColors : backColors;
-                    drawSideFaceFlat(ctx, i, count, cx, cy, colors, stroke, lineWidth, plankTs, wantFront, flatFill);
+                    const shadow = wantFront ? faceColors.shadow : backShadow;
+                    const mid = wantFront ? faceColors.mid : backMid;
+                    const highlight = wantFront ? faceColors.highlight : backHighlight;
+                    drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, wantFront, flatFill);
                 }
             }
     if (drawTop) {
@@ -1295,7 +1304,6 @@ export function invalidateStaticGridEdgeRailDrawCache() {
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPoint. Horizontal caps: box top ring + per-corner chunk UV.
  */
-const sWallFaceAtlas = { canvas: null, settings: null, capHeight: 0, bandHeight: 0, wallBaseZ: 0, edgeLen: 0, wallCx: 0, wallCy: 0 };
 function wallFaceKindIndex(atlasFaceId) {
     switch (atlasFaceId) {
         case "inner":
@@ -1310,16 +1318,57 @@ function wallFaceKindIndex(atlasFaceId) {
             return 0;
     }
 }
-function ensureWallDrawMemo(grid) {
-    if (grid._wallDrawMemoWallRev !== grid.wallGridRevision || grid._wallDrawMemoSurfRev !== grid.surfaceMaterialRevision) {
-        grid._wallAtlasMemo = new Map();
-        grid._wallSubdivMemo = new Map();
-        grid._wallDrawMemoWallRev = grid.wallGridRevision;
-        grid._wallDrawMemoSurfRev = grid.surfaceMaterialRevision;
-    }
-}
-function wallDrawMemoSlot(grid, face) {
+function wallDrawMemoSlot(face) {
     return (face.gridIdx * 4 + face.gridSide) * 5 + wallFaceKindIndex(face.atlasFaceId);
+}
+function syncWallFaceDrawMemoRevision(grid) {
+    const slab = wallFaceDrawMemoSlab;
+    if (slab.wallRev === grid.wallGridRevision && slab.surfRev === grid.surfaceMaterialRevision) return;
+    clearWallFaceDrawMemoSlab(slab);
+    slab.wallRev = grid.wallGridRevision;
+    slab.surfRev = grid.surfaceMaterialRevision;
+}
+function wallFaceMemoHashIndex(memoKey) {
+    return (Math.imul(memoKey ^ (memoKey >>> 16), 0x9e3779b1) >>> 0) & (wallFaceDrawMemoSlab.hashCap - 1);
+}
+function wallFaceMemoFindRow(memoKey) {
+    const slab = wallFaceDrawMemoSlab;
+    let idx = wallFaceMemoHashIndex(memoKey);
+    const cap = slab.hashCap;
+    for (let probe = 0; probe < cap; probe++) {
+        const at = slab.hashTable[idx];
+        if (at === -1) return -1;
+        if (slab.memoKey[at] === memoKey) return at;
+        idx = (idx + 1) & (cap - 1);
+    }
+    return -1;
+}
+function wallFaceMemoAllocRow(memoKey) {
+    const slab = wallFaceDrawMemoSlab;
+    if (slab.freeCount <= 0) clearWallFaceDrawMemoSlab(slab);
+    const row = slab.freeSlots[--slab.freeCount];
+    slab.memoKey[row] = memoKey;
+    slab.camKey[row] = -1;
+    slab.perspKey[row] = -1;
+    slab.subdivX[row] = 0;
+    slab.subdivY[row] = 0;
+    slab.handles[row] = null;
+    let idx = wallFaceMemoHashIndex(memoKey);
+    const cap = slab.hashCap;
+    for (let probe = 0; probe < cap; probe++) {
+        if (slab.hashTable[idx] < 0) {
+            slab.hashTable[idx] = row;
+            slab.liveCount++;
+            return row;
+        }
+        idx = (idx + 1) & (cap - 1);
+    }
+    throw new Error("wallFaceMemoAllocRow: hash table full");
+}
+function wallFaceMemoGetOrAlloc(memoKey) {
+    const existing = wallFaceMemoFindRow(memoKey);
+    if (existing >= 0) return existing;
+    return wallFaceMemoAllocRow(memoKey);
 }
 export function appendProjectedFaceBand(ctx, botBuf, botO, topBuf, topO) {
     traceFlatQuad(ctx, botBuf[botO], botBuf[botO + 1], topBuf[topO], topBuf[topO + 1], topBuf[topO + 2], topBuf[topO + 3], botBuf[botO + 2], botBuf[botO + 3]);
@@ -1367,59 +1416,80 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     const wallHeightKey = resolveWallCapHeightPx(wallCapHeight, settings);
     const canUseSideCache = cacheObj && worldSurfaces.cacheKeys && worldSurfaces.worldSurfaceSeed !== undefined;
     let stash = null;
-    let memoSlot = -1;
+    let row = WALL_FACE_ATLAS_MISS;
     if (canUseSideCache) {
-        ensureWallDrawMemo(state.obstacleGrid);
-        memoSlot = wallDrawMemoSlot(state.obstacleGrid, face);
-        stash = state.obstacleGrid._wallAtlasMemo.get(memoSlot);
+        syncWallFaceDrawMemoRevision(state.obstacleGrid);
+        row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot(face));
+        stash = wallFaceDrawMemoSlab.handles[row];
     }
     let cacheHit = false;
     if (canUseSideCache && stash) {
         const atlasKey = worldSurfaces.cacheKeys.wallAtlasKeyScalars(x1, y1, x2, y2, seed, profileId, wallHeightKey);
         if (stash.profileId === profileId && stash.rev === atlasKey.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && worldSurfaces.surfaceCache.get(stash.key) === stash.canvases) cacheHit = true;
     }
-    if (cacheHit) {
-        // cache hit!
-    } else {
+    if (!cacheHit) {
         stash = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, { profileId, wallHeight: wallCapHeight, cacheObj: cacheObj && !cacheObj.isEdgeRail ? cacheObj : null, atlasFaceId: atlasFaceId ?? "side" });
-        if (canUseSideCache && stash) state.obstacleGrid._wallAtlasMemo.set(memoSlot, stash);
+        if (canUseSideCache && stash) wallFaceDrawMemoSlab.handles[row] = stash;
     }
-    if (!stash) return null;
+    if (!stash) return WALL_FACE_ATLAS_MISS;
     const canvas = stash.canvases[0];
-    if (!canvas || canvas.isPlaceholder) return "solid";
-    const atlas = sWallFaceAtlas;
-    atlas.canvas = canvas;
-    atlas.settings = settings;
-    atlas.capHeight = wallCapHeight;
-    atlas.bandHeight = wallHeight;
-    atlas.wallBaseZ = wallBaseZ;
-    atlas.edgeLen = Math.hypot(x2 - x1, y2 - y1);
-    atlas.wallCx = (x1 + x2) * 0.5;
-    atlas.wallCy = (y1 + y2) * 0.5;
-    return atlas;
+    if (!canvas || canvas.isPlaceholder) return WALL_FACE_ATLAS_SOLID;
+    if (row < 0) {
+        syncWallFaceDrawMemoRevision(state.obstacleGrid);
+        row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot(face));
+        wallFaceDrawMemoSlab.handles[row] = stash;
+    }
+    const slab = wallFaceDrawMemoSlab;
+    slab.capHeight[row] = wallCapHeight;
+    slab.bandHeight[row] = wallHeight;
+    slab.wallBaseZ[row] = wallBaseZ;
+    slab.edgeLen[row] = Math.hypot(x2 - x1, y2 - y1);
+    slab.wallCx[row] = (x1 + x2) * 0.5;
+    slab.wallCy[row] = (y1 + y2) * 0.5;
+    return row;
 }
-function computeWallFaceSubdiv(settings, bandHeight, capHeight, wallBaseZ, edgeLen, wallCx, wallCy, viewport) {
+function computeWallFaceSubdivInto(row, settings, viewport) {
+    const slab = wallFaceDrawMemoSlab;
     const cellSize = settings.cellSize;
+    const bandHeight = slab.bandHeight[row];
+    const wallBaseZ = slab.wallBaseZ[row];
     const topZ = Math.min(wallBaseZ + bandHeight, viewport.cameraHeight - 1);
     const alphaBandMax = resolveElevationAlpha(topZ, viewport);
     const alphaBase = resolveElevationAlpha(wallBaseZ, viewport);
-    if (alphaBandMax <= alphaBase) return null;
-    const dist = Math.hypot(wallCx - viewport.x, wallCy - viewport.y);
+    if (alphaBandMax <= alphaBase) {
+        slab.subdivX[row] = 0;
+        slab.subdivY[row] = 0;
+        return WALL_FACE_SUBDIV_NONE;
+    }
+    const dist = Math.hypot(slab.wallCx[row] - viewport.x, slab.wallCy[row] - viewport.y);
     const subdivScale = Math.max(0.05, Math.min(1.0, 1.0 - (dist - settings.wallSubdivNearPx) / settings.wallSubdivFarPx));
     const visibleHeightCells = bandHeight / cellSize;
-    return { subdivX: Math.max(1, Math.min(2, Math.ceil((edgeLen / cellSize) * subdivScale))), subdivY: Math.max(1, Math.ceil(visibleHeightCells * subdivScale)), capPx: capHeight * settings.surfaceBakeScale, alphaBase, alphaBandMax };
+    slab.subdivX[row] = Math.max(1, Math.min(2, Math.ceil((slab.edgeLen[row] / cellSize) * subdivScale)));
+    slab.subdivY[row] = Math.max(1, Math.ceil(visibleHeightCells * subdivScale));
+    slab.capPx[row] = slab.capHeight[row] * settings.surfaceBakeScale;
+    slab.alphaBase[row] = alphaBase;
+    slab.alphaBandMax[row] = alphaBandMax;
+    return row;
 }
-function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, atlas, subdiv, viewport, boundsBuf, boundsO) {
-    const { canvas, capHeight, bandHeight, wallBaseZ } = atlas;
-    const { subdivX, subdivY, capPx, alphaBase, alphaBandMax } = subdiv;
+function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, row, viewport, boundsBuf, boundsO) {
+    const slab = wallFaceDrawMemoSlab;
+    const canvas = slab.handles[row].canvases[0];
+    const capHeight = slab.capHeight[row];
+    const bandHeight = slab.bandHeight[row];
+    const wallBaseZ = slab.wallBaseZ[row];
+    const subdivX = slab.subdivX[row];
+    const subdivY = slab.subdivY[row];
+    const capPx = slab.capPx[row];
+    const alphaBase = slab.alphaBase[row];
+    const alphaBandMax = slab.alphaBandMax[row];
     const baseTransform = ctx.getTransform();
     const alphaSpan = alphaBandMax - alphaBase;
     const rowStep = bandHeight / subdivY;
     const cameraHeight = viewport.cameraHeight;
     const visibleRows = Math.min(subdivY, Math.ceil((cameraHeight - wallBaseZ) / rowStep));
-    for (let row = 0; row < visibleRows; row++) {
-        const bottomZ = wallBaseZ + row * rowStep;
-        let topZ = wallBaseZ + (row + 1) * rowStep;
+    for (let r = 0; r < visibleRows; r++) {
+        const bottomZ = wallBaseZ + r * rowStep;
+        let topZ = wallBaseZ + (r + 1) * rowStep;
         if (bottomZ >= cameraHeight) break;
         if (topZ >= cameraHeight) topZ = cameraHeight - 1;
         const v0 = (resolveElevationAlpha(bottomZ, viewport) - alphaBase) / alphaSpan;
@@ -1438,33 +1508,32 @@ function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, atlas, subdiv, view
         }
     }
 }
-function resolveWallFaceSubdiv(face, atlas, viewport, grid) {
+function resolveWallFaceSubdiv(face, row, viewport, grid, settings) {
     const camKey = Math.round(viewport.cameraHeight);
     const perspKey = Math.round(viewport.perspectiveStrength * 100);
-    ensureWallDrawMemo(grid);
-    const memoSlot = wallDrawMemoSlot(grid, face);
-    const cached = grid._wallSubdivMemo.get(memoSlot);
-    if (cached && cached.camKey === camKey && cached.perspKey === perspKey) return cached.subdiv;
-    const subdiv = computeWallFaceSubdiv(atlas.settings, atlas.bandHeight, atlas.capHeight, atlas.wallBaseZ, atlas.edgeLen, atlas.wallCx, atlas.wallCy, viewport);
-    grid._wallSubdivMemo.set(memoSlot, { camKey, perspKey, subdiv });
-    return subdiv;
+    syncWallFaceDrawMemoRevision(grid);
+    const slab = wallFaceDrawMemoSlab;
+    if (slab.camKey[row] === camKey && slab.perspKey[row] === perspKey && slab.subdivX[row] > 0) return row;
+    slab.camKey[row] = camKey;
+    slab.perspKey[row] = perspKey;
+    return computeWallFaceSubdivInto(row, settings, viewport);
 }
 function drawFaceTextureScalars(ctx, x1, y1, x2, y2, botBuf, botO, topBuf, topO, viewport, state, face) {
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
-    const atlas = resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face);
-    if (atlas === null) return;
-    if (atlas === "solid") {
+    const row = resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face);
+    if (row === WALL_FACE_ATLAS_MISS) return;
+    if (row === WALL_FACE_ATLAS_SOLID) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
         return;
     }
-    const subdiv = resolveWallFaceSubdiv(face, atlas, viewport, state.obstacleGrid);
-    if (!subdiv) {
+    const subdivRow = resolveWallFaceSubdiv(face, row, viewport, state.obstacleGrid, state.worldSurfaces.settings);
+    if (subdivRow === WALL_FACE_SUBDIV_NONE) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, atlas, subdiv, viewport, viewport.boundsBuf, VIEW_TIER.CHUNKS);
+    blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, subdivRow, viewport, viewport.boundsBuf, VIEW_TIER.CHUNKS);
 }
 export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
     const { wallHeight, wallBaseZ } = face;

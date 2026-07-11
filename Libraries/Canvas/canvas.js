@@ -1,6 +1,6 @@
 ﻿import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
-import { ENGINE_F32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH } from "../../Core/engineMemory.js";
 import { packRollOrientId, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
@@ -392,7 +392,9 @@ function spriteCacheKeyParts(key) {
             lo = Math.imul(lo, 16777619) >>> 0;
             k >>= 32n;
         }
-        return { lo, hi };
+        ENGINE_I32[I_SPRITE_KEY_LO] = lo;
+        ENGINE_I32[I_SPRITE_KEY_HI] = hi;
+        return;
     }
     const s = String(key);
     let lo = 2166136261;
@@ -404,7 +406,8 @@ function spriteCacheKeyParts(key) {
         hi ^= c;
         hi = Math.imul(hi, 2246822519) >>> 0;
     }
-    return { lo, hi };
+    ENGINE_I32[I_SPRITE_KEY_LO] = lo;
+    ENGINE_I32[I_SPRITE_KEY_HI] = hi;
 }
 function spriteCacheHashIndex(slab, lo, hi) {
     return ((lo ^ Math.imul(hi, 0x9e3779b1)) >>> 0) & (slab.hashCap - 1);
@@ -501,18 +504,24 @@ function spriteCacheEvictHead(slab) {
 // Walls/ground use page atlases in WorldSurface. Prop/grid/overlay sprites are per-key SoA slots (not shared pages).
 export class SpriteCacheSlab {
     get(key) {
-        const { lo, hi } = spriteCacheKeyParts(key);
+        spriteCacheKeyParts(key);
+        const lo = ENGINE_I32[I_SPRITE_KEY_LO] >>> 0;
+        const hi = ENGINE_I32[I_SPRITE_KEY_HI] >>> 0;
         const slot = spriteCacheFindSlot(this, key, lo, hi);
         if (slot < 0) return -1;
         spriteCacheLruTouch(this, slot);
         return slot;
     }
     has(key) {
-        const { lo, hi } = spriteCacheKeyParts(key);
+        spriteCacheKeyParts(key);
+        const lo = ENGINE_I32[I_SPRITE_KEY_LO] >>> 0;
+        const hi = ENGINE_I32[I_SPRITE_KEY_HI] >>> 0;
         return spriteCacheFindSlot(this, key, lo, hi) >= 0;
     }
-    set(key, sourceCanvas, meta) {
-        const { lo, hi } = spriteCacheKeyParts(key);
+    set(key, sourceCanvas, bakeScale, anchorX, anchorY, drawW, drawH, frameCount, frameWidthCanvas) {
+        spriteCacheKeyParts(key);
+        const lo = ENGINE_I32[I_SPRITE_KEY_LO] >>> 0;
+        const hi = ENGINE_I32[I_SPRITE_KEY_HI] >>> 0;
         const existing = spriteCacheFindSlot(this, key, lo, hi);
         if (existing >= 0) {
             spriteCacheHashRemove(this, existing);
@@ -524,20 +533,20 @@ export class SpriteCacheSlab {
         while (this.liveCount >= this.maxLive) spriteCacheEvictHead(this);
         if (this.freeCount <= 0) throw new Error("SpriteCacheSlab.set: capacity exceeded");
         const slot = this.freeSlots[--this.freeCount];
-        const bakeScale = meta.bakeScale ?? 1;
+        const scale = bakeScale ?? 1;
         const gen = (this.slotGen[slot] + 1) >>> 0 || 1;
         this.slotGen[slot] = gen;
         this.keys[slot] = key;
         this.keyLo[slot] = lo;
         this.keyHi[slot] = hi;
         this.handles[slot] = sourceCanvas;
-        this.bakeScale[slot] = bakeScale;
-        this.anchorX[slot] = meta.anchorX ?? 0;
-        this.anchorY[slot] = meta.anchorY ?? 0;
-        this.drawW[slot] = meta.drawW ?? sourceCanvas.width / bakeScale;
-        this.drawH[slot] = meta.drawH ?? sourceCanvas.height / bakeScale;
-        this.frameCount[slot] = meta.frameCount ?? 1;
-        this.frameWidthCanvas[slot] = meta.frameWidthCanvas ?? (meta.frameCount > 1 ? sourceCanvas.width / meta.frameCount : sourceCanvas.width);
+        this.bakeScale[slot] = scale;
+        this.anchorX[slot] = anchorX ?? 0;
+        this.anchorY[slot] = anchorY ?? 0;
+        this.drawW[slot] = drawW ?? sourceCanvas.width / scale;
+        this.drawH[slot] = drawH ?? sourceCanvas.height / scale;
+        this.frameCount[slot] = frameCount ?? 1;
+        this.frameWidthCanvas[slot] = frameWidthCanvas ?? (frameCount > 1 ? sourceCanvas.width / frameCount : sourceCanvas.width);
         this.flags[slot] = SPRITE_CACHE_FLAG_LIVE;
         spriteCacheHashInsert(this, slot);
         spriteCacheLruAppend(this, slot);
@@ -577,9 +586,18 @@ export class SpriteCacheSlab {
     getOrBake(key, bakeFn) {
         let slot = this.get(key);
         if (slot >= 0) return slot;
-        const { canvas, meta } = bakeFn();
-        return this.set(key, canvas, meta);
+        const canvas = bakeFn();
+        return this.set(key, canvas, ENGINE_F32[R_SPRITE_BAKE_SCALE], ENGINE_F32[R_SPRITE_ANCHOR_X], ENGINE_F32[R_SPRITE_ANCHOR_Y], ENGINE_F32[R_SPRITE_DRAW_W], ENGINE_F32[R_SPRITE_DRAW_H], ENGINE_F32[R_SPRITE_FRAME_COUNT] | 0, ENGINE_F32[R_SPRITE_FRAME_WIDTH] | 0);
     }
+}
+function writeSpriteBakeOuts(bakeScale, anchorX, anchorY, drawW, drawH, frameCount, frameWidthCanvas) {
+    ENGINE_F32[R_SPRITE_BAKE_SCALE] = bakeScale;
+    ENGINE_F32[R_SPRITE_ANCHOR_X] = anchorX;
+    ENGINE_F32[R_SPRITE_ANCHOR_Y] = anchorY;
+    ENGINE_F32[R_SPRITE_DRAW_W] = drawW;
+    ENGINE_F32[R_SPRITE_DRAW_H] = drawH;
+    ENGINE_F32[R_SPRITE_FRAME_COUNT] = frameCount;
+    ENGINE_F32[R_SPRITE_FRAME_WIDTH] = frameWidthCanvas;
 }
 Object.setPrototypeOf(propSpriteCacheSlab, SpriteCacheSlab.prototype);
 Object.setPrototypeOf(gridStampSpriteCacheSlab, SpriteCacheSlab.prototype);
@@ -686,7 +704,7 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
 function getPropStaticKey(prop, renderKey) {
     const facing = readEntityFacing(prop);
     const voId = visualOverrideCacheId(prop);
-    const attachmentId = getVisualAttachmentSpriteCacheId(prop, { quantizeAngleIndex });
+    const attachmentId = getVisualAttachmentSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const rolls = !!prop.strategy?.rolls;
     const rollId = rolls ? packRollOrientId(prop, resolvePropQuantizeSteps(prop).facing) : 0;
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
@@ -741,7 +759,8 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
         draw(ctx, stageProp, viewport);
         drawVisualAttachmentList(ctx, attachments.after, viewport);
         ctx.restore();
-        return { canvas, meta: { anchorX, anchorY, bakeScale } };
+        writeSpriteBakeOuts(bakeScale, anchorX, anchorY, stageSpan / bakeScale, stageSpan / bakeScale, 1, stageSpan);
+        return canvas;
     });
 }
 export function clearPropSpriteCache() {
@@ -784,7 +803,8 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfEx
             draw(bakeCtx, stageProp, viewport);
             bakeCtx.restore();
         }
-        return { canvas, meta: { anchorX, anchorY, bakeScale, frameCount, frameWidthCanvas: frameSpan, drawW: frameSpan / bakeScale, drawH: frameSpan / bakeScale } };
+        writeSpriteBakeOuts(bakeScale, anchorX, anchorY, frameSpan / bakeScale, frameSpan / bakeScale, frameCount, frameSpan);
+        return canvas;
     });
 }
 export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey, packedList, packedCount, flowAngleForPacked, drawForPacked, frameCount = BELT_FILMSTRIP_FRAMES) {
@@ -825,7 +845,8 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
         if (bakeScale !== 1) bakeCtx.scale(bakeScale, bakeScale);
         draw(bakeCtx, anchorX, anchorY);
         bakeCtx.restore();
-        return { canvas, meta: { anchorX, anchorY, bakeScale } };
+        writeSpriteBakeOuts(bakeScale, anchorX, anchorY, stageSpan / bakeScale, stageSpan / bakeScale, 1, stageSpan);
+        return canvas;
     });
     blitAnchoredSprite(ctx, overlaySpriteCacheSlab, slot, worldX, worldY);
 }
