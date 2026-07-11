@@ -351,22 +351,6 @@ export function blitMaskOverlay(ctx, sourceCanvas) {
     ctx.drawImage(sourceCanvas, 0, 0);
     ctx.restore();
 }
-export class SpriteCache {
-    constructor() {
-        this.cache = new Map();
-    }
-    get(key, generateFn, ...args) {
-        let sprite = this.cache.get(key);
-        if (!sprite) {
-            sprite = generateFn(...args);
-            this.cache.set(key, sprite);
-        }
-        return sprite;
-    }
-    clear() {
-        this.cache.clear();
-    }
-}
 function disposeSpriteSlot(slab, slot) {
     const handle = slab.handles[slot];
     const flags = slab.flags[slot];
@@ -824,8 +808,43 @@ export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfExte
     const slot = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount);
     blitAnchoredSprite(ctx, gridStampSpriteCacheSlab, slot, worldX, worldY, null, frameIndex);
 }
-export const OVERLAY_RENDER_KEY = { SelectionRing: "overlay_selection_ring", PathDestination: "overlay_path_destination", PathArrowHead: "overlay_path_arrow_head", FlowDirectionArrow: "overlay_flow_direction_arrow", WireEndpoint: "overlay_wire_endpoint", GridCellHighlight: "overlay_grid_cell_highlight", PathDebugNode: "overlay_path_debug_node" };
+export const OVERLAY_RENDER_KEY = { SelectionRing: "overlay_selection_ring", PathDestination: "overlay_path_destination", PathArrowHead: "overlay_path_arrow_head", FlowDirectionArrow: "overlay_flow_direction_arrow", WireEndpoint: "overlay_wire_endpoint", GridCellHighlight: "overlay_grid_cell_highlight", PathDebugNode: "overlay_path_debug_node", FloatingText: "overlay_floating_text" };
 const OVERLAY_STAGE_PADDING = 6;
+export function drawCachedFloatingText(ctx, worldX, worldY, cacheKey, text, style, color, alpha, scale) {
+    let key = BigInt(internSpriteKeyPart(OVERLAY_RENDER_KEY.FloatingText));
+    key = (key << 20n) | BigInt(internSpriteKeyPart(cacheKey));
+    const slot = overlaySpriteCacheSlab.getOrBake(key, () => {
+        const measureCtx = acquireOffscreenCanvas(1, 1).getContext("2d");
+        measureCtx.font = style.font;
+        const metrics = measureCtx.measureText(text);
+        releaseOffscreenCanvas(measureCtx.canvas);
+        const strokeWidth = style.strokeWidth;
+        const textWidth = Math.ceil(metrics.width);
+        const fontSizeMatch = style.font.match(/(\d+)px/);
+        const fontSize = fontSizeMatch ? parseInt(fontSizeMatch[1], 10) : 12;
+        const textHeight = Math.ceil(fontSize * 1.3);
+        const padding = strokeWidth * 2 + 4;
+        const W = textWidth + padding;
+        const H = textHeight + padding;
+        const canvas = acquireOffscreenCanvas(W, H);
+        const offCtx = canvas.getContext("2d");
+        offCtx.textAlign = "center";
+        offCtx.textBaseline = "middle";
+        offCtx.font = style.font;
+        const cx = W / 2;
+        const cy = H / 2;
+        offCtx.strokeStyle = "rgba(0, 0, 0, 0.95)";
+        offCtx.lineWidth = strokeWidth;
+        offCtx.lineJoin = "round";
+        offCtx.miterLimit = 2;
+        offCtx.strokeText(text, cx, cy);
+        offCtx.fillStyle = style.getFill(offCtx, color);
+        offCtx.fillText(text, cx, cy);
+        writeSpriteBakeOuts(1, cx, cy, W, H, 1, W);
+        return canvas;
+    });
+    blitAnchoredSprite(ctx, overlaySpriteCacheSlab, slot, worldX, worldY, { alpha, scale });
+}
 export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey, customKey, worldSpan, draw) {
     const px = viewport.x;
     const py = viewport.y;

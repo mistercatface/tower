@@ -1,7 +1,5 @@
-import { SpriteCache } from "../Canvas/canvas.js";
-import { RenderSprites } from "../../Render/RenderSprites.js";
+import { drawCachedFloatingText } from "../Canvas/canvas.js";
 import { events } from "../../Core/EventSystem.js";
-const floatingTextCache = new SpriteCache();
 export const FLOATING_TEXT_SPAWN_EVENT = "fx:floatingText";
 export const TextStyles = {
     standard: {
@@ -68,20 +66,10 @@ export class FloatingText {
         FloatingText.spawn(state, x, y, text, color, style ?? "standard", options ?? {});
     }
     render(ctx, renderer, state) {
-        const cacheKey = this.getCacheKey();
-        const sprite = floatingTextCache.get(cacheKey, RenderSprites.floatingText, this.text, this.style, this.color);
-        const img = sprite.offCanvas || sprite;
-        const cx = sprite.cx !== undefined ? sprite.cx : img.width / 2;
-        const cy = sprite.cy !== undefined ? sprite.cy : img.height / 2;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, this.life);
         const ageRatio = 1.0 - this.life;
         let scale = this.style.scaleFn(ageRatio);
         if (state && state.viewport) scale /= state.viewport.zoom;
-        ctx.translate(this.x, this.y);
-        ctx.scale(scale, scale);
-        ctx.drawImage(img, -cx, -cy);
-        ctx.restore();
+        drawCachedFloatingText(ctx, this.x, this.y, this.getCacheKey(), this.text, this.style, this.color, Math.max(0, this.life), scale);
     }
 }
 events.on(FLOATING_TEXT_SPAWN_EVENT, FloatingText.handleSpawnEvent);

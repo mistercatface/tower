@@ -8,7 +8,6 @@ import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
-import { RenderSprites } from "../../Render/RenderSprites.js";
 import propCatalog from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
