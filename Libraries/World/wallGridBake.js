@@ -3,7 +3,7 @@ import { railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeig
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT } from "../../Core/engineMemory.js";
 const sP1 = { x: 0, y: 0 };
 const sP2 = { x: 0, y: 0 };
 export const RAIL_BOX = { chunkKey: 0, gridIdx: 1, gridSide: 2, minX: 3, minY: 4, maxX: 5, maxY: 6, innerP1x: 7, innerP1y: 8, innerP2x: 9, innerP2y: 10, outerP1x: 11, outerP1y: 12, outerP2x: 13, outerP2y: 14, inwardX: 15, inwardY: 16, wallBaseZ: 17, wallHeight: 18, wallCapHeight: 19, edgeThickness: 20, cx: 21, cy: 22 };

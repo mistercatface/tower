@@ -1,4 +1,4 @@
-import { kineticDynamicSlab } from "../../Libraries/Physics/physics.js";
+import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 
 const SLAB_POSE_EPS = 1e-4;
 const SLAB_VEL_EPS = 1e-4;

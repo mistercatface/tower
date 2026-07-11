@@ -1,4 +1,5 @@
-import { rotateXYIntoF32, ENGINE_F32, M_VEC_A } from "../../Math/math.js";
+import { rotateXYIntoF32 } from "../../Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
 import { distanceToLineSegment } from "../../Math/math.js";
 import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
 /**

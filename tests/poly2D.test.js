@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rectCorners, rotatePointIntoF32, rotateXYIntoF32, transformPoint2DIntoF32, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D, ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
+import { pointInPolygon, rectCorners, rotatePointIntoF32, rotateXYIntoF32, transformPoint2DIntoF32, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D } from "../Libraries/Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {

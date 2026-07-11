@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { entityVx, entityVy, entityW, entityFacing } from "../Libraries/Entity/entitySlots.js";
+import { entityVx, entityVy, entityW, entityFacing } from "../Core/engineMemory.js";
 import { snapshotKineticBodySlab, writebackActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 

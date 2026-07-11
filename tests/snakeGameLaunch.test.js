@@ -9,7 +9,7 @@ import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { getMapGenBoundsCenterWorldF32, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
-import { ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 
 const CELLS_PER_CHUNK = 16;
 

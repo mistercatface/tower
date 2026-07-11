@@ -7,7 +7,7 @@ import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { getPropVisualBrightness, getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getCirclePropRadius, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
-import { ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 function createSpawnTestState() {

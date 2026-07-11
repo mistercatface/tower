@@ -4,7 +4,8 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
-import { kineticDynamicSlab, pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "../Libraries/Physics/physics.js";
+import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { circleCircleContactSlab } from "../Libraries/Physics/physics.js";
 import { circleCircleContact, SAT_RESULT } from "../Libraries/Physics/physics.js";
 

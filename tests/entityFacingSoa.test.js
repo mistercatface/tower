@@ -2,7 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { entityFacing as entityFacingFn } from "../Libraries/Physics/physics.js";
-import { entityFacing, bindEntitySlot, clearWorldPropSpawnPose, ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_KINETIC } from "../Libraries/Entity/entitySlots.js";
+import { bindEntitySlot, clearWorldPropSpawnPose, ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_KINETIC } from "../Libraries/Entity/entitySlots.js";
+import { entityFacing } from "../Core/engineMemory.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 
 describe("entityFacing SoA", () => {

@@ -6,7 +6,7 @@ import { satCheckCollision, checkEntityPairCollision, entityFacing, SAT_RESULT }
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";

@@ -4,8 +4,9 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab, writebackActiveKineticBodySlab, P_OUT_PEN_OVERLAP } from "../Libraries/Physics/physics.js";
-import { ENGINE_F32 } from "../Libraries/Math/math.js";
+import { writebackActiveKineticBodySlab, P_OUT_PEN_OVERLAP } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
+import { ENGINE_F32 } from "../Core/engineMemory.js";
 import { mockWallSegment } from "./harness/wallSegmentHarness.js";
 
 const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });

@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, readImpactFracture } from "./harness/fractureHarness.js";
 
 describe("Shatter / Debris Performance Fixes", () => {

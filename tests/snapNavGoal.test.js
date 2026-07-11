@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { BeltPacked } from "../Libraries/Spatial/belts.js";
-import { ENGINE_F32, N_OUT_XY } from "../Libraries/Math/math.js";
+import { ENGINE_F32, N_OUT_XY } from "../Core/engineMemory.js";
 
 describe("snapNavGoal", () => {
     it("snapNavGoalCellIndex moves belt target to entry neighbor", () => {

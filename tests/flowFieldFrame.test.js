@@ -3,7 +3,7 @@ import { FlatGridView } from "../Libraries/Navigation/navigation.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createCenteredGridFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, worldColInCenteredFrame, worldRowInCenteredFrame } from "../Libraries/Spatial/spatial.js";
-import { ENGINE_F32, N_OUT_FLOW } from "../Libraries/Math/math.js";
+import { ENGINE_F32, N_OUT_FLOW } from "../Core/engineMemory.js";
 import { OCTILE_NEIGHBOR_GRID_LAYOUT } from "../Libraries/Navigation/navigation.js";
 import { bfsTypedIndices } from "../Libraries/Navigation/navigation.js";
 

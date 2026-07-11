@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { bakeKineticIslandPlan, shareKineticIsland } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody } from "../Libraries/Physics/physics.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";

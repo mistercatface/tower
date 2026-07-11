@@ -5,7 +5,8 @@ import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 import { drawProjectedWallFaceScalars } from "../Libraries/Render/render.js";
 import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileIdAtKey, resolveEdgeSurfaceProfileId, packChunkKey  } from "../Libraries/Spatial/spatial.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP, minCornerAabbF32 } from "../Libraries/Math/math.js";
+import { minCornerAabbF32 } from "../Libraries/Math/math.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP } from "../Core/engineMemory.js";
 
 function createPathOnlyContext() {
     return {

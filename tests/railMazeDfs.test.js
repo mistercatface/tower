@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { bakeRailMazeDfs, WorldObstacleGrid, centerMapGenBoundsOnViewport, createDefaultMapGenBoundsConfig, getMapGenBoundsCenterWorldF32 } from "../Libraries/Spatial/spatial.js";
-import { ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 function railAt(batch, i) {
     const o = i << 2;
     return { idx: batch.data[o], side: batch.data[o + 1] };

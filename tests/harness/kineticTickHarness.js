@@ -2,7 +2,8 @@ import { createKineticSession } from "../../GameState/KineticSession.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
+import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;

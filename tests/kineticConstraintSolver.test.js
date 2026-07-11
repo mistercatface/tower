@@ -1,8 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { addDistanceConstraint, pruneKineticConstraintsForBody } from "../Libraries/Physics/physics.js";
-import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab, kineticConstraintSlab } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab } from "../Libraries/Physics/physics.js";
+import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
+import { kineticConstraintSlab } from "../Core/engineMemory.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 

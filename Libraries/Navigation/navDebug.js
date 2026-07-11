@@ -1,5 +1,5 @@
 import { createOffscreenCanvas, fillCircle, traceSegment, traceClosedFlatPolygon } from "../Canvas/canvas.js";
-import { ENGINE_F32, R_CHEVRON } from "../Math/math.js";
+import { ENGINE_F32, R_CHEVRON } from "../../Core/engineMemory.js";
 import { gridNavCacheKey, floorOccupancyStampDrawCacheKey } from "../Spatial/spatial.js";
 import { BeltPacked } from "../Spatial/belts.js";
 import { findNearestOpenCellIdx, buildNavReachableMaskFromSeed } from "./navigation.js";

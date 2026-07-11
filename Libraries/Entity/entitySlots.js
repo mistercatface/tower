@@ -1,23 +1,10 @@
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx } from "../../Core/engineMemory.js";
 export const ENTITY_KIND_NONE = 0;
 export const ENTITY_KIND_WORLD_PROP = 1;
 export const ENTITY_KIND_DEBRIS = 2;
 export const ENTITY_FLAG_DEAD = 1 << 0;
 export const ENTITY_FLAG_KINETIC = 1 << 1;
-export const entityX = new Float32Array(MAX_ENTITIES);
-export const entityY = new Float32Array(MAX_ENTITIES);
-export const entityVx = new Float32Array(MAX_ENTITIES);
-export const entityVy = new Float32Array(MAX_ENTITIES);
-export const entityW = new Float32Array(MAX_ENTITIES);
-export const entityFacing = new Float32Array(MAX_ENTITIES);
-export const entityR = new Float32Array(MAX_ENTITIES);
-export const entityKind = new Uint8Array(MAX_ENTITIES);
-export const entityFlags = new Uint32Array(MAX_ENTITIES);
-export const entityAlive = new Uint8Array(MAX_ENTITIES);
-export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
-export const entityRefs = new Array(MAX_ENTITIES);
-export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
-export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);
 let nextEid = 0;
 const eidFreeList = [];
 export function allocateEntityEid() {

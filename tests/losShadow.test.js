@@ -4,7 +4,7 @@ import { traceWoundFlatQuad } from "../Libraries/Canvas/canvas.js";
 import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabbF32, EdgeList } from "../Libraries/Render/render.js";
 import {  collectExposedWallEdges, collectExposedWallEdgesInAabb  } from "../Libraries/Spatial/spatial.js";
 import {  projectWorldPointToScreen, projectWallShadowQuadScreen, shadowGroundContact  } from "../Libraries/Spatial/spatial.js";
-import { ENGINE_F32, S_OUT_SCREEN, S_OUT_XY, S_QUAD } from "../Libraries/Math/math.js";
+import { ENGINE_F32, S_OUT_SCREEN, S_OUT_XY, S_QUAD } from "../Core/engineMemory.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 import { assertNear } from "./mathHarness.js";
 import { makeTestObstacleGrid, makeTestViewport, stampRailWallEdge, stampWallRect } from "./harness/losShadowHarness.js";

@@ -9,7 +9,8 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
 import { GLASS_MAX_SHARDS_PER_SHATTER, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA } from "../Libraries/Physics/fracture.js";
-import { ENGINE_F32, transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
+import { transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
+import { ENGINE_F32 } from "../Core/engineMemory.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";

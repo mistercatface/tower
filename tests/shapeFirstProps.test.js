@@ -3,7 +3,8 @@ import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
-import { polygonSignedArea2D, ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
+import { polygonSignedArea2D } from "../Libraries/Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 describe("shape-first props", () => {
     it("crate builds a four-corner polygon from localFootprint", () => {

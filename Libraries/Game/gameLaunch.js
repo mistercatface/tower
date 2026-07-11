@@ -9,7 +9,7 @@ import { createGlassGameSession } from "./glassGameSession.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 import { setPropVisualTint } from "../Color/visualOverride.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
-import { ENGINE_F32, M_VEC_A } from "../Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
 export const GAME_LAUNCHERS = {
     snake: {
         title: "Snake",

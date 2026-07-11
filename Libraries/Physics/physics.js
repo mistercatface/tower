@@ -1,7 +1,62 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ } from "../Math/math.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityRefs, syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
+import { multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32 } from "../Math/math.js";
+import {
+    ENGINE_F32,
+    ENGINE_PHYS_BASE,
+    ENGINE_BOUNDS_BASE,
+    B_QUERY,
+    B_PAD,
+    M_OUT_CX,
+    M_OUT_CY,
+    M_OUT_QW,
+    M_OUT_QX,
+    M_OUT_QY,
+    M_OUT_QZ,
+    M_OUT_VX,
+    M_OUT_VY,
+    M_OUT_VZ,
+    P_COMPOUND,
+    entityRefs,
+    ensureGrowI32,
+    kineticDynamicSlab,
+    kineticStaticSlab,
+    kineticConstraintSlab,
+    kineticContactBuffer,
+    kineticPairBuffer,
+    persistedKineticPairBuffer,
+    warmStartKeys,
+    warmStartGen,
+    warmStartJn,
+    warmStartJt,
+    warmStartState,
+    orderSeenPhysIds,
+    orderUsedItems,
+    bucketRoots,
+    sIslandPhysA,
+    sIslandPhysB,
+    sBucketCounts,
+    sBucketStartIdx,
+    sBucketFillIdx,
+    sIslandAwake,
+    orderOrderedIdxs,
+    sleepIslandParent as parent,
+    sleepIslandRank as rank,
+    sleepComponentRoot as componentRoot,
+    sleepComponentMaxSpeedSq as componentMaxSpeedSq,
+    sleepComponentHasBlocker as componentHasBlocker,
+    sleepComponentMemberCount as componentMemberCount,
+    kineticSleepScratch,
+    pairHashKeys,
+    MAX_PHYS_BODIES,
+    MAX_CONTACTS,
+    MAX_KINETIC_PAIRS,
+    MAX_KINETIC_CONSTRAINTS,
+    MAX_ISLAND_GROUPS,
+    WARM_START_CACHE_SIZE,
+    WARM_START_CACHE_MASK,
+    PAIR_HASH_CAPACITY,
+} from "../../Core/engineMemory.js";
+import { syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
-import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
 export const LIBRARY_PHYSICS_DEFAULTS = { groundNavRoll: { maxSpeed: 180, accel: 600, stopRadius: 6 }, groundNavHpa: { stopRadius: 8, pathWaypointArrivalMin: 12, pathWaypointArrivalRadiusFactor: 1.5 } };
@@ -120,14 +175,13 @@ function collisionPartMassProperties(shape) {
     ENGINE_F32[P_OUT_MASS_CY] = ENGINE_F32[M_OUT_CY];
     ENGINE_F32[P_OUT_MASS_INERTIA] = polygonSecondMomentAboutCentroid2D(verts) / area;
 }
-const sCompoundScratch = new Float32Array(256);
 function compoundInertiaFactor(parts) {
     if (parts.length === 1) {
         collisionPartMassProperties(parts[0]);
         return ENGINE_F32[P_OUT_MASS_INERTIA];
     }
     const count = parts.length;
-    if (count * 4 > sCompoundScratch.length) throw new Error(`compoundInertiaFactor: parts count ${count} exceeds scratch size`);
+    if (count * 4 > 256) throw new Error(`compoundInertiaFactor: parts count ${count} exceeds scratch size`);
     let totalArea = 0;
     let cx = 0;
     let cy = 0;
@@ -137,11 +191,11 @@ function compoundInertiaFactor(parts) {
         const px = ENGINE_F32[P_OUT_MASS_CX];
         const py = ENGINE_F32[P_OUT_MASS_CY];
         const inertiaPerArea = ENGINE_F32[P_OUT_MASS_INERTIA];
-        const offset = i * 4;
-        sCompoundScratch[offset] = area;
-        sCompoundScratch[offset + 1] = px;
-        sCompoundScratch[offset + 2] = py;
-        sCompoundScratch[offset + 3] = inertiaPerArea;
+        const offset = P_COMPOUND + i * 4;
+        ENGINE_F32[offset] = area;
+        ENGINE_F32[offset + 1] = px;
+        ENGINE_F32[offset + 2] = py;
+        ENGINE_F32[offset + 3] = inertiaPerArea;
         totalArea += area;
         cx += px * area;
         cy += py * area;
@@ -150,11 +204,11 @@ function compoundInertiaFactor(parts) {
     cy /= totalArea;
     let inertia = 0;
     for (let i = 0; i < count; i++) {
-        const offset = i * 4;
-        const area = sCompoundScratch[offset];
-        const px = sCompoundScratch[offset + 1];
-        const py = sCompoundScratch[offset + 2];
-        const inertiaPerArea = sCompoundScratch[offset + 3];
+        const offset = P_COMPOUND + i * 4;
+        const area = ENGINE_F32[offset];
+        const px = ENGINE_F32[offset + 1];
+        const py = ENGINE_F32[offset + 2];
+        const inertiaPerArea = ENGINE_F32[offset + 3];
         const Icm = inertiaPerArea * area;
         const dx = px - cx;
         const dy = py - cy;
@@ -224,15 +278,6 @@ export function normalizeKineticBody(body) {
 }
 export const BP_KIND_CIRCLE = 0;
 export const BP_KIND_OBB = 1;
-export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), linkNeighborOffset: new Int32Array(MAX_PHYS_BODIES), linkNeighborCount: new Int32Array(MAX_PHYS_BODIES), r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
-export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
-kineticDynamicSlab.activeSlot.fill(-1);
-kineticDynamicSlab.islandRoot.fill(-1);
-kineticDynamicSlab.linkNeighborOffset.fill(0);
-kineticDynamicSlab.linkNeighborCount.fill(0);
-let linkNeighborEidsArena = new Int32Array(256);
-kineticDynamicSlab.linkNeighborEids = linkNeighborEidsArena;
-let linkNeighborEidsArenaUsed = 0;
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
     const slab = kineticDynamicSlab;
     const aCos = slab.cos[physIdA];
@@ -1520,41 +1565,12 @@ const islandLinkWallCandidates = [];
 const islandLinkWallSegmentSet = new Set();
 /** Per-link AABB filter into the current island list before narrow-phase wall tests. */
 const linkFilteredWallCandidates = [];
-const MAX_KINETIC_CONSTRAINTS = 2048;
-const MAX_ISLAND_GROUPS = 256;
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
-export const kineticConstraintSlab = {
-    count: 0,
-    activeCount: 0,
-    groupCount: 0,
-    groupCounts: new Int32Array(MAX_ISLAND_GROUPS),
-    type: new Array(MAX_KINETIC_CONSTRAINTS),
-    physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
-    physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS),
-    dynamic: { accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS), nx: new Float32Array(MAX_KINETIC_CONSTRAINTS), ny: new Float32Array(MAX_KINETIC_CONSTRAINTS), rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS), rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS), k: new Float32Array(MAX_KINETIC_CONSTRAINTS), error: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
-    static: { anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), massA: new Float32Array(MAX_KINETIC_CONSTRAINTS), massB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS), capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
-    entry: new Array(MAX_KINETIC_CONSTRAINTS),
-    reset() {
-        this.count = 0;
-        this.activeCount = 0;
-        this.groupCount = 0;
-    },
-};
 const constraintPhysSyncSeen = new Set();
 const constraintBridgePhysIds = [];
-const orderSeenPhysIds = new Uint8Array(MAX_PHYS_BODIES);
 const orderUniquePhysIds = [];
-const orderUsedItems = new Uint8Array(MAX_KINETIC_CONSTRAINTS);
 const orderOrdered = [];
-const bucketRoots = new Int32Array(MAX_ISLAND_GROUPS);
 const sIslandEntries = new Array(MAX_KINETIC_CONSTRAINTS);
-const sIslandPhysA = new Int32Array(MAX_KINETIC_CONSTRAINTS);
-const sIslandPhysB = new Int32Array(MAX_KINETIC_CONSTRAINTS);
-const sBucketCounts = new Int32Array(MAX_ISLAND_GROUPS);
-const sBucketStartIdx = new Int32Array(MAX_ISLAND_GROUPS);
-const sBucketFillIdx = new Int32Array(MAX_ISLAND_GROUPS);
-const sIslandAwake = new Int32Array(MAX_ISLAND_GROUPS);
-const orderOrderedIdxs = new Int32Array(MAX_KINETIC_CONSTRAINTS);
 function constraintBodyAt(physId) {
     const body = entityRefs[physId];
     return body?._physId === physId ? body : null;
@@ -1587,7 +1603,7 @@ function orderIslandConstraintItems(startIdx, count) {
         const nCount = kineticDynamicSlab.linkNeighborCount[physId];
         let inIslandCount = 0;
         for (let j = 0; j < nCount; j++) {
-            const neighborPhys = linkNeighborEidsArena[offset + j];
+            const neighborPhys = kineticDynamicSlab.linkNeighborEids[offset + j];
             if (neighborPhys !== -1 && orderSeenPhysIds[neighborPhys] === 1) inIslandCount++;
         }
         if (inIslandCount <= 1) {
@@ -1617,7 +1633,7 @@ function orderIslandConstraintItems(startIdx, count) {
         const nCount = kineticDynamicSlab.linkNeighborCount[currentPhysId];
         let advanced = false;
         for (let i = 0; i < nCount; i++) {
-            const neighborPhys = linkNeighborEidsArena[offset + i];
+            const neighborPhys = kineticDynamicSlab.linkNeighborEids[offset + i];
             if (neighborPhys === -1 || orderSeenPhysIds[neighborPhys] === 0) continue;
             let itemIdx = -1;
             for (let k = 0; k < count; k++) {
@@ -2468,23 +2484,6 @@ export function isRestingKineticContact(contacts, i, settings) {
     return Math.abs(preN) <= normalEps + velSlack && Math.abs(preT) <= tangentEps + velSlack;
 }
 const INNER_SOLVE_ITERATIONS = 4;
-const WARM_START_CACHE_SIZE = 16384;
-const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
-const warmStartKeys = new Float64Array(WARM_START_CACHE_SIZE);
-const warmStartGen = new Int32Array(WARM_START_CACHE_SIZE);
-const warmStartJn = new Float32Array(WARM_START_CACHE_SIZE);
-const warmStartJt = new Float32Array(WARM_START_CACHE_SIZE);
-let warmStartGeneration = 1;
-const kineticContactBuffer = {
-    count: 0,
-    physIdA: new Int32Array(MAX_CONTACTS),
-    physIdB: new Int32Array(MAX_CONTACTS),
-    dynamic: { nx: new Float32Array(MAX_CONTACTS), ny: new Float32Array(MAX_CONTACTS), rax: new Float32Array(MAX_CONTACTS), ray: new Float32Array(MAX_CONTACTS), rbx: new Float32Array(MAX_CONTACTS), rby: new Float32Array(MAX_CONTACTS), preDvx: new Float32Array(MAX_CONTACTS), preDvy: new Float32Array(MAX_CONTACTS), rAn: new Float32Array(MAX_CONTACTS), rBn: new Float32Array(MAX_CONTACTS), rAt: new Float32Array(MAX_CONTACTS), rBt: new Float32Array(MAX_CONTACTS), jn: new Float32Array(MAX_CONTACTS), jt: new Float32Array(MAX_CONTACTS), resting: new Uint8Array(MAX_CONTACTS) },
-    static: { tier: new Uint8Array(MAX_CONTACTS), invMassA: new Float32Array(MAX_CONTACTS), invMassB: new Float32Array(MAX_CONTACTS), invIA: new Float32Array(MAX_CONTACTS), invIB: new Float32Array(MAX_CONTACTS), kNormal: new Float32Array(MAX_CONTACTS), kTangent: new Float32Array(MAX_CONTACTS), restitution: new Float32Array(MAX_CONTACTS), friction: new Float32Array(MAX_CONTACTS), featureA: new Uint8Array(MAX_CONTACTS), featureB: new Uint8Array(MAX_CONTACTS), warmStartKey: new Float64Array(MAX_CONTACTS) },
-    reset() {
-        this.count = 0;
-    },
-};
 export function circleCircleContactSlab(physIdA, physIdB) {
     const slab = kineticDynamicSlab;
     const dx = slab.x[physIdB] - slab.x[physIdA];
@@ -2509,7 +2508,7 @@ export function circleCircleContactSlab(physIdA, physIdB) {
 function warmStartCacheLookup(key) {
     let idx = warmStartCacheIndex(key);
     while (true) {
-        if (warmStartGen[idx] !== warmStartGeneration) return -1;
+        if (warmStartGen[idx] !== warmStartState.generation) return -1;
         if (warmStartKeys[idx] === key) return idx;
         idx = (idx + 1) & WARM_START_CACHE_MASK;
     }
@@ -2554,13 +2553,13 @@ function warmStartKineticContacts(contacts) {
     return restingCount;
 }
 function storeKineticWarmStartCache(contacts) {
-    warmStartGeneration++;
+    warmStartState.generation++;
     for (let i = 0; i < contacts.count; i++) {
         const key = contacts.static.warmStartKey[i];
         let idx = warmStartCacheIndex(key);
         while (true) {
-            if (warmStartGen[idx] !== warmStartGeneration || warmStartKeys[idx] === key) {
-                warmStartGen[idx] = warmStartGeneration;
+            if (warmStartGen[idx] !== warmStartState.generation || warmStartKeys[idx] === key) {
+                warmStartGen[idx] = warmStartState.generation;
                 warmStartKeys[idx] = key;
                 warmStartJn[idx] = contacts.dynamic.jn[i];
                 warmStartJt[idx] = contacts.dynamic.jt[i];
@@ -2878,19 +2877,6 @@ export function classifyKineticPairTier(bodyA, bodyB) {
     return KINETIC_PAIR_TIER.POLY_POLY;
 }
 const PAIR_BODY_KEY_SCALE = 1_000_000;
-function createKineticPairBuffer() {
-    return {
-        count: 0,
-        physIdA: new Int32Array(MAX_KINETIC_PAIRS),
-        physIdB: new Int32Array(MAX_KINETIC_PAIRS),
-        static: { tier: new Uint8Array(MAX_KINETIC_PAIRS) },
-        reset() {
-            this.count = 0;
-        },
-    };
-}
-const kineticPairBuffer = createKineticPairBuffer();
-const persistedKineticPairBuffer = createKineticPairBuffer();
 function copyKineticPairBuffer(from, to) {
     to.count = from.count;
     for (let i = 0; i < from.count; i++) {
@@ -2902,8 +2888,6 @@ function copyKineticPairBuffer(from, to) {
 export function pairPhysKey(physIdA, physIdB) {
     return physIdA < physIdB ? physIdA * MAX_PHYS_BODIES + physIdB : physIdB * MAX_PHYS_BODIES + physIdA;
 }
-const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2;
-const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
 function clearPairHash() {
     pairHashKeys.fill(-1);
 }
@@ -3287,15 +3271,11 @@ function clearBodyIslandFields(body) {
     }
 }
 function ensureLinkNeighborArena(needed) {
-    if (linkNeighborEidsArena.length >= needed) return;
-    const next = new Int32Array(Math.max(needed, linkNeighborEidsArena.length * 2));
-    next.set(linkNeighborEidsArena.subarray(0, linkNeighborEidsArenaUsed));
-    linkNeighborEidsArena = next;
-    kineticDynamicSlab.linkNeighborEids = next;
+    ensureGrowI32(kineticDynamicSlab, "linkNeighborEids", needed, kineticDynamicSlab.linkNeighborEidsUsed);
 }
 function sortLinkNeighborSlice(offset, count) {
     if (count <= 1) return;
-    const arena = linkNeighborEidsArena;
+    const arena = kineticDynamicSlab.linkNeighborEids;
     for (let i = offset + 1; i < offset + count; i++) {
         const key = arena[i];
         let j = i - 1;
@@ -3307,7 +3287,7 @@ function sortLinkNeighborSlice(offset, count) {
     }
 }
 export function resetKineticLinkNeighborArena() {
-    linkNeighborEidsArenaUsed = 0;
+    kineticDynamicSlab.linkNeighborEidsUsed = 0;
 }
 export function writeKineticLinkNeighbors(physId, neighborPhysIds) {
     const slab = kineticDynamicSlab;
@@ -3316,18 +3296,18 @@ export function writeKineticLinkNeighbors(physId, neighborPhysIds) {
         slab.linkNeighborCount[physId] = 0;
         return;
     }
-    ensureLinkNeighborArena(linkNeighborEidsArenaUsed + neighborPhysIds.length);
-    const offset = linkNeighborEidsArenaUsed;
+    ensureLinkNeighborArena(slab.linkNeighborEidsUsed + neighborPhysIds.length);
+    const offset = slab.linkNeighborEidsUsed;
     let count = 0;
     for (let i = 0; i < neighborPhysIds.length; i++) {
         const n = neighborPhysIds[i];
         if (n === undefined || n === -1) continue;
-        linkNeighborEidsArena[offset + count++] = n;
+        slab.linkNeighborEids[offset + count++] = n;
     }
     sortLinkNeighborSlice(offset, count);
     slab.linkNeighborOffset[physId] = offset;
     slab.linkNeighborCount[physId] = count;
-    linkNeighborEidsArenaUsed = offset + count;
+    slab.linkNeighborEidsUsed = offset + count;
 }
 export function bakeKineticIslandPlan(session, kineticBodies) {
     const adjacent = getGraphCache(session).adjacency;
@@ -3410,7 +3390,7 @@ export function areKineticLinkNeighborsSlab(physIdA, physIdB) {
     const count = kineticDynamicSlab.linkNeighborCount[physIdA];
     if (count === 0) return false;
     const offset = kineticDynamicSlab.linkNeighborOffset[physIdA];
-    const arena = linkNeighborEidsArena;
+    const arena = kineticDynamicSlab.linkNeighborEids;
     if (count <= 4) {
         for (let i = 0; i < count; i++) if (arena[offset + i] === physIdB) return true;
         return false;
@@ -3432,12 +3412,6 @@ export function areKineticLinkNeighbors(bodyA, bodyB) {
     if (physIdA === undefined || physIdA === -1 || physIdB === undefined || physIdB === -1) return false;
     return areKineticLinkNeighborsSlab(physIdA, physIdB);
 }
-const parent = new Int32Array(MAX_PHYS_BODIES);
-const rank = new Int32Array(MAX_PHYS_BODIES);
-const componentRoot = new Int32Array(MAX_PHYS_BODIES);
-const componentMaxSpeedSq = new Float32Array(MAX_PHYS_BODIES);
-const componentHasBlocker = new Uint8Array(MAX_PHYS_BODIES);
-const componentMemberCount = new Int32Array(MAX_PHYS_BODIES);
 function find(i) {
     let root = i;
     while (parent[root] !== root) root = parent[root];
@@ -3559,7 +3533,7 @@ export function wakeKineticBody(entity) {
         if (count > 0) {
             const offset = kineticDynamicSlab.linkNeighborOffset[physId];
             for (let i = 0; i < count; i++) {
-                const peer = constraintBodyAt(linkNeighborEidsArena[offset + i]);
+                const peer = constraintBodyAt(kineticDynamicSlab.linkNeighborEids[offset + i]);
                 if (!peer || peer === entity) continue;
                 peer._sleepFrames = 0;
                 peer.isSleeping = false;
@@ -3603,7 +3577,6 @@ export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = nei
 export function evaluateKineticSleepEligible(prop, neighborEids, neighborCount = neighborEids.length) {
     return canSleepKinetic(prop) && !hasSleepBlockingNeighbor(prop, neighborEids, neighborCount);
 }
-let sleepNeighborEids = new Int32Array(256);
 export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) {
     emptyAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
     for (let i = 0; i < islandMembers.length; i++) {
@@ -3614,12 +3587,12 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     }
     const eg = spatialFrame.entityGrid;
     padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, eg.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
-    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids, sleepNeighborEids.length);
+    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, kineticSleepScratch.neighborEids, kineticSleepScratch.neighborEids.length);
     while (n < 0) {
-        sleepNeighborEids = new Int32Array(sleepNeighborEids.length * 2);
-        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids, sleepNeighborEids.length);
+        ensureGrowI32(kineticSleepScratch, "neighborEids", kineticSleepScratch.neighborEids.length * 2);
+        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, kineticSleepScratch.neighborEids, kineticSleepScratch.neighborEids.length);
     }
-    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], sleepNeighborEids, n)) return false;
+    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], kineticSleepScratch.neighborEids, n)) return false;
     return true;
 }
 /**

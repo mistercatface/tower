@@ -1,4 +1,5 @@
-import { rotateXYIntoF32, ENGINE_F32, M_VEC_A } from "../../Math/math.js";
+import { rotateXYIntoF32 } from "../../Math/math.js";
+import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
 import { sampleCoords, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Intersecting ridged veins form panel seams; glow concentrates on veins and brighter at crossings.

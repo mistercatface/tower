@@ -11,7 +11,7 @@ import {
     replanCellIndicesFromWorldCoords,
     REPLAN_PRIORITY_TARGET,
 } from "../../Libraries/Navigation/navigation.js";
-import { ENGINE_F32, N_OUT_XY } from "../../Libraries/Math/math.js";
+import { ENGINE_F32, N_OUT_XY } from "../../Core/engineMemory.js";
 import { snapMoveTargetToCellCenter } from "../../Libraries/Physics/physics.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";

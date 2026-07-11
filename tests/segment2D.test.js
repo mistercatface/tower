@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { closestPointOnLineSegmentInto, distanceSegmentToSegment, distanceSqToLineSegment, distanceToLineSegment, segmentIntersectionPointIntoF32, segmentsIntersect, ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T } from "../Libraries/Math/math.js";
+import { closestPointOnLineSegmentInto, distanceSegmentToSegment, distanceSqToLineSegment, distanceToLineSegment, segmentIntersectionPointIntoF32, segmentsIntersect } from "../Libraries/Math/math.js";
+import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T } from "../Core/engineMemory.js";
 import { assertNear, assertPointNear, seg } from "./mathHarness.js";
 function closestFromInto(px, py, vx, vy, wx, wy) {
     closestPointOnLineSegmentInto(ENGINE_F32, M_OUT_CLOSEST_X, px, py, vx, vy, wx, wy);
