@@ -15,6 +15,7 @@ const ALLOWED_BAG_EXPORTS = new Set([
     "wallSpawnScratch",
     "staticWallSegmentSlab",
     "warmStartState",
+    "pairHash",
 ]);
 
 const bagExportRe = /^export const (\w+)\s*=\s*\{/gm;

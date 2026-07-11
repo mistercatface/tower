@@ -53,7 +53,7 @@ import {
     sleepComponentHasBlocker,
     sleepComponentMemberCount,
     sleepNeighborEids,
-    pairHashKeys,
+    pairHash,
     MAX_PHYS_BODIES,
     MAX_CONTACTS,
     MAX_KINETIC_PAIRS,
@@ -61,7 +61,6 @@ import {
     MAX_ISLAND_GROUPS,
     WARM_START_CACHE_SIZE,
     WARM_START_CACHE_MASK,
-    PAIR_HASH_CAPACITY,
     staticWallSegmentSlab,
     GrowI32,
     CONSTRAINT_TYPE_DISTANCE,
@@ -3158,28 +3157,6 @@ function copyKineticPairBuffer(from, to) {
 export function pairPhysKey(physIdA, physIdB) {
     return physIdA < physIdB ? physIdA * MAX_PHYS_BODIES + physIdB : physIdB * MAX_PHYS_BODIES + physIdA;
 }
-function clearPairHash() {
-    pairHashKeys.fill(-1);
-}
-function addPairHash(key) {
-    let idx = (key % PAIR_HASH_CAPACITY) | 0;
-    while (true) {
-        if (pairHashKeys[idx] === -1) {
-            pairHashKeys[idx] = key;
-            return true;
-        }
-        if (pairHashKeys[idx] === key) return false;
-        idx = (idx + 1) % PAIR_HASH_CAPACITY;
-    }
-}
-function hasPairHash(key) {
-    let idx = (key % PAIR_HASH_CAPACITY) | 0;
-    while (true) {
-        if (pairHashKeys[idx] === -1) return false;
-        if (pairHashKeys[idx] === key) return true;
-        idx = (idx + 1) % PAIR_HASH_CAPACITY;
-    }
-}
 export function compactSubstepKineticPairs(spatialFrame, pairs) {
     if (kineticPairTopologyStale(spatialFrame)) {
         pairs.count = 0;
@@ -3206,8 +3183,8 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
 export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     if (!bodies.length) return 0;
     bakeSpatialNeighborCsr(spatialFrame);
-    clearPairHash();
-    for (let i = 0; i < pairs.count; i++) addPairHash(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
+    pairHash.clear();
+    for (let i = 0; i < pairs.count; i++) pairHash.add(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
     let added = 0;
     let seenCount = 0;
     const seenPrimary = spatialFrame._patchPrimarySeen;
@@ -3225,7 +3202,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[offset + j];
             const key = pairPhysKey(physIdA, physIdB);
-            if (hasPairHash(key)) continue;
+            if (pairHash.has(key)) continue;
             if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) continue;
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
@@ -3238,7 +3215,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             pairs.physIdA[idx] = physIdA;
             pairs.physIdB[idx] = physIdB;
             pairs.static.tier[idx] = classifyKineticPairTierSlab(physIdA, physIdB);
-            addPairHash(key);
+            pairHash.add(key);
             added++;
         }
     }

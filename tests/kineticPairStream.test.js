@@ -6,7 +6,7 @@ import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { allowsKineticCollisionPair, pairBroadphaseOverlapSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, entityRefs, kineticPairBuffer } from "../Core/engineMemory.js";
-import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 
 const pairBuffer = kineticPairBuffer;
@@ -46,8 +46,8 @@ describe("kinetic pair stream", () => {
     it("slab-backed pair policy resolves resting overlap only when mover is active", () => {
         const rest = mockKineticCircle(0, 0, 10, 0, 0);
         const mover = mockKineticCircle(18, 0, 10, 20, 0);
-        rest._physId = 0;
-        mover._physId = 1;
+        assignPhysIdWithPose(rest, 0);
+        assignPhysIdWithPose(mover, 1);
         snapshotKineticBodySlab([rest, mover]);
         assert.ok(allowsKineticCollisionPair(rest, mover, pairBroadphaseOverlapSlab(rest._physId, mover._physId)));
         rest.vx = 0;

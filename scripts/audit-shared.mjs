@@ -43,6 +43,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "writebackActiveKineticBodySlab",
     "writebackEntitySlotPoseToRef",
     "sleepContactBuffer",
+    "pairHashKeys",
 ];
 
 export const LEGACY_SCALAR_SYMBOLS = [
