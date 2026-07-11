@@ -462,6 +462,7 @@ class KineticDebrisStore {
         body._staticKeyVo = undefined;
         body._staticKeyAttachment = undefined;
         body._staticKeyPhysicsKey = undefined;
+        body._staticKeyCustom = undefined;
         body._staticKeyRoll = undefined;
         body.wallChunkProfileId = undefined;
         body.wallChunkHeightPx = undefined;

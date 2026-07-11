@@ -53,6 +53,7 @@ describe("draw shape parity", () => {
     it("polygon primitive fills flat silhouette in 2d from live shape", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
+        assert.equal(prop.wallChunkProfileId, "poolTableFelt");
         const draw = createPolygonPrimitive(polygonVisuals);
         const calls = { beginPath: 0, fill: 0, stroke: 0 };
         const ctx = {
@@ -78,9 +79,59 @@ describe("draw shape parity", () => {
         assert.equal(prop.shape.vertices[2], 12);
         assert.equal(prop.shape.vertices[5], 5);
     });
-    it("polygon primitive extrudes in radial at wall height level 1", () => {
+    it("textured flat wall-chunk cap fills live polygon path (not clip+triangle quad)", () => {
+        const prop = new WorldProp(0, 0, "hex_block", 0);
+        prop._wallChunkTextures = {
+            ready: true,
+            scale: 1,
+            chunkSizePx: 128,
+            capCanvas: { width: 128, height: 128 },
+        };
+        prop._wallChunkTextureReady = true;
+        const draw = createPolygonPrimitive(polygonVisuals);
+        const path = [];
+        let fills = 0;
+        let createPattern = 0;
+        let drawImage = 0;
+        const ctx = {
+            fillStyle: "",
+            beginPath() { path.length = 0; },
+            moveTo(x, y) { path.push([x, y]); },
+            lineTo(x, y) { path.push([x, y]); },
+            closePath() {},
+            fill() { fills++; },
+            createPattern() {
+                createPattern++;
+                return { setTransform() {} };
+            },
+            drawImage() { drawImage++; },
+            save() {},
+            restore() {},
+            clip() {},
+            getTransform() { return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; },
+            setTransform() {},
+            transform() {},
+        };
+        const viewport = {
+            x: 0,
+            y: 0,
+            zoom: 1,
+            cameraHeight: DEFAULT_CAMERA_HEIGHT,
+            perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
+        };
+        draw(ctx, prop, viewport, true);
+        assert.equal(createPattern, 1);
+        assert.equal(fills, 1);
+        assert.equal(drawImage, 0);
+        assert.equal(path.length, 6);
+        assert.equal(path[0][0], 0);
+        assert.equal(path[0][1], -8);
+    });
+    it("polygon primitive extrudes in radial without textures as solid pending fill", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
+        assert.equal(prop.height, gridSettings.cellSize);
+        assert.equal(prop.wallChunkHeightPx, gridSettings.cellSize);
         const draw = createPolygonPrimitive(polygonVisuals);
         const calls = { fill: 0, stroke: 0 };
         const ctx = {
@@ -100,7 +151,6 @@ describe("draw shape parity", () => {
             cameraHeight: DEFAULT_CAMERA_HEIGHT,
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
-        assert.equal(gridSettings.cellSize, 16);
         draw(ctx, prop, viewport, false);
         assert.ok(calls.fill > 1);
         assert.equal(calls.stroke, 0);

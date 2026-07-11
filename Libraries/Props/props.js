@@ -3,15 +3,14 @@ import { PolygonShape, writeLivePolygon, releaseLivePolygon, resolveBodyRadius, 
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
-import { drawSphere, createWallChunkDraw, drawExtrudedConvexPolygon } from "../Render/render.js";
-import { traceClosedFlatPolygon } from "../Canvas/canvas.js";
+import { drawSphere, createWallChunkDraw, getWallChunkSpriteCacheKey } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
-import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
-import { shadeHex } from "../Color/colorMath.js";
+import { resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
+import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -23,58 +22,9 @@ export function formatSandboxSpawnLabel(propId) {
     const asset = propCatalog[propId];
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
-const sPolyFaceColors = { shadow: null, mid: null, highlight: null };
-const sPolyBackFaceColors = { shadow: null, mid: null, highlight: null };
-const sPolyTopColors = { light: null, mid: null, dark: null };
-const sPolyDrawOpts = { height: 0, facing: 0, faceColors: sPolyFaceColors, backFaceColors: sPolyBackFaceColors, topColors: sPolyTopColors, localVerts: null, topHx: null, topHy: null };
 const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
 export function createPolygonPrimitive(visuals) {
-    const { colors } = visuals;
-    return (ctx, prop, viewport, flatPresentation) => {
-        const shape = prop.shape;
-        if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
-        const localVerts = prop.drawOutline ?? shape.vertices;
-        if (!localVerts || localVerts.length < 6) return;
-        const tinted = resolveVisualOverrideColorTree(prop, colors);
-        if (flatPresentation) {
-            const facing = readEntityFacing(prop);
-            const cos = Math.cos(facing);
-            const sin = Math.sin(facing);
-            const count = localVerts.length / 2;
-            if (count * 2 > POLYGON_SCALE_SCRATCH.length) throw new Error("flat polygon exceeds scratch capacity");
-            const worldVerts = POLYGON_SCALE_SCRATCH;
-            const px = prop.x;
-            const py = prop.y;
-            for (let i = 0; i < count; i++) {
-                const lx = localVerts[i * 2];
-                const ly = localVerts[i * 2 + 1];
-                worldVerts[i * 2] = px + lx * cos - ly * sin;
-                worldVerts[i * 2 + 1] = py + lx * sin + ly * cos;
-            }
-            ctx.beginPath();
-            traceClosedFlatPolygon(ctx, worldVerts, count);
-            ctx.fillStyle = tinted.top ?? tinted.side;
-            ctx.fill();
-            return;
-        }
-        const side = tinted.side;
-        const sideShadow = tinted.sideShadow ?? side;
-        sPolyFaceColors.shadow = sideShadow;
-        sPolyFaceColors.mid = side;
-        sPolyFaceColors.highlight = shadeHex(side, -0.12);
-        sPolyBackFaceColors.shadow = sideShadow;
-        sPolyBackFaceColors.mid = sideShadow;
-        sPolyBackFaceColors.highlight = side;
-        sPolyTopColors.light = tinted.top;
-        sPolyTopColors.mid = tinted.top;
-        sPolyTopColors.dark = tinted.top;
-        sPolyDrawOpts.height = gridSettings.cellSize;
-        sPolyDrawOpts.facing = readEntityFacing(prop);
-        sPolyDrawOpts.localVerts = localVerts;
-        sPolyDrawOpts.topHx = null;
-        sPolyDrawOpts.topHy = null;
-        drawExtrudedConvexPolygon(ctx, prop, viewport, sPolyDrawOpts);
-    };
+    return createWallChunkDraw(visuals);
 }
 export function createSpherePrimitive(visuals) {
     return (ctx, prop, viewport) => {
@@ -137,6 +87,7 @@ export function invalidatePropFootprintKey(prop) {
     prop._staticKeyVo = undefined;
     prop._staticKeyAttachment = undefined;
     prop._staticKeyPhysicsKey = undefined;
+    prop._staticKeyCustom = undefined;
     prop._staticKeyRoll = undefined;
 }
 export function applyPropBoxFootprint(prop, hx, hy) {
@@ -238,7 +189,7 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 const sQuantizeSteps = { facing: 0, view: 0 };
 const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, _wallChunkTextures: null };
+const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined, _wallChunkTextures: null };
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
     const override = prop.strategy?.quantizeSteps;
@@ -299,6 +250,7 @@ export function getPropStageBakeState(prop) {
     sStageProp.ageMs = prop.ageMs;
     sStageProp.id = prop.id;
     sStageProp.wallChunkProfileId = prop.wallChunkProfileId;
+    sStageProp.wallChunkHeightPx = prop.wallChunkHeightPx;
     sStageProp._wallChunkTextures = prop._wallChunkTextures;
     return sStageProp;
 }
@@ -317,6 +269,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
         });
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
+    if ((asset.primitive === "polygon" || asset.draw === "wallChunk") && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
     return built;
 }
 const worldPropStrategyByType = new Map();
@@ -386,6 +339,11 @@ export class WorldProp {
         this.wallChunkHeightPx = undefined;
         this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
+        if (asset?.primitive === "polygon" || asset?.draw === "wallChunk") {
+            this.wallChunkProfileId = asset.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
+            if (asset.draw !== "wallChunk") this.height = gridSettings.cellSize;
+            this.wallChunkHeightPx = this.height;
+        }
         this._footprintKey = undefined;
         initWorldPropShape(this);
         if (type === "cross_pinwheel") applyCrossPinwheelFootprint(this, this.crossLength ?? 32, this.crossThickness ?? 8);

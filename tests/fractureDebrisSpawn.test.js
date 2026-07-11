@@ -8,6 +8,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
+import { getPropStaticKey } from "../Libraries/Canvas/canvas.js";
 
 const spriteCacheKeyDeps = { quantizeAngleIndex };
 
@@ -54,6 +55,29 @@ describe("fracture debris slab spawn", () => {
         applyPropBoxFootprint(b, 10, 6);
         assert.notEqual(getWallChunkSpriteCacheKey(a), getWallChunkSpriteCacheKey(b));
         assert.match(getWallChunkSpriteCacheKey(a), /:ready:\d+$/);
+    });
+
+    it("box WorldProp stamps poolTableFelt profile at wall height 1", () => {
+        const prop = new WorldProp(0, 0, "box", 0);
+        assert.equal(prop.wallChunkProfileId, "poolTableFelt");
+        assert.equal(prop.height, 16);
+        assert.equal(prop.wallChunkHeightPx, 16);
+        assert.equal(prop.strategy.getCustomSpriteCacheKey, getWallChunkSpriteCacheKey);
+    });
+
+    it("wall-chunk texture ready flip changes prop static sprite key", () => {
+        const prop = new WorldProp(0, 0, "box", 0);
+        applyPropBoxFootprint(prop, 16, 16);
+        prop._wallChunkTextureReady = false;
+        const pendingKey = getPropStaticKey(prop, "box");
+        const pendingCustom = getWallChunkSpriteCacheKey(prop);
+        assert.match(pendingCustom, /:pending:/);
+        prop._wallChunkTextureReady = true;
+        const readyKey = getPropStaticKey(prop, "box");
+        const readyCustom = getWallChunkSpriteCacheKey(prop);
+        assert.match(readyCustom, /:ready:/);
+        assert.notEqual(pendingCustom, readyCustom);
+        assert.notEqual(pendingKey, readyKey);
     });
 
     it("pooled debris bodies reset wall-chunk presentation before box spawn", () => {

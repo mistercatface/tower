@@ -91,6 +91,7 @@ describe("fracture", () => {
     it("box polygon draw recipe is flat in 2d and extruded in radial", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 12, 8);
+        assert.equal(prop.wallChunkProfileId, "poolTableFelt");
         const draw = propCatalog["box"].drawRecipe;
         const calls = { beginPath: 0, fill: 0, stroke: 0, fillStyle: null };
         const viewport = {

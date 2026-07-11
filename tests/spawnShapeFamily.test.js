@@ -27,7 +27,7 @@ describe("spawn shape family defaults", () => {
         assert.equal(getPropVisualBrightness(prop), 1.25);
     });
 
-    it("places box with resizable footprint, coat, and fracture off by default", () => {
+    it("places box with resizable footprint, surface profile, and fracture off by default", () => {
         const state = createSpawnTestState();
         const session = createSandboxSession(state);
         session.setPlacePaletteKey("prop:box");
@@ -38,10 +38,12 @@ describe("spawn shape family defaults", () => {
         const prop = state.worldProps[0];
         assert.equal(prop.type, "box");
         assert.equal(prop.fractureEnabled, false);
+        assert.equal(prop.wallChunkProfileId, "poolTableFelt");
+        assert.equal(prop.wallChunkHeightPx, 16);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         assert.equal(Math.round(ENGINE_F32[M_VEC_A] * 2), 24);
         assert.equal(Math.round(ENGINE_F32[M_VEC_A + 1] * 2), 32);
-        assert.equal(getPropVisualTint(prop), "#00aa88");
+        assert.equal(getPropVisualTint(prop), null);
     });
 
     it("places box with spawn fracture enabled", () => {

@@ -41,6 +41,14 @@ export function createMockCanvas2d(width, height) {
         drawImage() {
             ops.push({ op: "drawImage" });
         },
+        createPattern(image, repetition) {
+            ops.push({ op: "createPattern", repetition });
+            return {
+                setTransform() {
+                    ops.push({ op: "patternSetTransform" });
+                },
+            };
+        },
         createRadialGradient() {
             return { addColorStop() {} };
         },

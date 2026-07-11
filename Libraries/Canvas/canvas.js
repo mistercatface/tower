@@ -685,17 +685,18 @@ function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) 
         if (childDraw) childDraw(ctx, child, viewport, flatPresentation);
     }
 }
-function getPropStaticKey(prop, renderKey) {
+export function getPropStaticKey(prop, renderKey) {
     const facing = readEntityFacing(prop);
     const voId = visualOverrideCacheId(prop);
     const attachmentId = getVisualAttachmentSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const rolls = !!prop.strategy?.rolls;
     const rollId = rolls ? packRollOrientId(prop, resolvePropQuantizeSteps(prop).facing) : 0;
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
-    if (prop._staticKeyFacing === facing && prop._staticKeyVo === voId && prop._staticKeyAttachment === attachmentId && prop._staticKeyPhysicsKey === physicsId && (!rolls || prop._staticKeyRoll === rollId) && prop._cachedStaticKey !== undefined) return prop._cachedStaticKey;
-    const k1 = BigInt(resolveRenderKeyId(renderKey));
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
-    const k2 = BigInt(typeof customKey === "number" ? customKey & SPRITE_KEY_PART_MASK : hashSpriteKeyString(customKey));
+    const customId = typeof customKey === "number" ? customKey & SPRITE_KEY_PART_MASK : hashSpriteKeyString(customKey);
+    if (prop._staticKeyFacing === facing && prop._staticKeyVo === voId && prop._staticKeyAttachment === attachmentId && prop._staticKeyPhysicsKey === physicsId && prop._staticKeyCustom === customId && (!rolls || prop._staticKeyRoll === rollId) && prop._cachedStaticKey !== undefined) return prop._cachedStaticKey;
+    const k1 = BigInt(resolveRenderKeyId(renderKey));
+    const k2 = BigInt(customId);
     const k3 = BigInt(physicsId & SPRITE_KEY_PART_MASK);
     const k4 = BigInt(attachmentId & SPRITE_KEY_PART_MASK);
     const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
@@ -703,6 +704,7 @@ function getPropStaticKey(prop, renderKey) {
     prop._staticKeyVo = voId;
     prop._staticKeyAttachment = attachmentId;
     prop._staticKeyPhysicsKey = physicsId;
+    prop._staticKeyCustom = customId;
     if (rolls) prop._staticKeyRoll = rollId;
     prop._cachedStaticKey = staticKey;
     return staticKey;

@@ -1076,7 +1076,7 @@ export function createSandboxSession(state) {
     let spawnSnakeLength = 5;
     let spawnFractureEnabled = false;
     const resolveSpawnVisualOverride = (asset) => {
-        if (!isBallFamilyAsset(asset) && !isPolygonFamilyAsset(asset)) return null;
+        if (!isBallFamilyAsset(asset)) return null;
         const tint = spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset);
         const visualOverride = { tint };
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
@@ -2601,7 +2601,6 @@ function appendShapeFamilyFields(body, state, spec) {
                 (val) => session.setSpawnCrossThickness(val),
             );
             appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
-            appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
             return;
         }
         if (isBallFamilyAsset(spawnAsset)) {
@@ -2619,7 +2618,6 @@ function appendShapeFamilyFields(body, state, spec) {
                     (height) => session.setSpawnBoxHeight(height),
                 );
             appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
-            appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
         }
         return;
     }
@@ -2644,7 +2642,6 @@ function appendShapeFamilyFields(body, state, spec) {
             selectedProp.fractureEnabled = checked;
             dirty();
         });
-        appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
         return;
     }
     if (isBallFamilyAsset(asset)) {
@@ -2680,7 +2677,6 @@ function appendShapeFamilyFields(body, state, spec) {
             selectedProp.fractureEnabled = checked;
             dirty();
         });
-        appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
     }
 }
 export function appendShapeFamilySelectedFields(body, state, selectedProp) {

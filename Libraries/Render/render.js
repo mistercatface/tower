@@ -1,4 +1,4 @@
-import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
+import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
@@ -686,14 +686,12 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
 export const DEFAULT_PROP_HEIGHT = 14;
 let sBaseRing = new Float32Array(0);
 let sTopRing = new Float32Array(0);
-let sCapSrcRing = new Float32Array(0);
 function ensurePrismScratch(vertexCount) {
     if (vertexCount > MAX_PRISM_FACES) throw new Error(`ensurePrismScratch: ${vertexCount} faces exceeds MAX_PRISM_FACES (${MAX_PRISM_FACES})`);
     const ringLen = vertexCount * 2;
     if (sBaseRing.length < ringLen) {
         sBaseRing = new Float32Array(ringLen);
         sTopRing = new Float32Array(ringLen);
-        sCapSrcRing = new Float32Array(ringLen);
     }
 }
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
@@ -724,6 +722,19 @@ function classifyPrismFaces(count, viewport, cx, cy) {
         rFaceVisible[i] = irFaceVisible(viewport, cx, cy, edgeMidX, edgeMidY) ? 1 : 0;
     }
 }
+function fillCapPathWithChunkTexture(ctx, textures, originX, originY) {
+    const canvas = textures.capCanvas;
+    if (!canvas) return false;
+    const pattern = typeof ctx.createPattern === "function" ? ctx.createPattern(canvas, "repeat") : null;
+    if (!pattern) return false;
+    const textureScale = textures.scale || 1;
+    const offset = textures.chunkSizePx / 2;
+    const inv = 1 / textureScale;
+    if (typeof pattern.setTransform === "function") pattern.setTransform({ a: inv, b: 0, c: 0, d: inv, e: originX - offset * inv, f: originY - offset * inv });
+    ctx.fillStyle = pattern;
+    ctx.beginPath();
+    return true;
+}
 function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha, textures) {
     const textureScale = textures.scale;
     const sideSrcHeight = (prop.wallChunkHeightPx ?? height) * textureScale;
@@ -742,27 +753,18 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha, 
             ctx.restore();
         }
     }
-    ctx.save();
-    ctx.beginPath();
-    traceClosedFlatPolygon(ctx, sTopRing, count);
-    ctx.clip();
-    const chunkSizePx = textures.chunkSizePx;
-    const offset = chunkSizePx / 2;
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
+    let originX = 0;
+    let originY = 0;
     for (let i = 0; i < count; i++) {
-        const lx = localVerts[i * 2];
-        const ly = localVerts[i * 2 + 1];
-        const topLx = scaleAtHeight(lx, alpha, 1);
-        const topLy = scaleAtHeight(ly, alpha, 1);
-        const rx = topLx * cos - topLy * sin;
-        const ry = topLx * sin + topLy * cos;
-        sCapSrcRing[i * 2] = (rx + offset) * textureScale;
-        sCapSrcRing[i * 2 + 1] = (ry + offset) * textureScale;
+        originX += sTopRing[i * 2];
+        originY += sTopRing[i * 2 + 1];
     }
-    const baseTransform = ctx.getTransform();
-    for (let i = 1; i < count - 1; i++) drawImageTriangleFlatWithBaseTransform(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1, baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
-    ctx.restore();
+    originX /= count;
+    originY /= count;
+    if (fillCapPathWithChunkTexture(ctx, textures, originX, originY)) {
+        traceClosedFlatPolygon(ctx, sTopRing, count);
+        ctx.fill();
+    }
 }
 function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const height = opts.height ?? DEFAULT_PROP_HEIGHT;
@@ -853,33 +855,24 @@ export function getWallChunkSpriteCacheKey(prop) {
 }
 export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = readEntityFacing(prop)) {
     const textures = prop._wallChunkTextures;
-    if (!textures?.ready) return;
+    if (!textures?.ready) return false;
     const count = localVerts.length / 2;
-    if (count < 3) return;
+    if (count < 3) return false;
     ensurePrismScratch(count);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
     const px = prop.x;
     const py = prop.y;
-    const textureScale = textures.scale;
-    const offset = textures.chunkSizePx / 2;
     for (let i = 0; i < count; i++) {
         const lx = localVerts[i * 2];
         const ly = localVerts[i * 2 + 1];
         sTopRing[i * 2] = px + lx * cos - ly * sin;
         sTopRing[i * 2 + 1] = py + lx * sin + ly * cos;
-        const rx = lx * cos - ly * sin;
-        const ry = lx * sin + ly * cos;
-        sCapSrcRing[i * 2] = (rx + offset) * textureScale;
-        sCapSrcRing[i * 2 + 1] = (ry + offset) * textureScale;
     }
-    ctx.save();
-    ctx.beginPath();
+    if (!fillCapPathWithChunkTexture(ctx, textures, px, py)) return false;
     traceClosedFlatPolygon(ctx, sTopRing, count);
-    ctx.clip();
-    const baseTransform = ctx.getTransform();
-    for (let i = 1; i < count - 1; i++) drawImageTriangleFlatWithBaseTransform(ctx, textures.capCanvas, sCapSrcRing, sTopRing, 0, i, i + 1, baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
-    ctx.restore();
+    ctx.fill();
+    return true;
 }
 const sWallFaceColors = { shadow: null, mid: null, highlight: null };
 const sWallBackFaceColors = { shadow: null, mid: null, highlight: null };
@@ -892,10 +885,7 @@ export function createWallChunkDraw(visuals) {
         const localVerts = prop.drawOutline ?? prop.shape?.vertices;
         if (!localVerts || localVerts.length < 6) return;
         if (flatPresentation) {
-            if (prop._wallChunkTextures?.ready) {
-                drawFlatWallChunkCap(ctx, prop, localVerts);
-                return;
-            }
+            if (prop._wallChunkTextures?.ready && prop._wallChunkTextures.capCanvas && drawFlatWallChunkCap(ctx, prop, localVerts)) return;
             const tinted = resolveVisualOverrideColorTree(prop, colors);
             const facing = readEntityFacing(prop);
             const cos = Math.cos(facing);
@@ -1651,8 +1641,14 @@ function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
 function prepareWallChunkPropTextures(state, prop) {
     if (!prop.wallChunkProfileId || !state?.worldSurfaces) return;
     const textures = state.worldSurfaces.ensureWallChunkProfileTextures(state, prop.wallChunkProfileId, prop.wallChunkHeightPx);
+    const ready = !!textures.ready;
+    if (prop._wallChunkTextureReady !== ready) {
+        prop._cachedStaticKey = undefined;
+        prop._staticKeyPhysicsKey = undefined;
+        prop._staticKeyCustom = undefined;
+    }
     prop._wallChunkTextures = textures;
-    prop._wallChunkTextureReady = !!textures.ready;
+    prop._wallChunkTextureReady = ready;
 }
 // Removed parallel sort (now in VisibleDrawQueue.js)
 export function queryPropIdsInView(entityRegistry, viewport, spatialFrame, { tierO = VIEW_TIER.PROPS, hitTest = "circle", match = null, filterId = "overlay" } = {}) {
