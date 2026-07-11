@@ -24,7 +24,7 @@ export function formatSandboxSpawnLabel(propId) {
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
 export function createPolygonPrimitive(visuals) {
-    const { colors, world, plankTs, topCross, lineWidth } = visuals;
+    const { colors, world, plankTs, topCross } = visuals;
     return (ctx, prop, viewport, flatPresentation) => {
         const shape = prop.shape;
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
@@ -33,7 +33,6 @@ export function createPolygonPrimitive(visuals) {
         const tinted = resolveVisualOverrideColorTree(prop, colors);
         if (flatPresentation) {
             const fill = tinted.fill ?? tinted.top ?? tinted.side;
-            const stroke = tinted.stroke;
             const facing = readEntityFacing(prop);
             const cos = Math.cos(facing);
             const sin = Math.sin(facing);
@@ -52,27 +51,10 @@ export function createPolygonPrimitive(visuals) {
             traceClosedFlatPolygon(ctx, worldVerts, count);
             ctx.fillStyle = fill;
             ctx.fill();
-            if (stroke) {
-                ctx.strokeStyle = stroke;
-                ctx.lineWidth = lineWidth ?? 0.4;
-                ctx.stroke();
-            }
             return;
         }
         const height = prop.height ?? world?.height ?? 12;
-        const asset = propCatalog[prop.type];
-        let scale = 1.0;
-        const rawFootprint = prop.strategy?.localFootprint ?? asset?.physics?.localFootprint;
-        if (rawFootprint) {
-            const footprint = ensureFlatVerts(rawFootprint);
-            let maxDist = 0;
-            const count = footprint.length / 2;
-            for (let i = 0; i < count; i++) maxDist = Math.max(maxDist, Math.hypot(footprint[i * 2], footprint[i * 2 + 1]));
-            if (maxDist > 0 && prop.radius) scale = prop.radius / maxDist;
-        }
-        const baseLineWidth = lineWidth ?? 1.0;
-        const resolvedLineWidth = Math.max(0.35, baseLineWidth * scale);
-        fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, resolvedLineWidth, plankTs, topCross, visuals.flatFill === true);
+        fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, plankTs, topCross);
         if (prop.drawOutline) {
             sDrawOpts.localVerts = prop.drawOutline;
             sDrawOpts.faceOrder = "midY";
@@ -98,7 +80,7 @@ export function createSpherePrimitive(visuals) {
         if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
             const tinted = resolveVisualOverrideColorTree(prop, NEUTRAL_BOX_COLORS);
             const height = prop.height ?? 12;
-            fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, 1.0, null, null, false);
+            fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, null, null);
             if (prop.collisionParts?.length > 1) {
                 const parts = prop.collisionParts;
                 sPartsVerts.length = parts.length;
@@ -275,8 +257,8 @@ const sBackFaceColors = { shadow: null, mid: null, highlight: null };
 const sBottomColors = { light: null, mid: null, dark: null };
 const sTopColors = { light: null, mid: null, dark: null };
 const sPartsVerts = [];
-const sDrawOpts = { height: 0, facing: 0, faceColors: sFaceColors, backFaceColors: sBackFaceColors, bottomColors: null, topColors: sTopColors, stroke: null, seamStroke: null, lineWidth: 1, plankTs: null, topCross: null, flatFill: false, localVerts: null, partsVerts: null, faceOrder: "convexCull" };
-function fillExtrudeDrawOpts(out, prop, tinted, height, lineWidth, plankTs, topCross, flatFill) {
+const sDrawOpts = { height: 0, facing: 0, faceColors: sFaceColors, backFaceColors: sBackFaceColors, bottomColors: null, topColors: sTopColors, plankTs: null, topCross: null, localVerts: null, partsVerts: null, faceOrder: "convexCull" };
+function fillExtrudeDrawOpts(out, prop, tinted, height, plankTs, topCross) {
     out.height = height;
     out.facing = readEntityFacing(prop);
     sFaceColors.shadow = tinted.sideShadow;
@@ -300,12 +282,8 @@ function fillExtrudeDrawOpts(out, prop, tinted, height, lineWidth, plankTs, topC
         sTopColors.dark = tinted.side;
     }
     out.topColors = sTopColors;
-    out.stroke = tinted.stroke;
-    out.seamStroke = tinted.seamStroke;
-    out.lineWidth = lineWidth;
     out.plankTs = plankTs;
     out.topCross = topCross;
-    out.flatFill = flatFill === true;
     out.localVerts = null;
     out.partsVerts = null;
     out.faceOrder = "convexCull";

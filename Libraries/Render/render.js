@@ -718,19 +718,21 @@ function fillBoxFootprintInto(out, hx, hy) {
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
 }
-function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, shadow, mid, highlight, stroke, lineWidth, plankTs, drawPlanks, flatFill) {
+function drawSideFaceFlat(ctx, edgeIndex, count, originX, originY, shadow, mid, highlight, stroke, lineWidth, plankTs, drawPlanks) {
     const ai = edgeIndex * 2;
     const bi = ((edgeIndex + 1) % count) * 2;
     const edgeMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
     const edgeMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
     const shadeAngle = Math.atan2(edgeMidY - originY, edgeMidX - originX);
-    ctx.fillStyle = flatFill ? mid : createSideGradientAt(ctx, sBaseRing[ai], sBaseRing[ai + 1], sBaseRing[bi], sBaseRing[bi + 1], shadeAngle, shadow, mid, highlight);
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
+    ctx.fillStyle = createSideGradientAt(ctx, sBaseRing[ai], sBaseRing[ai + 1], sBaseRing[bi], sBaseRing[bi + 1], shadeAngle, shadow, mid, highlight);
     ctx.beginPath();
     traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
     ctx.fill();
-    ctx.stroke();
+    if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+    }
     if (drawPlanks && plankTs) {
         ctx.strokeStyle = plankTs.stroke ?? "rgba(0,0,0,0.55)";
         ctx.lineWidth = plankTs.lineWidth ?? 0.8;
@@ -829,7 +831,6 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const topHx = opts.topHx;
     const topHy = opts.topHy;
     const baseGradCornerB = opts.baseGradCornerB ?? 1;
-    const flatFill = opts.flatFill === true;
     const count = localVerts.length / 2;
     if (count < 3) return;
     ensurePrismScratch(count);
@@ -855,21 +856,20 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         return;
     }
     if (drawBase) {
-        if (flatFill) ctx.fillStyle = baseMid;
-        else {
-            const gradB = Math.min(baseGradCornerB, count - 1);
-            const baseGrad = ctx.createLinearGradient(sBaseRing[0], sBaseRing[1], sBaseRing[gradB * 2], sBaseRing[gradB * 2 + 1]);
-            baseGrad.addColorStop(0.0, baseLight);
-            baseGrad.addColorStop(0.5, baseMid);
-            baseGrad.addColorStop(1.0, baseDark);
-            ctx.fillStyle = baseGrad;
-        }
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
+        const gradB = Math.min(baseGradCornerB, count - 1);
+        const baseGrad = ctx.createLinearGradient(sBaseRing[0], sBaseRing[1], sBaseRing[gradB * 2], sBaseRing[gradB * 2 + 1]);
+        baseGrad.addColorStop(0.0, baseLight);
+        baseGrad.addColorStop(0.5, baseMid);
+        baseGrad.addColorStop(1.0, baseDark);
+        ctx.fillStyle = baseGrad;
         ctx.beginPath();
         traceClosedFlatPolygon(ctx, sBaseRing, count);
         ctx.fill();
-        if (stroke) ctx.stroke();
+        if (stroke) {
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
     }
     if (drawSides)
         if (faceOrder === "midY")
@@ -879,7 +879,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
                 const shadow = front ? faceColors.shadow : backShadow;
                 const mid = front ? faceColors.mid : backMid;
                 const highlight = front ? faceColors.highlight : backHighlight;
-                drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, front, flatFill);
+                drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, front);
             }
         else
             for (let pass = 0; pass < 2; pass++) {
@@ -889,26 +889,25 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
                     const shadow = wantFront ? faceColors.shadow : backShadow;
                     const mid = wantFront ? faceColors.mid : backMid;
                     const highlight = wantFront ? faceColors.highlight : backHighlight;
-                    drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, wantFront, flatFill);
+                    drawSideFaceFlat(ctx, i, count, cx, cy, shadow, mid, highlight, stroke, lineWidth, plankTs, wantFront);
                 }
             }
     if (drawTop) {
-        if (flatFill) ctx.fillStyle = topColors.mid;
-        else {
-            let topGrad;
-            if (topHx != null && topHy != null) topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
-            else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
-            topGrad.addColorStop(0.0, topColors.light);
-            topGrad.addColorStop(0.5, topColors.mid);
-            topGrad.addColorStop(1.0, topColors.dark);
-            ctx.fillStyle = topGrad;
-        }
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth;
+        let topGrad;
+        if (topHx != null && topHy != null) topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
+        else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
+        topGrad.addColorStop(0.0, topColors.light);
+        topGrad.addColorStop(0.5, topColors.mid);
+        topGrad.addColorStop(1.0, topColors.dark);
+        ctx.fillStyle = topGrad;
         ctx.beginPath();
         traceClosedFlatPolygon(ctx, sTopRing, count);
         ctx.fill();
-        if (stroke) ctx.stroke();
+        if (stroke) {
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
         if (topCross && count === 4) {
             ctx.strokeStyle = topCross.stroke ?? "rgba(0,0,0,0.6)";
             ctx.lineWidth = topCross.lineWidth ?? 0.8;
@@ -919,7 +918,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         }
     }
 }
-const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, stroke: null, lineWidth: 1, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHx: null, topHy: null, baseGradCornerB: 1, flatFill: false };
+const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, bottomColors: null, topColors: null, stroke: null, lineWidth: 1, plankTs: null, topCross: null, textures: null, faceOrder: "convexCull", prismPass: "all", topHx: null, topHy: null, baseGradCornerB: 1 };
 const sBeltProp = { x: 0, y: 0, facing: 0 };
 const sBeltHalf = { x: 0, y: 0 };
 const sBeltDrawOpts = { halfSize: sBeltHalf, height: 0, facing: 0, faceColors: null, topColors: null, stroke: null, lineWidth: 1 };
@@ -946,7 +945,6 @@ export function drawBox(ctx, prop, viewport, opts) {
     sPrismOpts.topHx = scaleAtHeight(hx, alpha, 1);
     sPrismOpts.topHy = scaleAtHeight(hy, alpha, 1);
     sPrismOpts.baseGradCornerB = 2;
-    sPrismOpts.flatFill = false;
     drawExtrudedPrism(ctx, prop, viewport, rBoxFootprint, sPrismOpts);
 }
 function fillPrismOptsFromDraw(opts, prop, textures) {
@@ -956,7 +954,7 @@ function fillPrismOptsFromDraw(opts, prop, textures) {
     sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
     sPrismOpts.bottomColors = opts.bottomColors ?? null;
     sPrismOpts.topColors = opts.topColors;
-    sPrismOpts.stroke = opts.stroke;
+    sPrismOpts.stroke = opts.stroke ?? null;
     sPrismOpts.lineWidth = opts.lineWidth ?? 1;
     sPrismOpts.plankTs = opts.plankTs;
     sPrismOpts.topCross = opts.topCross;
@@ -966,7 +964,6 @@ function fillPrismOptsFromDraw(opts, prop, textures) {
     sPrismOpts.topHx = opts.topHx ?? null;
     sPrismOpts.topHy = opts.topHy ?? null;
     sPrismOpts.baseGradCornerB = opts.baseGradCornerB ?? 1;
-    sPrismOpts.flatFill = opts.flatFill === true;
     return sPrismOpts;
 }
 export function drawExtrudedConvexPolygon(ctx, prop, viewport, opts) {

@@ -10,5 +10,5 @@ export default {
             { vertices: new Float32Array([-4, -16, 4, -16, 4, 16, -4, 16]) },
         ],
     },
-    visuals: { lineWidth: 0.5, colors: { side: "#334155", sideShadow: "#1e293b", top: "#64748b", topHighlight: "#94a3b8", stroke: "#1e293b" }, world: { height: 4 } },
+    visuals: { colors: { side: "#334155", sideShadow: "#1e293b", top: "#64748b", topHighlight: "#94a3b8" }, world: { height: 4 } },
 };
