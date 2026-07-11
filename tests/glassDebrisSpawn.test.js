@@ -3,12 +3,11 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
-import { buildRollOrientKey } from "../Libraries/Physics/physics.js";
 import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, shatterGlassFootprint } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 
-const spriteCacheKeyDeps = { quantizeAngleIndex, buildRollOrientKey };
+const spriteCacheKeyDeps = { quantizeAngleIndex };
 
 describe("glass debris slab spawn", () => {
     it("sprite cache footprint key updates when fracture geometry is applied", () => {

@@ -13,7 +13,6 @@ import { WorldProp } from "../Libraries/Props/props.js";
 
 const noopDeps = {
     quantizeAngleIndex: (a) => 0,
-    buildRollOrientKey: () => "r0",
 };
 
 function createPropScaleTestState() {

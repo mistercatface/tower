@@ -1,5 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuat, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuat, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
@@ -7,7 +7,7 @@ import { ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
-import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheKey } from "../Color/visualOverride.js";
+import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
 import { NEUTRAL_BOX_COLORS } from "../../Assets/props/shared/neutralCoats.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
@@ -134,6 +134,7 @@ export function setCirclePropRadius(prop, radius) {
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
 export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
+    prop._footprintId = undefined;
 }
 export function applyPropBoxFootprint(prop, hx, hy) {
     const n = 8;
@@ -201,10 +202,10 @@ export function propFootprintHalfExtentsInto(buf, o, prop) {
     buf[o] = radius;
     buf[o + 1] = radius;
 }
-function propShapeFootprintKey(prop) {
-    if (prop._footprintKey !== undefined) return prop._footprintKey;
+function propShapeFootprintId(prop) {
+    if (prop._footprintId !== undefined) return prop._footprintId;
     const shape = prop.shape;
-    let key;
+    let id;
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         let hash = 2166136261;
         const verts = shape.vertices;
@@ -214,14 +215,17 @@ function propShapeFootprintKey(prop) {
             hash ^= q;
             hash = Math.imul(hash, 16777619);
         }
-        key = `p${hash >>> 0}`;
-        if (prop.chunks?.length) key += `_ch${prop.chunks.length}`;
+        id = hash >>> 0;
+        if (prop.chunks?.length) id = (id ^ Math.imul(prop.chunks.length, 16777619)) >>> 0;
     } else {
-        if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`propShapeFootprintKey: unknown shapeTypeId ${shape?.shapeTypeId}`);
-        key = `c${Math.round(shape.radius * 4)}`;
+        if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`propShapeFootprintId: unknown shapeTypeId ${shape?.shapeTypeId}`);
+        id = Math.round(shape.radius * 4) >>> 0;
     }
-    prop._footprintKey = key;
-    return key;
+    prop._footprintId = id & 0xfffff;
+    return prop._footprintId;
+}
+function propShapeFootprintKey(prop) {
+    return `f${propShapeFootprintId(prop)}`;
 }
 const FACING_STEPS_MAX = 360;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
@@ -285,14 +289,24 @@ export function resolvePropQuantizeSteps(prop) {
     return sQuantizeSteps;
 }
 export function getBaseSpriteCacheKey(prop, deps) {
-    const { quantizeAngleIndex, buildRollOrientKey } = deps;
+    return String(getBaseSpriteCacheId(prop, deps));
+}
+export function getBaseSpriteCacheId(prop, deps) {
+    const { quantizeAngleIndex } = deps;
     const steps = resolvePropQuantizeSteps(prop);
-    let orientKey = "";
-    if (prop.strategy?.rolls) orientKey = buildRollOrientKey(prop.rollQuat, steps.facing);
-    else orientKey = `f${quantizeAngleIndex(entityFacing(prop), steps.facing)}`;
-    let key = `${orientKey}_${propShapeFootprintKey(prop)}`;
-    key += visualOverrideCacheKey(prop);
-    return key;
+    let orient;
+    if (prop.strategy?.rolls) orient = packRollOrientId(prop.rollQuat, steps.facing);
+    else orient = quantizeAngleIndex(entityFacing(prop), steps.facing);
+    const foot = propShapeFootprintId(prop);
+    const vo = visualOverrideCacheId(prop);
+    let h = 2166136261;
+    h ^= orient >>> 0;
+    h = Math.imul(h, 16777619);
+    h ^= foot >>> 0;
+    h = Math.imul(h, 16777619);
+    h ^= vo >>> 0;
+    h = Math.imul(h, 16777619);
+    return (h >>> 0) & 0xfffff;
 }
 export function getPropStageBakeState(prop) {
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
@@ -608,18 +622,33 @@ export function getPropVisualAttachmentConfigs(prop) {
  * @param {{ quantizeAngleIndex: (angle: number, steps: number) => number }} deps
  */
 export function getVisualAttachmentSpriteCacheKey(prop, deps) {
+    return String(getVisualAttachmentSpriteCacheId(prop, deps));
+}
+export function getVisualAttachmentSpriteCacheId(prop, deps) {
     const attachments = getPropVisualAttachmentConfigs(prop);
-    if (!attachments.length) return "";
+    if (!attachments.length) return 0;
     const facingSteps = resolvePropQuantizeSteps(prop).facing;
-    const parts = [];
+    let h = 2166136261;
     for (let i = 0; i < attachments.length; i++) {
         const cfg = attachments[i];
         if (!cfg?.id || !cfg.propId) continue;
         const headingIndex = deps.quantizeAngleIndex(resolveAttachmentHeading(prop, cfg), facingSteps);
         const offset = cfg.offset ?? {};
-        parts.push([cfg.id, cfg.propId, headingIndex, Math.round((offset.x ?? 0) * 100) / 100, Math.round((offset.y ?? 0) * 100) / 100, cfg.offsetSpace ?? "world", Math.round((cfg.facingOffset ?? 0) * 10000) / 10000, Math.round(normalizeAttachmentScale(cfg.scale) * 100) / 100, Math.round((cfg.radiusScale ?? 0) * 100) / 100, cfg.heading ?? "facing", cfg.layer ?? 0, cfg.inheritTint === true ? visualOverrideCacheKey(prop) : ""].join(":"));
+        const fields = [hashStringPart(cfg.id), hashStringPart(cfg.propId), headingIndex, Math.round((offset.x ?? 0) * 100), Math.round((offset.y ?? 0) * 100), cfg.offsetSpace === "parentRadius" ? 1 : 0, Math.round((cfg.facingOffset ?? 0) * 10000), Math.round(normalizeAttachmentScale(cfg.scale) * 100), Math.round((cfg.radiusScale ?? 0) * 100), cfg.heading === "motion" ? 1 : 0, cfg.layer | 0, cfg.inheritTint === true ? visualOverrideCacheId(prop) : 0];
+        for (let f = 0; f < fields.length; f++) {
+            h ^= fields[f] >>> 0;
+            h = Math.imul(h, 16777619);
+        }
     }
-    return parts.length ? parts.join("|") : "";
+    return (h >>> 0) & 0xfffff;
+}
+function hashStringPart(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
 }
 function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const childAsset = propCatalog[cfg.propId];

@@ -2,11 +2,11 @@ import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
-import { buildRollOrientKey, quantizeRollQuat, resolveBodyRadius, entityFacing } from "../Physics/physics.js";
+import { packRollOrientId, quantizeRollQuat, resolveBodyRadius, entityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
-import { resolvePropQuantizeSteps, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheKey, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
-import { visualOverrideCacheKey } from "../Color/visualOverride.js";
-import propCatalog from "../../Assets/props/index.js";
+import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
+import { visualOverrideCacheId } from "../Color/visualOverride.js";
+import propCatalog, { NEXT_RENDER_KEY_ID } from "../../Assets/props/index.js";
 export function getCanvasLineScale(ctx) {
     return 1 / Math.max(0.001, ctx.getTransform().a);
 }
@@ -451,15 +451,16 @@ function quantizedViewAxisOffset(offset, step = SPRITE_VIEW_STEP, limit = SPRITE
     const clamped = offset < -limit ? -limit : offset > limit ? limit : offset;
     return Math.round(clamped / step) * step;
 }
-const SPRITE_KEY_INTERN_MAX = 0xfffff;
+const SPRITE_KEY_PART_MASK = 0xfffff;
 const spriteKeyIntern = new Map();
 let spriteKeyInternNext = 1;
 function internSpriteKeyPart(part) {
     if (!part) return 0;
+    if (typeof part === "number") return part & SPRITE_KEY_PART_MASK;
     let id = spriteKeyIntern.get(part);
     if (id === undefined) {
         id = spriteKeyInternNext++;
-        if (spriteKeyInternNext > SPRITE_KEY_INTERN_MAX) throw new Error("sprite key intern table overflow");
+        if (spriteKeyInternNext > SPRITE_KEY_PART_MASK) throw new Error("sprite key intern table overflow");
         spriteKeyIntern.set(part, id);
     }
     return id;
@@ -468,10 +469,33 @@ function clearSpriteKeyIntern() {
     spriteKeyIntern.clear();
     spriteKeyInternNext = 1;
 }
+function hashSpriteKeyString(s) {
+    if (!s) return 0;
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0) & SPRITE_KEY_PART_MASK;
+}
+let nextExtraRenderKeyId = NEXT_RENDER_KEY_ID;
+const extraRenderKeyIds = new Map();
+function resolveRenderKeyId(renderKey) {
+    if (typeof renderKey === "number") return renderKey & SPRITE_KEY_PART_MASK;
+    const asset = propCatalog[renderKey];
+    if (asset?.renderKeyId) return asset.renderKeyId & SPRITE_KEY_PART_MASK;
+    let id = extraRenderKeyIds.get(renderKey);
+    if (id === undefined) {
+        id = nextExtraRenderKeyId++;
+        if (id > SPRITE_KEY_PART_MASK) throw new Error("render key id overflow");
+        extraRenderKeyIds.set(renderKey, id);
+    }
+    return id;
+}
 function packZoomKeyBucket(zoom) {
     return Math.round(quantizePropBakeZoom(zoom) * 8);
 }
-const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex, buildRollOrientKey };
+const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex };
 /**
  * LRU baked-sprite cache with shared viewer-offset quantization.
  * Radial-elevation props use this; domain key/bake helpers live below.
@@ -593,23 +617,23 @@ function drawVisualAttachmentList(ctx, attachments, viewport) {
  */
 function getPropStaticKey(prop, renderKey) {
     const facing = entityFacing(prop);
-    const voKey = visualOverrideCacheKey(prop);
-    const attachmentKey = getVisualAttachmentSpriteCacheKey(prop, { quantizeAngleIndex });
+    const voId = visualOverrideCacheId(prop);
+    const attachmentId = getVisualAttachmentSpriteCacheId(prop, { quantizeAngleIndex });
     const rolls = !!prop.strategy?.rolls;
-    const rollKey = rolls ? buildRollOrientKey(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : "";
-    const physicsKey = getBaseSpriteCacheKey(prop, PROP_SPRITE_KEY_DEPS);
-    if (prop._staticKeyFacing === facing && prop._staticKeyVo === voKey && prop._staticKeyAttachment === attachmentKey && prop._staticKeyPhysicsKey === physicsKey && (!rolls || prop._staticKeyRoll === rollKey) && prop._cachedStaticKey !== undefined) return prop._cachedStaticKey;
-    const k1 = BigInt(internSpriteKeyPart(renderKey));
+    const rollId = rolls ? packRollOrientId(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : 0;
+    const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
+    if (prop._staticKeyFacing === facing && prop._staticKeyVo === voId && prop._staticKeyAttachment === attachmentId && prop._staticKeyPhysicsKey === physicsId && (!rolls || prop._staticKeyRoll === rollId) && prop._cachedStaticKey !== undefined) return prop._cachedStaticKey;
+    const k1 = BigInt(resolveRenderKeyId(renderKey));
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
-    const k2 = BigInt(internSpriteKeyPart(customKey));
-    const k3 = BigInt(internSpriteKeyPart(physicsKey));
-    const k4 = BigInt(internSpriteKeyPart(attachmentKey));
+    const k2 = BigInt(typeof customKey === "number" ? customKey & SPRITE_KEY_PART_MASK : hashSpriteKeyString(customKey));
+    const k3 = BigInt(physicsId & SPRITE_KEY_PART_MASK);
+    const k4 = BigInt(attachmentId & SPRITE_KEY_PART_MASK);
     const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
     prop._staticKeyFacing = facing;
-    prop._staticKeyVo = voKey;
-    prop._staticKeyAttachment = attachmentKey;
-    prop._staticKeyPhysicsKey = physicsKey;
-    if (rolls) prop._staticKeyRoll = rollKey;
+    prop._staticKeyVo = voId;
+    prop._staticKeyAttachment = attachmentId;
+    prop._staticKeyPhysicsKey = physicsId;
+    if (rolls) prop._staticKeyRoll = rollId;
     prop._cachedStaticKey = staticKey;
     return staticKey;
 }

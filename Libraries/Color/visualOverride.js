@@ -28,6 +28,17 @@ export function visualOverrideCacheKey(prop) {
     if (vo.brightness != null && vo.brightness !== 1) key += `b${Math.round(vo.brightness * 100)}`;
     return key;
 }
+export function visualOverrideCacheId(prop) {
+    const vo = prop.visualOverride;
+    if (!vo) return 0;
+    let id = 0;
+    if (vo.tint) {
+        const hex = vo.tint.charCodeAt(0) === 35 ? vo.tint.slice(1) : vo.tint;
+        id = parseInt(hex, 16) || 0;
+    }
+    if (vo.brightness != null && vo.brightness !== 1) id = (id ^ (Math.round(vo.brightness * 100) * 16777619)) >>> 0;
+    return id & 0xfffff;
+}
 function resolveHexListOverride(hexes, override) {
     let out = hexes;
     if (override?.tint) out = shiftPaletteToTintHex(out, override.tint);
@@ -73,6 +84,5 @@ export function serializeVisualOverride(prop) {
     if (prop.visualOverride.brightness != null && prop.visualOverride.brightness !== 1) out.brightness = prop.visualOverride.brightness;
     return Object.keys(out).length ? out : null;
 }
-
 export const PUZZLE_TEMPLATE_BALL_TINTS = { roomA: "#42A5F5", roomB: "#FF9800" };
 export const PIPE_SPAWNER_BALL_TINT = "#42A5F5";

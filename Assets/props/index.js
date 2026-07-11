@@ -24,3 +24,8 @@ for (const asset of Object.values(catalog)) {
     if (sandbox.spawner?.dragLaunch && typeof sandbox.spawner.dragLaunch === "object") sandbox.spawner.dragLaunch = { ...DRAG_LAUNCH_BASELINE, ...sandbox.spawner.dragLaunch };
 }
 export default catalog;
+let nextRenderKeyId = 1;
+for (const asset of Object.values(catalog)) {
+    asset.renderKeyId = nextRenderKeyId++;
+}
+export const NEXT_RENDER_KEY_ID = nextRenderKeyId;

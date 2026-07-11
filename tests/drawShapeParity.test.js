@@ -9,11 +9,11 @@ import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
-import { buildRollOrientKey, quantizeRollQuat } from "../Libraries/Physics/physics.js";
+import { quantizeRollQuat } from "../Libraries/Physics/physics.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/props.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
 import propCatalog from "../Assets/props/index.js";
-const cacheKeyDeps = { quantizeAngleIndex, buildRollOrientKey };
+const cacheKeyDeps = { quantizeAngleIndex };
 const polygonVisuals = {
     colors: { side: "#888", sideShadow: "#666", top: "#aaa", bottom: "#444", stroke: "#222" },
     world: { height: 10 },
@@ -41,7 +41,7 @@ describe("draw shape parity", () => {
         applyPropBoxFootprint(prop, 12, 5);
         const after = getBaseSpriteCacheKey(prop, cacheKeyDeps);
         assert.notEqual(before, after);
-        assert.match(after, /p[0-9]+/);
+        assert.match(after, /[0-9]+/);
     });
     it("sprite bake stage passes live polygon verts to draw", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);

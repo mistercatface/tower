@@ -1,4 +1,4 @@
-import { multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32 } from "../Math/math.js";
+import { multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32 } from "../Math/math.js";
 import {
     ENGINE_F32,
     ENGINE_PHYS_BASE,
@@ -341,7 +341,13 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
     const slab = kineticDynamicSlab;
     const angle = entityFacing(entity);
     const compound = entity.collisionParts;
+    const dirty = entity._broadphaseDirty === true;
     if (compound?.length > 1) {
+        if (!dirty && slab.partCount[physId] === compound.length && slab.bpKind[physId] === BP_KIND_OBB && slab.shapeKind[physId] === 0) {
+            slab.cos[physId] = Math.cos(angle);
+            slab.sin[physId] = Math.sin(angle);
+            return;
+        }
         slab.partCount[physId] = compound.length;
         slab.shapeKind[physId] = 0;
         computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, compound);
@@ -354,6 +360,7 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
         slab.hy[physId] = hy;
         slab.cos[physId] = cos;
         slab.sin[physId] = sin;
+        entity._broadphaseDirty = false;
         return;
     }
     slab.partCount[physId] = 1;
@@ -362,9 +369,15 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
         slab.shapeKind[physId] = SHAPE_TYPE_CIRCLE;
         slab.bpKind[physId] = BP_KIND_CIRCLE;
         slab.r[physId] = shape.radius;
+        entity._broadphaseDirty = false;
         return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
+        if (!dirty && slab.shapeKind[physId] === SHAPE_TYPE_POLYGON && slab.bpKind[physId] === BP_KIND_OBB) {
+            slab.cos[physId] = Math.cos(angle);
+            slab.sin[physId] = Math.sin(angle);
+            return;
+        }
         slab.shapeKind[physId] = SHAPE_TYPE_POLYGON;
         convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         slab.bpKind[physId] = BP_KIND_OBB;
@@ -372,6 +385,7 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
         slab.hy[physId] = ENGINE_F32[P_VEC_A + 1];
         slab.cos[physId] = Math.cos(angle);
         slab.sin[physId] = Math.sin(angle);
+        entity._broadphaseDirty = false;
         return;
     }
     throw new Error(`stampBroadphaseSlabFromEntity: unknown shapeTypeId ${shape?.shapeTypeId}`);
@@ -406,6 +420,8 @@ export function invalidateKineticSlabSlot(physId) {
     dyn.islandRoot[physId] = -1;
     dyn.linkNeighborOffset[physId] = 0;
     dyn.linkNeighborCount[physId] = 0;
+    dyn.spatialNeighborOffset[physId] = 0;
+    dyn.spatialNeighborCount[physId] = 0;
     const stat = kineticStaticSlab;
     stat.mass[physId] = 0;
     stat.invMass[physId] = 0;
@@ -1314,6 +1330,36 @@ export function isKinematicallyActiveSlab(physId) {
     const w = slab.w[physId];
     const { movingSpeedSq, rotatingSpeedRad } = kineticActivity();
     return speedSqXY(vx, vy) > movingSpeedSq || w * w > rotatingSpeedRad * rotatingSpeedRad;
+}
+function slabCollisionSpan(physId) {
+    const slab = kineticDynamicSlab;
+    if (slab.bpKind[physId] === BP_KIND_CIRCLE) return slab.r[physId];
+    return lengthXY(slab.hx[physId], slab.hy[physId]);
+}
+function ensureSpatialNeighborArena(needed) {
+    ensureGrowI32(kineticDynamicSlab, "spatialNeighborEids", needed, kineticDynamicSlab.spatialNeighborEidsUsed);
+}
+export function bakeSpatialNeighborCsr(spatialFrame) {
+    const slab = kineticDynamicSlab;
+    const grid = spatialFrame.entityGrid;
+    slab.spatialNeighborEidsUsed = 0;
+    const padBase = ENGINE_BOUNDS_BASE + B_PAD;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
+        const span = slabCollisionSpan(physId);
+        const searchRadius = span + grid.maxInsertedExtent + neighborQueryPadForExtent(span);
+        centerReachAabbF32(ENGINE_F32, padBase, slab.x[physId], slab.y[physId], searchRadius);
+        let offset = slab.spatialNeighborEidsUsed;
+        ensureSpatialNeighborArena(offset + 16);
+        let count = grid.collectEidsInBoundsF32(ENGINE_F32, padBase, slab.spatialNeighborEids.subarray(offset), slab.spatialNeighborEids.length - offset, physId);
+        while (count < 0) {
+            ensureSpatialNeighborArena(Math.max(offset + 16, slab.spatialNeighborEids.length * 2));
+            count = grid.collectEidsInBoundsF32(ENGINE_F32, padBase, slab.spatialNeighborEids.subarray(offset), slab.spatialNeighborEids.length - offset, physId);
+        }
+        slab.spatialNeighborOffset[physId] = offset;
+        slab.spatialNeighborCount[physId] = count;
+        slab.spatialNeighborEidsUsed = offset + count;
+    }
 }
 export function snapshotKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) {
@@ -2947,23 +2993,25 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
 }
 export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     if (!bodies.length) return 0;
+    bakeSpatialNeighborCsr(spatialFrame);
     clearPairHash();
     for (let i = 0; i < pairs.count; i++) addPairHash(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
     let added = 0;
     let seenCount = 0;
     const seenPrimary = spatialFrame._patchPrimarySeen;
     const seenPrimaryIds = spatialFrame._patchPrimarySeenIds;
+    const slab = kineticDynamicSlab;
+    const neighborEids = slab.spatialNeighborEids;
     for (let i = 0; i < bodies.length; i++) {
-        const primary = bodies[i];
-        const physIdA = primary._physId;
+        const physIdA = bodies[i]._physId;
         if (physIdA === undefined) continue;
         if (seenPrimary[physIdA]) continue;
         seenPrimary[physIdA] = 1;
         seenPrimaryIds[seenCount++] = physIdA;
-        const neighborCount = spatialFrame.ensureNeighborEids(primary);
-        const neighborEids = primary._neighborEids;
+        const offset = slab.spatialNeighborOffset[physIdA];
+        const neighborCount = slab.spatialNeighborCount[physIdA];
         for (let j = 0; j < neighborCount; j++) {
-            const physIdB = neighborEids[j];
+            const physIdB = neighborEids[offset + j];
             const key = pairPhysKey(physIdA, physIdB);
             if (hasPairHash(key)) continue;
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
@@ -2985,15 +3033,16 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     return added;
 }
 export function gatherKineticCandidatePairs(spatialFrame, pairs) {
+    bakeSpatialNeighborCsr(spatialFrame);
     pairs.reset();
     const slab = kineticDynamicSlab;
+    const neighborEids = slab.spatialNeighborEids;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physIdA = slab.activePhysIds[i];
-        const primary = entityRefs[physIdA]?._physId === physIdA ? entityRefs[physIdA] : null;
-        const neighborCount = spatialFrame.ensureNeighborEids(primary);
-        const neighborEids = primary._neighborEids;
+        const offset = slab.spatialNeighborOffset[physIdA];
+        const neighborCount = slab.spatialNeighborCount[physIdA];
         for (let j = 0; j < neighborCount; j++) {
-            const physIdB = neighborEids[j];
+            const physIdB = neighborEids[offset + j];
             const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
             if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
             if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
@@ -4242,14 +4291,18 @@ export function quantizeRollQuat(rollQuat, steps = 16) {
     return sQuantizedRollQuat;
 }
 export function buildRollOrientKey(rollQuat, steps = 16) {
+    const packed = packRollOrientId(rollQuat, steps);
+    return `r${packed & 0xff}_${(packed >>> 8) & 0xff}`;
+}
+export function packRollOrientId(rollQuat, steps = 16) {
     const q = quantizeRollQuat(rollQuat, steps);
     const angle = 2 * Math.acos(clamp(q.w, -1, 1));
-    if (angle < 1e-4) return "r0_0";
+    if (angle < 1e-4) return 0x10000;
     const s = Math.sin(angle * 0.5);
     const heading = Math.atan2(q.y / s, q.x / s);
     const angleBucket = Math.round((angle / (Math.PI * 2)) * steps) % steps;
     const axisBucket = Math.round(((heading + Math.PI) / (Math.PI * 2)) * steps) % steps;
-    return `r${angleBucket}_${axisBucket}`;
+    return 0x10000 | (angleBucket & 0xff) | ((axisBucket & 0xff) << 8);
 }
 function resolveRollingFriction(strategy, body) {
     const base = strategy.friction ?? 8;
