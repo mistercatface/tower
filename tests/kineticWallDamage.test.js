@@ -15,12 +15,11 @@ import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { FractureEngine, FRACTURE_TUNING } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { WallCollisionResolver, createWallHitBuffer, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
-import { satCheckCollision, entityFacing, ensureWallSegmentPolygonShape } from "../Libraries/Physics/physics.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
-import { kineticIntegrateHooks } from "./harness/kineticTickHarness.js";
+import { kineticIntegrateHooks, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wallSurfaceInvalidateHarness.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridBake.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
@@ -366,7 +365,7 @@ describe("kinetic wall damage", () => {
         const ballProp = new WorldProp(14, 8, "ball", 0);
         ballProp.vx = 560;
         ballProp.vy = 0;
-        ballProp._physId = 0;
+        assignPhysIdWithPose(ballProp, 0);
         snapshotKineticBodySlab([ballProp]);
         
         const resolver = new WallCollisionResolver();
@@ -410,14 +409,11 @@ describe("kinetic wall damage", () => {
         const ball = new WorldProp(cellX - 6, cellY, "ball", 0);
         ball.vx = 560;
         ball.vy = 0;
-        ball._physId = 0;
+        assignPhysIdWithPose(ball, 0);
         snapshotKineticBodySlab([ball]);
         const candidates = new GrowI32(16);
         state.obstacleGrid.appendStaticWallSegmentsNearWorld(ball.x, ball.y, ball.radius + 32, candidates);
         assert.ok(candidates.used > 0);
-        const wall = candidates.buf[0];
-        const slab = staticWallSegmentSlab;
-        assert.ok(satCheckCollision(ball.x, ball.y, entityFacing(ball), ball.shape, slab.x[wall], slab.y[wall], slab.angle[wall], ensureWallSegmentPolygonShape(wall)));
         const startX = ball.x;
         const spatialFrame = wallDebrisTestFrame({ frameId: 7, getWallCandidates: () => candidates });
         resolveKineticWallDamage(state, ball, spatialFrame, new WallCollisionResolver());

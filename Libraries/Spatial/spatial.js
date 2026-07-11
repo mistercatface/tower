@@ -2,7 +2,7 @@ import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityKind, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineMemory.js";
-import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, satCheckCollision, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
+import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, entityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -1208,7 +1208,6 @@ export class WorldObstacleGrid {
         const size = this.cellSize;
         const id = allocStaticWallSegment();
         const slab = staticWallSegmentSlab;
-        if (slab.shapeRefs[id] && (slab.width[id] !== size || slab.height[id] !== size)) slab.shapeRefs[id] = null;
         slab.x[id] = x;
         slab.y[id] = y;
         slab.angle[id] = 0;
@@ -1243,7 +1242,6 @@ export class WorldObstacleGrid {
                 const dy = p2y - p1y;
                 const len = Math.hypot(dx, dy);
                 const id = allocStaticWallSegment();
-                if (slab.shapeRefs[id] && (slab.width[id] !== len || slab.height[id] !== thickness)) slab.shapeRefs[id] = null;
                 slab.x[id] = (p1x + p2x) * 0.5;
                 slab.y[id] = (p1y + p2y) * 0.5;
                 slab.angle[id] = Math.atan2(dy, dx);

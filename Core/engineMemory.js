@@ -311,7 +311,7 @@ export const MAX_STATIC_WALL_SEGMENTS = 4096;
 export const WALL_SEG_VOXEL = 1;
 export const WALL_SEG_EDGE_RAIL = 2;
 export const WALL_SEG_STATIC_FACE = 4;
-export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), shapeRefs: new Array(MAX_STATIC_WALL_SEGMENTS) };
+export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS) };
 export function resetStaticWallSegmentSlab() {
     staticWallSegmentSlab.count = 0;
 }

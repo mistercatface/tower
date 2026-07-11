@@ -935,30 +935,29 @@ function findClosestWorldVertexIndexAt(vertices, vo, floatCount, posX, posY, cos
     }
     return bestIndex;
 }
-function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, nx, ny, refPolyIsA, refEdgeIndex) {
-    const refShape = refPolyIsA ? shapeA : shapeB;
+function buildPolyPolyContactManifoldF32(xA, yA, cosA, sinA, vertsA, normsA, voA, nA, xB, yB, cosB, sinB, vertsB, normsB, voB, nB, nx, ny, refPolyIsA, refEdgeIndex) {
     const refX = refPolyIsA ? xA : xB;
     const refY = refPolyIsA ? yA : yB;
-    const incShape = refPolyIsA ? shapeB : shapeA;
     const incX = refPolyIsA ? xB : xA;
     const incY = refPolyIsA ? yB : yA;
-    const refAngle = refPolyIsA ? angleA : angleB;
-    const incAngle = refPolyIsA ? angleB : angleA;
-    const refCos = Math.cos(refAngle);
-    const refSin = Math.sin(refAngle);
-    const incCos = Math.cos(incAngle);
-    const incSin = Math.sin(incAngle);
+    const refCos = refPolyIsA ? cosA : cosB;
+    const refSin = refPolyIsA ? sinA : sinB;
+    const incCos = refPolyIsA ? cosB : cosA;
+    const incSin = refPolyIsA ? sinB : sinA;
+    const refVerts = refPolyIsA ? vertsA : vertsB;
+    const refNorms = refPolyIsA ? normsA : normsB;
+    const refVo = refPolyIsA ? voA : voB;
+    const refN = refPolyIsA ? nA : nB;
+    const incVerts = refPolyIsA ? vertsB : vertsA;
+    const incVo = refPolyIsA ? voB : voA;
+    const incN = refPolyIsA ? nB : nA;
+    const incNorms = refPolyIsA ? normsB : normsA;
     const refFaceNx = refPolyIsA ? nx : -nx;
     const refFaceNy = refPolyIsA ? ny : -ny;
-    const refMeta = bindShapeVertMeta(sVertMetaA, refShape);
-    const incMeta = bindShapeVertMeta(sVertMetaB, incShape);
-    const refCount = refMeta.n / 2;
+    const refCount = refN / 2;
     const refEdgeNext = (refEdgeIndex + 1) % refCount;
     const sideEdgeA = (refEdgeIndex + refCount - 1) % refCount;
     const sideEdgeB = refEdgeNext;
-    const refVerts = refMeta.verts;
-    const refVo = refMeta.vo;
-    const refNorms = refMeta.norms;
     const edgeAx = refX + refVerts[refVo + refEdgeIndex * 2] * refCos - refVerts[refVo + refEdgeIndex * 2 + 1] * refSin;
     const edgeAy = refY + refVerts[refVo + refEdgeIndex * 2] * refSin + refVerts[refVo + refEdgeIndex * 2 + 1] * refCos;
     const edgeBx = refX + refVerts[refVo + refEdgeNext * 2] * refCos - refVerts[refVo + refEdgeNext * 2 + 1] * refSin;
@@ -969,11 +968,9 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
     const sideBNx = -(refNorms[refVo + sideEdgeB * 2] * refCos - refNorms[refVo + sideEdgeB * 2 + 1] * refSin);
     const sideBNy = -(refNorms[refVo + sideEdgeB * 2] * refSin + refNorms[refVo + sideEdgeB * 2 + 1] * refCos);
     const sideBOffset = sideBNx * edgeBx + sideBNy * edgeBy;
-    const incidentEdge = findEdgeMostAligned(incMeta.norms, incMeta.vo, incMeta.n, incCos, incSin, refFaceNx, refFaceNy, true);
-    const incCount = incMeta.n / 2;
+    const incidentEdge = findEdgeMostAligned(incNorms, incVo, incN, incCos, incSin, refFaceNx, refFaceNy, true);
+    const incCount = incN / 2;
     const incEdgeNext = (incidentEdge + 1) % incCount;
-    const incVerts = incMeta.verts;
-    const incVo = incMeta.vo;
     const incX0 = incX + incVerts[incVo + incidentEdge * 2] * incCos - incVerts[incVo + incidentEdge * 2 + 1] * incSin;
     const incY0 = incY + incVerts[incVo + incidentEdge * 2] * incSin + incVerts[incVo + incidentEdge * 2 + 1] * incCos;
     const incX1 = incX + incVerts[incVo + incEdgeNext * 2] * incCos - incVerts[incVo + incEdgeNext * 2 + 1] * incSin;
@@ -990,8 +987,8 @@ function buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, sh
         const px = clipX[i];
         const py = clipY[i];
         if (i > 0 && Math.hypot(px - clipX[i - 1], py - clipY[i - 1]) <= 1e-6) continue;
-        const incFeature = nearestIncidentVertexIndex(incMeta.verts, incMeta.vo, incMeta.n, incX, incY, incCos, incSin, px, py);
-        const refFeature = nearestIncidentVertexIndex(refMeta.verts, refMeta.vo, refMeta.n, refX, refY, refCos, refSin, px, py);
+        const incFeature = nearestIncidentVertexIndex(incVerts, incVo, incN, incX, incY, incCos, incSin, px, py);
+        const refFeature = nearestIncidentVertexIndex(refVerts, refVo, refN, refX, refY, refCos, refSin, px, py);
         const write = 9 + pointCount * 4;
         SAT_RESULT[write + 0] = px;
         SAT_RESULT[write + 1] = py;
@@ -1171,21 +1168,46 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
 export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
     return satCheckShapesAtPose(xA, yA, Math.cos(angleA), Math.sin(angleA), shapeA, xB, yB, Math.cos(angleB), Math.sin(angleB), shapeB);
 }
-function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
+const sWallVerts = new Float32Array(8);
+const sWallNorms = new Float32Array(8);
+function fillWallBoxF32(segId) {
+    const slab = staticWallSegmentSlab;
+    const hx = slab.width[segId] * 0.5;
+    const hy = slab.height[segId] * 0.5;
+    sWallVerts[0] = -hx;
+    sWallVerts[1] = -hy;
+    sWallVerts[2] = hx;
+    sWallVerts[3] = -hy;
+    sWallVerts[4] = hx;
+    sWallVerts[5] = hy;
+    sWallVerts[6] = -hx;
+    sWallVerts[7] = hy;
+    rebuildLivePolygonNormals(sWallVerts, sWallNorms, 8);
+}
+function satPolygonVsWallSegmentF32(px, py, cos, sin, verts, norms, vo, n, segId) {
+    fillWallBoxF32(segId);
+    const slab = staticWallSegmentSlab;
+    const angle = slab.angle[segId];
+    return satPolygonPolygonF32(px, py, cos, sin, verts, norms, vo, n, slab.x[segId], slab.y[segId], Math.cos(angle), Math.sin(angle), sWallVerts, sWallNorms, 0, 8);
+}
+export function satCheckPolygonVsWallSegment(px, py, angle, shape, segId) {
+    const vo = shape._vertOffset || 0;
+    const n = shape._floatCount != null ? shape._floatCount : shape.vertices.length;
+    return satPolygonVsWallSegmentF32(px, py, Math.cos(angle), Math.sin(angle), shape.vertices, shape.normals, vo, n, segId);
+}
+function satPolygonPolygonF32(xA, yA, cosA, sinA, vertsA, normsA, voA, nA, xB, yB, cosB, sinB, vertsB, normsB, voB, nB) {
     let minOverlap = Infinity;
     let minNormalX = 0;
     let minNormalY = 0;
     let refPolyIsA = true;
     let refEdgeIndex = 0;
-    const metaA = bindShapeVertMeta(sVertMetaA, shapeA);
-    const metaB = bindShapeVertMeta(sVertMetaB, shapeB);
-    for (let i = 0; i < metaA.n; i += 2) {
-        const nx = metaA.norms[metaA.vo + i];
-        const ny = metaA.norms[metaA.vo + i + 1];
+    for (let i = 0; i < nA; i += 2) {
+        const nx = normsA[voA + i];
+        const ny = normsA[voA + i + 1];
         const rNx = nx * cosA - ny * sinA;
         const rNy = nx * sinA + ny * cosA;
-        satProjectPolygonF32(PROJ_A, rNx, rNy, metaA.verts, metaA.vo, metaA.n, xA, yA, cosA, sinA);
-        satProjectPolygonF32(PROJ_B, rNx, rNy, metaB.verts, metaB.vo, metaB.n, xB, yB, cosB, sinB);
+        satProjectPolygonF32(PROJ_A, rNx, rNy, vertsA, voA, nA, xA, yA, cosA, sinA);
+        satProjectPolygonF32(PROJ_B, rNx, rNy, vertsB, voB, nB, xB, yB, cosB, sinB);
         if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
         const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
         if (overlap < minOverlap) {
@@ -1196,13 +1218,13 @@ function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shape
             refEdgeIndex = i / 2;
         }
     }
-    for (let i = 0; i < metaB.n; i += 2) {
-        const nx = metaB.norms[metaB.vo + i];
-        const ny = metaB.norms[metaB.vo + i + 1];
+    for (let i = 0; i < nB; i += 2) {
+        const nx = normsB[voB + i];
+        const ny = normsB[voB + i + 1];
         const rNx = nx * cosB - ny * sinB;
         const rNy = nx * sinB + ny * cosB;
-        satProjectPolygonF32(PROJ_A, rNx, rNy, metaA.verts, metaA.vo, metaA.n, xA, yA, cosA, sinA);
-        satProjectPolygonF32(PROJ_B, rNx, rNy, metaB.verts, metaB.vo, metaB.n, xB, yB, cosB, sinB);
+        satProjectPolygonF32(PROJ_A, rNx, rNy, vertsA, voA, nA, xA, yA, cosA, sinA);
+        satProjectPolygonF32(PROJ_B, rNx, rNy, vertsB, voB, nB, xB, yB, cosB, sinB);
         if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
         const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
         if (overlap < minOverlap) {
@@ -1219,15 +1241,7 @@ function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shape
         minNormalX = -minNormalX;
         minNormalY = -minNormalY;
     }
-    const vertsA = metaA.verts;
-    const voA = metaA.vo;
-    const nA = metaA.n;
-    const vertsB = metaB.verts;
-    const voB = metaB.vo;
-    const nB = metaB.n;
-    const angleA = Math.atan2(sinA, cosA);
-    const angleB = Math.atan2(sinB, cosB);
-    const pointCount = buildPolyPolyContactManifold(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB, minNormalX, minNormalY, refPolyIsA, refEdgeIndex);
+    const pointCount = buildPolyPolyContactManifoldF32(xA, yA, cosA, sinA, vertsA, normsA, voA, nA, xB, yB, cosB, sinB, vertsB, normsB, voB, nB, minNormalX, minNormalY, refPolyIsA, refEdgeIndex);
     if (pointCount == null) {
         const featureB = findExtremeVertexIndexAt(vertsB, voB, nB, xB, yB, cosB, sinB, minNormalX, minNormalY, false);
         const featureA = findExtremeVertexIndexAt(vertsA, voA, nA, xA, yA, cosA, sinA, minNormalX, minNormalY, true);
@@ -1264,6 +1278,11 @@ function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shape
     SAT_RESULT[7] = SAT_RESULT[12];
     SAT_RESULT[8] = pointCount;
     return true;
+}
+function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
+    const metaA = bindShapeVertMeta(sVertMetaA, shapeA);
+    const metaB = bindShapeVertMeta(sVertMetaB, shapeB);
+    return satPolygonPolygonF32(xA, yA, cosA, sinA, metaA.verts, metaA.norms, metaA.vo, metaA.n, xB, yB, cosB, sinB, metaB.verts, metaB.norms, metaB.vo, metaB.n);
 }
 function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, cosP, sinP, polyShape) {
     if (isNaN(cxCircle) || isNaN(cyCircle) || isNaN(pxPoly) || isNaN(pyPoly)) return false;
@@ -1597,7 +1616,6 @@ function kineticOverlapsWallCandidates(px, py, body, candidates) {
     const bodySin = Math.sin(bodyFacing);
     const compound = entityHasCompoundParts(body);
     const partCount = compound ? body.collisionParts.length : 1;
-    const slab = staticWallSegmentSlab;
     for (let p = 0; p < partCount; p++) {
         const shape = compound ? body.collisionParts[p] : body.shape;
         if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
@@ -1607,8 +1625,7 @@ function kineticOverlapsWallCandidates(px, py, body, candidates) {
         }
         for (let i = 0; i < candidates.used; i++) {
             const segId = candidates.buf[i];
-            const segShape = ensureWallSegmentPolygonShape(segId);
-            if (satCheckShapesAtPose(px, py, bodyCos, bodySin, shape, slab.x[segId], slab.y[segId], Math.cos(slab.angle[segId]), Math.sin(slab.angle[segId]), segShape)) return true;
+            if (satPolygonVsWallSegmentF32(px, py, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) return true;
         }
     }
     return false;
@@ -1660,11 +1677,6 @@ function applyStaticSurfaceImpulseSlab(physId, normalX, normalY, cx, cy, restitu
     dyn.w[physId] = newW;
     return approachDot;
 }
-export function ensureWallSegmentPolygonShape(segId) {
-    const slab = staticWallSegmentSlab;
-    if (!slab.shapeRefs[segId]) slab.shapeRefs[segId] = new PolygonShape(boxLocalFootprint(slab.width[segId] * 0.5, slab.height[segId] * 0.5));
-    return slab.shapeRefs[segId];
-}
 const MAX_WALL_HITS = 64;
 export function createWallHitBuffer(capacity = MAX_WALL_HITS) {
     return { count: 0, approachDot: new Float32Array(capacity), normalX: new Float32Array(capacity), normalY: new Float32Array(capacity), contactX: new Float32Array(capacity), contactY: new Float32Array(capacity), gridIdx: new Int32Array(capacity), gridSide: new Uint8Array(capacity), flags: new Uint8Array(capacity) };
@@ -1701,6 +1713,9 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution
         const by0 = dyn.y[physId];
         const approachVx = dyn.vx[physId];
         const approachVy = dyn.vy[physId];
+        const bodyAngle = entityFacing(body);
+        const bodyCos = Math.cos(bodyAngle);
+        const bodySin = Math.sin(bodyAngle);
         for (let si = 0; si < segIds.used; si++) {
             const segId = segIds.buf[si];
             const maxDist = radius + slab.size[segId] * 0.75;
@@ -1713,8 +1728,7 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution
                 normalY = ENGINE_F32[P_OUT_PEN_NY];
                 overlap = ENGINE_F32[P_OUT_PEN_OVERLAP];
             } else if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-                const segShape = ensureWallSegmentPolygonShape(segId);
-                if (!satCheckCollision(bx0, by0, entityFacing(body), shape, slab.x[segId], slab.y[segId], slab.angle[segId], segShape)) continue;
+                if (!satPolygonVsWallSegmentF32(bx0, by0, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) continue;
                 normalX = -SAT_RESULT[1];
                 normalY = -SAT_RESULT[2];
                 overlap = SAT_RESULT[0];

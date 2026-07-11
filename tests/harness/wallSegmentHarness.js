@@ -16,7 +16,6 @@ export function mockWallSegment(x, y, size = 16, opts = {}) {
     slab.gridIdx[id] = opts.gridIdx ?? 0;
     slab.gridSide[id] = opts.gridSide ?? 0;
     slab.flags[id] = opts.flags ?? 0;
-    slab.shapeRefs[id] = null;
     return id;
 }
 
