@@ -9,7 +9,7 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
 import { GLASS_MAX_SHARDS_PER_SHATTER, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA } from "../Libraries/Physics/fracture.js";
-import { ENGINE_F32, transformPoint2DInto } from "../Libraries/Math/math.js";
+import { ENGINE_F32, transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
 import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
@@ -23,17 +23,20 @@ const deterministicRandom = () => 0.5;
 function shardWorldBody(originX, originY, facing, geom) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    const world = transformPoint2DInto({ x: 0, y: 0 }, originX, originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+    const worldBuf = new Float32Array(2);
+    transformPoint2DIntoF32(worldBuf, 0, originX, originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
+    const worldX = worldBuf[0];
+    const worldY = worldBuf[1];
     const flat = geom.footprintVertices;
     const count = flat.length;
     const verts = new Float32Array(count);
-    const outPoint = { x: 0, y: 0 };
+    const outPoint = new Float32Array(2);
     for (let i = 0; i < count; i += 2) {
-        transformPoint2DInto(outPoint, world.x, world.y, flat[i], flat[i + 1], cos, sin);
-        verts[i] = outPoint.x;
-        verts[i + 1] = outPoint.y;
+        transformPoint2DIntoF32(outPoint, 0, worldX, worldY, flat[i], flat[i + 1], cos, sin);
+        verts[i] = outPoint[0];
+        verts[i + 1] = outPoint[1];
     }
-    return { x: world.x, y: world.y, facing, verts };
+    return { x: worldX, y: worldY, facing, verts };
 }
 function countSpawnOverlaps(debris, originX = 0, originY = 0, facing = 0) {
     let overlaps = 0;

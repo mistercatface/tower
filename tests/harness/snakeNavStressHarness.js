@@ -58,9 +58,13 @@ function createSnakeEditorState(seed) {
         viewport: {
             x: 128,
             y: 128,
+            zoom: 1.0,
             snapTo(x, y) {
                 this.x = x;
                 this.y = y;
+            },
+            setZoom(z) {
+                this.zoom = z;
             },
             circleInBounds() {
                 return true;

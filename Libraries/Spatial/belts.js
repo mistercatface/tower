@@ -222,7 +222,8 @@ export class FloorBelt {
         for (let idx = 0; idx < size; idx++) {
             const packed = grid.floorPacked[idx];
             if (!packed) continue;
-            items.push({ idx, packed });
+            const item = { idx, packed };
+            items.push(item);
         }
         return items;
     }

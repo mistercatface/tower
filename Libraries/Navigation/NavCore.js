@@ -464,8 +464,20 @@ export function bfsTypedIndices(startIdx, gridSize, visit) {
 // --- NavUtils.js ---
 export const SCRATCH_AGENT_POSE = { x: 0, y: 0, vx: 0, vy: 0, desiredX: 0, desiredY: 0, radius: 8 };
 export const SCRATCH_PATH_STEERING = { desiredX: 0, desiredY: 0, desiredSpeed: 0, offPath: false };
-export function _removeEdgeByTargetId(edges, targetId) {
-    for (let i = edges.length - 1; i >= 0; i--) if (edges[i].targetId === targetId) edges.splice(i, 1);
+export function _removeEdgeByTargetId(node, targetId) {
+    const edges = node.edges;
+    if (!edges || !edges.buffer) return;
+    let count = node.edgeCount;
+    for (let i = count - 1; i >= 0; i--)
+        if (edges[i * 2] === targetId) {
+            // Swap with last
+            count--;
+            if (i !== count) {
+                edges[i * 2] = edges[count * 2];
+                edges[i * 2 + 1] = edges[count * 2 + 1];
+            }
+        }
+    node.edgeCount = count;
 }
 export function _removeCellByIdx(cells, idx) {
     for (let i = cells.length - 1; i >= 0; i--) if (cells[i] === idx) cells.splice(i, 1);
@@ -862,18 +874,67 @@ export function pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWor
         if (hasReachableCell) continue;
         graph.removeRegion(node);
     }
-    for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (!graph.getNode(node.edges[i].targetId)) node.edges.splice(i, 1);
+    for (const node of graph.nodes())
+        if (node.edges && node.edges.buffer) {
+            let count = node.edgeCount;
+            for (let i = count - 1; i >= 0; i--)
+                if (!graph.getNode(node.edges[i * 2])) {
+                    count--;
+                    if (i !== count) {
+                        node.edges[i * 2] = node.edges[count * 2];
+                        node.edges[i * 2 + 1] = node.edges[count * 2 + 1];
+                    }
+                }
+            node.edgeCount = count;
+        }
 }
 export function pruneUnreachableRegionsFromGridCenter(navGraph, blocked, frame, graph, activePortalPairs = null, activePortalCount = null) {
     const seedWorldX = frame.minX + frame.cols * frame.cellSize * 0.5;
     const seedWorldY = frame.minY + frame.rows * frame.cellSize * 0.5;
     pruneUnreachableRegions(navGraph, blocked, frame, graph, seedWorldX, seedWorldY, activePortalPairs, activePortalCount);
 }
+export function ensureNodeEdgesCapacity(node, required) {
+    if (!node.edges || !node.edges.buffer) {
+        let capacity = 16;
+        while (capacity < required * 2) capacity *= 2;
+        const newArray = new Int32Array(capacity);
+        let count = 0;
+        if (node.edges && Array.isArray(node.edges)) {
+            for (let i = 0; i < node.edges.length; i++) {
+                newArray[i * 2] = node.edges[i].targetId;
+                newArray[i * 2 + 1] = node.edges[i].cost;
+            }
+            count = node.edges.length;
+        }
+        node.edges = newArray;
+        node.edgeCount = count;
+    } else {
+        let capacity = node.edges.length;
+        if (capacity < required * 2) {
+            while (capacity < required * 2) capacity *= 2;
+            const newArray = new Int32Array(capacity);
+            newArray.set(node.edges);
+            node.edges = newArray;
+        }
+    }
+}
 export function injectPortalEdges(activePortalPairs, activePortalCount, blocked, graph) {
     if (!activePortalPairs || !activePortalCount) return;
     const pairs = activePortalPairs;
     const count = typeof activePortalCount === "number" ? activePortalCount : activePortalCount[0];
-    for (const node of graph.nodes()) for (let i = node.edges.length - 1; i >= 0; i--) if (node.edges[i].cost === 0) node.edges.splice(i, 1);
+    for (const node of graph.nodes())
+        if (node.edges && node.edges.buffer) {
+            let eCount = node.edgeCount;
+            for (let i = eCount - 1; i >= 0; i--)
+                if (node.edges[i * 2 + 1] === 0) {
+                    eCount--;
+                    if (i !== eCount) {
+                        node.edges[i * 2] = node.edges[eCount * 2];
+                        node.edges[i * 2 + 1] = node.edges[eCount * 2 + 1];
+                    }
+                }
+            node.edgeCount = eCount;
+        }
     for (let i = 0; i < count; i++) {
         const exitIdx = pairs[i * 2];
         const entryIdx = pairs[i * 2 + 1];
@@ -881,7 +942,21 @@ export function injectPortalEdges(activePortalPairs, activePortalCount, blocked,
         const nodeExit = graph.nodeForCell(exitIdx);
         const nodeEntry = graph.nodeForCell(entryIdx);
         if (!nodeExit || !nodeEntry || nodeExit.id === nodeEntry.id) continue;
-        if (!nodeExit.edges.some((e) => e.targetId === nodeEntry.id)) nodeExit.edges.push({ targetId: nodeEntry.id, cost: 0 });
+        let hasEdge = false;
+        if (nodeExit.edges && nodeExit.edges.buffer)
+            for (let e = 0; e < nodeExit.edgeCount; e++) {
+                if (nodeExit.edges[e * 2] === nodeEntry.id) {
+                    hasEdge = true;
+                    break;
+                }
+            }
+        else if (nodeExit.edges && Array.isArray(nodeExit.edges)) hasEdge = nodeExit.edges.some((e) => e.targetId === nodeEntry.id);
+        if (!hasEdge) {
+            ensureNodeEdgesCapacity(nodeExit, (nodeExit.edgeCount || 0) + 1);
+            const idx = nodeExit.edgeCount++;
+            nodeExit.edges[idx * 2] = nodeEntry.id;
+            nodeExit.edges[idx * 2 + 1] = 0;
+        }
     }
 }
 export function collectCellsForRegionCluster(graph, cluster) {
@@ -988,7 +1063,8 @@ export function bridgeRegionGraphByWalkableComponent(navGraph, blocked, frame, g
     const regionAdj = new Map();
     for (const node of graph.nodes()) {
         const neighbors = [];
-        for (let i = 0; i < node.edges.length; i++) neighbors.push(node.edges[i].targetId);
+        if (node.edges && node.edges.buffer) for (let i = 0; i < node.edgeCount; i++) neighbors.push(node.edges[i * 2]);
+        else if (node.edges) for (let i = 0; i < node.edges.length; i++) neighbors.push(node.edges[i].targetId);
         regionAdj.set(node.id, neighbors);
     }
     for (const regionIds of compRegions.values()) {
@@ -1011,7 +1087,8 @@ export function bridgeRegionGraphByWalkableComponent(navGraph, blocked, frame, g
             }
             for (const node of graph.nodes()) {
                 const neighbors = [];
-                for (let i = 0; i < node.edges.length; i++) neighbors.push(node.edges[i].targetId);
+                if (node.edges && node.edges.buffer) for (let i = 0; i < node.edgeCount; i++) neighbors.push(node.edges[i * 2]);
+                else if (node.edges) for (let i = 0; i < node.edges.length; i++) neighbors.push(node.edges[i].targetId);
                 regionAdj.set(node.id, neighbors);
             }
         }
@@ -1312,7 +1389,8 @@ export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, pro
     const pathNodes = [];
     for (let i = idx; i < pathLen; i++) {
         const cellIdx = worker.pathIdx(slot, i);
-        pathNodes.push({ x: grid.gridCenterXByIdx(cellIdx), y: grid.gridCenterYByIdx(cellIdx) });
+        const node = { x: grid.gridCenterXByIdx(cellIdx), y: grid.gridCenterYByIdx(cellIdx) };
+        pathNodes.push(node);
     }
     const first = pathNodes[0];
     if (first && Math.hypot(first.x - x, first.y - y) > 1) {

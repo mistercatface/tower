@@ -172,7 +172,7 @@ export class HpaPathWorker {
         this.navEdgePoolBytes = new Uint8Array(this.sabEdgePool);
     }
     _packNavEdgePoolForWorker(grid) {
-        const refCount = grid.cellEdgePool.length;
+        const refCount = grid.cellEdgeCount;
         this._ensureNavEdgePoolSab(refCount);
         this._edgePoolSabRefs = packEdgePoolToSab(grid, this.navEdgePoolBytes);
     }
@@ -212,7 +212,7 @@ export class HpaPathWorker {
         const size = grid.cols * grid.rows;
         if (size <= 0) return;
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
-        this._ensureNavBuffers(size, vertCount, Math.max(grid.cellEdgePool.length, 4), grid.cols, grid.rows);
+        this._ensureNavBuffers(size, vertCount, Math.max(grid.cellEdgeCount, 4), grid.cols, grid.rows);
     }
     getGridFrame() {
         return this._gridFrame;
@@ -267,7 +267,7 @@ export class HpaPathWorker {
         const vertCount = (grid.cols + 1) * (grid.rows + 1);
         this._ensureGraphCellBuffers(grid.cols, grid.rows);
         this._inFlightNavCacheKey = gridNavCacheKey(grid);
-        const edgePoolRefs = Math.max(grid.cellEdgePool.length, 4);
+        const edgePoolRefs = Math.max(grid.cellEdgeCount, 4);
         this._ensureNavBuffers(size, vertCount, edgePoolRefs, grid.cols, grid.rows);
         const rebindArena = !this._workerNavArenaBound || this._workerBoundNavSize !== size || this._workerBoundEdgePoolSab !== this.sabEdgePool.byteLength;
         packNavTopologyFromGrid(grid, this._navArena, rebindArena ? null : damageBounds);

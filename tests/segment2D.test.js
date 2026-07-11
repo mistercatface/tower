@@ -1,10 +1,21 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { closestPointOnLineSegmentInto, distanceSegmentToSegment, distanceSqToLineSegment, distanceToLineSegment, segmentIntersectionPoint, segmentsIntersect, ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T } from "../Libraries/Math/math.js";
+import { closestPointOnLineSegmentInto, distanceSegmentToSegment, distanceSqToLineSegment, distanceToLineSegment, segmentIntersectionPointIntoF32, segmentsIntersect, ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T } from "../Libraries/Math/math.js";
 import { assertNear, assertPointNear, seg } from "./mathHarness.js";
 function closestFromInto(px, py, vx, vy, wx, wy) {
     closestPointOnLineSegmentInto(ENGINE_F32, M_OUT_CLOSEST_X, px, py, vx, vy, wx, wy);
     return { x: ENGINE_F32[M_OUT_CLOSEST_X], y: ENGINE_F32[M_OUT_CLOSEST_Y], t: ENGINE_F32[M_OUT_CLOSEST_T] };
+}
+const sIntersectionResult = new Float32Array(4);
+function getIntersection(ax, ay, bx, by, cx, cy, dx, dy) {
+    const success = segmentIntersectionPointIntoF32(sIntersectionResult, 0, ax, ay, bx, by, cx, cy, dx, dy);
+    if (!success) return null;
+    return {
+        x: sIntersectionResult[0],
+        y: sIntersectionResult[1],
+        t: sIntersectionResult[2],
+        u: sIntersectionResult[3]
+    };
 }
 describe("Segment2D.segmentsIntersect", () => {
     it("crossing diagonals", () => {
@@ -25,24 +36,24 @@ describe("Segment2D.segmentsIntersect", () => {
 });
 describe("Segment2D.segmentIntersectionPoint", () => {
     it("returns crossing point and parameters", () => {
-        const hit = segmentIntersectionPoint(0, 0, 10, 10, 0, 10, 10, 0);
+        const hit = getIntersection(0, 0, 10, 10, 0, 10, 10, 0);
         assert.ok(hit);
         assertPointNear(hit, 5, 5);
         assertNear(hit.t, 0.5);
         assertNear(hit.u, 0.5);
     });
     it("returns null for parallel segments", () => {
-        assert.equal(segmentIntersectionPoint(0, 0, 10, 0, 0, 1, 10, 1), null);
+        assert.equal(getIntersection(0, 0, 10, 0, 0, 1, 10, 1), null);
     });
     it("returns null for skew miss", () => {
-        assert.equal(segmentIntersectionPoint(0, 0, 1, 0, 5, 5, 6, 5), null);
+        assert.equal(getIntersection(0, 0, 1, 0, 5, 5, 6, 5), null);
     });
     it("returns null for collinear overlap (bool still true)", () => {
         assert.equal(segmentsIntersect(0, 0, 10, 0, 5, 0, 15, 0), true);
-        assert.equal(segmentIntersectionPoint(0, 0, 10, 0, 5, 0, 15, 0), null);
+        assert.equal(getIntersection(0, 0, 10, 0, 5, 0, 15, 0), null);
     });
     it("endpoint touch", () => {
-        const hit = segmentIntersectionPoint(0, 0, 5, 0, 5, 0, 5, 5);
+        const hit = getIntersection(0, 0, 5, 0, 5, 0, 5, 5);
         assert.ok(hit);
         assertPointNear(hit, 5, 0);
         assertNear(hit.t, 1);

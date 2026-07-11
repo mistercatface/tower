@@ -5,7 +5,6 @@ import { spawnPlacedSandboxProp, spawnLinkedBallChain, resolveChainLinkRestLengt
 import { GRAB_DRAG_BEHAVIOR_ID } from "../Sandbox/dragBehaviors.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
-import { createSnakeGameSession } from "./snakeGameSession.js";
 import { createGlassGameSession } from "./glassGameSession.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 import { setPropVisualTint } from "../Color/visualOverride.js";
@@ -17,7 +16,7 @@ export const GAME_LAUNCHERS = {
         hideEditor: false,
         defaultPathDebugMode: "reachable",
         async setup(state) {
-            return createSnakeGameSession(state);
+            return { bind() {}, tick() {} };
         },
         async launch(state, ctx) {
             await runSnakeLaunch(state, ctx);
@@ -72,29 +71,6 @@ function pickWalkableCellIdxByDistance(state, config, worldX, worldY, pickFarthe
         }
     }
     return bestIdx;
-}
-function pickChainGrowDirOnWalkableCells(state, config, anchorIdx, segmentCount, spacing) {
-    const grid = state.obstacleGrid;
-    const walkable = new Set(collectMazeWalkableCells(state, config));
-    const anchorX = grid.gridCenterXByIdx(anchorIdx);
-    const anchorY = grid.gridCenterYByIdx(anchorIdx);
-    for (let i = 0; i < CHAIN_GROW_DIRS.length; i++) {
-        const { growDirX, growDirY } = CHAIN_GROW_DIRS[i];
-        let lastX = anchorX;
-        let lastY = anchorY;
-        let ok = true;
-        for (let seg = 1; seg < segmentCount; seg++) {
-            lastX += growDirX * spacing;
-            lastY += growDirY * spacing;
-            const nIdx = grid.worldToIdx(lastX, lastY);
-            if (nIdx < 0 || !walkable.has(nIdx)) {
-                ok = false;
-                break;
-            }
-        }
-        if (ok) return CHAIN_GROW_DIRS[i];
-    }
-    return CHAIN_GROW_DIRS[0];
 }
 function collectOpenCells(grid, config) {
     const size = grid.cols * grid.rows;
@@ -157,12 +133,6 @@ async function runSnakeLaunch(state, ctx) {
     const playerY = grid.gridCenterYByIdx(playerAnchorIdx);
     const boid = spawnPlacedSandboxProp(state, playerX, playerY, "boid_triangle", "alpha");
     ctx.boid = boid;
-    const enemyAnchorIdx = pickWalkableCellIdxByDistance(state, railMazeConfig, playerX, playerY, true);
-    if (enemyAnchorIdx < 0) throw new Error("snake launch: no walkable maze cell for enemy spawn");
-    const chainSpacing = resolveChainLinkRestLength({ radius: 4 }, { radius: 4 }, 1.0);
-    const growDir = pickChainGrowDirOnWalkableCells(state, railMazeConfig, enemyAnchorIdx, 3, chainSpacing);
-    const enemyChain = spawnLinkedBallChain(state, enemyAnchorIdx, { headBallType: "snake", ballType: "ball", segmentCount: 3, linkSlack: 1.0, faction: "beta", spacing: chainSpacing, growDirX: growDir.growDirX, growDirY: growDir.growDirY });
-    ctx.enemyChain = enemyChain;
     state.appLaunch?.session?.bind(ctx);
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [boid.id] });

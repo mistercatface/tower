@@ -108,7 +108,10 @@ export class FloorPortal {
         const items = [];
         const pairs = grid.activePortalPairs;
         const count = grid.activePortalCount;
-        for (let i = 0; i < count; i++) items.push({ exitIdx: pairs[i * 2], entryIdx: pairs[i * 2 + 1] });
+        for (let i = 0; i < count; i++) {
+            const item = { exitIdx: pairs[i * 2], entryIdx: pairs[i * 2 + 1] };
+            items.push(item);
+        }
         return items;
     }
     static applyFromSnapshot(grid, links) {

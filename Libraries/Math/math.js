@@ -76,18 +76,22 @@ export function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
     if (((cross >= 0 && cross2 <= 0) || (cross <= 0 && cross2 >= 0)) && ((cross3 >= 0 && cross4 <= 0) || (cross3 <= 0 && cross4 >= 0))) return true;
     return false;
 }
-/** Intersection of two segments, or null when they do not cross at a single point. */
-export function segmentIntersectionPoint(ax, ay, bx, by, cx, cy, dx, dy) {
+/** Intersection of two segments, or false when they do not cross at a single point. Writes x,y,t,u into buf[o..o+3]. */
+export function segmentIntersectionPointIntoF32(buf, o, ax, ay, bx, by, cx, cy, dx, dy) {
     const d1x = bx - ax;
     const d1y = by - ay;
     const d2x = dx - cx;
     const d2y = dy - cy;
     const denom = d1x * d2y - d1y * d2x;
-    if (Math.abs(denom) < 1e-10) return null;
+    if (Math.abs(denom) < 1e-10) return false;
     const t = ((cx - ax) * d2y - (cy - ay) * d2x) / denom;
     const u = ((cx - ax) * d1y - (cy - ay) * d1x) / denom;
-    if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-    return { x: ax + t * d1x, y: ay + t * d1y, t, u };
+    if (t < 0 || t > 1 || u < 0 || u > 1) return false;
+    buf[o] = ax + t * d1x;
+    buf[o + 1] = ay + t * d1y;
+    buf[o + 2] = t;
+    buf[o + 3] = u;
+    return true;
 }
 /** Minimum distance between segments (ax, ay)–(bx, by) and (cx, cy)–(dx, dy). */
 export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
@@ -183,15 +187,16 @@ export function rotateXYIntoF32(buf, o, lx, ly, cos, sin) {
     buf[o] = lx * cos - ly * sin;
     buf[o + 1] = lx * sin + ly * cos;
 }
-export function transformPoint2DInto(out, centerX, centerY, lx, ly, cos, sin) {
-    out.x = centerX + lx * cos - ly * sin;
-    out.y = centerY + lx * sin + ly * cos;
-    return out;
+/** Writes transformed x,y into buf[o..o+1]. */
+export function transformPoint2DIntoF32(buf, o, centerX, centerY, lx, ly, cos, sin) {
+    buf[o] = centerX + lx * cos - ly * sin;
+    buf[o + 1] = centerY + lx * sin + ly * cos;
 }
-export function rotatePoint(centerX, centerY, lx, ly, angle) {
+/** Writes rotated x,y into buf[o..o+1]. */
+export function rotatePointIntoF32(buf, o, centerX, centerY, lx, ly, angle) {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    return transformPoint2DInto({ x: 0, y: 0 }, centerX, centerY, lx, ly, cos, sin);
+    transformPoint2DIntoF32(buf, o, centerX, centerY, lx, ly, cos, sin);
 }
 export function rectCornersInto(buf, o, centerX, centerY, halfSize, angle = 0) {
     const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
@@ -235,36 +240,36 @@ export function regularStarFootprint(points, outerRadius, innerRadius, startAngl
     }
     return verts;
 }
-export function crossPinwheelOutlineInto(out, length, thickness) {
+export function crossPinwheelOutlineInto(buf, length, thickness) {
     const halfL = length / 2;
     const halfT = thickness / 2;
-    out[0] = -halfT;
-    out[1] = -halfL;
-    out[2] = halfT;
-    out[3] = -halfL;
-    out[4] = halfT;
-    out[5] = -halfT;
-    out[6] = halfL;
-    out[7] = -halfT;
-    out[8] = halfL;
-    out[9] = halfT;
-    out[10] = halfT;
-    out[11] = halfT;
-    out[12] = halfT;
-    out[13] = halfL;
-    out[14] = -halfT;
-    out[15] = halfL;
-    out[16] = -halfT;
-    out[17] = halfT;
-    out[18] = -halfL;
-    out[19] = halfT;
-    out[20] = -halfL;
-    out[21] = -halfT;
-    out[22] = -halfT;
-    out[23] = -halfT;
+    buf[0] = -halfT;
+    buf[1] = -halfL;
+    buf[2] = halfT;
+    buf[3] = -halfL;
+    buf[4] = halfT;
+    buf[5] = -halfT;
+    buf[6] = halfL;
+    buf[7] = -halfT;
+    buf[8] = halfL;
+    buf[9] = halfT;
+    buf[10] = halfT;
+    buf[11] = halfT;
+    buf[12] = halfT;
+    buf[13] = halfL;
+    buf[14] = -halfT;
+    buf[15] = halfL;
+    buf[16] = -halfT;
+    buf[17] = halfT;
+    buf[18] = -halfL;
+    buf[19] = halfT;
+    buf[20] = -halfL;
+    buf[21] = -halfT;
+    buf[22] = -halfT;
+    buf[23] = -halfT;
     return 24;
 }
-export function regularGearOutlineInto(out, teeth, outerR, rootR, boreR = 0) {
+export function regularGearOutlineInto(buf, teeth, outerR, rootR, boreR = 0) {
     if (teeth < 3) throw new Error(`regularGearOutlineInto: teeth must be >= 3, got ${teeth}`);
     const vertCount = teeth * 4;
     if (vertCount > MAX_OUTLINE_VERTS) throw new Error(`regularGearOutlineInto: ${vertCount} verts exceeds MAX_OUTLINE_VERTS (${MAX_OUTLINE_VERTS})`);
@@ -277,14 +282,14 @@ export function regularGearOutlineInto(out, teeth, outerR, rootR, boreR = 0) {
         const a1 = mid - toothHalf * 0.35;
         const a2 = mid + toothHalf * 0.35;
         const a3 = mid + toothHalf;
-        out[write++] = Math.cos(a0) * rootR;
-        out[write++] = Math.sin(a0) * rootR;
-        out[write++] = Math.cos(a1) * outerR;
-        out[write++] = Math.sin(a1) * outerR;
-        out[write++] = Math.cos(a2) * outerR;
-        out[write++] = Math.sin(a2) * outerR;
-        out[write++] = Math.cos(a3) * rootR;
-        out[write++] = Math.sin(a3) * rootR;
+        buf[write++] = Math.cos(a0) * rootR;
+        buf[write++] = Math.sin(a0) * rootR;
+        buf[write++] = Math.cos(a1) * outerR;
+        buf[write++] = Math.sin(a1) * outerR;
+        buf[write++] = Math.cos(a2) * outerR;
+        buf[write++] = Math.sin(a2) * outerR;
+        buf[write++] = Math.cos(a3) * rootR;
+        buf[write++] = Math.sin(a3) * rootR;
     }
     return write;
 }

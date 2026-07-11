@@ -120,26 +120,28 @@ function collisionPartMassProperties(shape) {
     ENGINE_F32[P_OUT_MASS_CY] = ENGINE_F32[M_OUT_CY];
     ENGINE_F32[P_OUT_MASS_INERTIA] = polygonSecondMomentAboutCentroid2D(verts) / area;
 }
+const sCompoundScratch = new Float32Array(256);
 function compoundInertiaFactor(parts) {
     if (parts.length === 1) {
         collisionPartMassProperties(parts[0]);
         return ENGINE_F32[P_OUT_MASS_INERTIA];
     }
+    const count = parts.length;
+    if (count * 4 > sCompoundScratch.length) throw new Error(`compoundInertiaFactor: parts count ${count} exceeds scratch size`);
     let totalArea = 0;
     let cx = 0;
     let cy = 0;
-    const partAreas = [];
-    const partCentroids = [];
-    const partInertiaPerArea = [];
-    for (let i = 0; i < parts.length; i++) {
+    for (let i = 0; i < count; i++) {
         collisionPartMassProperties(parts[i]);
         const area = ENGINE_F32[P_OUT_MASS_AREA];
         const px = ENGINE_F32[P_OUT_MASS_CX];
         const py = ENGINE_F32[P_OUT_MASS_CY];
         const inertiaPerArea = ENGINE_F32[P_OUT_MASS_INERTIA];
-        partAreas.push(area);
-        partCentroids.push({ px, py });
-        partInertiaPerArea.push(inertiaPerArea);
+        const offset = i * 4;
+        sCompoundScratch[offset] = area;
+        sCompoundScratch[offset + 1] = px;
+        sCompoundScratch[offset + 2] = py;
+        sCompoundScratch[offset + 3] = inertiaPerArea;
         totalArea += area;
         cx += px * area;
         cy += py * area;
@@ -147,11 +149,16 @@ function compoundInertiaFactor(parts) {
     cx /= totalArea;
     cy /= totalArea;
     let inertia = 0;
-    for (let i = 0; i < parts.length; i++) {
-        const Icm = partInertiaPerArea[i] * partAreas[i];
-        const dx = partCentroids[i].px - cx;
-        const dy = partCentroids[i].py - cy;
-        inertia += Icm + partAreas[i] * (dx * dx + dy * dy);
+    for (let i = 0; i < count; i++) {
+        const offset = i * 4;
+        const area = sCompoundScratch[offset];
+        const px = sCompoundScratch[offset + 1];
+        const py = sCompoundScratch[offset + 2];
+        const inertiaPerArea = sCompoundScratch[offset + 3];
+        const Icm = inertiaPerArea * area;
+        const dx = px - cx;
+        const dy = py - cy;
+        inertia += Icm + area * (dx * dx + dy * dy);
     }
     return inertia / totalArea;
 }
@@ -1692,34 +1699,28 @@ const orderUniquePhysIds = [];
 const orderUsedItems = new Uint8Array(MAX_KINETIC_CONSTRAINTS);
 const orderOrdered = [];
 const bucketRoots = new Int32Array(MAX_ISLAND_GROUPS);
-const gatherBuckets = new Array(MAX_ISLAND_GROUPS);
-const awakeGroups = [];
-const asleepGroups = [];
-const bucketPool = [];
-let bucketPoolUseCount = 0;
-function getPoolArray() {
-    if (bucketPoolUseCount >= bucketPool.length) bucketPool.push([]);
-    const arr = bucketPool[bucketPoolUseCount++];
-    arr.length = 0;
-    return arr;
-}
-const itemPool = [];
-let itemPoolUseCount = 0;
-function getPoolItem() {
-    if (itemPoolUseCount >= itemPool.length) itemPool.push({ entry: null, physIdA: -1, physIdB: -1 });
-    return itemPool[itemPoolUseCount++];
-}
+const sIslandEntries = new Array(MAX_KINETIC_CONSTRAINTS);
+const sIslandPhysA = new Int32Array(MAX_KINETIC_CONSTRAINTS);
+const sIslandPhysB = new Int32Array(MAX_KINETIC_CONSTRAINTS);
+const sBucketCounts = new Int32Array(MAX_ISLAND_GROUPS);
+const sBucketStartIdx = new Int32Array(MAX_ISLAND_GROUPS);
+const sBucketFillIdx = new Int32Array(MAX_ISLAND_GROUPS);
+const sIslandAwake = new Int32Array(MAX_ISLAND_GROUPS);
+const orderOrderedIdxs = new Int32Array(MAX_KINETIC_CONSTRAINTS);
 function constraintBodyAt(physId) {
     const body = entityRefs[physId];
     return body?._physId === physId ? body : null;
 }
-function orderIslandConstraintItems(items) {
-    if (items.length <= 1) return items;
+function orderIslandConstraintItems(startIdx, count) {
+    if (count <= 1) {
+        for (let i = 0; i < count; i++) orderOrderedIdxs[i] = startIdx + i;
+        return;
+    }
     orderUniquePhysIds.length = 0;
-    for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const physA = item.physIdA;
-        const physB = item.physIdB;
+    for (let i = 0; i < count; i++) {
+        const idx = startIdx + i;
+        const physA = sIslandPhysA[idx];
+        const physB = sIslandPhysB[idx];
         if (physA !== -1 && orderSeenPhysIds[physA] === 0) {
             orderSeenPhysIds[physA] = 1;
             orderUniquePhysIds.push(physA);
@@ -1760,9 +1761,9 @@ function orderIslandConstraintItems(items) {
         }
     }
     orderOrdered.length = 0;
-    orderUsedItems.fill(0, 0, items.length);
+    orderUsedItems.fill(0, 0, count);
     let currentPhysId = startPhysId;
-    while (orderOrdered.length < items.length) {
+    while (orderOrdered.length < count) {
         const body = constraintBodyAt(currentPhysId);
         const eids = body._linkNeighborEids;
         const nCount = body._linkNeighborEidCount ?? 0;
@@ -1771,18 +1772,18 @@ function orderIslandConstraintItems(items) {
             const neighborPhys = eids[i];
             if (neighborPhys === -1 || orderSeenPhysIds[neighborPhys] === 0) continue;
             let itemIdx = -1;
-            for (let k = 0; k < items.length; k++) {
+            for (let k = 0; k < count; k++) {
                 if (orderUsedItems[k] === 1) continue;
-                const item = items[k];
-                const physA = item.physIdA;
-                const physB = item.physIdB;
+                const idx = startIdx + k;
+                const physA = sIslandPhysA[idx];
+                const physB = sIslandPhysB[idx];
                 if ((physA === currentPhysId && physB === neighborPhys) || (physA === neighborPhys && physB === currentPhysId)) {
                     itemIdx = k;
                     break;
                 }
             }
             if (itemIdx === -1) continue;
-            orderOrdered.push(items[itemIdx]);
+            orderOrdered.push(startIdx + itemIdx);
             orderUsedItems[itemIdx] = 1;
             currentPhysId = neighborPhys;
             advanced = true;
@@ -1790,9 +1791,9 @@ function orderIslandConstraintItems(items) {
         }
         if (!advanced) break;
     }
-    for (let i = 0; i < items.length; i++) if (orderUsedItems[i] === 0) orderOrdered.push(items[i]);
+    for (let i = 0; i < count; i++) if (orderUsedItems[i] === 0) orderOrdered.push(startIdx + i);
     for (let i = 0; i < orderUniquePhysIds.length; i++) orderSeenPhysIds[orderUniquePhysIds[i]] = 0;
-    return orderOrdered;
+    for (let i = 0; i < count; i++) orderOrderedIdxs[i] = orderOrdered[i];
 }
 function circleRadiusFromBody(body) {
     const parts = getEntityCollisionParts(body);
@@ -1802,17 +1803,18 @@ function circleRadiusFromBody(body) {
 function linkCapsuleRadius(bodyA, bodyB) {
     return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB)) + 0.05;
 }
-function appendConstraintEntry(slab, item) {
+function appendConstraintEntry(slab, islandIdx) {
     const idx = slab.count++;
-    const physIdA = item.physIdA;
-    const physIdB = item.physIdB;
+    const physIdA = sIslandPhysA[islandIdx];
+    const physIdB = sIslandPhysB[islandIdx];
+    const entry = sIslandEntries[islandIdx];
     const bodyA = constraintBodyAt(physIdA);
     const bodyB = constraintBodyAt(physIdB);
-    slab.type[idx] = item.entry.type ?? "distance";
+    slab.type[idx] = entry.type ?? "distance";
     slab.physIdA[idx] = physIdA;
     slab.physIdB[idx] = physIdB;
     if (slab.type[idx] === "angle") {
-        slab.static.referenceAngle[idx] = item.entry.referenceAngle ?? 0;
+        slab.static.referenceAngle[idx] = entry.referenceAngle ?? 0;
         slab.static.anchorAx[idx] = 0;
         slab.static.anchorAy[idx] = 0;
         slab.static.anchorBx[idx] = 0;
@@ -1821,11 +1823,11 @@ function appendConstraintEntry(slab, item) {
         slab.static.capsuleRadius[idx] = 0;
     } else {
         slab.static.referenceAngle[idx] = 0;
-        slab.static.anchorAx[idx] = item.entry.anchorA?.x ?? 0;
-        slab.static.anchorAy[idx] = item.entry.anchorA?.y ?? 0;
-        slab.static.anchorBx[idx] = item.entry.anchorB?.x ?? 0;
-        slab.static.anchorBy[idx] = item.entry.anchorB?.y ?? 0;
-        slab.static.restLength[idx] = item.entry.restLength ?? 0;
+        slab.static.anchorAx[idx] = entry.anchorA?.x ?? 0;
+        slab.static.anchorAy[idx] = entry.anchorA?.y ?? 0;
+        slab.static.anchorBx[idx] = entry.anchorB?.x ?? 0;
+        slab.static.anchorBy[idx] = entry.anchorB?.y ?? 0;
+        slab.static.restLength[idx] = entry.restLength ?? 0;
         slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
     }
     normalizeKineticBody(bodyA);
@@ -1837,26 +1839,27 @@ function appendConstraintEntry(slab, item) {
     slab.static.invMassB[idx] = stat.invMass[physIdB];
     slab.static.invIA[idx] = stat.invI[physIdA];
     slab.static.invIB[idx] = stat.invI[physIdB];
-    slab.dynamic.accumulatedImpulse[idx] = item.entry.accumulatedImpulse || 0;
-    slab.entry[idx] = item.entry;
+    slab.dynamic.accumulatedImpulse[idx] = entry.accumulatedImpulse || 0;
+    slab.entry[idx] = entry;
 }
-function islandItemsAsleep(items) {
-    for (let i = 0; i < items.length; i++) {
-        const bodyA = constraintBodyAt(items[i].physIdA);
-        const bodyB = constraintBodyAt(items[i].physIdB);
+function islandItemsAsleep(startIdx, count) {
+    for (let i = 0; i < count; i++) {
+        const idx = startIdx + i;
+        const bodyA = constraintBodyAt(sIslandPhysA[idx]);
+        const bodyB = constraintBodyAt(sIslandPhysB[idx]);
         if (!bodyA.isSleeping || !bodyB.isSleeping) return false;
     }
-    return items.length > 0;
+    return count > 0;
 }
-function appendIslandConstraintGroup(slab, ordered) {
+function appendIslandConstraintGroup(slab, count) {
     const groupStart = slab.count;
-    for (let i = 0; i < ordered.length; i++) {
+    for (let i = 0; i < count; i++) {
         if (slab.count >= MAX_KINETIC_CONSTRAINTS) break;
-        appendConstraintEntry(slab, ordered[i]);
+        appendConstraintEntry(slab, orderOrderedIdxs[i]);
     }
-    const count = slab.count - groupStart;
-    if (count === 0) return;
-    slab.groupCounts[slab.groupCount] = count;
+    const addedCount = slab.count - groupStart;
+    if (addedCount === 0) return;
+    slab.groupCounts[slab.groupCount] = addedCount;
     slab.groupCount++;
 }
 function syncConstraintSlabBodies(slab) {
@@ -1897,9 +1900,9 @@ export function gatherKineticConstraintSlab(tick) {
     const session = tick.world.kinetic;
     const plan = ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
     const list = session.kineticConstraints;
-    bucketPoolUseCount = 0;
-    itemPoolUseCount = 0;
+    sBucketCounts.fill(0);
     let bucketCount = 0;
+    // Pass 1: find roots and bucket counts
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
         if (entry.type !== "distance" && entry.type !== "angle") continue;
@@ -1925,39 +1928,66 @@ export function gatherKineticConstraintSlab(tick) {
                 bucketIdx = bucketCount;
                 bucketRoots[bucketCount] = root;
                 bucketCount++;
-                gatherBuckets[bucketIdx] = getPoolArray();
+            }
+        if (bucketIdx !== -1) sBucketCounts[bucketIdx]++;
+    }
+    // Prefix sum
+    let totalItems = 0;
+    for (let i = 0; i < bucketCount; i++) {
+        sBucketStartIdx[i] = totalItems;
+        sBucketFillIdx[i] = totalItems;
+        totalItems += sBucketCounts[i];
+    }
+    // Pass 2: fill buckets
+    for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (entry.type !== "distance" && entry.type !== "angle") continue;
+        const physIdA = entry.physIdA;
+        const physIdB = entry.physIdB;
+        if (physIdA < 0 || physIdB < 0) continue;
+        const bodyA = constraintBodyAt(physIdA);
+        const bodyB = constraintBodyAt(physIdB);
+        if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
+        if (bodyA.id !== entry.bodyAId || bodyB.id !== entry.bodyBId) continue;
+        if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
+        let root = bodyA.id;
+        const r = kineticDynamicSlab.islandRoot[physIdA];
+        if (r !== -1) root = r;
+        let bucketIdx = -1;
+        for (let j = 0; j < bucketCount; j++)
+            if (bucketRoots[j] === root) {
+                bucketIdx = j;
+                break;
             }
         if (bucketIdx !== -1) {
-            const item = getPoolItem();
-            item.entry = entry;
-            item.physIdA = physIdA;
-            item.physIdB = physIdB;
-            gatherBuckets[bucketIdx].push(item);
+            const idx = sBucketFillIdx[bucketIdx]++;
+            sIslandEntries[idx] = entry;
+            sIslandPhysA[idx] = physIdA;
+            sIslandPhysB[idx] = physIdB;
         }
     }
-    awakeGroups.length = 0;
-    asleepGroups.length = 0;
     for (let i = 0; i < bucketCount; i++) {
-        const items = gatherBuckets[i];
-        const ordered = orderIslandConstraintItems(items);
-        if (islandItemsAsleep(ordered)) {
-            const groupCopy = getPoolArray();
-            for (let j = 0; j < ordered.length; j++) groupCopy.push(ordered[j]);
-            asleepGroups.push(groupCopy);
-        } else {
-            const groupCopy = getPoolArray();
-            for (let j = 0; j < ordered.length; j++) groupCopy.push(ordered[j]);
-            awakeGroups.push(groupCopy);
-        }
+        const start = sBucketStartIdx[i];
+        const count = sBucketCounts[i];
+        orderIslandConstraintItems(start, count);
+        sIslandAwake[i] = islandItemsAsleep(start, count) ? 0 : 1;
     }
-    for (let g = 0; g < awakeGroups.length; g++) {
+    for (let g = 0; g < bucketCount; g++) {
+        if (sIslandAwake[g] === 0) continue;
         if (slab.count >= MAX_KINETIC_CONSTRAINTS || slab.groupCount >= MAX_ISLAND_GROUPS) break;
-        appendIslandConstraintGroup(slab, awakeGroups[g]);
+        const start = sBucketStartIdx[g];
+        const count = sBucketCounts[g];
+        orderIslandConstraintItems(start, count);
+        appendIslandConstraintGroup(slab, count);
     }
     slab.activeCount = slab.count;
-    for (let g = 0; g < asleepGroups.length; g++) {
+    for (let g = 0; g < bucketCount; g++) {
+        if (sIslandAwake[g] === 1) continue;
         if (slab.count >= MAX_KINETIC_CONSTRAINTS || slab.groupCount >= MAX_ISLAND_GROUPS) break;
-        appendIslandConstraintGroup(slab, asleepGroups[g]);
+        const start = sBucketStartIdx[g];
+        const count = sBucketCounts[g];
+        orderIslandConstraintItems(start, count);
+        appendIslandConstraintGroup(slab, count);
     }
     syncConstraintSlabBodies(slab);
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rectCorners, rotatePoint, rotateXYIntoF32, transformPoint2DInto, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D, ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
+import { pointInPolygon, rectCorners, rotatePointIntoF32, rotateXYIntoF32, transformPoint2DIntoF32, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D, ENGINE_F32, M_VEC_A } from "../Libraries/Math/math.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {
@@ -10,15 +10,18 @@ describe("Poly2D.rotateXY", () => {
 });
 describe("Poly2D.transformPoint2DInto", () => {
     it("matches rotatePoint", () => {
-        const fromHelper = transformPoint2DInto({ x: 0, y: 0 }, 10, 20, 3, 4, 1, 0);
-        const fromRotatePoint = rotatePoint(10, 20, 3, 4, 0);
-        assertPointNear(fromHelper, fromRotatePoint.x, fromRotatePoint.y);
+        const bufA = new Float32Array(2);
+        const bufB = new Float32Array(2);
+        transformPoint2DIntoF32(bufA, 0, 10, 20, 3, 4, 1, 0);
+        rotatePointIntoF32(bufB, 0, 10, 20, 3, 4, 0);
+        assertPointNear({ x: bufA[0], y: bufA[1] }, bufB[0], bufB[1]);
     });
     it("applies rotation then translation", () => {
         const cos = Math.cos(Math.PI / 2);
         const sin = Math.sin(Math.PI / 2);
-        const hit = transformPoint2DInto({ x: 0, y: 0 }, 5, 5, 2, 0, cos, sin);
-        assertPointNear(hit, 5, 7);
+        const buf = new Float32Array(2);
+        transformPoint2DIntoF32(buf, 0, 5, 5, 2, 0, cos, sin);
+        assertPointNear({ x: buf[0], y: buf[1] }, 5, 7);
     });
 });
 describe("Poly2D.rectCorners", () => {

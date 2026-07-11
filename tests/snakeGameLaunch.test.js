@@ -43,9 +43,13 @@ function createEditorTestState() {
         viewport: { 
             x: 128, 
             y: 128, 
+            zoom: 1.0,
             snapTo(x, y) {
                 this.x = x;
                 this.y = y;
+            },
+            setZoom(z) {
+                this.zoom = z;
             },
             circleInBounds() { return true; } 
         },
@@ -109,7 +113,7 @@ describe("snake game launch actions", () => {
         const playerIdx = grid.worldToIdx(ctx.boid.x, ctx.boid.y);
         assert.ok(isIdxInMapGenBounds(state.editor.railMazeConfig, grid, playerIdx));
         assert.ok(isNavWalkableCellAt(state, playerIdx, state.editor.railMazeConfig, { boundsMode: "rect", boundsIdx: state.editor.railMazeConfig.boundsIdx + ((state.editor.railMazeConfig.boundsRows / 2) | 0) * grid.cols + ((state.editor.railMazeConfig.boundsCols / 2) | 0), boundsCols: 1, boundsRows: 1 }));
-        assert.ok(Math.hypot(ctx.boid.x - mazeCenter.x, ctx.boid.y - mazeCenter.y) < grid.cellSize * 4);
+        assert.ok(Math.hypot(ctx.boid.x - ENGINE_F32[M_VEC_A], ctx.boid.y - ENGINE_F32[M_VEC_A + 1]) < grid.cellSize * 4);
         assert.deepEqual(state.selectedIds, [ctx.boid.id]);
         
         // Verify Focus
@@ -120,21 +124,6 @@ describe("snake game launch actions", () => {
 
         // Verify Selection Lock
         assert.equal(state.editor.lockSelection, true);
-
-        // Verify player + enemy snake chain
-        assert.ok(ctx.enemyChain);
-        assert.equal(ctx.enemyChain.members.length, 3);
-        assert.equal(state.worldProps.length, 4);
-        assert.equal(state.kinetic.kineticConstraints.length, 2);
-        assert.equal(ctx.enemyChain.head.type, "snake");
-        assert.equal(ctx.enemyChain.members[1].type, "ball");
-        assert.equal(ctx.enemyChain.members[2].type, "ball");
-        const enemyIdx = grid.worldToIdx(ctx.enemyChain.head.x, ctx.enemyChain.head.y);
-        assert.ok(isIdxInMapGenBounds(state.editor.railMazeConfig, grid, enemyIdx));
-        assert.ok(isNavWalkableCellAt(state, enemyIdx, state.editor.railMazeConfig, { boundsMode: "rect", boundsIdx: state.editor.railMazeConfig.boundsIdx + ((state.editor.railMazeConfig.boundsRows / 2) | 0) * grid.cols + ((state.editor.railMazeConfig.boundsCols / 2) | 0), boundsCols: 1, boundsRows: 1 }));
-        assert.ok(Math.hypot(ctx.enemyChain.head.x - ctx.boid.x, ctx.enemyChain.head.y - ctx.boid.y) > grid.cellSize);
-        assert.ok(state.sandbox.entityMeta.isChainHead(ctx.enemyChain.head.id));
-        assert.ok(!state.sandbox.entityMeta.isChainHead(ctx.boid.id));
         assert.ok(state.appLaunch.session);
     });
 

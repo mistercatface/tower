@@ -654,19 +654,25 @@ export function diagonalStepOpen(cardinalOpen, vertexPassability, grid, fromIdx,
     return true;
 }
 export function createRailWallEdge(heightDelta, thicknessLevel) {
-    return { heightDelta, thicknessLevel };
+    return (heightDelta << 16) | thicknessLevel;
 }
 export function isRailWallEdge(edge) {
     return edge != null;
 }
+export function railWallEdgeHeightDelta(edge) {
+    return edge >> 16;
+}
+export function railWallEdgeThicknessLevel(edge) {
+    return edge & 0xff;
+}
 export function railWallCapLevel(edge, neighborFillLevel) {
-    return neighborFillLevel + edge.heightDelta;
+    return neighborFillLevel + railWallEdgeHeightDelta(edge);
 }
 export function railWallHeightPx(edge, grid, neighborFillLevel) {
     return railWallCapLevel(edge, neighborFillLevel) * grid.cellSize;
 }
 export function railWallThicknessPx(edge) {
-    return Math.max(1, edge.thicknessLevel);
+    return Math.max(1, railWallEdgeThicknessLevel(edge));
 }
 export const CELL_EDGE_SLOT_BYTES = 16;
 export function cellEdgeSlotOffset(idx, side) {
@@ -902,30 +908,30 @@ export function navEdgePoolSabByteLength(refCount) {
 export function packEdgePoolToSab(grid, bytes) {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const pool = grid.cellEdgePool;
-    for (let ref = 0; ref < pool.length; ref++) writeEdgeToSab(view, ref, pool[ref]);
-    return pool.length;
+    for (let ref = 0; ref < grid.cellEdgeCount; ref++) writeEdgeToSab(view, ref, pool[ref]);
+    return grid.cellEdgeCount;
 }
 /** @param {DataView} view @param {number} ref @param {object | undefined} edge */
 function writeEdgeToSab(view, ref, edge) {
     const base = ref * NAV_EDGE_POOL_SAB_STRIDE;
-    view.setInt16(base + 0, edge?.heightDelta ?? 0, true);
-    view.setUint8(base + 2, edge?.thicknessLevel ?? 1);
+    const heightDelta = edge != null ? railWallEdgeHeightDelta(edge) : 0;
+    const thicknessLevel = edge != null ? railWallEdgeThicknessLevel(edge) : 1;
+    view.setInt16(base + 0, heightDelta, true);
+    view.setUint8(base + 2, thicknessLevel);
 }
 /** Worker-owned pool objects — updated in place from SAB each nav sync. */
-const workerEdgePool = [];
+const workerEdgePool = new Int32Array(0);
 /** @param {Uint8Array} bytes @param {number} refCount */
 export function bindNavEdgePoolFromSab(bytes, refCount) {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    while (workerEdgePool.length < refCount) workerEdgePool.push({ heightDelta: 0, thicknessLevel: 1 });
-    for (let ref = 0; ref < refCount; ref++) readEdgeFromSab(view, ref, workerEdgePool[ref]);
-    workerEdgePool.length = refCount;
-    return workerEdgePool;
-}
-/** @param {DataView} view @param {number} ref @param {Record<string, unknown>} out */
-function readEdgeFromSab(view, ref, out) {
-    const base = ref * NAV_EDGE_POOL_SAB_STRIDE;
-    out.heightDelta = view.getInt16(base + 0, true);
-    out.thicknessLevel = view.getUint8(base + 2) || 1;
+    const pool = new Int32Array(refCount);
+    for (let ref = 0; ref < refCount; ref++) {
+        const base = ref * NAV_EDGE_POOL_SAB_STRIDE;
+        const heightDelta = view.getInt16(base + 0, true);
+        const thicknessLevel = view.getUint8(base + 2) || 1;
+        pool[ref] = (heightDelta << 16) | thicknessLevel;
+    }
+    return pool;
 }
 // Surface material ownership resolves from the narrowest owner outward:
 // cell/edge override, then chunk profile, then the active/default profile.
@@ -1073,7 +1079,8 @@ export class WorldObstacleGrid {
         this.rows = 0;
         this.grid = new Uint8Array(0);
         this.cellEdgeSlots = new Int32Array(0);
-        this.cellEdgePool = [];
+        this.cellEdgePool = new Int32Array(1024);
+        this.cellEdgeCount = 0;
         this.cellEdgeFree = [];
         this.floorPacked = new Uint8Array(0);
         this.floorBeltCount = 0;
@@ -1110,13 +1117,16 @@ export class WorldObstacleGrid {
     _allocCellEdge(edge) {
         if (this.cellEdgeFree.length) {
             const ref = this.cellEdgeFree.pop();
-            const pooled = this.cellEdgePool[ref];
-            pooled.heightDelta = edge.heightDelta;
-            pooled.thicknessLevel = edge.thicknessLevel;
+            this.cellEdgePool[ref] = edge;
             return ref;
         }
-        const ref = this.cellEdgePool.length;
-        this.cellEdgePool.push(edge);
+        const ref = this.cellEdgeCount++;
+        if (ref >= this.cellEdgePool.length) {
+            const next = new Int32Array(this.cellEdgePool.length * 2);
+            next.set(this.cellEdgePool);
+            this.cellEdgePool = next;
+        }
+        this.cellEdgePool[ref] = edge;
         return ref;
     }
     _freeCellEdge(ref) {
@@ -1299,7 +1309,7 @@ export class WorldObstacleGrid {
         this.grid = new Uint8Array(size);
         this.cellEdgeSlots = new Int32Array(size * 4);
         this.cellEdgeSlots.fill(EMPTY);
-        this.cellEdgePool.length = 0;
+        this.cellEdgeCount = 0;
         this.cellEdgeFree.length = 0;
         this.floorPacked = new Uint8Array(size);
         this.floorBeltCount = 0;
@@ -2092,28 +2102,28 @@ export function resetWallCandidateBucketSlab(slab) {
 export function invalidateWallCandidateBucketFrame(slab) {
     slab.frameStamp.fill(EMPTY_STAMP);
 }
-export function lookupWallCandidateBucketInto(out, slab, keyLo, keyHi, frameId, revision) {
+export function lookupWallCandidateBucketInto(result, slab, keyLo, keyHi, frameId, revision) {
     let slot = bucketSlotForKey(keyLo, keyHi);
     for (let probe = 0; probe < MAX_WALL_BUCKETS; probe++) {
         const idx = (slot + probe) & BUCKET_MASK;
         const stamp = slab.frameStamp[idx];
         if (stamp === EMPTY_STAMP) {
-            out.hit = false;
-            out.slot = idx;
-            out.segments = acquireBucketSegments(slab, idx);
-            return out;
+            result.hit = false;
+            result.slot = idx;
+            result.segments = acquireBucketSegments(slab, idx);
+            return result;
         }
         if (slab.keyLo[idx] === keyLo && slab.keyHi[idx] === keyHi) {
             if (stamp === frameId && slab.revisionStamp[idx] === revision) {
-                out.hit = true;
-                out.slot = idx;
-                out.segments = slab.segments[idx];
-                return out;
+                result.hit = true;
+                result.slot = idx;
+                result.segments = slab.segments[idx];
+                return result;
             }
-            out.hit = false;
-            out.slot = idx;
-            out.segments = acquireBucketSegments(slab, idx);
-            return out;
+            result.hit = false;
+            result.slot = idx;
+            result.segments = acquireBucketSegments(slab, idx);
+            return result;
         }
     }
     throw new Error(`wall candidate bucket slab full (frame ${frameId}, revision ${revision})`);
@@ -2454,7 +2464,8 @@ export function listPlacedVoxelWalls(grid) {
         const heightLevel = grid.grid[idx];
         const index = (counts.get(heightLevel) ?? 0) + 1;
         counts.set(heightLevel, index);
-        placed.push({ idx, heightLevel, label: `Voxel #${index} · height ${heightLevel}` });
+        const voxelObj = { idx, heightLevel, label: `Voxel #${index} · height ${heightLevel}` };
+        placed.push(voxelObj);
     }
     return placed;
 }
@@ -2469,7 +2480,8 @@ export function listPlacedRailWalls(grid) {
             const key = `${side}:${capLevel}:${edge.thicknessLevel}`;
             const index = (counts.get(key) ?? 0) + 1;
             counts.set(key, index);
-            placed.push({ idx, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` });
+            const railObj = { idx, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` };
+            placed.push(railObj);
         },
         { filter: isRailWallEdge },
     );
@@ -2698,7 +2710,8 @@ function carveCavernSouthVent(cells, cols, rows, stripRows) {
                         touchesSouth = true;
                         break;
                     }
-                components.push({ touchesSouth, sample: members[0] });
+                const compObj = { touchesSouth, sample: members[0] };
+                components.push(compObj);
             }
         let carved = false;
         for (let ci = 0; ci < components.length; ci++) {
