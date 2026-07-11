@@ -219,10 +219,10 @@ export function createKineticTestRegistry(liveProps) {
         endMembershipBatch() {},
     };
 }
-export function createKineticTestWorld(initialProps, { constraints = [], constraintsDirty = false } = {}) {
+export function createKineticTestWorld(initialProps, { constraintsDirty = false } = {}) {
     const worldProps = initialProps.slice();
     const liveProps = initialProps.slice();
-    const world = { worldProps, entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraints, constraintsDirty }) };
+    const world = { worldProps, entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraintsDirty }) };
     world.obstacleGrid = { floorBeltCount: 0, activePortalCount: 0 };
     world.fractureEngine = new FractureEngine(world);
     return world;

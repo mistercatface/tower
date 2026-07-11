@@ -16,8 +16,8 @@ import { satCheckCollision, entityFacing } from "../Libraries/Physics/physics.js
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { liveGlassCount } from "./harness/fractureHarness.js";
 
-function createTestWorld(initialProps, constraints = []) {
-    return createKineticTestWorld(initialProps, { constraints, constraintsDirty: false });
+function createTestWorld(initialProps) {
+    return createKineticTestWorld(initialProps, { constraintsDirty: false });
 }
 
 function chainLinkState(world) {

@@ -1,15 +1,15 @@
+import { kineticConstraintStore } from "../Core/engineMemory.js";
 export class KineticSession {
     constructor() {
-        this.kineticConstraints = [];
+        kineticConstraintStore.count = 0;
         this.kineticConstraintsDirty = false;
         this.kineticConstraintsVersion = 0;
         this.kineticTopologyGeneration = 0;
         this.nextConstraintId = 1;
     }
 }
-export function createKineticSession({ constraints = [], constraintsDirty = false, constraintsVersion = 0, topologyGeneration = 0, nextConstraintId = 1 } = {}) {
+export function createKineticSession({ constraintsDirty = false, constraintsVersion = 0, topologyGeneration = 0, nextConstraintId = 1 } = {}) {
     const session = new KineticSession();
-    session.kineticConstraints = constraints.slice();
     session.kineticConstraintsDirty = constraintsDirty;
     session.kineticConstraintsVersion = constraintsVersion;
     session.kineticTopologyGeneration = topologyGeneration;

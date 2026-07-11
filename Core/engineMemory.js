@@ -239,13 +239,14 @@ export const CONSTRAINT_TYPE_DISTANCE = 0;
 export const CONSTRAINT_TYPE_ANGLE = 1;
 export const SHAPE_TYPE_CIRCLE = 1;
 export const SHAPE_TYPE_POLYGON = 2;
+export const kineticConstraintStore = { count: 0, id: new Int32Array(MAX_KINETIC_CONSTRAINTS), type: new Uint8Array(MAX_KINETIC_CONSTRAINTS), bodyAId: new Int32Array(MAX_KINETIC_CONSTRAINTS), bodyBId: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS), anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS) };
 export const kineticConstraintSlab = {
     count: 0,
     activeCount: 0,
     groupCount: 0,
     groupCounts: new Int32Array(MAX_ISLAND_GROUPS),
     type: new Uint8Array(MAX_KINETIC_CONSTRAINTS),
-    sessionIndex: new Int32Array(MAX_KINETIC_CONSTRAINTS),
+    storeRow: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     dynamic: { accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS), nx: new Float32Array(MAX_KINETIC_CONSTRAINTS), ny: new Float32Array(MAX_KINETIC_CONSTRAINTS), rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS), rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS), k: new Float32Array(MAX_KINETIC_CONSTRAINTS), error: new Float32Array(MAX_KINETIC_CONSTRAINTS) },

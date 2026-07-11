@@ -27,6 +27,7 @@ import {
     kineticDynamicSlab,
     kineticStaticSlab,
     kineticConstraintSlab,
+    kineticConstraintStore,
     kineticContactBuffer,
     kineticPairBuffer,
     persistedKineticPairBuffer,
@@ -1920,21 +1921,20 @@ function circleRadiusFromBody(body) {
 function linkCapsuleRadius(bodyA, bodyB) {
     return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB)) + 0.05;
 }
-function appendConstraintEntry(slab, islandIdx, list) {
+function appendConstraintEntry(slab, islandIdx, store) {
     const idx = slab.count++;
     const physIdA = sIslandPhysA[islandIdx];
     const physIdB = sIslandPhysB[islandIdx];
-    const sessionIdx = sIslandSessionIndex[islandIdx];
-    const entry = list[sessionIdx];
+    const storeRow = sIslandSessionIndex[islandIdx];
     const bodyA = constraintBodyAt(physIdA);
     const bodyB = constraintBodyAt(physIdB);
-    const ctype = entry.type;
+    const ctype = store.type[storeRow];
     slab.type[idx] = ctype;
-    slab.sessionIndex[idx] = sessionIdx;
+    slab.storeRow[idx] = storeRow;
     slab.physIdA[idx] = physIdA;
     slab.physIdB[idx] = physIdB;
     if (ctype === CONSTRAINT_TYPE_ANGLE) {
-        slab.static.referenceAngle[idx] = entry.referenceAngle ?? 0;
+        slab.static.referenceAngle[idx] = store.referenceAngle[storeRow];
         slab.static.anchorAx[idx] = 0;
         slab.static.anchorAy[idx] = 0;
         slab.static.anchorBx[idx] = 0;
@@ -1943,11 +1943,11 @@ function appendConstraintEntry(slab, islandIdx, list) {
         slab.static.capsuleRadius[idx] = 0;
     } else {
         slab.static.referenceAngle[idx] = 0;
-        slab.static.anchorAx[idx] = entry.anchorAx ?? 0;
-        slab.static.anchorAy[idx] = entry.anchorAy ?? 0;
-        slab.static.anchorBx[idx] = entry.anchorBx ?? 0;
-        slab.static.anchorBy[idx] = entry.anchorBy ?? 0;
-        slab.static.restLength[idx] = entry.restLength ?? 0;
+        slab.static.anchorAx[idx] = store.anchorAx[storeRow];
+        slab.static.anchorAy[idx] = store.anchorAy[storeRow];
+        slab.static.anchorBx[idx] = store.anchorBx[storeRow];
+        slab.static.anchorBy[idx] = store.anchorBy[storeRow];
+        slab.static.restLength[idx] = store.restLength[storeRow];
         slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
     }
     normalizeKineticBody(bodyA);
@@ -1959,7 +1959,7 @@ function appendConstraintEntry(slab, islandIdx, list) {
     slab.static.invMassB[idx] = stat.invMass[physIdB];
     slab.static.invIA[idx] = stat.invI[physIdA];
     slab.static.invIB[idx] = stat.invI[physIdB];
-    slab.dynamic.accumulatedImpulse[idx] = entry.accumulatedImpulse || 0;
+    slab.dynamic.accumulatedImpulse[idx] = store.accumulatedImpulse[storeRow];
 }
 function islandItemsAsleep(startIdx, count) {
     for (let i = 0; i < count; i++) {
@@ -1970,11 +1970,11 @@ function islandItemsAsleep(startIdx, count) {
     }
     return count > 0;
 }
-function appendIslandConstraintGroup(slab, count, list) {
+function appendIslandConstraintGroup(slab, count, store) {
     const groupStart = slab.count;
     for (let i = 0; i < count; i++) {
         if (slab.count >= MAX_KINETIC_CONSTRAINTS) break;
-        appendConstraintEntry(slab, orderOrderedIdxs[i], list);
+        appendConstraintEntry(slab, orderOrderedIdxs[i], store);
     }
     const addedCount = slab.count - groupStart;
     if (addedCount === 0) return;
@@ -2018,20 +2018,19 @@ export function gatherKineticConstraintSlab(tick) {
     const spatialFrame = tick.frame;
     const session = tick.world.kinetic;
     const plan = ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
-    const list = session.kineticConstraints;
+    const store = kineticConstraintStore;
     sBucketCounts.fill(0);
     let bucketCount = 0;
-    // Pass 1: find roots and bucket counts
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.type !== CONSTRAINT_TYPE_DISTANCE && entry.type !== CONSTRAINT_TYPE_ANGLE) continue;
-        const physIdA = entry.physIdA;
-        const physIdB = entry.physIdB;
+    for (let i = 0; i < store.count; i++) {
+        const ctype = store.type[i];
+        if (ctype !== CONSTRAINT_TYPE_DISTANCE && ctype !== CONSTRAINT_TYPE_ANGLE) continue;
+        const physIdA = store.physIdA[i];
+        const physIdB = store.physIdB[i];
         if (physIdA < 0 || physIdB < 0) continue;
         const bodyA = constraintBodyAt(physIdA);
         const bodyB = constraintBodyAt(physIdB);
         if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
-        if (bodyA.id !== entry.bodyAId || bodyB.id !== entry.bodyBId) continue;
+        if (bodyA.id !== store.bodyAId[i] || bodyB.id !== store.bodyBId[i]) continue;
         if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
         let root = bodyA.id;
         const r = kineticDynamicSlab.islandRoot[physIdA];
@@ -2050,24 +2049,22 @@ export function gatherKineticConstraintSlab(tick) {
             }
         if (bucketIdx !== -1) sBucketCounts[bucketIdx]++;
     }
-    // Prefix sum
     let totalItems = 0;
     for (let i = 0; i < bucketCount; i++) {
         sBucketStartIdx[i] = totalItems;
         sBucketFillIdx[i] = totalItems;
         totalItems += sBucketCounts[i];
     }
-    // Pass 2: fill buckets
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.type !== CONSTRAINT_TYPE_DISTANCE && entry.type !== CONSTRAINT_TYPE_ANGLE) continue;
-        const physIdA = entry.physIdA;
-        const physIdB = entry.physIdB;
+    for (let i = 0; i < store.count; i++) {
+        const ctype = store.type[i];
+        if (ctype !== CONSTRAINT_TYPE_DISTANCE && ctype !== CONSTRAINT_TYPE_ANGLE) continue;
+        const physIdA = store.physIdA[i];
+        const physIdB = store.physIdB[i];
         if (physIdA < 0 || physIdB < 0) continue;
         const bodyA = constraintBodyAt(physIdA);
         const bodyB = constraintBodyAt(physIdB);
         if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
-        if (bodyA.id !== entry.bodyAId || bodyB.id !== entry.bodyBId) continue;
+        if (bodyA.id !== store.bodyAId[i] || bodyB.id !== store.bodyBId[i]) continue;
         if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
         let root = bodyA.id;
         const r = kineticDynamicSlab.islandRoot[physIdA];
@@ -2097,7 +2094,7 @@ export function gatherKineticConstraintSlab(tick) {
         const start = sBucketStartIdx[g];
         const count = sBucketCounts[g];
         orderIslandConstraintItems(start, count);
-        appendIslandConstraintGroup(slab, count, list);
+        appendIslandConstraintGroup(slab, count, store);
     }
     slab.activeCount = slab.count;
     for (let g = 0; g < bucketCount; g++) {
@@ -2106,7 +2103,7 @@ export function gatherKineticConstraintSlab(tick) {
         const start = sBucketStartIdx[g];
         const count = sBucketCounts[g];
         orderIslandConstraintItems(start, count);
-        appendIslandConstraintGroup(slab, count, list);
+        appendIslandConstraintGroup(slab, count, store);
     }
     syncConstraintSlabBodies(slab);
 }
@@ -2440,7 +2437,7 @@ function solveKineticConstraintSlab(spatialFrame, session) {
     if (slab.activeCount === 0) return;
     const constraintSettings = collisionSettings.kineticConstraints;
     const { contactImpulseEpsilon } = collisionSettings.kineticEarlyOut;
-    const list = session.kineticConstraints;
+    const store = kineticConstraintStore;
     warmStartKineticConstraintSlab();
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
@@ -2454,7 +2451,7 @@ function solveKineticConstraintSlab(spatialFrame, session) {
         }
         if (maxImpulse <= contactImpulseEpsilon) break;
     }
-    for (let i = 0; i < slab.activeCount; i++) list[slab.sessionIndex[i]].accumulatedImpulse = slab.dynamic.accumulatedImpulse[i];
+    for (let i = 0; i < slab.activeCount; i++) store.accumulatedImpulse[slab.storeRow[i]] = slab.dynamic.accumulatedImpulse[i];
 }
 function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
     for (let i = 0; i < slab.activeCount; i++) if (!constraintBodyAt(slab.physIdA[i]) || !constraintBodyAt(slab.physIdB[i])) return true;
@@ -2501,12 +2498,11 @@ function addAdjacencyEdge(adjacency, fromId, toId) {
     neighbors.push(toId);
 }
 function buildAdjacency(session) {
-    const list = listKineticConstraints(session);
+    const store = kineticConstraintStore;
     const adjacency = new Map();
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        addAdjacencyEdge(adjacency, entry.bodyAId, entry.bodyBId);
-        addAdjacencyEdge(adjacency, entry.bodyBId, entry.bodyAId);
+    for (let i = 0; i < store.count; i++) {
+        addAdjacencyEdge(adjacency, store.bodyAId[i], store.bodyBId[i]);
+        addAdjacencyEdge(adjacency, store.bodyBId[i], store.bodyAId[i]);
     }
     return adjacency;
 }
@@ -2610,61 +2606,106 @@ export function getKineticConstraintsVersion(session) {
     return session.kineticConstraintsVersion ?? 0;
 }
 export function addDistanceConstraint(session, { bodyA, bodyB, anchorAx = 0, anchorAy = 0, anchorBx = 0, anchorBy = 0, restLength }) {
-    const constraint = { id: session.nextConstraintId++, type: CONSTRAINT_TYPE_DISTANCE, bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, anchorAx, anchorAy, anchorBx, anchorBy, restLength, accumulatedImpulse: 0 };
-    session.kineticConstraints.push(constraint);
+    const store = kineticConstraintStore;
+    if (store.count >= MAX_KINETIC_CONSTRAINTS) throw new Error("kinetic constraint store capacity exceeded");
+    const row = store.count++;
+    store.id[row] = session.nextConstraintId++;
+    store.type[row] = CONSTRAINT_TYPE_DISTANCE;
+    store.bodyAId[row] = bodyA.id;
+    store.bodyBId[row] = bodyB.id;
+    store.physIdA[row] = bodyA._physId ?? -1;
+    store.physIdB[row] = bodyB._physId ?? -1;
+    store.anchorAx[row] = anchorAx;
+    store.anchorAy[row] = anchorAy;
+    store.anchorBx[row] = anchorBx;
+    store.anchorBy[row] = anchorBy;
+    store.restLength[row] = restLength;
+    store.referenceAngle[row] = 0;
+    store.accumulatedImpulse[row] = 0;
     markKineticConstraintsDirty(session);
-    return constraint;
+    return row;
 }
 export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
-    const constraint = { id: session.nextConstraintId++, type: CONSTRAINT_TYPE_ANGLE, bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, referenceAngle, accumulatedImpulse: 0 };
-    session.kineticConstraints.push(constraint);
+    const store = kineticConstraintStore;
+    if (store.count >= MAX_KINETIC_CONSTRAINTS) throw new Error("kinetic constraint store capacity exceeded");
+    const row = store.count++;
+    store.id[row] = session.nextConstraintId++;
+    store.type[row] = CONSTRAINT_TYPE_ANGLE;
+    store.bodyAId[row] = bodyA.id;
+    store.bodyBId[row] = bodyB.id;
+    store.physIdA[row] = bodyA._physId ?? -1;
+    store.physIdB[row] = bodyB._physId ?? -1;
+    store.anchorAx[row] = 0;
+    store.anchorAy[row] = 0;
+    store.anchorBx[row] = 0;
+    store.anchorBy[row] = 0;
+    store.restLength[row] = 0;
+    store.referenceAngle[row] = referenceAngle;
+    store.accumulatedImpulse[row] = 0;
     markKineticConstraintsDirty(session);
-    return constraint;
+    return row;
+}
+function swapRemoveConstraintRow(store, row) {
+    const last = store.count - 1;
+    if (row !== last) {
+        store.id[row] = store.id[last];
+        store.type[row] = store.type[last];
+        store.bodyAId[row] = store.bodyAId[last];
+        store.bodyBId[row] = store.bodyBId[last];
+        store.physIdA[row] = store.physIdA[last];
+        store.physIdB[row] = store.physIdB[last];
+        store.anchorAx[row] = store.anchorAx[last];
+        store.anchorAy[row] = store.anchorAy[last];
+        store.anchorBx[row] = store.anchorBx[last];
+        store.anchorBy[row] = store.anchorBy[last];
+        store.restLength[row] = store.restLength[last];
+        store.referenceAngle[row] = store.referenceAngle[last];
+        store.accumulatedImpulse[row] = store.accumulatedImpulse[last];
+    }
+    store.count = last;
 }
 export function removeKineticConstraint(session, constraintId) {
-    const list = session.kineticConstraints;
-    const index = list.findIndex((entry) => entry.id === constraintId);
-    if (index >= 0) {
-        list.splice(index, 1);
+    const store = kineticConstraintStore;
+    for (let i = 0; i < store.count; i++) {
+        if (store.id[i] !== constraintId) continue;
+        swapRemoveConstraintRow(store, i);
         markKineticConstraintsDirty(session);
+        return;
     }
 }
 export function clearKineticConstraints(session) {
-    if (session.kineticConstraints.length === 0) return;
-    session.kineticConstraints.length = 0;
+    if (kineticConstraintStore.count === 0) return;
+    kineticConstraintStore.count = 0;
     markKineticConstraintsDirty(session);
 }
 export function pruneKineticConstraintsForBody(session, bodyId) {
-    const list = session.kineticConstraints;
+    const store = kineticConstraintStore;
     let changed = false;
-    for (let i = list.length - 1; i >= 0; i--) {
-        const entry = list[i];
-        if (entry.bodyAId === bodyId || entry.bodyBId === bodyId) {
-            list.splice(i, 1);
+    for (let i = store.count - 1; i >= 0; i--)
+        if (store.bodyAId[i] === bodyId || store.bodyBId[i] === bodyId) {
+            swapRemoveConstraintRow(store, i);
             changed = true;
         }
-    }
     if (changed) markKineticConstraintsDirty(session);
 }
-export function listKineticConstraints(session) {
-    return session.kineticConstraints;
+export function constraintCount(session) {
+    return kineticConstraintStore.count;
 }
 export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
     const entries = [];
-    const list = listKineticConstraints(session);
-    for (let i = 0; i < list.length; i++) {
-        const constraint = list[i];
-        const bodyA = propIdToIndex.get(constraint.bodyAId);
-        const bodyB = propIdToIndex.get(constraint.bodyBId);
+    const store = kineticConstraintStore;
+    for (let i = 0; i < store.count; i++) {
+        const bodyA = propIdToIndex.get(store.bodyAId[i]);
+        const bodyB = propIdToIndex.get(store.bodyBId[i]);
         if (bodyA == null || bodyB == null) continue;
-        const entry = { type: constraint.type, bodyA, bodyB, accumulatedImpulse: constraint.accumulatedImpulse };
-        if (constraint.type === CONSTRAINT_TYPE_ANGLE) entry.referenceAngle = constraint.referenceAngle;
+        const entry = { type: store.type[i], bodyA, bodyB, accumulatedImpulse: store.accumulatedImpulse[i] };
+        if (store.type[i] === CONSTRAINT_TYPE_ANGLE) entry.referenceAngle = store.referenceAngle[i];
         else {
-            entry.restLength = constraint.restLength;
-            entry.anchorAx = constraint.anchorAx;
-            entry.anchorAy = constraint.anchorAy;
-            entry.anchorBx = constraint.anchorBx;
-            entry.anchorBy = constraint.anchorBy;
+            entry.restLength = store.restLength[i];
+            entry.anchorAx = store.anchorAx[i];
+            entry.anchorAy = store.anchorAy[i];
+            entry.anchorBx = store.anchorBx[i];
+            entry.anchorBy = store.anchorBy[i];
         }
         entries.push(entry);
     }
@@ -2676,16 +2717,16 @@ export function applyKineticConstraintsFromSnapshot(session, entries, propRefsBy
         let type = entry.type;
         if (type === "angle") type = CONSTRAINT_TYPE_ANGLE;
         else if (type === "distance" || type == null) type = CONSTRAINT_TYPE_DISTANCE;
-        let constraint;
-        if (type === CONSTRAINT_TYPE_ANGLE) constraint = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
+        let row;
+        if (type === CONSTRAINT_TYPE_ANGLE) row = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
         else {
             const anchorAx = entry.anchorAx ?? entry.anchorA?.x ?? 0;
             const anchorAy = entry.anchorAy ?? entry.anchorA?.y ?? 0;
             const anchorBx = entry.anchorBx ?? entry.anchorB?.x ?? 0;
             const anchorBy = entry.anchorBy ?? entry.anchorB?.y ?? 0;
-            constraint = addDistanceConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], restLength: entry.restLength, anchorAx, anchorAy, anchorBx, anchorBy });
+            row = addDistanceConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], restLength: entry.restLength, anchorAx, anchorAy, anchorBx, anchorBy });
         }
-        constraint.accumulatedImpulse = entry.accumulatedImpulse || 0;
+        kineticConstraintStore.accumulatedImpulse[row] = entry.accumulatedImpulse || 0;
     }
 }
 export function getKineticTopologyGeneration(session) {
@@ -3586,13 +3627,12 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         bodyById.set(body.id, body);
         clearBodyIslandFields(body);
     }
-    const constraints = session.kineticConstraints;
-    for (let i = 0; i < constraints.length; i++) {
-        const entry = constraints[i];
-        const a = bodyById.get(entry.bodyAId);
-        const b = bodyById.get(entry.bodyBId);
-        entry.physIdA = a?._physId ?? -1;
-        entry.physIdB = b?._physId ?? -1;
+    const constraints = kineticConstraintStore;
+    for (let i = 0; i < constraints.count; i++) {
+        const a = bodyById.get(constraints.bodyAId[i]);
+        const b = bodyById.get(constraints.bodyBId[i]);
+        constraints.physIdA[i] = a?._physId ?? -1;
+        constraints.physIdB[i] = b?._physId ?? -1;
     }
     const slab = kineticDynamicSlab;
     const neighborScratch = [];

@@ -7,6 +7,7 @@ import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { isChainSteeringTarget, createSandboxSession } from "../Libraries/Sandbox/sandbox.js";
 import propCatalog from "../Assets/props/index.js";
+import { kineticConstraintStore } from "../Core/engineMemory.js";
 
 function createSnakeSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -48,13 +49,11 @@ describe("snake prop kinetic chain spawning", () => {
         }
 
         // Constraints should link the 7 elements (6 links)
-        assert.equal(state.kinetic.kineticConstraints.length, 6);
+        assert.equal(kineticConstraintStore.count, 6);
 
-        // Verify constraints have positive rest lengths and link adjacent bodies
-        for (let i = 0; i < state.kinetic.kineticConstraints.length; i++) {
-            const constraint = state.kinetic.kineticConstraints[i];
-            assert.ok(constraint.restLength > 0);
-            assert.ok(Number.isFinite(constraint.restLength));
+        for (let i = 0; i < kineticConstraintStore.count; i++) {
+            assert.ok(kineticConstraintStore.restLength[i] > 0);
+            assert.ok(Number.isFinite(kineticConstraintStore.restLength[i]));
         }
 
         // Verification of arrow attachment on snake head

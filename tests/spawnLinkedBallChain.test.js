@@ -8,6 +8,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
+import { kineticConstraintStore } from "../Core/engineMemory.js";
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1, faction: "alpha" };
 function createChainSpawnTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -23,7 +24,7 @@ describe("spawnLinkedBallChain", () => {
         const anchorIdx = worldIdxAtCell(state.obstacleGrid,10, 10);
         const chain = spawnLinkedBallChain(state, anchorIdx, CHAIN_OPTIONS);
         assert.equal(chain.members.length, 3);
-        assert.equal(state.kinetic.kineticConstraints.length, 2);
+        assert.equal(kineticConstraintStore.count, 2);
         assert.ok(meta.isChainHead(chain.head.id));
         assert.ok(!meta.isChainHead(chain.tail.id));
         assert.ok(isChainSteeringTarget(state, meta, chain.head.id));
@@ -33,7 +34,7 @@ describe("spawnLinkedBallChain", () => {
             members,
             chain.members.map((prop) => prop.id).sort((a, b) => a - b),
         );
-        for (let i = 0; i < state.kinetic.kineticConstraints.length; i++) assert.ok(Math.abs(state.kinetic.kineticConstraints[i].restLength - 16) < 1e-6);
+        for (let i = 0; i < kineticConstraintStore.count; i++) assert.ok(Math.abs(kineticConstraintStore.restLength[i] - 16) < 1e-6);
     });
     it("exports linked chain spawn groups with segment count and anchor position", () => {
         const state = createChainSpawnTestState();
@@ -62,7 +63,7 @@ describe("spawnLinkedBallChain", () => {
         const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid,10, 10), CHAIN_OPTIONS);
         const tail = chain.tail;
         const segment = growChainSegment(state, tail, CHAIN_OPTIONS);
-        assert.equal(state.kinetic.kineticConstraints.length, 3);
+        assert.equal(kineticConstraintStore.count, 3);
         assert.equal(segment.x, tail.x - CHAIN_OPTIONS.spacing);
         assert.equal(segment.y, tail.y);
     });
@@ -77,7 +78,7 @@ describe("spawnLinkedBallChain", () => {
         const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid,10, 10), { ...CHAIN_OPTIONS, segmentRadius: 2.1, spacing: 4.0, linkSlack: 1.05 });
         assert.equal(chain.head.radius, 2.1);
         assert.equal(chain.tail.radius, 2.1);
-        assert.equal(state.kinetic.kineticConstraints[0].restLength, 4.2);
+        assert.ok(Math.abs(kineticConstraintStore.restLength[0] - 4.2) < 1e-5);
     });
     it("assigns a unique spawn group id per chain", () => {
         const state = createChainSpawnTestState();

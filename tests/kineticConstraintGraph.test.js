@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createKineticSession } from "../GameState/KineticSession.js";
 import { addDistanceConstraint, removeKineticConstraint } from "../Libraries/Physics/physics.js";
 import { areBodiesConnected, getConnectedBodyIds, getConnectedComponentPath, getConstraintIslands, getKineticConstraintGraph } from "../Libraries/Physics/physics.js";
+import { kineticConstraintStore } from "../Core/engineMemory.js";
 function createState() {
     return { kinetic: createKineticSession() };
 }
@@ -10,7 +11,8 @@ function stubBody(id) {
     return { id, isDead: false, strategy: { isKinetic: true } };
 }
 function link(state, aId, bId) {
-    return addDistanceConstraint(state.kinetic, { bodyA: stubBody(aId), bodyB: stubBody(bId), restLength: 10 });
+    const row = addDistanceConstraint(state.kinetic, { bodyA: stubBody(aId), bodyB: stubBody(bId), restLength: 10 });
+    return kineticConstraintStore.id[row];
 }
 describe("kineticConstraintGraph", () => {
     it("getConnectedBodyIds returns the whole island for any member", () => {
@@ -54,7 +56,7 @@ describe("kineticConstraintGraph", () => {
         link(state, 2, 3);
         const graphB = getKineticConstraintGraph(state.kinetic);
         assert.notEqual(graphB, graphA, "adding a constraint rebuilds the graph");
-        removeKineticConstraint(state.kinetic, first.id);
+        removeKineticConstraint(state.kinetic, first);
         assert.ok(!areBodiesConnected(state.kinetic, 1, 2), "cache reflects removed constraint");
     });
 });

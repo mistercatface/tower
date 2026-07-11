@@ -2,8 +2,8 @@ import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, entityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
-import { kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, entityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
+import { kineticDynamicSlab, kineticConstraintStore } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
@@ -1663,10 +1663,9 @@ export function isChainLinkBall(prop) {
     return sandboxAssetMatchesTagFilter(propCatalog[prop.type], "nav");
 }
 export function hasChainMembership(state, propId) {
-    const list = listKineticConstraints(state.kinetic);
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.bodyAId === propId || entry.bodyBId === propId) return true;
+    const store = kineticConstraintStore;
+    for (let i = 0; i < store.count; i++) {
+        if (store.bodyAId[i] === propId || store.bodyBId[i] === propId) return true;
     }
     return false;
 }
@@ -1683,18 +1682,17 @@ export function setChainHead(state, entityMeta, propId) {
     entityMeta.setChainHead(propId, true);
 }
 export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
-    const list = listKineticConstraints(state.kinetic);
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.type !== CONSTRAINT_TYPE_DISTANCE) continue;
-        if ((entry.bodyAId === bodyAId && entry.bodyBId === bodyBId) || (entry.bodyAId === bodyBId && entry.bodyBId === bodyAId)) return entry;
+    const store = kineticConstraintStore;
+    for (let i = 0; i < store.count; i++) {
+        if (store.type[i] !== CONSTRAINT_TYPE_DISTANCE) continue;
+        if ((store.bodyAId[i] === bodyAId && store.bodyBId[i] === bodyBId) || (store.bodyAId[i] === bodyBId && store.bodyBId[i] === bodyAId)) return store.id[i];
     }
-    return null;
+    return -1;
 }
 export function removeChainLinkBetween(state, bodyAId, bodyBId) {
-    const entry = findDistanceConstraintBetween(state, bodyAId, bodyBId);
-    if (!entry) return false;
-    removeKineticConstraint(state.kinetic, entry.id);
+    const id = findDistanceConstraintBetween(state, bodyAId, bodyBId);
+    if (id < 0) return false;
+    removeKineticConstraint(state.kinetic, id);
     return true;
 }
 export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
@@ -1702,7 +1700,7 @@ export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLen
     const bodyA = state.entityRegistry.getLive(fromPropId);
     const bodyB = state.entityRegistry.getLive(toPropId);
     if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
-    if (findDistanceConstraintBetween(state, fromPropId, toPropId)) return true;
+    if (findDistanceConstraintBetween(state, fromPropId, toPropId) >= 0) return true;
     const restLength = restLengthOverride != null ? restLengthOverride : resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
     return true;
@@ -1712,15 +1710,14 @@ export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
 }
 export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
     const members = new Set(memberIds);
-    const list = listKineticConstraints(state.kinetic);
-    for (let i = 0; i < list.length; i++) {
-        const entry = list[i];
-        if (entry.type !== CONSTRAINT_TYPE_DISTANCE) continue;
-        if (!members.has(entry.bodyAId) || !members.has(entry.bodyBId)) continue;
-        const bodyA = state.entityRegistry.getLive(entry.bodyAId);
-        const bodyB = state.entityRegistry.getLive(entry.bodyBId);
+    const store = kineticConstraintStore;
+    for (let i = 0; i < store.count; i++) {
+        if (store.type[i] !== CONSTRAINT_TYPE_DISTANCE) continue;
+        if (!members.has(store.bodyAId[i]) || !members.has(store.bodyBId[i])) continue;
+        const bodyA = state.entityRegistry.getLive(store.bodyAId[i]);
+        const bodyB = state.entityRegistry.getLive(store.bodyBId[i]);
         if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
-        entry.restLength = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
+        store.restLength[i] = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
     }
 }
 export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {

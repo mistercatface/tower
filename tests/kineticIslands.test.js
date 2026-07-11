@@ -16,9 +16,9 @@ const pairBuffer = createKineticPairBuffer();
 
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 
-function createState(props, constraints = []) {
+function createState(props) {
     return {
-        kinetic: createKineticSession({ constraints }),
+        kinetic: createKineticSession(),
         sandbox: {},
         entityRegistry: {
             getLive(id) {

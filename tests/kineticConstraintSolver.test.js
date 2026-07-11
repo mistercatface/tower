@@ -2,8 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { addDistanceConstraint, pruneKineticConstraintsForBody } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
-import { kineticConstraintSlab } from "../Core/engineMemory.js";
-import { kineticDynamicSlab } from "../Core/engineMemory.js";
+import { kineticConstraintSlab, kineticConstraintStore, kineticDynamicSlab } from "../Core/engineMemory.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 
@@ -38,9 +37,9 @@ describe("kinetic constraint solver", () => {
         const bodyB = mockKineticCircle(30, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 30 });
-        assert.equal(tick.world.kinetic.kineticConstraints.length, 1);
+        assert.equal(kineticConstraintStore.count, 1);
         pruneKineticConstraintsForBody(tick.world.kinetic, bodyB.id);
-        assert.equal(tick.world.kinetic.kineticConstraints.length, 0);
+        assert.equal(kineticConstraintStore.count, 0);
     });
     it("partitions sleeping link islands out of activeCount", () => {
         const asleepA = mockKineticCircle(0, 0, 10);

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { EntityRegistry, findLiveWorldProp } from "../GameState/EntityRegistry.js";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KineticSession, createKineticSession } from "../GameState/KineticSession.js";
+import { KineticSession } from "../GameState/KineticSession.js";
 import { SandboxWorldState } from "../Libraries/Sandbox/sandbox.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot } from "../Libraries/Physics/physics.js";
@@ -11,6 +11,7 @@ import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDB
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
+import { kineticConstraintStore } from "../Core/engineMemory.js";
 
 function createSnapshotTestState(cols = 32, rows = 32) {
     const grid = new WorldObstacleGrid(16);
@@ -87,7 +88,7 @@ describe("sandboxSceneSnapshot physics", () => {
         applyPhysicsSnapshot(fresh, physicsDoc);
         const freshMeta = fresh.sandbox.entityMeta;
         assert.equal(fresh.worldProps.length, 5);
-        assert.equal(fresh.kinetic.kineticConstraints.length, 3);
+        assert.equal(kineticConstraintStore.count, 3);
         const tintedProp = fresh.worldProps.find((prop) => getPropVisualTint(prop) === tintHex);
         assert.ok(tintedProp);
         const head = fresh.worldProps.find((prop) => freshMeta.isChainHead(prop.id));

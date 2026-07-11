@@ -39,7 +39,7 @@ async function createWallDamageTestState(opts = {}) {
         nav: navigation,
         worldProps: [],
         entityRegistry: new EntityRegistry(),
-        kinetic: { kineticConstraints: [] }
+        kinetic: createKineticSession()
     };
     state.fractureEngine = new FractureEngine(state);
     state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
