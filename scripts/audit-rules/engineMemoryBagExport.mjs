@@ -14,7 +14,6 @@ const ALLOWED_BAG_EXPORTS = new Set([
     "pendingWallBreaks",
     "wallSpawnScratch",
     "staticWallSegmentSlab",
-    "sleepContactBuffer",
     "warmStartState",
 ]);
 

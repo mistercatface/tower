@@ -42,6 +42,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "kineticSleepScratch",
     "writebackActiveKineticBodySlab",
     "writebackEntitySlotPoseToRef",
+    "sleepContactBuffer",
 ];
 
 export const LEGACY_SCALAR_SYMBOLS = [

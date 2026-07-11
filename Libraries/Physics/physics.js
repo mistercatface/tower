@@ -54,7 +54,6 @@ import {
     sleepComponentMemberCount,
     sleepNeighborEids,
     pairHashKeys,
-    sleepContactBuffer,
     MAX_PHYS_BODIES,
     MAX_CONTACTS,
     MAX_KINETIC_PAIRS,
@@ -3098,24 +3097,13 @@ export function ensureKineticContactPairs(tick, outPairs) {
     }
     return outPairs;
 }
-function resetSleepContactBuffer() {
-    sleepContactBuffer.count = 0;
-    sleepContactBuffer._index.clear();
+function ensureSleepIslandMember(physId) {
+    if (sleepIslandParent[physId] === -1) sleepIslandParent[physId] = physId;
 }
-function addSleepContact(idA, idB, isResting) {
-    const key = pairPhysKey(idA, idB);
-    const existing = sleepContactBuffer._index.get(key);
-    if (existing !== undefined) {
-        if (isResting) sleepContactBuffer.resting[existing] = 1;
-        return;
-    }
-    if (sleepContactBuffer.count < MAX_CONTACTS) {
-        sleepContactBuffer._index.set(key, sleepContactBuffer.count);
-        sleepContactBuffer.physIdA[sleepContactBuffer.count] = idA;
-        sleepContactBuffer.physIdB[sleepContactBuffer.count] = idB;
-        sleepContactBuffer.resting[sleepContactBuffer.count] = isResting ? 1 : 0;
-        sleepContactBuffer.count++;
-    }
+function unionSleepContact(physIdA, physIdB, isResting) {
+    ensureSleepIslandMember(physIdA);
+    ensureSleepIslandMember(physIdB);
+    if (isResting || isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB)) union(physIdA, physIdB);
 }
 const sKineticContactStats = { innerIterations: 0, maxImpulse: 0, restingCount: 0, contactCount: 0 };
 const sKineticSolverStats = { outerIterations: 0, maxIterations: 0, pairCount: 0 };
@@ -3134,7 +3122,7 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     tick.world.kinetic.kineticContactStats = sKineticContactStats;
     storeKineticWarmStartCache(contacts);
     applyKineticContactWake(contacts, spatialFrame);
-    for (let i = 0; i < contacts.count; i++) addSleepContact(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
+    for (let i = 0; i < contacts.count; i++) unionSleepContact(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
     return contacts;
 }
 export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
@@ -3317,7 +3305,7 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
     const hasActiveBodies = activeBodies.length > 0;
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
-        resetSleepContactBuffer();
+        beginSleepIslands(spatialFrame);
         gatherKineticConstraintSlab(tick);
         ensureKineticContactPairs(tick, persistedKineticPairBuffer);
         const patchBodies = tick.world.kinetic.substepPairPatchBodies ?? (tick.world.kinetic.substepPairPatchBodies = []);
@@ -3720,10 +3708,8 @@ function union(i, j) {
             sleepIslandRank[rootI]++;
         }
 }
-const bodyByPhysId = new Array(MAX_PHYS_BODIES);
-export function advanceKineticSleepIslands(frame, session, contacts = sleepContactBuffer) {
+function beginSleepIslands(frame) {
     const activeBodies = frame._activeKineticBodies;
-    if (!activeBodies || activeBodies.length === 0) return;
     sleepIslandParent.fill(-1);
     sleepIslandRank.fill(0);
     for (let i = 0; i < activeBodies.length; i++) {
@@ -3731,39 +3717,31 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
         sleepIslandParent[physId] = physId;
-        bodyByPhysId[physId] = body;
     }
     for (let i = 0; i < activeBodies.length; i++) {
         const body = activeBodies[i];
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
         const peers = body._kineticIslandPeers;
-        if (peers)
-            for (let j = 0; j < peers.length; j++) {
-                const peer = peers[j];
-                if (peer === body) continue;
-                const peerPhysId = peer._physId;
-                if (peerPhysId === undefined || peerPhysId === -1) continue;
-                if (sleepIslandParent[peerPhysId] === -1) sleepIslandParent[peerPhysId] = peerPhysId;
-                union(physId, peerPhysId);
-            }
-    }
-    if (contacts && contacts.count > 0)
-        for (let i = 0; i < contacts.count; i++) {
-            const physIdA = contacts.physIdA[i];
-            const physIdB = contacts.physIdB[i];
-            if (sleepIslandParent[physIdA] === -1 || sleepIslandParent[physIdB] === -1) continue;
-            const bodyA = bodyByPhysId[physIdA];
-            const bodyB = bodyByPhysId[physIdB];
-            if (!bodyA || !bodyB) continue;
-            const isResting = contacts.resting[i] === 1;
-            const eitherActive = isKinematicallyActive(bodyA) || isKinematicallyActive(bodyB);
-            if (isResting || eitherActive) union(physIdA, physIdB);
+        if (!peers) continue;
+        for (let j = 0; j < peers.length; j++) {
+            const peer = peers[j];
+            if (peer === body) continue;
+            const peerPhysId = peer._physId;
+            if (peerPhysId === undefined || peerPhysId === -1) continue;
+            if (sleepIslandParent[peerPhysId] === -1) sleepIslandParent[peerPhysId] = peerPhysId;
+            union(physId, peerPhysId);
         }
+    }
+}
+export function advanceKineticSleepIslands(frame, session) {
+    const activeBodies = frame._activeKineticBodies;
+    if (!activeBodies || activeBodies.length === 0) return;
     for (let i = 0; i < activeBodies.length; i++) {
         const body = activeBodies[i];
         const physId = body._physId;
         if (physId === undefined || physId === -1) continue;
+        ensureSleepIslandMember(physId);
         const root = find(physId);
         sleepComponentRoot[physId] = root;
         sleepComponentMaxSpeedSq[root] = 0;
@@ -3789,10 +3767,6 @@ export function advanceKineticSleepIslands(frame, session, contacts = sleepConta
         const root = sleepComponentRoot[physId];
         const eligible = sleepComponentHasBlocker[root] === 0;
         advanceKineticSleep(body, eligible);
-    }
-    for (let i = 0; i < activeBodies.length; i++) {
-        const physId = activeBodies[i]._physId;
-        if (physId !== undefined && physId !== -1) bodyByPhysId[physId] = undefined;
     }
 }
 export function kineticSleepFramesRequired() {
