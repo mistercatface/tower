@@ -3,13 +3,15 @@ import { PolygonShape, writeLivePolygon, releaseLivePolygon, resolveBodyRadius, 
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
-import { drawSphere, createWallChunkDraw } from "../Render/render.js";
+import { drawSphere, createWallChunkDraw, drawExtrudedConvexPolygon } from "../Render/render.js";
 import { traceClosedFlatPolygon } from "../Canvas/canvas.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
+import { shadeHex } from "../Color/colorMath.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
+import { gridSettings } from "../../Config/world.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -21,32 +23,57 @@ export function formatSandboxSpawnLabel(propId) {
     const asset = propCatalog[propId];
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
+const sPolyFaceColors = { shadow: null, mid: null, highlight: null };
+const sPolyBackFaceColors = { shadow: null, mid: null, highlight: null };
+const sPolyTopColors = { light: null, mid: null, dark: null };
+const sPolyDrawOpts = { height: 0, facing: 0, faceColors: sPolyFaceColors, backFaceColors: sPolyBackFaceColors, topColors: sPolyTopColors, localVerts: null, topHx: null, topHy: null };
+const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
 export function createPolygonPrimitive(visuals) {
     const { colors } = visuals;
-    return (ctx, prop, viewport, _flatPresentation) => {
+    return (ctx, prop, viewport, flatPresentation) => {
         const shape = prop.shape;
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
         const localVerts = prop.drawOutline ?? shape.vertices;
         if (!localVerts || localVerts.length < 6) return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
-        const facing = readEntityFacing(prop);
-        const cos = Math.cos(facing);
-        const sin = Math.sin(facing);
-        const count = localVerts.length / 2;
-        if (count * 2 > POLYGON_SCALE_SCRATCH.length) throw new Error("flat polygon exceeds scratch capacity");
-        const worldVerts = POLYGON_SCALE_SCRATCH;
-        const px = prop.x;
-        const py = prop.y;
-        for (let i = 0; i < count; i++) {
-            const lx = localVerts[i * 2];
-            const ly = localVerts[i * 2 + 1];
-            worldVerts[i * 2] = px + lx * cos - ly * sin;
-            worldVerts[i * 2 + 1] = py + lx * sin + ly * cos;
+        if (flatPresentation) {
+            const facing = readEntityFacing(prop);
+            const cos = Math.cos(facing);
+            const sin = Math.sin(facing);
+            const count = localVerts.length / 2;
+            if (count * 2 > POLYGON_SCALE_SCRATCH.length) throw new Error("flat polygon exceeds scratch capacity");
+            const worldVerts = POLYGON_SCALE_SCRATCH;
+            const px = prop.x;
+            const py = prop.y;
+            for (let i = 0; i < count; i++) {
+                const lx = localVerts[i * 2];
+                const ly = localVerts[i * 2 + 1];
+                worldVerts[i * 2] = px + lx * cos - ly * sin;
+                worldVerts[i * 2 + 1] = py + lx * sin + ly * cos;
+            }
+            ctx.beginPath();
+            traceClosedFlatPolygon(ctx, worldVerts, count);
+            ctx.fillStyle = tinted.top ?? tinted.side;
+            ctx.fill();
+            return;
         }
-        ctx.beginPath();
-        traceClosedFlatPolygon(ctx, worldVerts, count);
-        ctx.fillStyle = tinted.top ?? tinted.side;
-        ctx.fill();
+        const side = tinted.side;
+        const sideShadow = tinted.sideShadow ?? side;
+        sPolyFaceColors.shadow = sideShadow;
+        sPolyFaceColors.mid = side;
+        sPolyFaceColors.highlight = shadeHex(side, -0.12);
+        sPolyBackFaceColors.shadow = sideShadow;
+        sPolyBackFaceColors.mid = sideShadow;
+        sPolyBackFaceColors.highlight = side;
+        sPolyTopColors.light = tinted.top;
+        sPolyTopColors.mid = tinted.top;
+        sPolyTopColors.dark = tinted.top;
+        sPolyDrawOpts.height = gridSettings.cellSize;
+        sPolyDrawOpts.facing = readEntityFacing(prop);
+        sPolyDrawOpts.localVerts = localVerts;
+        sPolyDrawOpts.topHx = null;
+        sPolyDrawOpts.topHy = null;
+        drawExtrudedConvexPolygon(ctx, prop, viewport, sPolyDrawOpts);
     };
 }
 export function createSpherePrimitive(visuals) {
@@ -61,7 +88,6 @@ export function getPolygonPropBoundingRadius(prop) {
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return shape.getBoundingRadius();
     return prop.radius ?? null;
 }
-const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
 export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const shape = prop.shape;

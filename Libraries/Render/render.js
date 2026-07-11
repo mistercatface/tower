@@ -770,8 +770,6 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const faceColors = opts.faceColors;
     const backFaceColors = opts.backFaceColors ?? null;
     const topColors = opts.topColors;
-    const topHx = opts.topHx;
-    const topHy = opts.topHy;
     const count = localVerts.length / 2;
     if (count < 3) return;
     ensurePrismScratch(count);
@@ -800,13 +798,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
             drawSideFaceFlat(ctx, i, count, shadow, mid, highlight);
         }
     }
-    let topGrad;
-    if (topHx != null && topHy != null) topGrad = ctx.createLinearGradient(topX - topHx, topY - topHy, topX + topHx, topY + topHy);
-    else topGrad = ctx.createLinearGradient(topX, topY - 8, topX, topY + 8);
-    topGrad.addColorStop(0.0, topColors.light);
-    topGrad.addColorStop(0.5, topColors.mid);
-    topGrad.addColorStop(1.0, topColors.dark);
-    ctx.fillStyle = topGrad;
+    ctx.fillStyle = topColors.mid;
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, sTopRing, count);
     ctx.fill();
@@ -935,9 +927,9 @@ export function createWallChunkDraw(visuals) {
         sWallBackFaceColors.shadow = sideShadow;
         sWallBackFaceColors.mid = sideShadow;
         sWallBackFaceColors.highlight = side;
-        sWallTopColors.light = shadeHex(tinted.top, -0.1);
+        sWallTopColors.light = tinted.top;
         sWallTopColors.mid = tinted.top;
-        sWallTopColors.dark = sideShadow;
+        sWallTopColors.dark = tinted.top;
         sWallDrawOpts.height = height;
         sWallDrawOpts.facing = readEntityFacing(prop);
         sWallDrawOpts.localVerts = localVerts;

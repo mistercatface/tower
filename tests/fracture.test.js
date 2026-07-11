@@ -18,6 +18,7 @@ import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawn
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
+import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
 const originalMathRandom = Math.random;
 Math.random = () => 0.5;
 const deterministicRandom = () => 0.5;
@@ -87,11 +88,18 @@ describe("fracture", () => {
         assert.equal(asset.visuals.colors.top != null, true);
         assert.equal(asset.visuals.world.height, 7);
     });
-    it("box polygon draw recipe always uses flat silhouette", () => {
+    it("box polygon draw recipe is flat in 2d and extruded in radial", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 12, 8);
         const draw = propCatalog["box"].drawRecipe;
         const calls = { beginPath: 0, fill: 0, stroke: 0, fillStyle: null };
+        const viewport = {
+            x: 0,
+            y: 0,
+            zoom: 1,
+            cameraHeight: DEFAULT_CAMERA_HEIGHT,
+            perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
+        };
         const ctx = {
             beginPath() { calls.beginPath++; },
             fill() { calls.fill++; },
@@ -103,18 +111,23 @@ describe("fracture", () => {
             moveTo() {},
             lineTo() {},
             closePath() {},
+            createLinearGradient() { return { addColorStop() {} }; },
         };
-        for (const flatPresentation of [true, false]) {
-            calls.beginPath = 0;
-            calls.fill = 0;
-            calls.stroke = 0;
-            calls.fillStyle = null;
-            draw(ctx, prop, { x: 0, y: 0 }, flatPresentation);
-            assert.equal(calls.beginPath, 1);
-            assert.equal(calls.fill, 1);
-            assert.ok(calls.fillStyle);
-            assert.equal(calls.stroke, 0);
-        }
+        calls.beginPath = 0;
+        calls.fill = 0;
+        calls.stroke = 0;
+        draw(ctx, prop, viewport, true);
+        assert.equal(calls.beginPath, 1);
+        assert.equal(calls.fill, 1);
+        assert.ok(calls.fillStyle);
+        assert.equal(calls.stroke, 0);
+
+        calls.beginPath = 0;
+        calls.fill = 0;
+        calls.stroke = 0;
+        draw(ctx, prop, viewport, false);
+        assert.ok(calls.fill > 1);
+        assert.equal(calls.stroke, 0);
     });
     it("box init has no poxel tessellation", () => {
         const prop = new WorldProp(0, 0, "box", 0);

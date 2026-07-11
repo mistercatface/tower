@@ -12,6 +12,7 @@ import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/props.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
 import propCatalog from "../Assets/props/index.js";
+import { gridSettings } from "../Config/world.js";
 const cacheKeyDeps = { quantizeAngleIndex };
 const polygonVisuals = {
     colors: { side: "#888", sideShadow: "#666", top: "#aaa" },
@@ -49,7 +50,7 @@ describe("draw shape parity", () => {
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         assert.equal(stageProp.halfExtents.x, ENGINE_F32[M_VEC_A]);
     });
-    it("polygon primitive always fills flat silhouette from live shape", () => {
+    it("polygon primitive fills flat silhouette in 2d from live shape", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         const draw = createPolygonPrimitive(polygonVisuals);
@@ -70,12 +71,39 @@ describe("draw shape parity", () => {
             cameraHeight: DEFAULT_CAMERA_HEIGHT,
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
-        draw(ctx, prop, viewport, false);
+        draw(ctx, prop, viewport, true);
         assert.equal(calls.beginPath, 1);
         assert.equal(calls.fill, 1);
         assert.equal(calls.stroke, 0);
         assert.equal(prop.shape.vertices[2], 12);
         assert.equal(prop.shape.vertices[5], 5);
+    });
+    it("polygon primitive extrudes in radial at wall height level 1", () => {
+        const prop = new WorldProp(0, 0, "box", 0);
+        applyPropBoxFootprint(prop, 12, 5);
+        const draw = createPolygonPrimitive(polygonVisuals);
+        const calls = { fill: 0, stroke: 0 };
+        const ctx = {
+            beginPath() {},
+            fill() { calls.fill++; },
+            stroke() { calls.stroke++; },
+            fillStyle: "",
+            moveTo() {},
+            lineTo() {},
+            closePath() {},
+            createLinearGradient() { return { addColorStop() {} }; },
+        };
+        const viewport = {
+            x: 100,
+            y: 100,
+            zoom: 1,
+            cameraHeight: DEFAULT_CAMERA_HEIGHT,
+            perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
+        };
+        assert.equal(gridSettings.cellSize, 16);
+        draw(ctx, prop, viewport, false);
+        assert.ok(calls.fill > 1);
+        assert.equal(calls.stroke, 0);
     });
     it("resolveBodyRadius prefers CircleShape over stale radius field", () => {
         const prop = new WorldProp(0, 0, "ball", 0);
