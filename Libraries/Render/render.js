@@ -11,6 +11,7 @@ import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import propCatalog from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
+import { propShapeFootprintId } from "../Props/props.js";
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rSubdiv = ENGINE_F32.subarray(R_SUBDIV, R_SUBDIV + 8);
@@ -856,7 +857,7 @@ export function getWallChunkSpriteCacheKey(prop) {
     const profileId = prop.wallChunkProfileId;
     const rev = getSurfaceProfileRevision(profileId);
     const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
-    return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}`;
+    return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}:${propShapeFootprintId(prop)}`;
 }
 export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = readEntityFacing(prop)) {
     const textures = prop._wallChunkTextures;

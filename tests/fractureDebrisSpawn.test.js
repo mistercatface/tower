@@ -1,12 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
+import { getBaseSpriteCacheKey, applyPropBoxFootprint, propShapeFootprintId } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
+import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
 
 const spriteCacheKeyDeps = { quantizeAngleIndex };
 
@@ -19,6 +20,40 @@ describe("fracture debris slab spawn", () => {
         FractureEngine.applyPropFractureGeometry(prop, shards[0]);
         const after = getBaseSpriteCacheKey(prop, spriteCacheKeyDeps);
         assert.notEqual(before, after);
+    });
+
+    it("distinct irregular shard footprints get distinct sprite cache keys", () => {
+        const a = new WorldProp(0, 0, "box", 0);
+        const b = new WorldProp(0, 0, "box", 0);
+        a.fractureEnabled = true;
+        b.fractureEnabled = true;
+        FractureEngine.applyPropFractureGeometry(a, {
+            footprintVertices: new Float32Array([-10, -8, 12, -7, 9, 11, -11, 6]),
+            footprintArea: 200,
+            boundingRadius: 16,
+        });
+        FractureEngine.applyPropFractureGeometry(b, {
+            footprintVertices: new Float32Array([-10.4, -8.2, 11.7, -6.8, 8.5, 10.6, -10.7, 5.9]),
+            footprintArea: 200,
+            boundingRadius: 16,
+        });
+        assert.notEqual(propShapeFootprintId(a), propShapeFootprintId(b));
+        assert.notEqual(getBaseSpriteCacheKey(a, spriteCacheKeyDeps), getBaseSpriteCacheKey(b, spriteCacheKeyDeps));
+    });
+
+    it("wall chunk sprite keys include footprint so same profile shards stay distinct", () => {
+        const a = new WorldProp(0, 0, "wall_voxel_chunk", 0);
+        const b = new WorldProp(0, 0, "wall_voxel_chunk", 0);
+        a.wallChunkProfileId = "brick";
+        b.wallChunkProfileId = "brick";
+        a.wallChunkHeightPx = 24;
+        b.wallChunkHeightPx = 24;
+        a._wallChunkTextureReady = true;
+        b._wallChunkTextureReady = true;
+        applyPropBoxFootprint(a, 8, 8);
+        applyPropBoxFootprint(b, 10, 6);
+        assert.notEqual(getWallChunkSpriteCacheKey(a), getWallChunkSpriteCacheKey(b));
+        assert.match(getWallChunkSpriteCacheKey(a), /:ready:\d+$/);
     });
 
     it("pooled debris bodies reset wall-chunk presentation before box spawn", () => {

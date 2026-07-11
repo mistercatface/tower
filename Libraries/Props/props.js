@@ -106,6 +106,12 @@ export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: "3d", rende
 export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
     prop._footprintId = undefined;
+    prop._cachedStaticKey = undefined;
+    prop._staticKeyFacing = undefined;
+    prop._staticKeyVo = undefined;
+    prop._staticKeyAttachment = undefined;
+    prop._staticKeyPhysicsKey = undefined;
+    prop._staticKeyRoll = undefined;
 }
 export function applyPropBoxFootprint(prop, hx, hy) {
     const n = 8;
@@ -168,7 +174,7 @@ export function propFootprintHalfExtentsInto(buf, o, prop) {
     buf[o] = radius;
     buf[o + 1] = radius;
 }
-function propShapeFootprintId(prop) {
+export function propShapeFootprintId(prop) {
     if (prop._footprintId !== undefined) return prop._footprintId;
     const shape = prop.shape;
     let id;
@@ -176,8 +182,10 @@ function propShapeFootprintId(prop) {
         let hash = 2166136261;
         const verts = shape.vertices;
         const count = verts.length;
+        hash ^= count >>> 0;
+        hash = Math.imul(hash, 16777619);
         for (let i = 0; i < count; i++) {
-            const q = Math.round(verts[i]);
+            const q = Math.round(verts[i] * 8);
             hash ^= q;
             hash = Math.imul(hash, 16777619);
         }
