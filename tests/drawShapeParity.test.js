@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
-import { resolveBodyRadius } from "../Libraries/Physics/physics.js";
+import { resolveBodyRadius, SHAPE_TYPE_POLYGON } from "../Libraries/Physics/physics.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createPolygonPrimitive } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
@@ -23,7 +23,7 @@ describe("draw shape parity", () => {
     it("hex block shares polygon sim and draw footprint with six vertices", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
         const shape = prop.shape;
-        assert.equal(shape.type, "Polygon");
+        assert.equal(shape.shapeTypeId, SHAPE_TYPE_POLYGON);
         assert.equal(shape.vertices.length / 2, 6);
         assert.ok(Math.abs(polygonSignedArea2D(shape.vertices)) > 160);
         assert.equal(kineticFootprintArea(prop), Math.abs(polygonSignedArea2D(shape.vertices)));

@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { entityFacing, wakeKineticBody, KINETIC_PAIR_TIER, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
+import { entityFacing, wakeKineticBody, KINETIC_PAIR_TIER, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, SHAPE_TYPE_POLYGON } from "./physics.js";
 import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../../Core/engineMemory.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -1002,7 +1002,7 @@ export class FractureEngine {
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!prop?.strategy?.fracture) return false;
         const shape = prop.shape;
-        if (shape?.type !== "Polygon") return false;
+        if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return false;
         convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
         if (Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2 < minSize) return false;
         const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
@@ -1166,7 +1166,7 @@ export class FractureEngine {
     static _glassFootprintArea(prop) {
         if (prop.footprintArea != null) return prop.footprintArea;
         const shape = prop.shape;
-        if (shape?.type === "Polygon") return Math.abs(polygonSignedArea2D(shape.vertices));
+        if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return Math.abs(polygonSignedArea2D(shape.vertices));
         return 0;
     }
     static _propWorldPosition(prop) {

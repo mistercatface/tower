@@ -2,7 +2,7 @@ import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, entityFacing, CONSTRAINT_TYPE_DISTANCE } from "../Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, listKineticConstraints, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, entityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendColorField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
@@ -474,7 +474,7 @@ function assetDefaultFootprintSpan(typeId) {
     return true;
 }
 function footprintDiffersFromAsset(prop) {
-    if (!assetDefaultFootprintSpan(prop.type) || prop.shape?.type !== "Polygon") return false;
+    if (!assetDefaultFootprintSpan(prop.type) || prop.shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return false;
     const defaultHx = ENGINE_F32[M_VEC_A];
     const defaultHy = ENGINE_F32[M_VEC_A + 1];
     convexFootprintHalfExtents(ENGINE_F32, M_VEC_A, prop.shape.vertices);
@@ -959,7 +959,7 @@ function spawnSnapshotProp(state, entry) {
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
     const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, halfExtents, entry.visualOverride);
     if (entry.radius != null)
-        if (prop.shape?.type === "Polygon") setPolygonPropBoundingRadius(prop, entry.radius);
+        if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
     if (prop && entry.type === "cross_pinwheel") {
         if (entry.crossLength == null || entry.crossThickness == null) throw new Error("cross_pinwheel snapshot entry requires crossLength and crossThickness");

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
-import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
+import { kineticFootprintArea, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
@@ -10,7 +10,7 @@ describe("shape-first props", () => {
     it("crate builds a four-corner polygon from localFootprint", () => {
         const prop = new WorldProp(0, 0, "crate", 0);
         const shape = prop.shape;
-        assert.equal(shape.type, "Polygon");
+        assert.equal(shape.shapeTypeId, SHAPE_TYPE_POLYGON);
         assert.equal(shape.vertices.length / 2, 4);
         assert.equal(kineticFootprintArea(prop), 256);
     });
@@ -18,15 +18,14 @@ describe("shape-first props", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(prop, 8, 4);
         const shape = prop.shape;
-        assert.equal(shape.type, "Polygon");
+        assert.equal(shape.shapeTypeId, SHAPE_TYPE_POLYGON);
         assert.equal(Math.abs(polygonSignedArea2D(shape.vertices)), 128);
         assert.equal(kineticFootprintArea(prop), 128);
     });
     it("ball radius can be resized after spawn", () => {
         const prop = new WorldProp(0, 0, "ball", 0);
         setCirclePropRadius(prop, 7);
-        assert.equal(prop.shape.type, "Circle");
-        assert.equal(prop.shape.type, "Circle");
+        assert.equal(prop.shape.shapeTypeId, SHAPE_TYPE_CIRCLE);
         assert.equal(prop.shape.radius, 7);
     });
     it("custom box footprint can be resized after spawn", () => {
@@ -40,7 +39,7 @@ describe("shape-first props", () => {
     });
     it("hex block builds a six-vertex polygon from localFootprint", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
-        assert.equal(prop.shape.type, "Polygon");
+        assert.equal(prop.shape.shapeTypeId, SHAPE_TYPE_POLYGON);
         assert.equal(prop.shape.vertices.length / 2, 6);
     });
 });

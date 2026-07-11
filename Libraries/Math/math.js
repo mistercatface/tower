@@ -1,4 +1,4 @@
-import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CX, M_OUT_CY, M_OUT_AREA, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CX, M_OUT_CY, M_OUT_AREA, MAX_OUTLINE_VERTS, SHAPE_TYPE_CIRCLE } from "../../Core/engineMemory.js";
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);
@@ -438,7 +438,7 @@ export function computeCompoundLocalBoundsF32(buf, o, parts) {
     const length = parts.length;
     for (let p = 0; p < length; p++) {
         const part = parts[p];
-        if (part.type === "Circle") {
+        if (part.shapeTypeId === SHAPE_TYPE_CIRCLE) {
             const r = part.radius;
             if (-r < minX) minX = -r;
             if (r > maxX) maxX = r;

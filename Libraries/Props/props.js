@@ -1,5 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuat } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuat, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
@@ -26,7 +26,7 @@ export function createPolygonPrimitive(visuals) {
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, viewport) => {
         const shape = prop.shape;
-        if (shape?.type !== "Polygon") return;
+        if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
         const height = prop.height ?? world?.height ?? 12;
         const asset = propCatalog[prop.type];
@@ -64,7 +64,7 @@ export function createPolygonPrimitive(visuals) {
 export function createSpherePrimitive(visuals) {
     return (ctx, prop, viewport) => {
         const shape = prop.shape;
-        if (shape?.type === "Polygon") {
+        if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
             const tinted = resolveVisualOverrideColorTree(prop, NEUTRAL_BOX_COLORS);
             const height = prop.height ?? 12;
             fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, 1.0, null, null, false);
@@ -88,14 +88,14 @@ export function createSpherePrimitive(visuals) {
 export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive };
 export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
-    if (shape?.type === "Polygon") return shape.getBoundingRadius();
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return shape.getBoundingRadius();
     return prop.radius ?? null;
 }
 const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
 export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const shape = prop.shape;
-    if (shape?.type !== "Polygon") throw new Error(`scalePolygonPropFootprint requires a polygon prop, got ${shape?.type ?? "none"}`);
+    if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) throw new Error(`scalePolygonPropFootprint requires a polygon prop, got shapeTypeId=${shape?.shapeTypeId}`);
     const n = shape.vertices.length;
     const verts = shape.vertices;
     for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;
@@ -115,13 +115,13 @@ export function setPolygonPropBoundingRadius(prop, boundingRadius) {
 }
 export function getCirclePropRadius(prop) {
     const shape = prop.shape;
-    if (shape?.type === "Circle") return shape.radius;
+    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return shape.radius;
     return prop.radius ?? null;
 }
 export function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
     const shape = prop.shape;
-    if (shape?.type !== "Circle") throw new Error(`setCirclePropRadius requires a circle prop, got ${shape?.type ?? "none"}`);
+    if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`setCirclePropRadius requires a circle prop, got shapeTypeId=${shape?.shapeTypeId}`);
     prop.shape = new CircleShape(radius);
     prop.radius = radius;
     invalidatePropFootprintKey(prop);
@@ -163,9 +163,9 @@ export function initWorldPropShape(prop) {
         releaseLivePolygon(prop);
         prop.collisionParts = prop.strategy.collisionParts.map((part) => {
             if (typeof part.getBoundingRadius === "function") return part;
-            if (part.type === "Polygon") return new PolygonShape(part.vertices);
-            if (part.type === "Circle") return new CircleShape(part.radius);
-            throw new Error(`Unknown collision part type: ${part.type}`);
+            if (part.vertices) return new PolygonShape(part.vertices);
+            if (part.radius != null) return new CircleShape(part.radius);
+            throw new Error("Unknown collision part: need vertices or radius");
         });
         let maxR = 0;
         for (let i = 0; i < prop.collisionParts.length; i++) maxR = Math.max(maxR, prop.collisionParts[i].getBoundingRadius());
@@ -192,11 +192,12 @@ export function initWorldPropShape(prop) {
 }
 export function propFootprintHalfExtentsInto(buf, o, prop) {
     const shape = prop.shape;
-    if (shape?.type === "Polygon") {
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         convexFootprintHalfExtents(buf, o, shape.vertices);
         return;
     }
-    const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? prop.strategy?.radius ?? 0);
+    if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`propFootprintHalfExtentsInto: unknown shapeTypeId ${shape?.shapeTypeId}`);
+    const radius = shape.radius;
     buf[o] = radius;
     buf[o + 1] = radius;
 }
@@ -204,7 +205,7 @@ function propShapeFootprintKey(prop) {
     if (prop._footprintKey !== undefined) return prop._footprintKey;
     const shape = prop.shape;
     let key;
-    if (shape?.type === "Polygon") {
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         let hash = 2166136261;
         const verts = shape.vertices;
         const count = verts.length;
@@ -216,8 +217,8 @@ function propShapeFootprintKey(prop) {
         key = `p${hash >>> 0}`;
         if (prop.chunks?.length) key += `_ch${prop.chunks.length}`;
     } else {
-        const radius = shape?.type === "Circle" ? shape.radius : (prop.radius ?? 0);
-        key = `c${Math.round(radius * 4)}`;
+        if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`propShapeFootprintKey: unknown shapeTypeId ${shape?.shapeTypeId}`);
+        key = `c${Math.round(shape.radius * 4)}`;
     }
     prop._footprintKey = key;
     return key;
@@ -329,7 +330,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
     if (strategy.localFootprint) strategy.localFootprint = new Float32Array(ensureFlatVerts(strategy.localFootprint));
     if (strategy.collisionParts)
         strategy.collisionParts = strategy.collisionParts.map((part) => {
-            if (part.type === "Polygon" && part.vertices) return { ...part, vertices: new Float32Array(ensureFlatVerts(part.vertices)) };
+            if (part.vertices) return { ...part, vertices: new Float32Array(ensureFlatVerts(part.vertices)) };
             return part;
         });
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy };
@@ -573,14 +574,14 @@ function resolveAttachmentOffsetScale(parentProp, cfg) {
 function scaleVirtualPropShape(prop, scale) {
     if (scale === 1) return;
     const shape = prop.shape;
-    if (shape?.type === "Circle") {
+    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
         prop.shape = new CircleShape(shape.radius * scale);
         prop.radius = prop.shape.radius;
         if (prop.height != null) prop.height *= scale;
         invalidatePropFootprintKey(prop);
         return;
     }
-    if (shape?.type === "Polygon") {
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         const n = shape.vertices.length;
         const verts = shape.vertices;
         for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;

@@ -59,8 +59,12 @@ import {
     GrowI32,
     CONSTRAINT_TYPE_DISTANCE,
     CONSTRAINT_TYPE_ANGLE,
+    SHAPE_TYPE_CIRCLE,
+    SHAPE_TYPE_POLYGON,
+    BP_KIND_CIRCLE,
+    BP_KIND_OBB,
 } from "../../Core/engineMemory.js";
-export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE };
+export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, BP_KIND_CIRCLE, BP_KIND_OBB };
 import { syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -78,7 +82,7 @@ const LIBRARY_DEFAULT_BAKE_PIXEL_SIZE = 32;
 export function resolveBodyRadius(body, fallback = LIBRARY_DEFAULT_BODY_RADIUS) {
     if (!body) return fallback;
     const shape = body.shape;
-    if (shape?.type === "Circle") return shape.radius;
+    if (shape && shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return shape.radius;
     return body._baseRadius ?? body.radius ?? fallback;
 }
 export const P_VEC_A = ENGINE_PHYS_BASE;
@@ -157,7 +161,7 @@ function polygonShapeInertiaFactor(shape) {
     return polygonSecondMomentAboutCentroid2D(verts) / area;
 }
 function collisionPartMassProperties(shape) {
-    if (shape.type === "Circle") {
+    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
         const r = shape.radius;
         const area = Math.PI * r * r;
         ENGINE_F32[P_OUT_MASS_AREA] = area;
@@ -229,16 +233,15 @@ export function kineticFootprintArea(body) {
         let area = 0;
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
-            if (part.type === "Polygon") area += polygonShapeArea(part);
-            else if (part.type === "Circle") area += Math.PI * part.radius * part.radius;
+            if (part.shapeTypeId === SHAPE_TYPE_POLYGON) area += polygonShapeArea(part);
+            else if (part.shapeTypeId === SHAPE_TYPE_CIRCLE) area += Math.PI * part.radius * part.radius;
         }
         return area;
     }
     const shape = body.shape;
-    if (shape?.type === "Polygon") return polygonShapeArea(shape);
-    if (shape?.type === "Circle") return Math.PI * shape.radius * shape.radius;
-    const r = body.radius ?? 0;
-    return Math.PI * r * r;
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return polygonShapeArea(shape);
+    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return Math.PI * shape.radius * shape.radius;
+    throw new Error(`kineticFootprintArea: unknown shapeTypeId ${shape?.shapeTypeId}`);
 }
 export function kineticDensity(body) {
     return body.strategy?.density ?? collisionSettings.material.densityDefault;
@@ -252,11 +255,12 @@ export function kineticInertiaFromBody(body) {
     const parts = body.collisionParts;
     if (parts?.length > 1) return m * compoundInertiaFactor(parts);
     const shape = body.shape;
-    if (shape?.type === "Polygon") {
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         const inertiaFactor = polygonShapeInertiaFactor(shape);
         return m * inertiaFactor;
     }
-    const r = shape?.type === "Circle" ? shape.radius : (body.radius ?? 0);
+    if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`kineticInertiaFromBody: unknown shapeTypeId ${shape?.shapeTypeId}`);
+    const r = shape.radius;
     return (m * r * r) / 2;
 }
 function massFromBody(body) {
@@ -282,8 +286,6 @@ export function normalizeKineticBody(body) {
     slab.friction[physId] = strategy.pairFriction ?? (strategy.wallPhysics ? strategy.wallPhysics.friction : -1);
     return body;
 }
-export const BP_KIND_CIRCLE = 0;
-export const BP_KIND_OBB = 1;
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
     const slab = kineticDynamicSlab;
     const aCos = slab.cos[physIdA];
@@ -356,14 +358,14 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
     }
     slab.partCount[physId] = 1;
     const shape = entity.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
-        slab.shapeKind[physId] = SHAPE_TYPE_ID.Circle;
+    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
+        slab.shapeKind[physId] = SHAPE_TYPE_CIRCLE;
         slab.bpKind[physId] = BP_KIND_CIRCLE;
         slab.r[physId] = shape.radius;
         return;
     }
-    if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
-        slab.shapeKind[physId] = SHAPE_TYPE_ID.Polygon;
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
+        slab.shapeKind[physId] = SHAPE_TYPE_POLYGON;
         convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         slab.bpKind[physId] = BP_KIND_OBB;
         slab.hx[physId] = ENGINE_F32[P_VEC_A];
@@ -372,9 +374,7 @@ export function stampBroadphaseSlabFromEntity(physId, entity) {
         slab.sin[physId] = Math.sin(angle);
         return;
     }
-    slab.shapeKind[physId] = shape?.shapeTypeId ?? 0;
-    slab.bpKind[physId] = BP_KIND_CIRCLE;
-    slab.r[physId] = shape.radius || 0;
+    throw new Error(`stampBroadphaseSlabFromEntity: unknown shapeTypeId ${shape?.shapeTypeId}`);
 }
 export function writebackActiveKineticBodySlab(bodies) {
     for (let i = 0; i < bodies.length; i++) writebackEntitySlotPoseToRef(bodies[i]._physId, bodies[i]);
@@ -440,10 +440,8 @@ export function pairCircleCircleOverlapSlab(physIdA, physIdB) {
     const radii = slab.r[physIdA] + slab.r[physIdB];
     return dx * dx + dy * dy < radii * radii;
 }
-export const SHAPE_TYPE_ID = { Circle: 1, Polygon: 2 };
 export class Shape {
     constructor() {
-        this.type = "Shape";
         this.shapeTypeId = 0;
     }
     getBoundingRadius() {
@@ -453,8 +451,7 @@ export class Shape {
 export class CircleShape extends Shape {
     constructor(radius) {
         super();
-        this.type = "Circle";
-        this.shapeTypeId = SHAPE_TYPE_ID.Circle;
+        this.shapeTypeId = SHAPE_TYPE_CIRCLE;
         this.radius = radius;
     }
     getBoundingRadius() {
@@ -464,8 +461,7 @@ export class CircleShape extends Shape {
 export class PolygonShape extends Shape {
     constructor(vertices) {
         super();
-        this.type = "Polygon";
-        this.shapeTypeId = SHAPE_TYPE_ID.Polygon;
+        this.shapeTypeId = SHAPE_TYPE_POLYGON;
         let verts = vertices instanceof Float32Array ? vertices : new Float32Array(vertices);
         const count = verts.length / 2;
         if (count >= 3) {
@@ -608,8 +604,7 @@ function releaseLiveGeomSpan(span) {
 export class LivePolygonShape extends Shape {
     constructor() {
         super();
-        this.type = "Polygon";
-        this.shapeTypeId = SHAPE_TYPE_ID.Polygon;
+        this.shapeTypeId = SHAPE_TYPE_POLYGON;
         this.vertices = null;
         this.normals = null;
         this.boundingRadius = 0;
@@ -653,7 +648,7 @@ export function releaseLivePolygon(body) {
     if (!span) return;
     releaseLiveGeomSpan(span);
     body._liveGeom = null;
-    if (body.shape?.type === "Polygon" && body.shape instanceof LivePolygonShape) {
+    if (body.shape instanceof LivePolygonShape) {
         body.shape.vertices = null;
         body.shape.normals = null;
         body.shape.boundingRadius = 0;
@@ -930,10 +925,10 @@ function satSwapCirclePolyContactFeatures() {
 }
 function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
     if (!shapeA || !shapeB) return false;
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB.shapeTypeId === SHAPE_TYPE_ID.Polygon) return satCirclePolygon(xA, yA, shapeA, xB, yB, cosB, sinB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_ID.Polygon && shapeB.shapeTypeId === SHAPE_TYPE_ID.Circle) {
+    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_POLYGON && shapeB.shapeTypeId === SHAPE_TYPE_POLYGON) return satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_POLYGON) return satCirclePolygon(xA, yA, shapeA, xB, yB, cosB, sinB, shapeB);
+    if (shapeA.shapeTypeId === SHAPE_TYPE_POLYGON && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) {
         const hit = satCirclePolygon(xB, yB, shapeB, xA, yA, cosA, sinA, shapeA);
         if (hit) satSwapCirclePolyContactFeatures();
         return hit;
@@ -1239,7 +1234,7 @@ function entityWorldAabbFromShapeF32(buf, o, entity) {
         return;
     }
     const shape = entity.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_ID.Circle) {
+    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
         const r = shape.radius;
         buf[o] = x - r;
         buf[o + 1] = y - r;
@@ -1247,18 +1242,14 @@ function entityWorldAabbFromShapeF32(buf, o, entity) {
         buf[o + 3] = y + r;
         return;
     }
-    if (shape.shapeTypeId === SHAPE_TYPE_ID.Polygon) {
+    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         obbWorldAabbF32(buf, o, x, y, ENGINE_F32[P_VEC_A], ENGINE_F32[P_VEC_A + 1], cos, sin);
         return;
     }
-    const r = shape.radius || 0;
-    buf[o] = x - r;
-    buf[o + 1] = y - r;
-    buf[o + 2] = x + r;
-    buf[o + 3] = y + r;
+    throw new Error(`entityWorldAabbFromShapeF32: unknown shapeTypeId ${shape?.shapeTypeId}`);
 }
 export function entityWorldAabbF32(buf, o, entity) {
     const physId = entity._physId;
@@ -1368,7 +1359,7 @@ function kineticOverlapsWallCandidates(px, py, body, candidates) {
     const slab = staticWallSegmentSlab;
     for (let p = 0; p < partCount; p++) {
         const shape = compound ? body.collisionParts[p] : body.shape;
-        if (shape.type === "Circle") {
+        if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
             const radiusSq = shape.radius * shape.radius;
             for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
             continue;
@@ -1475,19 +1466,19 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution
             if (Math.abs(bx0 - slab.x[segId]) > maxDist || Math.abs(by0 - slab.y[segId]) > maxDist) continue;
             let normalX, normalY, overlap;
             let satCollisionFound = false;
-            if (shape.type === "Circle") {
+            if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
                 if (!circleSegmentPenetration(bx0, by0, shape.radius, segId, approachVx, approachVy)) continue;
                 normalX = ENGINE_F32[P_OUT_PEN_NX];
                 normalY = ENGINE_F32[P_OUT_PEN_NY];
                 overlap = ENGINE_F32[P_OUT_PEN_OVERLAP];
-            } else if (shape.type === "Polygon") {
+            } else if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
                 const segShape = ensureWallSegmentPolygonShape(segId);
                 if (!satCheckCollision(bx0, by0, entityFacing(body), shape, slab.x[segId], slab.y[segId], slab.angle[segId], segShape)) continue;
                 normalX = -SAT_RESULT[1];
                 normalY = -SAT_RESULT[2];
                 overlap = SAT_RESULT[0];
                 satCollisionFound = true;
-            } else continue;
+            } else throw new Error(`resolveAgainstWallSegmentsSlab: unknown shapeTypeId ${shape.shapeTypeId}`);
             if (!hasBest || overlap > bestOverlap) {
                 bestNormalX = normalX;
                 bestNormalY = normalY;
@@ -1502,7 +1493,7 @@ function resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution
         collided = true;
         const bx = dyn.x[physId];
         const by = dyn.y[physId];
-        if (shape.type === "Circle") computeCircleWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, shape.radius);
+        if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) computeCircleWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, shape.radius);
         else computePolygonWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
         const contactX = ENGINE_F32[P_VEC_A];
         const contactY = ENGINE_F32[P_VEC_A + 1];
@@ -1667,8 +1658,8 @@ function orderIslandConstraintItems(startIdx, count) {
 function circleRadiusFromBody(body) {
     if (entityHasCompoundParts(body)) {
         const parts = body.collisionParts;
-        for (let i = 0; i < parts.length; i++) if (parts[i].type === "Circle") return parts[i].radius;
-    } else if (body.shape?.type === "Circle") return body.shape.radius;
+        for (let i = 0; i < parts.length; i++) if (parts[i].shapeTypeId === SHAPE_TYPE_CIRCLE) return parts[i].radius;
+    } else if (body.shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return body.shape.radius;
     return body.radius;
 }
 function linkCapsuleRadius(bodyA, bodyB) {
@@ -2883,8 +2874,8 @@ export function classifyKineticPairTierSlab(physIdA, physIdB) {
     if (slab.partCount[physIdA] > 1 || slab.partCount[physIdB] > 1) return KINETIC_PAIR_TIER.COMPOUND;
     const kindA = slab.shapeKind[physIdA];
     const kindB = slab.shapeKind[physIdB];
-    if (kindA === SHAPE_TYPE_ID.Circle && kindB === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
-    if (kindA === SHAPE_TYPE_ID.Circle || kindB === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_POLY;
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
+    if (kindA === SHAPE_TYPE_CIRCLE || kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_POLY;
     return KINETIC_PAIR_TIER.POLY_POLY;
 }
 export function classifyKineticPairTier(bodyA, bodyB) {
@@ -2894,8 +2885,8 @@ export function classifyKineticPairTier(bodyA, bodyB) {
     if (bodyA.collisionParts?.length > 1 || bodyB.collisionParts?.length > 1) return KINETIC_PAIR_TIER.COMPOUND;
     const shapeA = bodyA.collisionParts?.[0] ?? bodyA.shape;
     const shapeB = bodyB.collisionParts?.[0] ?? bodyB.shape;
-    if (shapeA?.shapeTypeId === SHAPE_TYPE_ID.Circle && shapeB?.shapeTypeId === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
-    if (shapeA?.shapeTypeId === SHAPE_TYPE_ID.Circle || shapeB?.shapeTypeId === SHAPE_TYPE_ID.Circle) return KINETIC_PAIR_TIER.CIRCLE_POLY;
+    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
+    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE || shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_POLY;
     return KINETIC_PAIR_TIER.POLY_POLY;
 }
 const PAIR_BODY_KEY_SCALE = 1_000_000;

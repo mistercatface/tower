@@ -165,6 +165,10 @@ kineticDynamicSlab.linkNeighborCount.fill(0);
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 export const CONSTRAINT_TYPE_DISTANCE = 0;
 export const CONSTRAINT_TYPE_ANGLE = 1;
+export const SHAPE_TYPE_CIRCLE = 1;
+export const SHAPE_TYPE_POLYGON = 2;
+export const BP_KIND_CIRCLE = 0;
+export const BP_KIND_OBB = 1;
 export const kineticConstraintSlab = {
     count: 0,
     activeCount: 0,

@@ -1,4 +1,4 @@
-import { pruneKineticConstraintsForBody, resolveBodyRadius, entityFacing } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, resolveBodyRadius, entityFacing, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, ensureGrowI32, pickWorldPoly } from "../Core/engineMemory.js";
@@ -27,13 +27,13 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
     let sawPolygon = false;
     for (let p = 0; p < partCount; p++) {
         const shape = compound ? prop.collisionParts[p] : prop.shape;
-        if (shape.type === "Circle") {
+        if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
             const r = shape.radius + padding;
             const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
             if (centerDistSq <= r * r) return true;
             continue;
         }
-        if (shape.type === "Polygon") {
+        if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
             sawPolygon = true;
             const worldPoly = worldPropFootprintInto(prop, shape);
             const floatCount = shape.vertices.length;

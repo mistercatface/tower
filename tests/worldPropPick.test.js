@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { PolygonShape } from "../Libraries/Physics/physics.js";
+import { CircleShape, PolygonShape } from "../Libraries/Physics/physics.js";
 import { worldPropContainsPoint } from "../GameState/EntityRegistry.js";
 function boxProp(x, y, hx, hy, facing = 0) {
     return {
@@ -37,7 +37,7 @@ describe("worldPropContainsPoint", () => {
             x: 0,
             y: 0,
             radius: 5,
-            shape: { type: "Circle", radius: 5 },
+            shape: new CircleShape(5),
         };
         assert.equal(worldPropContainsPoint(prop, 4, 0, 0), true);
         assert.equal(worldPropContainsPoint(prop, 6, 0, 0), false);

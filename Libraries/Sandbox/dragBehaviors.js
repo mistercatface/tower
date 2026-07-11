@@ -3,7 +3,7 @@ import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRim
 import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius } from "../Physics/physics.js";
+import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, entityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius, CircleShape } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
@@ -12,7 +12,7 @@ export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
 const GRAB_DRAG_ANGULAR_DAMP = 4;
 const REFERENCE_GRAB_INERTIA = (() => {
-    const body = { shape: { type: "Circle", radius: 4 }, radius: 4, strategy: { isKinetic: true, density: 0.007958 } };
+    const body = { shape: new CircleShape(4), radius: 4, strategy: { isKinetic: true, density: 0.007958 } };
     body.mass = kineticMassFromFootprint(body);
     return kineticInertiaFromBody(body);
 })();

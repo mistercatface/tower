@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
+import { CircleShape, PolygonShape, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
@@ -17,8 +17,8 @@ describe("bodyMass", () => {
             16, 16,
             -16, 16,
         ]);
-        const small = { shape: { type: "Polygon", vertices: smallVerts }, strategy: { isKinetic: true } };
-        const large = { shape: { type: "Polygon", vertices: largeVerts }, strategy: { isKinetic: true } };
+        const small = { shape: new PolygonShape(smallVerts), strategy: { isKinetic: true } };
+        const large = { shape: new PolygonShape(largeVerts), strategy: { isKinetic: true } };
         assert.equal(kineticFootprintArea(small), 256);
         assert.equal(kineticFootprintArea(large), 1024);
         assert.ok(kineticMassFromFootprint(large) > kineticMassFromFootprint(small));
@@ -27,21 +27,18 @@ describe("bodyMass", () => {
         const body = {
             strategy: {},
             footprintArea: 100,
-            shape: {
-                type: "Polygon",
-                vertices: new Float32Array([
-                    -10, -10,
-                    10, -10,
-                    10, 10,
-                    -10, 10,
-                ]),
-            },
+            shape: new PolygonShape(new Float32Array([
+                -10, -10,
+                10, -10,
+                10, 10,
+                -10, 10,
+            ])),
         };
         assert.equal(kineticFootprintArea(body), 100);
     });
 
     it("derives circle mass from density and radius", () => {
-        const body = { strategy: { density: 0.01 }, radius: 10, shape: { type: "Circle", radius: 10 } };
+        const body = { strategy: { density: 0.01 }, radius: 10, shape: new CircleShape(10) };
         body.mass = kineticMassFromFootprint(body);
         assert.ok(Math.abs(body.mass - 0.01 * Math.PI * 100) < 1e-6);
     });
@@ -52,7 +49,7 @@ describe("bodyMass", () => {
             16, 8,
             -16, 8,
         ]);
-        const body = { shape: { type: "Polygon", vertices: boxVerts } };
+        const body = { shape: new PolygonShape(boxVerts) };
         assert.equal(kineticFootprintArea(body), 512);
         assert.equal(kineticMassFromFootprint(body), 3);
     });
@@ -67,7 +64,7 @@ describe("bodyMass", () => {
         ]);
         const area = Math.abs(polygonSignedArea2D(verts));
         const inertiaFactor = polygonSecondMomentAboutCentroid2D(verts) / area;
-        const body = { mass: 2, shape: { type: "Polygon", vertices: verts } };
+        const body = { mass: 2, shape: new PolygonShape(verts) };
         assert.ok(Math.abs(inertiaFactor - (w * w + h * h) / 12) < 1e-6);
         assert.ok(Math.abs(kineticInertiaFromBody(body) - (2 * (w * w + h * h)) / 12) < 1e-6);
     });
