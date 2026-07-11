@@ -1,7 +1,7 @@
 import { SpriteCache } from "../Canvas/canvas.js";
 import { RenderSprites } from "../../Render/RenderSprites.js";
 import { events } from "../../Core/EventSystem.js";
-let floatingTextCache = null;
+const floatingTextCache = new SpriteCache();
 export const FLOATING_TEXT_SPAWN_EVENT = "fx:floatingText";
 export const TextStyles = {
     standard: {
@@ -68,7 +68,6 @@ export class FloatingText {
         FloatingText.spawn(state, x, y, text, color, style ?? "standard", options ?? {});
     }
     render(ctx, renderer, state) {
-        if (!floatingTextCache) floatingTextCache = new SpriteCache();
         const cacheKey = this.getCacheKey();
         const sprite = floatingTextCache.get(cacheKey, RenderSprites.floatingText, this.text, this.style, this.color);
         const img = sprite.offCanvas || sprite;

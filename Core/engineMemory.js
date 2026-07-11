@@ -329,13 +329,11 @@ export const SPRITE_CACHE_FLAG_BITMAP = 2;
 export const SPRITE_CACHE_PROP_INIT = 2560;
 export const SPRITE_CACHE_GRID_INIT = 512;
 export const SPRITE_CACHE_OVERLAY_INIT = 1024;
-export function createSpriteCacheSlab(initialLive) {
-    const capacity = initialLive * 4;
+export function createSpriteCacheSlab(capacity) {
     const hashCap = 1 << (32 - Math.clz32(Math.max(8, capacity * 2 - 1)));
     const slab = {
         capacity,
-        initialLive,
-        maxLive: initialLive,
+        maxLive: capacity,
         liveCount: 0,
         lruHead: -1,
         lruTail: -1,
@@ -358,9 +356,6 @@ export function createSpriteCacheSlab(initialLive) {
         handles: new Array(capacity),
         freeSlots: new Int32Array(capacity),
         freeCount: 0,
-        telemetryRequests: 0,
-        telemetryMisses: 0,
-        telemetryEvictions: 0,
     };
     slab.lruPrev.fill(-1);
     slab.lruNext.fill(-1);

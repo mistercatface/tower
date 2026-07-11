@@ -1,4 +1,4 @@
-import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, SpriteCache, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
+import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageTriangleFlatWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../../Core/engineMemory.js";
@@ -1522,7 +1522,6 @@ export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, f
     blitHorizontalCapSampleFlat(ctx, rCapCorners, rCapSrc, capCanvas);
 }
 const CONVEYOR_BELT_HEIGHT = 0;
-/** @returns {import("../Canvas/QuantizedSpriteCache.js").PropDrawRecipe} */
 export function createConveyorDraw(options = {}) {
     const { turnDirection = null, chevronColors: chevronColorsOverride } = options;
     const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };

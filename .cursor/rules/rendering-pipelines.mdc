@@ -60,7 +60,7 @@ PropDrawRecipe  →  drawCachedPropSprite  →  getOrBakePropSprite  →  blitAn
 ### Add a new grid/floor visual
 
 1. **Recipe** colocated with the domain (`gridStampDrawCache.js`, `floorOccupancy.js`, …) — not a one-file micro-module.
-2. **`GRID_STAMP_RENDER_KEY`** entry in `QuantizedSpriteCache.js` (only if new topology family).
+2. **`GRID_STAMP_RENDER_KEY`** entry in `Libraries/Canvas/canvas.js` (only if new topology family).
 3. **Minimal prop proxy** at world anchor with **`getCustomSpriteCacheKey()`** for dynamic buckets.
 4. **Single draw call:** `drawCachedPropSprite(ctx, proxy, viewport, renderKey, draw, animFrame?)`. Attachment child recipes use `worldPropRecipes` from `PropCatalog.js` inside the cache bake.
 
@@ -162,6 +162,6 @@ export function drawMyFeatureOverlay(ctx, state) { ctx.strokeRect(...); }
 - [ ] New **grid stamp**? → `drawCachedPropSprite` + proxy, not immediate mode.
 - [ ] New **editor feedback**? → Overlay command + `buildSandboxOverlayCommands`, not preview sprawl.
 - [ ] Repeatable **glyph**? → `overlayCached*` + `OVERLAY_RENDER_KEY`, not a one-off zoom-sensitive draw function.
-- [ ] Invented a **fifth cache** or parallel executor? → Fold into `QuantizedSpriteCache` or `drawOverlayCommands`.
+- [ ] Invented a **fifth cache** or parallel executor? → Fold into `SpriteCacheSlab` or `drawOverlayCommands`.
 
 See also: `draw-via-cached-props.mdc` (grid/prop cache emphasis), `minimal-barrels.mdc`, `no-shims-and-guards.mdc`.

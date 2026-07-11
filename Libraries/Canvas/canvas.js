@@ -1,6 +1,6 @@
-import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
+﻿import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
-import { ENGINE_F32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, createSpriteCacheSlab, SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP } from "../../Core/engineMemory.js";
 import { packRollOrientId, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
@@ -432,27 +432,45 @@ function spriteCacheLruTouch(slab, slot) {
     spriteCacheLruUnlink(slab, slot);
     spriteCacheLruAppend(slab, slot);
 }
+function circularProbeContains(ideal, mid, end, cap) {
+    if (ideal <= end) return mid >= ideal && mid < end;
+    return mid >= ideal || mid < end;
+}
 function spriteCacheHashRemove(slab, slot) {
     const lo = slab.keyLo[slot];
     const hi = slab.keyHi[slot];
     let idx = spriteCacheHashIndex(slab, lo, hi);
     const cap = slab.hashCap;
+    let hole = -1;
     for (let probe = 0; probe < cap; probe++) {
         const at = slab.hashTable[idx];
         if (at === -1) return;
         if (at === slot) {
-            slab.hashTable[idx] = -2;
-            return;
+            hole = idx;
+            break;
         }
         idx = (idx + 1) & (cap - 1);
+    }
+    if (hole < 0) return;
+    let i = hole;
+    for (;;) {
+        i = (i + 1) & (cap - 1);
+        const s = slab.hashTable[i];
+        if (s === -1) {
+            slab.hashTable[hole] = -1;
+            return;
+        }
+        const ideal = spriteCacheHashIndex(slab, slab.keyLo[s], slab.keyHi[s]);
+        if (!circularProbeContains(ideal, hole, i, cap)) continue;
+        slab.hashTable[hole] = s;
+        hole = i;
     }
 }
 function spriteCacheHashInsert(slab, slot) {
     let idx = spriteCacheHashIndex(slab, slab.keyLo[slot], slab.keyHi[slot]);
     const cap = slab.hashCap;
     for (let probe = 0; probe < cap; probe++) {
-        const at = slab.hashTable[idx];
-        if (at < 0) {
+        if (slab.hashTable[idx] < 0) {
             slab.hashTable[idx] = slot;
             return;
         }
@@ -466,7 +484,7 @@ function spriteCacheFindSlot(slab, key, lo, hi) {
     for (let probe = 0; probe < cap; probe++) {
         const at = slab.hashTable[idx];
         if (at === -1) return -1;
-        if (at >= 0 && slab.keyLo[at] === lo && slab.keyHi[at] === hi && slab.keys[at] === key && slab.flags[at] & SPRITE_CACHE_FLAG_LIVE) return at;
+        if (at >= 0 && slab.keys[at] === key && slab.flags[at] & SPRITE_CACHE_FLAG_LIVE) return at;
         idx = (idx + 1) & (cap - 1);
     }
     return -1;
@@ -479,122 +497,93 @@ function spriteCacheEvictHead(slab) {
     disposeSpriteSlot(slab, slot);
     slab.freeSlots[slab.freeCount++] = slot;
     slab.liveCount--;
-    slab.telemetryEvictions++;
 }
-function spriteCacheMaybeGrowMaxLive(slab) {
-    slab.telemetryRequests++;
-    if (slab.telemetryRequests < 2000) return;
-    const missRate = slab.telemetryMisses / slab.telemetryRequests;
-    if (slab.telemetryEvictions > 0 && missRate > 0.2 && slab.maxLive < slab.capacity) slab.maxLive = Math.min(slab.capacity, Math.ceil(slab.maxLive * 1.5));
-    slab.telemetryRequests = 0;
-    slab.telemetryMisses = 0;
-    slab.telemetryEvictions = 0;
-}
-export function spriteCacheGet(slab, key) {
-    const { lo, hi } = spriteCacheKeyParts(key);
-    const slot = spriteCacheFindSlot(slab, key, lo, hi);
-    if (slot < 0) return -1;
-    spriteCacheLruTouch(slab, slot);
-    return slot;
-}
-export function spriteCacheHas(slab, key) {
-    const { lo, hi } = spriteCacheKeyParts(key);
-    return spriteCacheFindSlot(slab, key, lo, hi) >= 0;
-}
-export function spriteCacheSet(slab, key, sourceCanvas, meta = {}) {
-    const { lo, hi } = spriteCacheKeyParts(key);
-    const existing = spriteCacheFindSlot(slab, key, lo, hi);
-    if (existing >= 0) {
-        spriteCacheHashRemove(slab, existing);
-        spriteCacheLruUnlink(slab, existing);
-        disposeSpriteSlot(slab, existing);
-        slab.freeSlots[slab.freeCount++] = existing;
-        slab.liveCount--;
+// Walls/ground use page atlases in WorldSurface. Prop/grid/overlay sprites are per-key SoA slots (not shared pages).
+export class SpriteCacheSlab {
+    get(key) {
+        const { lo, hi } = spriteCacheKeyParts(key);
+        const slot = spriteCacheFindSlot(this, key, lo, hi);
+        if (slot < 0) return -1;
+        spriteCacheLruTouch(this, slot);
+        return slot;
     }
-    while (slab.liveCount >= slab.maxLive) spriteCacheEvictHead(slab);
-    if (slab.freeCount <= 0) throw new Error("spriteCacheSet: slab capacity exceeded");
-    const slot = slab.freeSlots[--slab.freeCount];
-    const bakeScale = meta.bakeScale ?? 1;
-    const gen = (slab.slotGen[slot] + 1) >>> 0 || 1;
-    slab.slotGen[slot] = gen;
-    slab.keys[slot] = key;
-    slab.keyLo[slot] = lo;
-    slab.keyHi[slot] = hi;
-    slab.handles[slot] = sourceCanvas;
-    slab.bakeScale[slot] = bakeScale;
-    slab.anchorX[slot] = meta.anchorX ?? 0;
-    slab.anchorY[slot] = meta.anchorY ?? 0;
-    slab.drawW[slot] = meta.drawW ?? sourceCanvas.width / bakeScale;
-    slab.drawH[slot] = meta.drawH ?? sourceCanvas.height / bakeScale;
-    slab.frameCount[slot] = meta.frameCount ?? 1;
-    slab.frameWidthCanvas[slot] = meta.frameWidthCanvas ?? (meta.frameCount > 1 ? sourceCanvas.width / meta.frameCount : sourceCanvas.width);
-    slab.flags[slot] = SPRITE_CACHE_FLAG_LIVE;
-    spriteCacheHashInsert(slab, slot);
-    spriteCacheLruAppend(slab, slot);
-    slab.liveCount++;
-    createImageBitmap(sourceCanvas)
-        .then((bitmap) => {
-            if (!(slab.flags[slot] & SPRITE_CACHE_FLAG_LIVE) || slab.slotGen[slot] !== gen || slab.keys[slot] !== key) {
-                bitmap.close();
-                return;
-            }
-            const prev = slab.handles[slot];
-            slab.handles[slot] = bitmap;
-            slab.flags[slot] = SPRITE_CACHE_FLAG_LIVE | SPRITE_CACHE_FLAG_BITMAP;
-            if (prev && prev !== bitmap) releaseOffscreenCanvas(prev);
-        })
-        .catch(() => {});
-    return slot;
-}
-export function spriteCacheClear(slab) {
-    let slot = slab.lruHead;
-    while (slot >= 0) {
-        const next = slab.lruNext[slot];
-        disposeSpriteSlot(slab, slot);
-        slot = next;
+    has(key) {
+        const { lo, hi } = spriteCacheKeyParts(key);
+        return spriteCacheFindSlot(this, key, lo, hi) >= 0;
     }
-    slab.lruHead = -1;
-    slab.lruTail = -1;
-    slab.liveCount = 0;
-    slab.freeCount = 0;
-    for (let i = 0; i < slab.capacity; i++) {
-        slab.freeSlots[slab.freeCount++] = slab.capacity - 1 - i;
-        slab.lruPrev[i] = -1;
-        slab.lruNext[i] = -1;
+    set(key, sourceCanvas, meta) {
+        const { lo, hi } = spriteCacheKeyParts(key);
+        const existing = spriteCacheFindSlot(this, key, lo, hi);
+        if (existing >= 0) {
+            spriteCacheHashRemove(this, existing);
+            spriteCacheLruUnlink(this, existing);
+            disposeSpriteSlot(this, existing);
+            this.freeSlots[this.freeCount++] = existing;
+            this.liveCount--;
+        }
+        while (this.liveCount >= this.maxLive) spriteCacheEvictHead(this);
+        if (this.freeCount <= 0) throw new Error("SpriteCacheSlab.set: capacity exceeded");
+        const slot = this.freeSlots[--this.freeCount];
+        const bakeScale = meta.bakeScale ?? 1;
+        const gen = (this.slotGen[slot] + 1) >>> 0 || 1;
+        this.slotGen[slot] = gen;
+        this.keys[slot] = key;
+        this.keyLo[slot] = lo;
+        this.keyHi[slot] = hi;
+        this.handles[slot] = sourceCanvas;
+        this.bakeScale[slot] = bakeScale;
+        this.anchorX[slot] = meta.anchorX ?? 0;
+        this.anchorY[slot] = meta.anchorY ?? 0;
+        this.drawW[slot] = meta.drawW ?? sourceCanvas.width / bakeScale;
+        this.drawH[slot] = meta.drawH ?? sourceCanvas.height / bakeScale;
+        this.frameCount[slot] = meta.frameCount ?? 1;
+        this.frameWidthCanvas[slot] = meta.frameWidthCanvas ?? (meta.frameCount > 1 ? sourceCanvas.width / meta.frameCount : sourceCanvas.width);
+        this.flags[slot] = SPRITE_CACHE_FLAG_LIVE;
+        spriteCacheHashInsert(this, slot);
+        spriteCacheLruAppend(this, slot);
+        this.liveCount++;
+        createImageBitmap(sourceCanvas)
+            .then((bitmap) => {
+                if (!(this.flags[slot] & SPRITE_CACHE_FLAG_LIVE) || this.slotGen[slot] !== gen || this.keys[slot] !== key) {
+                    bitmap.close();
+                    return;
+                }
+                const prev = this.handles[slot];
+                this.handles[slot] = bitmap;
+                this.flags[slot] = SPRITE_CACHE_FLAG_LIVE | SPRITE_CACHE_FLAG_BITMAP;
+                if (prev && prev !== bitmap) releaseOffscreenCanvas(prev);
+            })
+            .catch(() => {});
+        return slot;
     }
-    slab.hashTable.fill(-1);
-    slab.telemetryRequests = 0;
-    slab.telemetryMisses = 0;
-    slab.telemetryEvictions = 0;
+    clear() {
+        let slot = this.lruHead;
+        while (slot >= 0) {
+            const next = this.lruNext[slot];
+            disposeSpriteSlot(this, slot);
+            slot = next;
+        }
+        this.lruHead = -1;
+        this.lruTail = -1;
+        this.liveCount = 0;
+        this.freeCount = 0;
+        for (let i = 0; i < this.capacity; i++) {
+            this.freeSlots[this.freeCount++] = this.capacity - 1 - i;
+            this.lruPrev[i] = -1;
+            this.lruNext[i] = -1;
+        }
+        this.hashTable.fill(-1);
+    }
+    getOrBake(key, bakeFn) {
+        let slot = this.get(key);
+        if (slot >= 0) return slot;
+        const { canvas, meta } = bakeFn();
+        return this.set(key, canvas, meta);
+    }
 }
-function spriteCacheGetOrBake(slab, key, bakeFn) {
-    spriteCacheMaybeGrowMaxLive(slab);
-    let slot = spriteCacheGet(slab, key);
-    if (slot >= 0) return slot;
-    slab.telemetryMisses++;
-    const result = bakeFn();
-    if (result instanceof OffscreenCanvas || (typeof HTMLCanvasElement !== "undefined" && result instanceof HTMLCanvasElement)) return spriteCacheSet(slab, key, result, { drawRatio: result.drawRatio, verticalShift: result.verticalShift });
-    const { canvas, meta = {} } = result;
-    return spriteCacheSet(slab, key, canvas, meta);
-}
-/** Test/harness factory — wraps an isolated SoA slab with set/get/clear. */
-export function createBakedSpriteCache({ maxItems = 2000 } = {}) {
-    const slab = createSpriteCacheSlab(maxItems);
-    return {
-        maxItems: slab.maxLive,
-        set(key, sourceCanvas, meta = {}) {
-            return spriteCacheSet(slab, key, sourceCanvas, meta);
-        },
-        get(key) {
-            const slot = spriteCacheGet(slab, key);
-            if (slot < 0) return null;
-            return { canvas: slab.handles[slot], bakeScale: slab.bakeScale[slot], anchorX: slab.anchorX[slot], anchorY: slab.anchorY[slot], drawW: slab.drawW[slot], drawH: slab.drawH[slot], frameCount: slab.frameCount[slot], frameWidthCanvas: slab.frameWidthCanvas[slot] };
-        },
-        clear() {
-            spriteCacheClear(slab);
-        },
-    };
-}
+Object.setPrototypeOf(propSpriteCacheSlab, SpriteCacheSlab.prototype);
+Object.setPrototypeOf(gridStampSpriteCacheSlab, SpriteCacheSlab.prototype);
+Object.setPrototypeOf(overlaySpriteCacheSlab, SpriteCacheSlab.prototype);
 const SPRITE_VIEW_STEP = 30;
 const SPRITE_VIEW_LIMIT = 120;
 function packQuantizedViewBucket(dx, dy, step = SPRITE_VIEW_STEP, limit = SPRITE_VIEW_LIMIT) {
@@ -650,12 +639,11 @@ function packZoomKeyBucket(zoom) {
 }
 const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex };
 export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, modifier = null, frameIndex = 0) {
-    const bakeScale = slab.bakeScale[slot];
     const anchorX = slab.anchorX[slot];
     const anchorY = slab.anchorY[slot];
     const canvas = slab.handles[slot];
-    const frameCount = slab.frameCount[slot] || 1;
-    const frameWidthCanvas = slab.frameWidthCanvas[slot] || canvas.width / frameCount;
+    const frameCount = slab.frameCount[slot];
+    const frameWidthCanvas = slab.frameWidthCanvas[slot];
     const drawW = slab.drawW[slot];
     const drawH = slab.drawH[slot];
     const destX = worldX - anchorX;
@@ -731,7 +719,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     key = (key << 16n) | BigInt(animFrame & 0xffff);
     key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
-    return spriteCacheGetOrBake(propSpriteCacheSlab, key, () => {
+    return propSpriteCacheSlab.getOrBake(key, () => {
         const parentFacing = quantizeAngle(readEntityFacing(prop), resolvePropQuantizeSteps(prop).facing);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         const baseR = Math.max(resolveBodyRadius(prop), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
@@ -757,12 +745,11 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
     });
 }
 export function clearPropSpriteCache() {
-    spriteCacheClear(propSpriteCacheSlab);
-    spriteCacheClear(overlaySpriteCacheSlab);
-    spriteCacheClear(gridStampSpriteCacheSlab);
+    propSpriteCacheSlab.clear();
+    overlaySpriteCacheSlab.clear();
+    gridStampSpriteCacheSlab.clear();
     clearSpriteKeyIntern();
 }
-/** QuantizedSpriteCache render keys for grid-stamped occupancy (not WorldProp assets). */
 export const GRID_STAMP_RENDER_KEY = { FloorBelt: "grid_floor_belt", Portal: "grid_portal" };
 export const BELT_FILMSTRIP_FRAMES = 8;
 export const BELT_FRAME_MS = 60;
@@ -780,7 +767,7 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfEx
     const worldDiameter = stageR * 2;
     const pixelSize = Math.round(worldDiameter * zoom);
     const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
-    return spriteCacheGetOrBake(gridStampSpriteCacheSlab, key, () => {
+    return gridStampSpriteCacheSlab.getOrBake(key, () => {
         const bakeScale = resolvePropBakeScale(worldDiameter, undefined, false, zoom);
         const frameSpan = Math.ceil((stageR * 2.6 + GRID_STAMP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
@@ -800,11 +787,6 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfEx
         return { canvas, meta: { anchorX, anchorY, bakeScale, frameCount, frameWidthCanvas: frameSpan, drawW: frameSpan / bakeScale, drawH: frameSpan / bakeScale } };
     });
 }
-export function hasSharedGridStampFilmstrip(renderKey, stripKey, halfExtents, zoom) {
-    const pixelSize = Math.round(halfExtents.x * 2 * (zoom ?? 1));
-    const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom ?? 1, pixelSize);
-    return spriteCacheHas(gridStampSpriteCacheSlab, key);
-}
 export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey, packedList, packedCount, flowAngleForPacked, drawForPacked, frameCount = BELT_FILMSTRIP_FRAMES) {
     const halfExtents = { x: cellHalf, y: cellHalf };
     const zoom = viewport.zoom ?? 1;
@@ -814,7 +796,7 @@ export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey,
         const facing = flowAngleForPacked(packed);
         const pixelSize = Math.round(cellHalf * 2 * zoom);
         const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
-        if (spriteCacheHas(gridStampSpriteCacheSlab, key)) continue;
+        if (gridStampSpriteCacheSlab.has(key)) continue;
         getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, drawForPacked(packed), frameCount);
     }
 }
@@ -822,7 +804,6 @@ export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfExte
     const slot = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount);
     blitAnchoredSprite(ctx, gridStampSpriteCacheSlab, slot, worldX, worldY, null, frameIndex);
 }
-/** Render keys for baked sandbox/editor overlay glyphs. */
 export const OVERLAY_RENDER_KEY = { SelectionRing: "overlay_selection_ring", PathDestination: "overlay_path_destination", PathArrowHead: "overlay_path_arrow_head", FlowDirectionArrow: "overlay_flow_direction_arrow", WireEndpoint: "overlay_wire_endpoint", GridCellHighlight: "overlay_grid_cell_highlight", PathDebugNode: "overlay_path_debug_node" };
 const OVERLAY_STAGE_PADDING = 6;
 export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey, customKey, worldSpan, draw) {
@@ -833,7 +814,7 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
     key = (key << 20n) | BigInt(internSpriteKeyPart(customKey));
     key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
-    const slot = spriteCacheGetOrBake(overlaySpriteCacheSlab, key, () => {
+    const slot = overlaySpriteCacheSlab.getOrBake(key, () => {
         const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
         const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
         const anchorX = worldSpan / 2 + OVERLAY_STAGE_PADDING;
@@ -853,25 +834,11 @@ export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animF
     const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
     blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, prop.x, prop.y, modifier);
 }
-/**
- * Post-bake draw transforms (alpha, clip, scale, position).
- * Applied at ctx.drawImage time — never in quantized sprite cache keys.
- *
- * @typedef {{
- *   alpha?: number,
- *   scale?: number,
- *   clipCircle?: { cx: number, cy: number, r: number },
- *   drawX?: number,
- *   drawY?: number,
- * }} SpriteDrawModifier
- */
-/** @param {object} entity @param {number} px @param {number} py @returns {SpriteDrawModifier | null} */
 export function resolveSpriteDrawModifier(entity, px, py) {
     const fn = entity.currentState?.resolveSpriteDrawModifier;
     if (!fn) return null;
     return fn.call(entity.currentState, entity, px, py);
 }
-/** @param {CanvasRenderingContext2D} ctx @param {SpriteDrawModifier | null | undefined} modifier */
 export function prepModifiedBlit(ctx, modifier) {
     if (!modifier) return;
     if (modifier.clipCircle) {
