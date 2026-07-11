@@ -1,5 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuat, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuat, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
@@ -295,7 +295,7 @@ export function getBaseSpriteCacheId(prop, deps) {
     const { quantizeAngleIndex } = deps;
     const steps = resolvePropQuantizeSteps(prop);
     let orient;
-    if (prop.strategy?.rolls) orient = packRollOrientId(prop.rollQuat, steps.facing);
+    if (prop.strategy?.rolls) orient = packRollOrientId(prop, steps.facing);
     else orient = quantizeAngleIndex(entityFacing(prop), steps.facing);
     const foot = propShapeFootprintId(prop);
     const vo = visualOverrideCacheId(prop);
@@ -317,7 +317,7 @@ export function getPropStageBakeState(prop) {
     sHalfExtents.x = ENGINE_F32[M_VEC_A];
     sHalfExtents.y = ENGINE_F32[M_VEC_A + 1];
     sStageProp.facing = quantizeAngle(entityFacing(prop), steps.facing);
-    sStageProp.rollQuat = prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, steps.facing) : prop.rollQuat;
+    sStageProp.rollQuat = prop.strategy?.rolls ? quantizeBodyRollQuat(prop, steps.facing) : prop.rollQuat;
     sStageProp.strategy = prop.strategy;
     sStageProp.type = prop.type;
     sStageProp.shape = prop.shape;

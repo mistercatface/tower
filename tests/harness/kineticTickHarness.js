@@ -4,6 +4,7 @@ import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
+import { seedEntityRollQuat } from "../../Libraries/Physics/physics.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
@@ -23,6 +24,7 @@ export function assignPhysIdWithPose(body, physId) {
     entityW[physId] = w;
     entityFacing[physId] = facing;
     clearWorldPropSpawnPose(body);
+    if (body.strategy?.rolls) seedEntityRollQuat(body);
 }
 export function mockKineticBody(isSleeping = false) {
     const radius = 10;
@@ -93,7 +95,10 @@ export function mockBall(x, y, overrides = {}) {
 export function mockRollingProp(overrides = {}) {
     const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
     body.strategy = { rolls: true, friction: 0, isKinetic: true, ...(overrides.strategy || {}) };
+    if (!body.rollQuat) body.rollQuat = { w: 1, x: 0, y: 0, z: 0 };
     normalizeKineticBody(body);
+    if (body._physId === undefined) assignPhysIdWithPose(body, nextMockPhysId++);
+    else if (body.strategy?.rolls) seedEntityRollQuat(body);
     return body;
 }
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {

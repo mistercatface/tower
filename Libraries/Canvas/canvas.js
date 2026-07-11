@@ -2,7 +2,7 @@ import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
-import { packRollOrientId, quantizeRollQuat, resolveBodyRadius, entityFacing } from "../Physics/physics.js";
+import { packRollOrientId, resolveBodyRadius, entityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
 import { visualOverrideCacheId } from "../Color/visualOverride.js";
@@ -620,7 +620,7 @@ function getPropStaticKey(prop, renderKey) {
     const voId = visualOverrideCacheId(prop);
     const attachmentId = getVisualAttachmentSpriteCacheId(prop, { quantizeAngleIndex });
     const rolls = !!prop.strategy?.rolls;
-    const rollId = rolls ? packRollOrientId(prop.rollQuat, resolvePropQuantizeSteps(prop).facing) : 0;
+    const rollId = rolls ? packRollOrientId(prop, resolvePropQuantizeSteps(prop).facing) : 0;
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     if (prop._staticKeyFacing === facing && prop._staticKeyVo === voId && prop._staticKeyAttachment === attachmentId && prop._staticKeyPhysicsKey === physicsId && (!rolls || prop._staticKeyRoll === rollId) && prop._cachedStaticKey !== undefined) return prop._cachedStaticKey;
     const k1 = BigInt(resolveRenderKeyId(renderKey));

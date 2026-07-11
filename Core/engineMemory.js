@@ -70,6 +70,11 @@ export const entityVx = new Float32Array(MAX_ENTITIES);
 export const entityVy = new Float32Array(MAX_ENTITIES);
 export const entityW = new Float32Array(MAX_ENTITIES);
 export const entityFacing = new Float32Array(MAX_ENTITIES);
+export const entityRollQw = new Float32Array(MAX_ENTITIES);
+export const entityRollQx = new Float32Array(MAX_ENTITIES);
+export const entityRollQy = new Float32Array(MAX_ENTITIES);
+export const entityRollQz = new Float32Array(MAX_ENTITIES);
+entityRollQw.fill(1);
 export const entityR = new Float32Array(MAX_ENTITIES);
 export const entityKind = new Uint8Array(MAX_ENTITIES);
 export const entityFlags = new Uint32Array(MAX_ENTITIES);
@@ -157,7 +162,7 @@ export class GrowF32 {
     }
 }
 export const pickWorldPoly = new GrowF32(64);
-export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), bpKind: new Uint8Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), linkNeighborOffset: new Int32Array(MAX_PHYS_BODIES), linkNeighborCount: new Int32Array(MAX_PHYS_BODIES), linkNeighborEids: new Int32Array(256), linkNeighborEidsUsed: 0, spatialNeighborOffset: new Int32Array(MAX_PHYS_BODIES), spatialNeighborCount: new Int32Array(MAX_PHYS_BODIES), spatialNeighborEids: new Int32Array(256), spatialNeighborEidsUsed: 0, r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
+export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), linkNeighborOffset: new Int32Array(MAX_PHYS_BODIES), linkNeighborCount: new Int32Array(MAX_PHYS_BODIES), linkNeighborEids: new Int32Array(256), linkNeighborEidsUsed: 0, spatialNeighborOffset: new Int32Array(MAX_PHYS_BODIES), spatialNeighborCount: new Int32Array(MAX_PHYS_BODIES), spatialNeighborEids: new Int32Array(256), spatialNeighborEidsUsed: 0, r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
 kineticDynamicSlab.linkNeighborOffset.fill(0);
@@ -169,8 +174,6 @@ export const CONSTRAINT_TYPE_DISTANCE = 0;
 export const CONSTRAINT_TYPE_ANGLE = 1;
 export const SHAPE_TYPE_CIRCLE = 1;
 export const SHAPE_TYPE_POLYGON = 2;
-export const BP_KIND_CIRCLE = 0;
-export const BP_KIND_OBB = 1;
 export const kineticConstraintSlab = {
     count: 0,
     activeCount: 0,
