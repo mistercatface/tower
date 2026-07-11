@@ -181,7 +181,7 @@ describe("draw shape parity", () => {
         assert.equal(attachment.propId, "tri_wedge");
         assert.equal(attachment.heading, "facing");
         assert.equal(attachment.offsetSpace, "parentRadius");
-        assert.equal(attachment.inheritTint, true);
+        assert.equal(attachment.inheritTint, undefined);
     });
     it("visual attachments resolve from quantized facing", () => {
         const prop = new WorldProp(0, 0, "boid_triangle", 0);

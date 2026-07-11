@@ -3,9 +3,10 @@ import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineMemory.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-import { transformRollVertexInto, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
+import { transformRollVertexInto, resolveBodyRadius, readEntityFacing, SHAPE_TYPE_CIRCLE } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
+import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
@@ -735,7 +736,7 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const panelCount = Math.max(3, options.panelCount ?? 6);
     const latBands = Math.max(3, options.latBands ?? 5);
     const lonBands = panelCount;
-    const pendingFill = options.pendingFill ?? "#9A9A9A";
+    const pendingFill = options.pendingFill ?? NEUTRAL_SPHERE_PENDING_FILL;
     const textures = options.textures;
     const textured = !!(textures?.ready && textures.capCanvas);
     const qw = prop.rollQw ?? 1;
@@ -1762,11 +1763,12 @@ export class WorldSceneRenderer {
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
         q.sort();
         const flatProps = options.flatProps === true;
+        const radialSpheres = options.radialSpheres === true;
         for (let i = 0; i < q.length; i++) {
             const kind = q.kinds[i];
             const baseIndex = q.baseIndices[i];
             const ref = q.refs[i];
-            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatProps });
+            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatProps, radialSpheres });
             else if (kind === DRAW_KIND_VOXEL) {
                 bindWallFaceScratchFlat(face, DRAW_KIND_VOXEL, baseIndex);
                 drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face);
@@ -1785,11 +1787,15 @@ export class WorldSceneRenderer {
             const draw = propCatalog[renderKey]?.drawRecipe;
             if (!draw) return;
             prepareWallChunkPropTextures(state, prop);
-            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, options.flatProps === true);
+            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, resolvePropFlatPresentation(options, prop));
         } finally {
             if (hasAlpha) ctx.globalAlpha = prevAlpha;
         }
     }
+}
+function resolvePropFlatPresentation(options, prop) {
+    const isSphere = prop.shape?.shapeTypeId === SHAPE_TYPE_CIRCLE;
+    return options.flatProps === true && !(options.radialSpheres && isSphere);
 }
 /** Default omnidirectional vision radius in grid tiles. */
 export const LOS_SHADOW_VISION_TILES_DEFAULT = 16;

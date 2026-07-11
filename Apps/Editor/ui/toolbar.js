@@ -34,7 +34,8 @@ export function bindWorldRenderModeToolbar(state, onChange) {
         updateBtnText(normalizeWorldRenderMode(state.worldRenderMode));
         btn.addEventListener("click", () => {
             const currentMode = normalizeWorldRenderMode(state.worldRenderMode);
-            const nextMode = currentMode === "radial" ? "flat2d" : "radial";
+            const idx = WORLD_RENDER_MODE_OPTIONS.indexOf(currentMode);
+            const nextMode = WORLD_RENDER_MODE_OPTIONS[(idx + 1) % WORLD_RENDER_MODE_OPTIONS.length];
             state.worldRenderMode = nextMode;
             updateBtnText(nextMode);
             onChange(nextMode);

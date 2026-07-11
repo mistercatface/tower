@@ -1,7 +1,7 @@
 import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/render.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
-import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D } from "./WorldRenderMode.js";
+import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_RADIAL_SPHERES } from "./WorldRenderMode.js";
 import { VIEW_TIER } from "../Libraries/Viewport/ViewBounds.js";
 /**
  * @typedef {object} SimulationSceneHooks
@@ -34,9 +34,9 @@ export class Renderer {
     }
     /** Walls and roofs — zIndex 70. */
     drawWorldSceneStructure(state, viewport) {
-        if (this._worldRenderMode === WORLD_RENDER_MODE_FLAT2D) {
+        if (this._worldRenderMode === WORLD_RENDER_MODE_FLAT2D || this._worldRenderMode === WORLD_RENDER_MODE_RADIAL_SPHERES) {
             state.worldSurfaces.drawFlatWallRails(this.ctx, state, viewport);
-            this.render3D.draw3DBuildings(this.ctx, state, viewport, { skipWalls: true, flatProps: true });
+            this.render3D.draw3DBuildings(this.ctx, state, viewport, { skipWalls: true, flatProps: true, radialSpheres: this._worldRenderMode === WORLD_RENDER_MODE_RADIAL_SPHERES });
             return;
         }
         this.render3D.draw3DBuildings(this.ctx, state, viewport);

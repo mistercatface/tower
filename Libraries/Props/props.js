@@ -544,7 +544,6 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
  * @property {number} [scale] Visual scale applied to the child footprint.
  * @property {number} [radiusScale] Child visual radius as a multiplier of parent radius.
  * @property {number} [layer] Negative draws before parent, non-negative after.
- * @property {boolean} [inheritTint] When true, child receives parent visualOverride.
  */
 function normalizeAttachmentScale(scale) {
     return Number.isFinite(scale) && scale > 0 ? scale : 1;
@@ -614,7 +613,7 @@ export function getVisualAttachmentSpriteCacheId(prop, deps) {
         if (!cfg?.id || !cfg.propId) continue;
         const headingIndex = deps.quantizeAngleIndex(resolveAttachmentHeading(prop, cfg), facingSteps);
         const offset = cfg.offset ?? {};
-        const fields = [hashStringPart(cfg.id), hashStringPart(cfg.propId), headingIndex, Math.round((offset.x ?? 0) * 100), Math.round((offset.y ?? 0) * 100), cfg.offsetSpace === "parentRadius" ? 1 : 0, Math.round((cfg.facingOffset ?? 0) * 10000), Math.round(normalizeAttachmentScale(cfg.scale) * 100), Math.round((cfg.radiusScale ?? 0) * 100), cfg.heading === "motion" ? 1 : 0, cfg.layer | 0, cfg.inheritTint === true ? visualOverrideCacheId(prop) : 0];
+        const fields = [hashStringPart(cfg.id), hashStringPart(cfg.propId), headingIndex, Math.round((offset.x ?? 0) * 100), Math.round((offset.y ?? 0) * 100), cfg.offsetSpace === "parentRadius" ? 1 : 0, Math.round((cfg.facingOffset ?? 0) * 10000), Math.round(normalizeAttachmentScale(cfg.scale) * 100), Math.round((cfg.radiusScale ?? 0) * 100), cfg.heading === "motion" ? 1 : 0, cfg.layer | 0];
         for (let f = 0; f < fields.length; f++) {
             h ^= fields[f] >>> 0;
             h = Math.imul(h, 16777619);
