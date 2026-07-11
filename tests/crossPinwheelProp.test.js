@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle } from "./harness/kineticTickHarness.js";
-import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
+import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticStaticSlab } from "../Libraries/Physics/physics.js";
 import { applyCrossPinwheelFootprint } from "../Libraries/Props/props.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
+import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 
 describe("cross pinwheel prop", () => {
     it("initializes as a kinetic compound body", () => {
@@ -16,8 +17,9 @@ describe("cross pinwheel prop", () => {
         assert.equal(kineticFootprintArea(pinwheel), 512);
         assert.ok(pinwheel.mass > 0);
         assert.ok(kineticInertiaFromBody(pinwheel) > 0);
+        assignPhysIdWithPose(pinwheel, 0);
         normalizeKineticBody(pinwheel);
-        assert.ok(1 / pinwheel.mass > 0);
+        assert.ok(kineticStaticSlab.invMass[0] > 0);
     });
 
     it("absorbs angular velocity and rotates when hit", () => {
@@ -31,7 +33,7 @@ describe("cross pinwheel prop", () => {
         });
 
         const tick = createKineticTestTick([pinwheel, projectile]);
-        assert.equal(pinwheel.angularVelocity ?? 0, 0);
+        assert.equal(pinwheel.angularVelocity, 0);
         const originalFacing = pinwheel.facing;
 
         runKineticPhysics(tick, 100, kineticIntegrateHooks((prop, subDt) => prop.update(subDt)));
@@ -74,7 +76,9 @@ describe("cross pinwheel prop", () => {
         assert.equal(part0.vertices[4], 24);
         assert.equal(part0.vertices[5], 5);
         assert.equal(kineticFootprintArea(pinwheel), 960);
-        assert.ok(1 / pinwheel.mass > 0);
+        assignPhysIdWithPose(pinwheel, 1);
+        normalizeKineticBody(pinwheel);
+        assert.ok(kineticStaticSlab.invMass[1] > 0);
         assert.equal(pinwheel.drawOutline.length, 24);
     });
 

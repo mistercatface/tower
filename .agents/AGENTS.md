@@ -21,6 +21,7 @@ Before adding exports under `Libraries/` or finishing a feature that touches `Li
 
 ```powershell
 node scripts/audit-test-leaks.mjs
+node scripts/audit-scalar-dialect.mjs
 node scripts/audit-codebase.mjs Libraries/<area>   # path filter on changed dirs
 npm run audit:all                                   # full gate before merge
 ```

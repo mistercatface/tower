@@ -23,14 +23,16 @@ function resolveWallUntilClear(prop, segments, maxPasses = 6) {
         resolveBodyAgainstWallSegments(prop, prop.shape, segments, wp?.restitution ?? 0, wp?.friction ?? 0.9);
     }
 }
-function bar16x8(x, y) {
+function bar16x8(x, y, physId) {
     const bar = new WorldProp(x, y, "custom_box", 0);
     applyPropBoxFootprint(bar, 8, 4);
+    assignPhysIdWithPose(bar, physId);
+    snapshotKineticBodySlab([bar]);
     return bar;
 }
 describe("polygon wall resolution", () => {
     it("bar resting overlap pushes out with normal away from wall", () => {
-        const bar = bar16x8(5, 0);
+        const bar = bar16x8(5, 0, 0);
         bar.vx = 0;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
@@ -45,6 +47,8 @@ describe("polygon wall resolution", () => {
     });
     it("tri wedge resolves against floor wall with upward normal", () => {
         const wedge = new WorldProp(0, 6, "tri_wedge", 0);
+        assignPhysIdWithPose(wedge, 1);
+        snapshotKineticBodySlab([wedge]);
         wedge.vx = 0;
         wedge.vy = 0;
         const floor = mockWallSegment(0, 16);
@@ -55,7 +59,7 @@ describe("polygon wall resolution", () => {
         assert.ok(!shapeOverlapsWall(wedge, floor));
     });
     it("wall impulse slows polygon sliding into a segment", () => {
-        const bar = bar16x8(5, 0);
+        const bar = bar16x8(5, 0, 2);
         bar.vx = -40;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
@@ -63,10 +67,9 @@ describe("polygon wall resolution", () => {
         assert.ok(bar.vx > -40);
     });
     it("collision pipeline resolves resting polygon at zero linear speed", () => {
-        const bar = bar16x8(5, 0);
+        const bar = bar16x8(5, 0, 0);
         bar.vx = 0;
         bar.vy = 0;
-        assignPhysIdWithPose(bar, 0);
         snapshotKineticBodySlab([bar]);
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
@@ -83,6 +86,8 @@ describe("polygon wall resolution", () => {
     });
     it("wall hit wakes a sleeping polygon", () => {
         const bar = new WorldProp(5, 0, "hex_block", 0);
+        assignPhysIdWithPose(bar, 3);
+        snapshotKineticBodySlab([bar]);
         bar.isSleeping = true;
         bar.vx = -50;
         const wall = mockWallSegment(-8, 0);
@@ -91,7 +96,7 @@ describe("polygon wall resolution", () => {
         assert.equal(bar.isSleeping, false);
     });
     it("breaking hit skips push-out when break strength passes threshold", () => {
-        const bar = bar16x8(5, 0);
+        const bar = bar16x8(5, 0, 4);
         bar.vx = -560;
         bar.vy = 0;
         const startX = bar.x;
@@ -115,7 +120,7 @@ describe("polygon wall resolution", () => {
         assert.ok(shapeOverlapsWall(bar, wall));
     });
     it("sub-threshold hit still pushes out overlapping body", () => {
-        const bar = bar16x8(5, 0);
+        const bar = bar16x8(5, 0, 5);
         bar.vx = -40;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);

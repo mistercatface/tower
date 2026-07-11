@@ -1,5 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, getEntityCollisionParts, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, kineticDynamicSlab, KINETIC_PAIR_TIER, IDENTITY_ROLL_QUAT, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuat } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../Entity/entitySlots.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, ENGINE_F32, M_VEC_A, MAX_OUTLINE_VERTS, crossPinwheelOutlineInto } from "../Math/math.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
@@ -46,14 +46,14 @@ export function createPolygonPrimitive(visuals) {
             drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
             return;
         }
-        const parts = getEntityCollisionParts(prop);
-        if (parts.length > 1) {
+        if (prop.collisionParts?.length > 1) {
+            const parts = prop.collisionParts;
             sPartsVerts.length = parts.length;
             for (let i = 0; i < parts.length; i++) sPartsVerts[i] = parts[i].vertices;
             sDrawOpts.partsVerts = sPartsVerts;
             drawExtrudedCompoundPolygon(ctx, prop, viewport, sDrawOpts);
-        } else if (parts.length === 1) {
-            sDrawOpts.localVerts = parts[0].vertices;
+        } else if (prop.shape?.vertices) {
+            sDrawOpts.localVerts = prop.shape.vertices;
             sDrawOpts.faceOrder = "convexCull";
             drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
         }
@@ -66,14 +66,14 @@ export function createSpherePrimitive(visuals) {
             const tinted = resolveVisualOverrideColorTree(prop, NEUTRAL_BOX_COLORS);
             const height = prop.height ?? 12;
             fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height, 1.0, null, null, false);
-            const parts = getEntityCollisionParts(prop);
-            if (parts.length > 1) {
+            if (prop.collisionParts?.length > 1) {
+                const parts = prop.collisionParts;
                 sPartsVerts.length = parts.length;
                 for (let i = 0; i < parts.length; i++) sPartsVerts[i] = parts[i].vertices;
                 sDrawOpts.partsVerts = sPartsVerts;
                 drawExtrudedCompoundPolygon(ctx, prop, viewport, sDrawOpts);
-            } else if (parts.length === 1) {
-                sDrawOpts.localVerts = parts[0].vertices;
+            } else if (shape.vertices) {
+                sDrawOpts.localVerts = shape.vertices;
                 sDrawOpts.faceOrder = "convexCull";
                 drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
             }
@@ -231,8 +231,7 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 const sQuantizeSteps = { facing: 0, view: 0 };
 const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = Object.create(null);
-const sStagePropKeys = [];
+const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQuat: null, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, _wallChunkTextures: null, crossLength: undefined, crossThickness: undefined };
 const sFaceColors = { shadow: null, mid: null, highlight: null };
 const sBackFaceColors = { shadow: null, mid: null, highlight: null };
 const sBottomColors = { light: null, mid: null, dark: null };
@@ -292,22 +291,30 @@ export function getBaseSpriteCacheKey(prop, deps) {
     key += visualOverrideCacheKey(prop);
     return key;
 }
-export function getPropStageBakeState(prop, deps) {
-    const { quantizeAngle, quantizeRollQuat } = deps;
+export function getPropStageBakeState(prop) {
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
     const steps = resolvePropQuantizeSteps(prop);
-    for (let i = 0; i < sStagePropKeys.length; i++) delete sStageProp[sStagePropKeys[i]];
-    sStagePropKeys.length = 0;
-    Object.assign(sStageProp, prop);
-    for (const k of Object.keys(sStageProp)) sStagePropKeys.push(k);
     sStageProp.x = prop.x;
     sStageProp.y = prop.y;
     sStageProp.radius = prop.radius;
     sHalfExtents.x = ENGINE_F32[M_VEC_A];
     sHalfExtents.y = ENGINE_F32[M_VEC_A + 1];
-    sStageProp.halfExtents = sHalfExtents;
     sStageProp.facing = quantizeAngle(entityFacing(prop), steps.facing);
     sStageProp.rollQuat = prop.strategy?.rolls ? quantizeRollQuat(prop.rollQuat, steps.facing) : prop.rollQuat;
+    sStageProp.strategy = prop.strategy;
+    sStageProp.type = prop.type;
+    sStageProp.shape = prop.shape;
+    sStageProp.collisionParts = prop.collisionParts;
+    sStageProp.drawOutline = prop.drawOutline;
+    sStageProp.height = prop.height;
+    sStageProp.visualOverride = prop.visualOverride;
+    sStageProp.faction = prop.faction;
+    sStageProp.ageMs = prop.ageMs;
+    sStageProp.id = prop.id;
+    sStageProp.wallChunkProfileId = prop.wallChunkProfileId;
+    sStageProp._wallChunkTextures = prop._wallChunkTextures;
+    sStageProp.crossLength = prop.crossLength;
+    sStageProp.crossThickness = prop.crossThickness;
     return sStageProp;
 }
 export function buildWorldPropStrategyFromAsset(asset) {

@@ -647,7 +647,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0) {
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
         const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d");
-        const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX, anchorY });
+        const stageProp = getPropStageBakeState(prop);
         stageProp.radius = resolveBodyRadius(prop);
         const attachments = resolveVisualAttachmentProps(stageProp);
         ctx.save();

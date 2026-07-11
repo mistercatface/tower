@@ -2,7 +2,7 @@ import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircl
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, createSideGradientAt, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight, ENGINE_F32, ENGINE_U8, ENGINE_I32, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_BOX_FOOTPRINT, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_MIDY, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, R_FACE_ORDER, MAX_PRISM_FACES } from "../Math/math.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, getEntityCollisionParts, entityFacing } from "../Physics/physics.js";
+import { transformRollVertexInto, resolveBodyRadius, IDENTITY_ROLL_QUAT, entityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
@@ -1005,9 +1005,8 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = entityFacin
 }
 export function drawFlatWallChunkProp(ctx, prop) {
     if (!prop.wallChunkProfileId || !prop._wallChunkTextures?.ready) return false;
-    const parts = getEntityCollisionParts(prop);
-    if (parts.length !== 1) return false;
-    const verts = parts[0].vertices;
+    if (prop.collisionParts?.length > 1) return false;
+    const verts = prop.shape?.vertices;
     if (!verts || verts.length < 6) return false;
     drawFlatWallChunkCap(ctx, prop, verts);
     return true;

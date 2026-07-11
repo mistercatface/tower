@@ -1,4 +1,4 @@
-import { pruneKineticConstraintsForBody, getEntityCollisionParts, resolveBodyRadius, entityFacing } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, resolveBodyRadius, entityFacing } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
@@ -21,10 +21,11 @@ function worldPropFootprintInto(out, prop, shape) {
     return out;
 }
 export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
-    const parts = getEntityCollisionParts(prop);
+    const compound = prop.collisionParts?.length > 1;
+    const partCount = compound ? prop.collisionParts.length : prop.shape ? 1 : 0;
     let sawPolygon = false;
-    for (let p = 0; p < parts.length; p++) {
-        const shape = parts[p];
+    for (let p = 0; p < partCount; p++) {
+        const shape = compound ? prop.collisionParts[p] : prop.shape;
         if (shape.type === "Circle") {
             const r = shape.radius + padding;
             const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;

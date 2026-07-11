@@ -10,10 +10,10 @@ export function resetMockPhysId(next = 0) {
 export function assignPhysIdWithPose(body, physId) {
     const x = body.x;
     const y = body.y;
-    const vx = body.vx ?? 0;
-    const vy = body.vy ?? 0;
-    const w = body.angularVelocity ?? 0;
-    const facing = body.facing ?? 0;
+    const vx = body.vx;
+    const vy = body.vy;
+    const w = body.angularVelocity;
+    const facing = body.facing;
     body._physId = physId;
     entityX[physId] = x;
     entityY[physId] = y;
@@ -92,7 +92,6 @@ export function mockBall(x, y, overrides = {}) {
 export function mockRollingProp(overrides = {}) {
     const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
     body.strategy = { rolls: true, friction: 0, isKinetic: true, ...(overrides.strategy || {}) };
-    if (!body.strategy || body.strategy.isKinetic !== true) console.error("DEBUG mockRollingProp bad strategy:", body.strategy);
     normalizeKineticBody(body);
     return body;
 }

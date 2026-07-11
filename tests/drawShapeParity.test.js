@@ -44,7 +44,7 @@ describe("draw shape parity", () => {
     });
     it("sprite bake stage passes live polygon verts to draw", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
-        const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX: 50, anchorY: 50 });
+        const stageProp = getPropStageBakeState(prop);
         assert.equal(stageProp.shape.vertices.length / 2, 6);
         assert.equal(stageProp.shape.vertices[0], prop.shape.vertices[0]);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
@@ -96,7 +96,7 @@ describe("draw shape parity", () => {
     it("visual attachments resolve from quantized facing", () => {
         const prop = new WorldProp(0, 0, "boid_triangle", 0);
         prop.facing = Math.PI / 2;
-        const stageProp = getPropStageBakeState(prop, { quantizeAngle, quantizeRollQuat, anchorX: 50, anchorY: 60 });
+        const stageProp = getPropStageBakeState(prop);
         const qHeading = quantizeAngle(prop.facing, resolvePropQuantizeSteps(prop).facing);
         const attachments = resolveVisualAttachmentProps(stageProp);
         assert.equal(attachments.before.length, 0);
@@ -115,8 +115,8 @@ describe("draw shape parity", () => {
         setCirclePropRadius(large, resolveBodyRadius(small) * 2);
         small.vx = 30;
         large.vx = 30;
-        const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(small, { quantizeAngle, quantizeRollQuat, anchorX: 0, anchorY: 0 })).after[0];
-        const largeChild = resolveVisualAttachmentProps(getPropStageBakeState(large, { quantizeAngle, quantizeRollQuat, anchorX: 0, anchorY: 0 })).after[0];
+        const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(small)).after[0];
+        const largeChild = resolveVisualAttachmentProps(getPropStageBakeState(large)).after[0];
         assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.height - smallChild.height * 2) < 1e-6);
