@@ -57,7 +57,10 @@ import {
     PAIR_HASH_CAPACITY,
     staticWallSegmentSlab,
     GrowI32,
+    CONSTRAINT_TYPE_DISTANCE,
+    CONSTRAINT_TYPE_ANGLE,
 } from "../../Core/engineMemory.js";
+export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE };
 import { syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
@@ -1572,7 +1575,7 @@ const constraintPhysSyncSeen = new Set();
 const constraintBridgePhysIds = [];
 const orderUniquePhysIds = [];
 const orderOrdered = [];
-const sIslandEntries = new Array(MAX_KINETIC_CONSTRAINTS);
+const sIslandSessionIndex = new Int32Array(MAX_KINETIC_CONSTRAINTS);
 function constraintBodyAt(physId) {
     const body = entityRefs[physId];
     return body?._physId === physId ? body : null;
@@ -1671,17 +1674,20 @@ function circleRadiusFromBody(body) {
 function linkCapsuleRadius(bodyA, bodyB) {
     return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB)) + 0.05;
 }
-function appendConstraintEntry(slab, islandIdx) {
+function appendConstraintEntry(slab, islandIdx, list) {
     const idx = slab.count++;
     const physIdA = sIslandPhysA[islandIdx];
     const physIdB = sIslandPhysB[islandIdx];
-    const entry = sIslandEntries[islandIdx];
+    const sessionIdx = sIslandSessionIndex[islandIdx];
+    const entry = list[sessionIdx];
     const bodyA = constraintBodyAt(physIdA);
     const bodyB = constraintBodyAt(physIdB);
-    slab.type[idx] = entry.type ?? "distance";
+    const ctype = entry.type;
+    slab.type[idx] = ctype;
+    slab.sessionIndex[idx] = sessionIdx;
     slab.physIdA[idx] = physIdA;
     slab.physIdB[idx] = physIdB;
-    if (slab.type[idx] === "angle") {
+    if (ctype === CONSTRAINT_TYPE_ANGLE) {
         slab.static.referenceAngle[idx] = entry.referenceAngle ?? 0;
         slab.static.anchorAx[idx] = 0;
         slab.static.anchorAy[idx] = 0;
@@ -1691,10 +1697,10 @@ function appendConstraintEntry(slab, islandIdx) {
         slab.static.capsuleRadius[idx] = 0;
     } else {
         slab.static.referenceAngle[idx] = 0;
-        slab.static.anchorAx[idx] = entry.anchorA?.x ?? 0;
-        slab.static.anchorAy[idx] = entry.anchorA?.y ?? 0;
-        slab.static.anchorBx[idx] = entry.anchorB?.x ?? 0;
-        slab.static.anchorBy[idx] = entry.anchorB?.y ?? 0;
+        slab.static.anchorAx[idx] = entry.anchorAx ?? 0;
+        slab.static.anchorAy[idx] = entry.anchorAy ?? 0;
+        slab.static.anchorBx[idx] = entry.anchorBx ?? 0;
+        slab.static.anchorBy[idx] = entry.anchorBy ?? 0;
         slab.static.restLength[idx] = entry.restLength ?? 0;
         slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
     }
@@ -1708,7 +1714,6 @@ function appendConstraintEntry(slab, islandIdx) {
     slab.static.invIA[idx] = stat.invI[physIdA];
     slab.static.invIB[idx] = stat.invI[physIdB];
     slab.dynamic.accumulatedImpulse[idx] = entry.accumulatedImpulse || 0;
-    slab.entry[idx] = entry;
 }
 function islandItemsAsleep(startIdx, count) {
     for (let i = 0; i < count; i++) {
@@ -1719,11 +1724,11 @@ function islandItemsAsleep(startIdx, count) {
     }
     return count > 0;
 }
-function appendIslandConstraintGroup(slab, count) {
+function appendIslandConstraintGroup(slab, count, list) {
     const groupStart = slab.count;
     for (let i = 0; i < count; i++) {
         if (slab.count >= MAX_KINETIC_CONSTRAINTS) break;
-        appendConstraintEntry(slab, orderOrderedIdxs[i]);
+        appendConstraintEntry(slab, orderOrderedIdxs[i], list);
     }
     const addedCount = slab.count - groupStart;
     if (addedCount === 0) return;
@@ -1773,7 +1778,7 @@ export function gatherKineticConstraintSlab(tick) {
     // Pass 1: find roots and bucket counts
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
-        if (entry.type !== "distance" && entry.type !== "angle") continue;
+        if (entry.type !== CONSTRAINT_TYPE_DISTANCE && entry.type !== CONSTRAINT_TYPE_ANGLE) continue;
         const physIdA = entry.physIdA;
         const physIdB = entry.physIdB;
         if (physIdA < 0 || physIdB < 0) continue;
@@ -1809,7 +1814,7 @@ export function gatherKineticConstraintSlab(tick) {
     // Pass 2: fill buckets
     for (let i = 0; i < list.length; i++) {
         const entry = list[i];
-        if (entry.type !== "distance" && entry.type !== "angle") continue;
+        if (entry.type !== CONSTRAINT_TYPE_DISTANCE && entry.type !== CONSTRAINT_TYPE_ANGLE) continue;
         const physIdA = entry.physIdA;
         const physIdB = entry.physIdB;
         if (physIdA < 0 || physIdB < 0) continue;
@@ -1829,7 +1834,7 @@ export function gatherKineticConstraintSlab(tick) {
             }
         if (bucketIdx !== -1) {
             const idx = sBucketFillIdx[bucketIdx]++;
-            sIslandEntries[idx] = entry;
+            sIslandSessionIndex[idx] = i;
             sIslandPhysA[idx] = physIdA;
             sIslandPhysB[idx] = physIdB;
         }
@@ -1846,7 +1851,7 @@ export function gatherKineticConstraintSlab(tick) {
         const start = sBucketStartIdx[g];
         const count = sBucketCounts[g];
         orderIslandConstraintItems(start, count);
-        appendIslandConstraintGroup(slab, count);
+        appendIslandConstraintGroup(slab, count, list);
     }
     slab.activeCount = slab.count;
     for (let g = 0; g < bucketCount; g++) {
@@ -1855,7 +1860,7 @@ export function gatherKineticConstraintSlab(tick) {
         const start = sBucketStartIdx[g];
         const count = sBucketCounts[g];
         orderIslandConstraintItems(start, count);
-        appendIslandConstraintGroup(slab, count);
+        appendIslandConstraintGroup(slab, count, list);
     }
     syncConstraintSlabBodies(slab);
 }
@@ -1980,7 +1985,7 @@ function projectIslandLinkCapsulesAgainstWalls(spatialFrame) {
         if (!islandWalls.used) continue;
         for (let pass = 0; pass < 2; pass++)
             for (let i = start; i < start + count; i++) {
-                if (slab.type[i] === "angle") continue;
+                if (slab.type[i] === CONSTRAINT_TYPE_ANGLE) continue;
                 if (!shouldProjectLinkCapsuleAgainstWalls(slab, i, slab.static.capsuleRadius[i], islandWalls, linkWalls)) continue;
                 projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame);
             }
@@ -2031,7 +2036,7 @@ function projectAngleConstraint(slab, index) {
     markBroadphaseDirty(bodyB);
 }
 function projectConstraint(slab, index) {
-    if (slab.type[index] === "angle") projectAngleConstraint(slab, index);
+    if (slab.type[index] === CONSTRAINT_TYPE_ANGLE) projectAngleConstraint(slab, index);
     else projectDistanceConstraint(slab, index);
 }
 function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias) {
@@ -2089,7 +2094,7 @@ function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     return Math.abs(lambda);
 }
 function solveConstraintVelocity(slab, index, spatialFrame, velocityBias) {
-    if (slab.type[index] === "angle") return solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias);
+    if (slab.type[index] === CONSTRAINT_TYPE_ANGLE) return solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias);
     else return solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias);
 }
 function projectKineticConstraintSlab() {
@@ -2176,7 +2181,7 @@ function warmStartAngleConstraint(slab, i, dynSlab) {
     }
 }
 function warmStartConstraint(slab, i, dynSlab) {
-    if (slab.type[i] === "angle") warmStartAngleConstraint(slab, i, dynSlab);
+    if (slab.type[i] === CONSTRAINT_TYPE_ANGLE) warmStartAngleConstraint(slab, i, dynSlab);
     else warmStartDistanceConstraint(slab, i, dynSlab);
 }
 function warmStartKineticConstraintSlab() {
@@ -2184,11 +2189,12 @@ function warmStartKineticConstraintSlab() {
     const dynSlab = kineticDynamicSlab;
     for (let i = 0; i < slab.activeCount; i++) warmStartConstraint(slab, i, dynSlab);
 }
-function solveKineticConstraintSlab(spatialFrame) {
+function solveKineticConstraintSlab(spatialFrame, session) {
     const slab = kineticConstraintSlab;
     if (slab.activeCount === 0) return;
     const constraintSettings = collisionSettings.kineticConstraints;
     const { contactImpulseEpsilon } = collisionSettings.kineticEarlyOut;
+    const list = session.kineticConstraints;
     warmStartKineticConstraintSlab();
     for (let iter = 0; iter < constraintSettings.iterations; iter++) {
         let maxImpulse = 0;
@@ -2202,7 +2208,7 @@ function solveKineticConstraintSlab(spatialFrame) {
         }
         if (maxImpulse <= contactImpulseEpsilon) break;
     }
-    for (let i = 0; i < slab.activeCount; i++) slab.entry[i].accumulatedImpulse = slab.dynamic.accumulatedImpulse[i];
+    for (let i = 0; i < slab.activeCount; i++) list[slab.sessionIndex[i]].accumulatedImpulse = slab.dynamic.accumulatedImpulse[i];
 }
 function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
     for (let i = 0; i < slab.activeCount; i++) if (!constraintBodyAt(slab.physIdA[i]) || !constraintBodyAt(slab.physIdB[i])) return true;
@@ -2219,14 +2225,14 @@ export function resolveGatheredKineticConstraintSlab(tick) {
     }
     projectKineticConstraintSlab();
     projectIslandLinkCapsulesAgainstWalls(spatialFrame);
-    solveKineticConstraintSlab(spatialFrame);
+    solveKineticConstraintSlab(spatialFrame, tick.world.kinetic);
 }
 export function measureConstraintSlabMaxError() {
     const slab = kineticConstraintSlab;
     const dynSlab = kineticDynamicSlab;
     let max = 0;
     for (let i = 0; i < slab.activeCount; i++) {
-        if (slab.type[i] === "angle") continue;
+        if (slab.type[i] === CONSTRAINT_TYPE_ANGLE) continue;
         const physIdA = slab.physIdA[i];
         const physIdB = slab.physIdB[i];
         worldAnchorFromSlab(constraintBodyAt(physIdA), physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
@@ -2357,14 +2363,14 @@ export function markKineticConstraintsDirty(session) {
 export function getKineticConstraintsVersion(session) {
     return session.kineticConstraintsVersion ?? 0;
 }
-export function addDistanceConstraint(session, { bodyA, bodyB, anchorA = { x: 0, y: 0 }, anchorB = { x: 0, y: 0 }, restLength }) {
-    const constraint = { id: session.nextConstraintId++, type: "distance", bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, anchorA: { x: anchorA.x, y: anchorA.y }, anchorB: { x: anchorB.x, y: anchorB.y }, restLength, accumulatedImpulse: 0 };
+export function addDistanceConstraint(session, { bodyA, bodyB, anchorAx = 0, anchorAy = 0, anchorBx = 0, anchorBy = 0, restLength }) {
+    const constraint = { id: session.nextConstraintId++, type: CONSTRAINT_TYPE_DISTANCE, bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, anchorAx, anchorAy, anchorBx, anchorBy, restLength, accumulatedImpulse: 0 };
     session.kineticConstraints.push(constraint);
     markKineticConstraintsDirty(session);
     return constraint;
 }
 export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
-    const constraint = { id: session.nextConstraintId++, type: "angle", bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, referenceAngle, accumulatedImpulse: 0 };
+    const constraint = { id: session.nextConstraintId++, type: CONSTRAINT_TYPE_ANGLE, bodyAId: bodyA.id, bodyBId: bodyB.id, physIdA: bodyA._physId ?? -1, physIdB: bodyB._physId ?? -1, referenceAngle, accumulatedImpulse: 0 };
     session.kineticConstraints.push(constraint);
     markKineticConstraintsDirty(session);
     return constraint;
@@ -2405,12 +2411,14 @@ export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
         const bodyA = propIdToIndex.get(constraint.bodyAId);
         const bodyB = propIdToIndex.get(constraint.bodyBId);
         if (bodyA == null || bodyB == null) continue;
-        const entry = { type: constraint.type ?? "distance", bodyA, bodyB, accumulatedImpulse: constraint.accumulatedImpulse };
-        if (constraint.type === "angle") entry.referenceAngle = constraint.referenceAngle;
+        const entry = { type: constraint.type, bodyA, bodyB, accumulatedImpulse: constraint.accumulatedImpulse };
+        if (constraint.type === CONSTRAINT_TYPE_ANGLE) entry.referenceAngle = constraint.referenceAngle;
         else {
             entry.restLength = constraint.restLength;
-            entry.anchorA = { x: constraint.anchorA.x, y: constraint.anchorA.y };
-            entry.anchorB = { x: constraint.anchorB.x, y: constraint.anchorB.y };
+            entry.anchorAx = constraint.anchorAx;
+            entry.anchorAy = constraint.anchorAy;
+            entry.anchorBx = constraint.anchorBx;
+            entry.anchorBy = constraint.anchorBy;
         }
         entries.push(entry);
     }
@@ -2419,10 +2427,18 @@ export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
 export function applyKineticConstraintsFromSnapshot(session, entries, propRefsByIndex) {
     for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
-        const type = entry.type ?? "distance";
+        let type = entry.type;
+        if (type === "angle") type = CONSTRAINT_TYPE_ANGLE;
+        else if (type === "distance" || type == null) type = CONSTRAINT_TYPE_DISTANCE;
         let constraint;
-        if (type === "angle") constraint = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
-        else constraint = addDistanceConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], restLength: entry.restLength, anchorA: entry.anchorA, anchorB: entry.anchorB });
+        if (type === CONSTRAINT_TYPE_ANGLE) constraint = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
+        else {
+            const anchorAx = entry.anchorAx ?? entry.anchorA?.x ?? 0;
+            const anchorAy = entry.anchorAy ?? entry.anchorA?.y ?? 0;
+            const anchorBx = entry.anchorBx ?? entry.anchorB?.x ?? 0;
+            const anchorBy = entry.anchorBy ?? entry.anchorB?.y ?? 0;
+            constraint = addDistanceConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], restLength: entry.restLength, anchorAx, anchorAy, anchorBx, anchorBy });
+        }
         constraint.accumulatedImpulse = entry.accumulatedImpulse || 0;
     }
 }
