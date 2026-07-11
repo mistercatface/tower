@@ -7,6 +7,7 @@ import { transformRollVertexInto, resolveBodyRadius, readEntityFacing, SHAPE_TYP
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
 import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
+import { PROP_RENDER_MODE_3D } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
@@ -1690,7 +1691,7 @@ export function createConveyorDraw(options = {}) {
     };
 }
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
-const match3d = (p) => p.strategy?.renderMode === "3d";
+const match3d = (p) => p.strategy?.renderMode === PROP_RENDER_MODE_3D;
 const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
 function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
     scratch.atlasFaceId = undefined;

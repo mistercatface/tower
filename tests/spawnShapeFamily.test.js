@@ -9,12 +9,21 @@ import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
 import propCatalog from "../Assets/props/index.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE } from "../Core/engineEnums.js";
 
 function createSpawnTestState() {
     return createSandboxKineticWorld(32, 32, { viewport: { x: 128, y: 128 } });
 }
 
 describe("spawn shape family defaults", () => {
+    it("catalog assets use integer primitive draw and renderMode enums", () => {
+        assert.equal(propCatalog.ball.primitive, PROP_PRIMITIVE_SPHERE);
+        assert.equal(propCatalog.box.primitive, PROP_PRIMITIVE_POLYGON);
+        assert.equal(propCatalog.wall_voxel_chunk.primitive, PROP_PRIMITIVE_POLYGON);
+        assert.equal(propCatalog.wall_voxel_chunk.draw, PROP_DRAW_WALL_CHUNK);
+        assert.equal(propCatalog.floor_belt.physics.renderMode, PROP_RENDER_MODE_NONE);
+    });
+
     it("places ball with spawn radius and poolTableFelt profile (no coat)", () => {
         const state = createSpawnTestState();
         const session = createSandboxSession(state);

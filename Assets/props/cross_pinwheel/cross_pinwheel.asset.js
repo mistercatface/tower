@@ -1,6 +1,7 @@
+import { PROP_PRIMITIVE_POLYGON } from "../../../Core/engineEnums.js";
 export default {
     id: "cross_pinwheel",
-    primitive: "polygon",
+    primitive: PROP_PRIMITIVE_POLYGON,
     sandbox: { tags: ["shapes"], dragInteract: true, dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Cross pinwheel" },
     physics: {
         density: 0.0005,

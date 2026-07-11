@@ -1,4 +1,5 @@
-import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CX, M_OUT_CY, M_OUT_AREA, MAX_OUTLINE_VERTS, SHAPE_TYPE_CIRCLE } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CX, M_OUT_CY, M_OUT_AREA, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
+import { SHAPE_TYPE_CIRCLE } from "../../Core/engineEnums.js";
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
     h = Math.imul(h ^ (h >>> 16), 2246822507);

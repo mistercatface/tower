@@ -12,6 +12,7 @@ import propCatalog from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -47,10 +48,11 @@ function stampSurfaceProfileFields(prop, asset) {
     prop.wallChunkHeightPx = prop.height ?? asset.visuals?.world?.height ?? 12;
 }
 function assetUsesWallChunkSurface(asset) {
-    return asset?.primitive === "polygon" || asset?.primitive === "sphere" || asset?.draw === "wallChunk";
+    return asset?.primitive === PROP_PRIMITIVE_POLYGON || asset?.primitive === PROP_PRIMITIVE_SPHERE;
 }
-/** @type {Record<string, (visuals: object, opts?: object) => Function>} */
-export const PROP_PRIMITIVE_BUILDERS = { sphere: createSpherePrimitive, polygon: createPolygonPrimitive };
+export const PROP_PRIMITIVE_BUILDERS = [];
+PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] = createSpherePrimitive;
+PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON] = createPolygonPrimitive;
 export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return shape.getBoundingRadius();
@@ -96,7 +98,7 @@ export function setCirclePropRadius(prop, radius) {
     wakeKineticBody(prop);
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
-export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: "3d", render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
+export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: PROP_RENDER_MODE_3D, render3DKey: null, inspectKey: null, friction: 8, wallPhysics: null, rolls: false, orientToMotion: false };
 export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
     prop._footprintId = undefined;
@@ -285,7 +287,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
             if (part.vertices) return { ...part, vertices: new Float32Array(ensureFlatVerts(part.vertices)) };
             return part;
         });
-    const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? "3d", inspectKey: null, ...strategy };
+    const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? PROP_RENDER_MODE_3D, inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
     if (assetUsesWallChunkSurface(asset) && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
     return built;
@@ -357,7 +359,7 @@ export class WorldProp {
         this.wallChunkHeightPx = undefined;
         this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
-        if (asset?.primitive === "polygon" && asset?.draw !== "wallChunk") this.height = gridSettings.cellSize;
+        if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset?.draw !== PROP_DRAW_WALL_CHUNK) this.height = gridSettings.cellSize;
         stampSurfaceProfileFields(this, asset);
         this._footprintKey = undefined;
         initWorldPropShape(this);
@@ -552,7 +554,7 @@ function normalizeAttachmentScale(scale) {
     return Number.isFinite(scale) && scale > 0 ? scale : 1;
 }
 function resolveAttachmentHeading(prop, cfg) {
-    if (cfg.heading === "velocity") {
+    if (cfg.heading === ATTACH_HEADING_VELOCITY) {
         const vx = prop.vx ?? 0;
         const vy = prop.vy ?? 0;
         const speed = Math.hypot(vx, vy);
@@ -565,7 +567,7 @@ function resolveQuantizedAttachmentHeading(prop, cfg) {
     return quantizeAngle(resolveAttachmentHeading(prop, cfg), resolvePropQuantizeSteps(prop).facing);
 }
 function resolveAttachmentOffsetScale(parentProp, cfg) {
-    return cfg.offsetSpace === "parentRadius" ? resolveBodyRadius(parentProp) : 1;
+    return cfg.offsetSpace === ATTACH_OFFSET_PARENT_RADIUS ? resolveBodyRadius(parentProp) : 1;
 }
 function scaleVirtualPropShape(prop, scale) {
     if (scale === 1) return;
@@ -616,7 +618,7 @@ export function getVisualAttachmentSpriteCacheId(prop, deps) {
         if (!cfg?.id || !cfg.propId) continue;
         const headingIndex = deps.quantizeAngleIndex(resolveAttachmentHeading(prop, cfg), facingSteps);
         const offset = cfg.offset ?? {};
-        const fields = [hashStringPart(cfg.id), hashStringPart(cfg.propId), headingIndex, Math.round((offset.x ?? 0) * 100), Math.round((offset.y ?? 0) * 100), cfg.offsetSpace === "parentRadius" ? 1 : 0, Math.round((cfg.facingOffset ?? 0) * 10000), Math.round(normalizeAttachmentScale(cfg.scale) * 100), Math.round((cfg.radiusScale ?? 0) * 100), cfg.heading === "motion" ? 1 : 0, cfg.layer | 0];
+        const fields = [hashStringPart(cfg.id), hashStringPart(cfg.propId), headingIndex, Math.round((offset.x ?? 0) * 100), Math.round((offset.y ?? 0) * 100), cfg.offsetSpace === ATTACH_OFFSET_PARENT_RADIUS ? 1 : 0, Math.round((cfg.facingOffset ?? 0) * 10000), Math.round(normalizeAttachmentScale(cfg.scale) * 100), Math.round((cfg.radiusScale ?? 0) * 100), cfg.heading === ATTACH_HEADING_VELOCITY ? 1 : 0, cfg.layer | 0];
         for (let f = 0; f < fields.length; f++) {
             h ^= fields[f] >>> 0;
             h = Math.imul(h, 16777619);
@@ -678,7 +680,7 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
     for (let i = 0; i < attachments.length; i++) {
         const cfg = attachments[i];
         if (!cfg?.id || !cfg.propId) continue;
-        const heading = cfg.heading === "velocity" ? resolveQuantizedAttachmentHeading(prop, cfg) : parentFacing;
+        const heading = cfg.heading === ATTACH_HEADING_VELOCITY ? resolveQuantizedAttachmentHeading(prop, cfg) : parentFacing;
         const child = createVirtualAttachmentProp({ ...prop, x: 0, y: 0, facing: parentFacing }, cfg, heading);
         if (!child) continue;
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, child);
@@ -688,25 +690,17 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
     return radius;
 }
 export function registerPropDrawRecipe(asset) {
-    if (asset.physics?.renderMode === "none") {
+    if (asset.physics?.renderMode === PROP_RENDER_MODE_NONE) {
         asset.drawRecipe = () => {};
-        return;
-    }
-    if (asset.draw === "wallChunk") {
-        asset.drawRecipe = createWallChunkDraw(asset.visuals);
-        return;
-    }
-    if (typeof asset.draw === "function") {
-        asset.drawRecipe = asset.draw;
         return;
     }
     if (asset.primitive) {
         const builder = PROP_PRIMITIVE_BUILDERS[asset.primitive];
-        if (!builder) throw new Error(`Unknown primitive "${asset.primitive}" for asset "${asset.id}"`);
+        if (!builder) throw new Error(`Unknown primitive ${asset.primitive} for asset "${asset.id}"`);
         asset.drawRecipe = builder(asset.visuals);
         return;
     }
-    throw new Error(`Asset "${asset.id}" must define draw or primitive`);
+    throw new Error(`Asset "${asset.id}" must define primitive`);
 }
 queueMicrotask(() => {
     for (const asset of Object.values(propCatalog)) {

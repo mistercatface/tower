@@ -5,6 +5,7 @@ import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../S
 import { FloorBelt } from "../Spatial/belts.js";
 import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius, CircleShape } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON } from "../../Core/engineEnums.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
@@ -198,14 +199,14 @@ export function createDragLaunchBehaviors(state) {
 }
 function resolveGrabDragAnchor(prop, world) {
     const asset = propCatalog[prop.type];
-    if (asset?.primitive === "polygon" && asset.physics?.isKinetic !== false && prop.shape?.vertices?.length >= 6) {
+    if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && prop.shape?.vertices?.length >= 6) {
         const facing = readEntityFacing(prop);
         findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
         GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
         GRAB_ANCHOR_SCRATCH[G_OY] = GRAB_ANCHOR_SCRATCH[G_WY] - world.y;
         return;
     }
-    if (asset?.primitive === "sphere" && asset.physics?.isKinetic !== false) {
+    if (asset?.primitive === PROP_PRIMITIVE_SPHERE && asset.physics?.isKinetic !== false) {
         const facing = readEntityFacing(prop);
         const radius = resolveBodyRadius(prop);
         findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.x, prop.y, facing, radius, world.x, world.y);

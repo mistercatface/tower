@@ -8,6 +8,7 @@ import { createPolygonPrimitive } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
+import { ATTACH_HEADING_FACING, ATTACH_OFFSET_PARENT_RADIUS } from "../Core/engineEnums.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/props.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
@@ -179,8 +180,8 @@ describe("draw shape parity", () => {
         const attachment = propCatalog["boid_triangle"].visuals.attachments[0];
         assert.equal(attachment.id, "movement_arrow");
         assert.equal(attachment.propId, "tri_wedge");
-        assert.equal(attachment.heading, "facing");
-        assert.equal(attachment.offsetSpace, "parentRadius");
+        assert.equal(attachment.heading, ATTACH_HEADING_FACING);
+        assert.equal(attachment.offsetSpace, ATTACH_OFFSET_PARENT_RADIUS);
         assert.equal(attachment.inheritTint, undefined);
     });
     it("visual attachments resolve from quantized facing", () => {

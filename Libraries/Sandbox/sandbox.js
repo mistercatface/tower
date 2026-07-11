@@ -9,6 +9,7 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON } from "../../Core/engineEnums.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
@@ -612,10 +613,10 @@ export function orderSandboxPalettePropIds(propIds) {
     return ordered.concat(rest);
 }
 export function isBallFamilyAsset(asset) {
-    return asset?.primitive === "sphere" && isSingleWorldPropSpawnAsset(asset);
+    return asset?.primitive === PROP_PRIMITIVE_SPHERE && isSingleWorldPropSpawnAsset(asset);
 }
 export function isPolygonFamilyAsset(asset) {
-    return asset?.primitive === "polygon" && isSingleWorldPropSpawnAsset(asset);
+    return asset?.primitive === PROP_PRIMITIVE_POLYGON && isSingleWorldPropSpawnAsset(asset);
 }
 export function createSandboxSelection({ isLiveProp }) {
     /** @type {SandboxSelection | null} */
@@ -2539,18 +2540,12 @@ function appendShapeFamilyFields(body, state, spec) {
                 (val) => session.setSpawnCrossThickness(val),
             );
             appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
-            appendSurfaceProfileSelect(body, {
-                value: session.getSpawnSurfaceProfileId(),
-                onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
-            });
+            appendSurfaceProfileSelect(body, { value: session.getSpawnSurfaceProfileId(), onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId) });
             return;
         }
         if (isBallFamilyAsset(spawnAsset)) {
             appendShapeFamilyRadiusField(body, session.getSpawnBallRadius(spawnAsset), (radius) => session.setSpawnBallRadius(radius));
-            appendSurfaceProfileSelect(body, {
-                value: session.getSpawnSurfaceProfileId(),
-                onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
-            });
+            appendSurfaceProfileSelect(body, { value: session.getSpawnSurfaceProfileId(), onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId) });
             return;
         }
         if (isPolygonFamilyAsset(spawnAsset)) {
@@ -2563,10 +2558,7 @@ function appendShapeFamilyFields(body, state, spec) {
                     (height) => session.setSpawnBoxHeight(height),
                 );
             appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
-            appendSurfaceProfileSelect(body, {
-                value: session.getSpawnSurfaceProfileId(),
-                onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
-            });
+            appendSurfaceProfileSelect(body, { value: session.getSpawnSurfaceProfileId(), onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId) });
         }
         return;
     }
@@ -2595,8 +2587,7 @@ function appendShapeFamilyFields(body, state, spec) {
             selectedProp.fractureEnabled = checked;
             dirty();
         });
-        if (selectedProp.wallChunkProfileId != null)
-            appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
+        if (selectedProp.wallChunkProfileId != null) appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
         return;
     }
     if (isBallFamilyAsset(asset)) {
@@ -2604,8 +2595,7 @@ function appendShapeFamilyFields(body, state, spec) {
             setCirclePropRadius(selectedProp, radius);
             dirty();
         });
-        if (selectedProp.wallChunkProfileId != null)
-            appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
+        if (selectedProp.wallChunkProfileId != null) appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
         return;
     }
     if (isPolygonFamilyAsset(asset)) {
@@ -2633,8 +2623,7 @@ function appendShapeFamilyFields(body, state, spec) {
             selectedProp.fractureEnabled = checked;
             dirty();
         });
-        if (selectedProp.wallChunkProfileId != null)
-            appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
+        if (selectedProp.wallChunkProfileId != null) appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
     }
 }
 export function appendShapeFamilySelectedFields(body, state, selectedProp) {
@@ -2987,10 +2976,7 @@ export function appendPropPlaceParams(body, state, controller, spawnId, refreshP
                 session.setSpawnBallRadius(Math.max(1, Math.min(4, radius)));
             },
         });
-        appendSurfaceProfileSelect(body, {
-            value: session.getSpawnSurfaceProfileId(),
-            onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId),
-        });
+        appendSurfaceProfileSelect(body, { value: session.getSpawnSurfaceProfileId(), onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId) });
     } else if (isBallFamilyAsset(spawnAsset) || isPolygonFamilyAsset(spawnAsset)) appendShapeFamilyFields(body, state, { mode: "spawn", controller, spawnId });
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }

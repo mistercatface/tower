@@ -67,11 +67,8 @@ import {
     staticWallSegmentSlab,
     GrowI32,
     GrowF32,
-    CONSTRAINT_TYPE_DISTANCE,
-    CONSTRAINT_TYPE_ANGLE,
-    SHAPE_TYPE_CIRCLE,
-    SHAPE_TYPE_POLYGON,
 } from "../../Core/engineMemory.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON };
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
