@@ -12,7 +12,7 @@ import propCatalog from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -53,6 +53,7 @@ function assetUsesWallChunkSurface(asset) {
 export const PROP_PRIMITIVE_BUILDERS = [];
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] = createSpherePrimitive;
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON] = createPolygonPrimitive;
+if (PROP_PRIMITIVE_BUILDERS.length !== PROP_PRIMITIVE_COUNT || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON]) throw new Error("PROP_PRIMITIVE_BUILDERS incomplete relative to PROP_PRIMITIVE_COUNT");
 export function getPolygonPropBoundingRadius(prop) {
     const shape = prop.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return shape.getBoundingRadius();

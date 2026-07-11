@@ -1,4 +1,5 @@
-import { allocStaticWallSegment, staticWallSegmentSlab, GrowI32, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../../Core/engineMemory.js";
+import { allocStaticWallSegment, staticWallSegmentSlab, GrowI32 } from "../../Core/engineMemory.js";
+import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../../Core/engineEnums.js";
 
 export { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL };
 

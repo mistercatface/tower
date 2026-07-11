@@ -1,8 +1,8 @@
 import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
-import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
+import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, GRID_NAV_EPOCH_WALL, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, KINETIC_PAIR_TIER, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../Physics/physics.js";
 import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
@@ -991,7 +991,7 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     const wallBounds = applyStampedGridWallsFromSnapshot(state, doc);
     FloorBelt.applyFromSnapshot(state, doc);
     const grid = state.obstacleGrid;
-    if (wallBounds) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    if (wallBounds) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     await commitGridNavEdit(state, null, { fullNavSync: true });
     spawnSnapshotProps(state, doc);
 }

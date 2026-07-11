@@ -1,7 +1,7 @@
 import { gameWorldSurfaceSettings } from "./WorldSurfaceBootstrap.js";
 import { WorldSceneRenderer } from "../Libraries/Render/render.js";
 import { WORLD_SURFACE_DEFAULTS } from "../Config/world.js";
-import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT, WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_RADIAL_SPHERES } from "./WorldRenderMode.js";
+import { WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_RADIAL_SPHERES, WORLD_RENDER_MODE_COUNT } from "../Core/engineEnums.js";
 import { VIEW_TIER } from "../Libraries/Viewport/ViewBounds.js";
 /**
  * @typedef {object} SimulationSceneHooks
@@ -20,7 +20,7 @@ export class Renderer {
         this.ctx = ctx;
         this.sceneHooks = options.sceneHooks ?? {};
         this.render3D = new WorldSceneRenderer();
-        this._worldRenderMode = WORLD_RENDER_MODE_DEFAULT;
+        this._worldRenderMode = WORLD_RENDER_MODE_FLAT2D;
         this.effectPasses = [
             { zIndex: -5, fn: (state, viewport) => this.drawWorldSceneBackdrop(state, viewport) },
             { zIndex: 70, fn: (state, viewport) => this.drawWorldSceneStructure(state, viewport) },
@@ -42,9 +42,9 @@ export class Renderer {
         this.render3D.draw3DBuildings(this.ctx, state, viewport);
         state.worldSurfaces.drawRoofs(this.ctx, state, viewport);
     }
-    /** @param {import("./WorldRenderMode.js").WorldRenderMode} mode */
     applyWorldRenderMode(mode) {
-        this._worldRenderMode = normalizeWorldRenderMode(mode);
+        const m = mode | 0;
+        this._worldRenderMode = m === mode && m >= 0 && m < WORLD_RENDER_MODE_COUNT ? m : WORLD_RENDER_MODE_FLAT2D;
     }
     /** Full-canvas bloom — zIndex 71; gated by state.worldBloomEnabled at draw time. */
     drawWorldSceneBloom(state) {

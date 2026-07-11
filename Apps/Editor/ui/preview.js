@@ -7,7 +7,7 @@ import { gameWorldSurfaceSettings } from "../../../Render/WorldSurfaceBootstrap.
 import { floorEffectPass } from "../../../Libraries/Props/props.js";
 import { getGameState } from "../../../GameState/GameState.js";
 import { Renderer } from "../../../Render/Render.js";
-import { normalizeWorldRenderMode, WORLD_RENDER_MODE_DEFAULT } from "../../../Render/WorldRenderMode.js";
+import { WORLD_RENDER_MODE_FLAT2D } from "../../../Core/engineEnums.js";
 import { getNavPathDebugCache } from "../../../Libraries/Navigation/navDebug.js";
 import { drawOverlayCommands } from "../../../Libraries/Render/render.js";
 import { drawLosShadowOverlay } from "../../../Libraries/Render/render.js";
@@ -168,7 +168,7 @@ function getLabRenderer(canvas, ctx, state) {
         labRenderer = new Renderer(canvas, ctx, { sceneHooks: editorSceneHooks });
         labRendererSettings = settings;
     }
-    labRenderer.applyWorldRenderMode(state?.worldRenderMode ?? WORLD_RENDER_MODE_DEFAULT);
+    labRenderer.applyWorldRenderMode(state?.worldRenderMode ?? WORLD_RENDER_MODE_FLAT2D);
     return labRenderer;
 }
 function invalidateWallDrawCaches() {

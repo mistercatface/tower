@@ -1,5 +1,5 @@
 export const WORLD_RENDER_CONTROLS_HTML = `
-        <button type="button" id="worldRenderModeBtn" class="toolbar-cycle-btn">Render: 2D</button>`;
+        <button type="button" id="worldRenderModeBtn" class="toolbar-cycle-btn">Draw: 2D</button>`;
 export const TILELAB_UI_HTML = `
 <div class="app">
     <div class="toolbar">

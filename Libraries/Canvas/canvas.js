@@ -1,6 +1,7 @@
 ﻿import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH } from "../../Core/engineMemory.js";
+import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP } from "../../Core/engineEnums.js";
 import { packRollOrientId, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";

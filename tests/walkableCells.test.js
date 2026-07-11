@@ -7,7 +7,7 @@ import { getNavWalkableCellIndex, isNavWalkableCellAt, patchNavWalkableCellIndex
 import { terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../Libraries/Spatial/spatial.js";
+import { GRID_NAV_EPOCH_WALL, bumpGridNavEpoch } from "../Libraries/Spatial/spatial.js";
 async function createWalkableCellsTestState(config) {
     return createNavWalkableTestState(config);
 }
@@ -46,7 +46,7 @@ describe("walkableCells", () => {
         getNavWalkableCellIndex(state);
         const before = getNavWalkableCellIndex(state).cells.length;
         state.obstacleGrid.grid[worldIdxAtCell(state.obstacleGrid,2, 2)] = 1;
-        bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+        bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH_WALL);
         await state.nav.commitEdit({ startCol: 2, endCol: 2, startRow: 2, endRow: 2 });
         getNavWalkableCellIndex(state);
         assert.ok(getNavWalkableCellIndex(state).cells.length <= before);

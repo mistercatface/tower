@@ -68,8 +68,8 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
-export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON };
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT } from "../../Core/engineEnums.js";
+export { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT };
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -3086,11 +3086,9 @@ function narrowPhaseSatContact(pairs, pairIndex, contacts) {
 }
 function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     contacts.reset();
-    for (let i = 0; i < pairs.count; i++) {
-        const tier = pairs.static.tier[i];
-        if (tier === KINETIC_PAIR_TIER.CIRCLE_CIRCLE) narrowPhaseCircleContact(pairs, i, contacts);
+    for (let i = 0; i < pairs.count; i++)
+        if (pairs.static.tier[i] === KINETIC_PAIR_CIRCLE_CIRCLE) narrowPhaseCircleContact(pairs, i, contacts);
         else narrowPhaseSatContact(pairs, i, contacts);
-    }
 }
 function precomputeKineticContacts(spatialFrame, contacts) {
     const dynSlab = kineticDynamicSlab;
@@ -3275,26 +3273,25 @@ export function resolveKineticContactPassWithPairs(tick, pairs) {
     for (let i = 0; i < contacts.count; i++) unionSleepContact(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
     return contacts;
 }
-export const KINETIC_PAIR_TIER = { CIRCLE_CIRCLE: 0, CIRCLE_POLY: 1, POLY_POLY: 2, COMPOUND: 3 };
 export function classifyKineticPairTierSlab(physIdA, physIdB) {
     const slab = kineticDynamicSlab;
-    if (slab.partCount[physIdA] > 1 || slab.partCount[physIdB] > 1) return KINETIC_PAIR_TIER.COMPOUND;
+    if (slab.partCount[physIdA] > 1 || slab.partCount[physIdB] > 1) return KINETIC_PAIR_COMPOUND;
     const kindA = slab.shapeKind[physIdA];
     const kindB = slab.shapeKind[physIdB];
-    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
-    if (kindA === SHAPE_TYPE_CIRCLE || kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_POLY;
-    return KINETIC_PAIR_TIER.POLY_POLY;
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_CIRCLE;
+    if (kindA === SHAPE_TYPE_CIRCLE || kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_POLY;
+    return KINETIC_PAIR_POLY_POLY;
 }
 export function classifyKineticPairTier(bodyA, bodyB) {
     const physIdA = bodyA._physId;
     const physIdB = bodyB._physId;
     if (physIdA !== undefined && physIdA !== -1 && physIdB !== undefined && physIdB !== -1 && kineticDynamicSlab.partCount[physIdA] > 0 && kineticDynamicSlab.partCount[physIdB] > 0) return classifyKineticPairTierSlab(physIdA, physIdB);
-    if (bodyA.collisionParts?.length > 1 || bodyB.collisionParts?.length > 1) return KINETIC_PAIR_TIER.COMPOUND;
+    if (bodyA.collisionParts?.length > 1 || bodyB.collisionParts?.length > 1) return KINETIC_PAIR_COMPOUND;
     const shapeA = bodyA.collisionParts?.[0] ?? bodyA.shape;
     const shapeB = bodyB.collisionParts?.[0] ?? bodyB.shape;
-    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_CIRCLE;
-    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE || shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_TIER.CIRCLE_POLY;
-    return KINETIC_PAIR_TIER.POLY_POLY;
+    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_CIRCLE;
+    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE || shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_POLY;
+    return KINETIC_PAIR_POLY_POLY;
 }
 const PAIR_BODY_KEY_SCALE = 1_000_000;
 function copyKineticPairBuffer(from, to) {
@@ -4026,18 +4023,6 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], sleepNeighborEids.buf, n)) return false;
     return true;
 }
-/**
- * Velocity and angular drag for coasting / knockback decay (top-down locomotion).
- */
-/**
- * @typedef {object} DampedBody
- * @property {number} x
- * @property {number} y
- * @property {number} [vx]
- * @property {number} [vy]
- * @property {number} [facing]
- * @property {number} [angularVelocity]
- */
 /**
  * @param {DampedBody} body — mutated in place
  * @param {number} dtMs

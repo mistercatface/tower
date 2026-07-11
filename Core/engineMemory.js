@@ -304,9 +304,6 @@ export const kineticDebrisSlab = { activeCount: 0, ageMs: new Float32Array(MAX_K
 export const pendingWallBreaks = { count: 0, keyToRow: new Map(), kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 export const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 export const MAX_STATIC_WALL_SEGMENTS = 4096;
-export const WALL_SEG_VOXEL = 1;
-export const WALL_SEG_EDGE_RAIL = 2;
-export const WALL_SEG_STATIC_FACE = 4;
 export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS) };
 export function resetStaticWallSegmentSlab() {
     staticWallSegmentSlab.count = 0;
@@ -317,8 +314,6 @@ export function allocStaticWallSegment() {
     staticWallSegmentSlab.count = id + 1;
     return id;
 }
-export const SPRITE_CACHE_FLAG_LIVE = 1;
-export const SPRITE_CACHE_FLAG_BITMAP = 2;
 export const SPRITE_CACHE_PROP_INIT = 2560;
 export const SPRITE_CACHE_GRID_INIT = 512;
 export const SPRITE_CACHE_OVERLAY_INIT = 1024;

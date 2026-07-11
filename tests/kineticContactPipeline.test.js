@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { satCheckCollision, checkEntityPairCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
-import { KINETIC_PAIR_TIER } from "../Libraries/Physics/physics.js";
+import { KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY } from "../Libraries/Physics/physics.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
@@ -27,7 +27,7 @@ describe("kinetic contact pipeline", () => {
         const tick = createKineticTestTick([ball, wedge]);
         const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(contacts.count, 1);
-        assert.equal(contacts.static.tier[0], KINETIC_PAIR_TIER.CIRCLE_POLY);
+        assert.equal(contacts.static.tier[0], KINETIC_PAIR_CIRCLE_POLY);
         assert.ok(!slabPairCollision(ball, wedge));
     });
 
@@ -37,7 +37,7 @@ describe("kinetic contact pipeline", () => {
         const tick = createKineticTestTick([a, b]);
         const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(contacts.count, 1);
-        assert.equal(contacts.static.tier[0], KINETIC_PAIR_TIER.CIRCLE_CIRCLE);
+        assert.equal(contacts.static.tier[0], KINETIC_PAIR_CIRCLE_CIRCLE);
     });
 
     it("poly-poly pass fills buffer with poly-poly tier", () => {
@@ -48,8 +48,8 @@ describe("kinetic contact pipeline", () => {
         const tick = createKineticTestTick([left, right]);
         const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(contacts.count, 2);
-        assert.equal(contacts.static.tier[0], KINETIC_PAIR_TIER.POLY_POLY);
-        assert.equal(contacts.static.tier[1], KINETIC_PAIR_TIER.POLY_POLY);
+        assert.equal(contacts.static.tier[0], KINETIC_PAIR_POLY_POLY);
+        assert.equal(contacts.static.tier[1], KINETIC_PAIR_POLY_POLY);
         assert.ok(!slabPairCollision(left, right));
     });
 });

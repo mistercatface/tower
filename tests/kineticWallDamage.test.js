@@ -21,7 +21,8 @@ import { kineticIntegrateHooks, assignPhysIdWithPose } from "./harness/kineticTi
 import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wallSurfaceInvalidateHarness.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridBake.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
-import { GrowI32, staticWallSegmentSlab, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../Core/engineMemory.js";
+import { GrowI32, staticWallSegmentSlab } from "../Core/engineMemory.js";
+import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../Core/engineEnums.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 async function createWallDamageTestState(opts = {}) {
     const grid = new WorldObstacleGrid(16);

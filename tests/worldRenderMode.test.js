@@ -1,26 +1,31 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-    normalizeWorldRenderMode,
-    WORLD_RENDER_MODE_DEFAULT,
+    WORLD_RENDER_MODE_COUNT,
     WORLD_RENDER_MODE_FLAT2D,
-    WORLD_RENDER_MODE_OPTIONS,
     WORLD_RENDER_MODE_RADIAL,
     WORLD_RENDER_MODE_RADIAL_SPHERES,
-} from "../Render/WorldRenderMode.js";
+} from "../Core/engineEnums.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { SHAPE_TYPE_CIRCLE } from "../Libraries/Physics/physics.js";
 import { Renderer } from "../Render/Render.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
 
 describe("world render mode", () => {
-    it("normalizeWorldRenderMode accepts three modes and defaults unknowns", () => {
-        assert.equal(normalizeWorldRenderMode(WORLD_RENDER_MODE_FLAT2D), WORLD_RENDER_MODE_FLAT2D);
-        assert.equal(normalizeWorldRenderMode(WORLD_RENDER_MODE_RADIAL_SPHERES), WORLD_RENDER_MODE_RADIAL_SPHERES);
-        assert.equal(normalizeWorldRenderMode(WORLD_RENDER_MODE_RADIAL), WORLD_RENDER_MODE_RADIAL);
-        assert.equal(normalizeWorldRenderMode("nope"), WORLD_RENDER_MODE_DEFAULT);
-        assert.equal(normalizeWorldRenderMode(null), WORLD_RENDER_MODE_DEFAULT);
-        assert.deepEqual(WORLD_RENDER_MODE_OPTIONS, [WORLD_RENDER_MODE_FLAT2D, WORLD_RENDER_MODE_RADIAL_SPHERES, WORLD_RENDER_MODE_RADIAL]);
+    it("applyWorldRenderMode accepts three modes and defaults unknowns", () => {
+        const ctx = createMockCanvas2d(8, 8);
+        const renderer = new Renderer(ctx.canvas, ctx);
+        renderer.applyWorldRenderMode(WORLD_RENDER_MODE_FLAT2D);
+        assert.equal(renderer._worldRenderMode, WORLD_RENDER_MODE_FLAT2D);
+        renderer.applyWorldRenderMode(WORLD_RENDER_MODE_RADIAL_SPHERES);
+        assert.equal(renderer._worldRenderMode, WORLD_RENDER_MODE_RADIAL_SPHERES);
+        renderer.applyWorldRenderMode(WORLD_RENDER_MODE_RADIAL);
+        assert.equal(renderer._worldRenderMode, WORLD_RENDER_MODE_RADIAL);
+        renderer.applyWorldRenderMode("nope");
+        assert.equal(renderer._worldRenderMode, WORLD_RENDER_MODE_FLAT2D);
+        renderer.applyWorldRenderMode(null);
+        assert.equal(renderer._worldRenderMode, WORLD_RENDER_MODE_FLAT2D);
+        assert.equal((WORLD_RENDER_MODE_RADIAL + 1) % WORLD_RENDER_MODE_COUNT, WORLD_RENDER_MODE_FLAT2D);
     });
     it("radialSpheres keeps spheres radial while polygons stay flat", () => {
         const ball = new WorldProp(0, 0, "ball", 0);

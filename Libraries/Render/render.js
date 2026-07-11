@@ -7,7 +7,7 @@ import { transformRollVertexInto, resolveBodyRadius, readEntityFacing, SHAPE_TYP
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
 import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
-import { PROP_RENDER_MODE_3D } from "../../Core/engineEnums.js";
+import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
@@ -1007,9 +1007,6 @@ export function createWallChunkDraw(visuals) {
         drawExtrudedConvexPolygon(ctx, prop, viewport, sWallDrawOpts);
     };
 }
-export const DRAW_KIND_PROP = 1;
-export const DRAW_KIND_VOXEL = 3;
-export const DRAW_KIND_RAIL = 4;
 function parallelInsertionSort(kinds, baseIndices, depths, refs, start, end) {
     for (let i = start + 1; i <= end; i++) {
         const keyKind = kinds[i];
@@ -1769,7 +1766,7 @@ export class WorldSceneRenderer {
             const kind = q.kinds[i];
             const baseIndex = q.baseIndices[i];
             const ref = q.refs[i];
-            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, { flatProps, radialSpheres });
+            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, flatProps, radialSpheres);
             else if (kind === DRAW_KIND_VOXEL) {
                 bindWallFaceScratchFlat(face, DRAW_KIND_VOXEL, baseIndex);
                 drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face);
@@ -1779,7 +1776,7 @@ export class WorldSceneRenderer {
             }
         }
     }
-    _drawProp(ctx, prop, viewport, state, options = {}) {
+    _drawProp(ctx, prop, viewport, state, flatProps, radialSpheres) {
         const hasAlpha = prop.alpha !== undefined && prop.alpha !== 1;
         const prevAlpha = ctx.globalAlpha;
         if (hasAlpha) ctx.globalAlpha = prevAlpha * prop.alpha;
@@ -1788,15 +1785,15 @@ export class WorldSceneRenderer {
             const draw = propCatalog[renderKey]?.drawRecipe;
             if (!draw) return;
             prepareWallChunkPropTextures(state, prop);
-            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, resolvePropFlatPresentation(options, prop));
+            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, resolvePropFlatPresentation(flatProps, radialSpheres, prop));
         } finally {
             if (hasAlpha) ctx.globalAlpha = prevAlpha;
         }
     }
 }
-function resolvePropFlatPresentation(options, prop) {
+function resolvePropFlatPresentation(flatProps, radialSpheres, prop) {
     const isSphere = prop.shape?.shapeTypeId === SHAPE_TYPE_CIRCLE;
-    return options.flatProps === true && !(options.radialSpheres && isSphere);
+    return flatProps && !(radialSpheres && isSphere);
 }
 /** Default omnidirectional vision radius in grid tiles. */
 export const LOS_SHADOW_VISION_TILES_DEFAULT = 16;

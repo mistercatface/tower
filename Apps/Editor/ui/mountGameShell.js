@@ -6,6 +6,7 @@ import { runGameLaunch } from "../../../Libraries/Game/gameLaunch.js";
 import { drawLabFrame, mountLabFrameRefresh, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, setLabVignetteEnabled } from "./preview.js";
 import { seedRuntimeLabProfile } from "./profile/ProfileEditor.js";
 import { fitGameCanvasToStage, mountGameViewport } from "./gameViewport.js";
+import { WORLD_RENDER_MODE_FLAT2D } from "../../../Core/engineEnums.js";
 const GAME_SHELL_HTML = `
 <div class="game-shell">
     <div id="gameStage" class="game-stage">
@@ -31,7 +32,7 @@ export async function mountGameShell(state, launcher, { playbackHandlers } = {})
     state.editor.ctx.imageSmoothingEnabled = false;
     state.editor.showMapOverview = false;
     state.editor.showAnimationPreview = false;
-    state.worldRenderMode = "flat2d";
+    state.worldRenderMode = WORLD_RENDER_MODE_FLAT2D;
     applyLabWorldRenderMode(state);
     setLabVignetteEnabled(true);
     mountLabFrameRefresh(canvas);

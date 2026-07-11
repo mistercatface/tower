@@ -1,7 +1,8 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
+import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -376,7 +377,7 @@ export function forEachObstacleGridCellInAabbF32(grid, buf, o, fn) {
     const endRow = Math.min(rows - 1, rect.maxRow);
     forEachCellInColRowBounds(startCol, endCol, startRow, endRow, cols, (c, r, idx) => fn(idx));
 }
-// Viewer-relative radial elevation projection (worldRenderMode: "radial").
+// Viewer-relative radial elevation projection (WORLD_RENDER_MODE_RADIAL).
 // Elevated points lean away from live viewport.x/y — not fixed 2:1 isometric.
 // Fixed isometric is a separate future mode; do not confuse with this mode.
 // World props: geometry is built in world space (prop.facing at spawn).
@@ -502,7 +503,7 @@ export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
         return true;
     }
     grid.writeMirroredCellEdge(idx, side, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
-    if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return true;
 }
 export function clearBoundaryPrimary(grid, idx, side, bumpRevision = false) {
@@ -511,13 +512,13 @@ export function clearBoundaryPrimary(grid, idx, side, bumpRevision = false) {
     if (idx < 0 || idx >= cols * rows) return false;
     if (!isRailWallEdge(grid.getCellEdge(idx, side))) return false;
     grid.clearMirroredCellEdge(idx, side);
-    if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return true;
 }
 export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
     let changed = false;
     for (let side = 0; side < 4; side++) if (clearBoundaryPrimary(grid, idx, side, bumpRevision)) changed = true;
-    if (changed && bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    if (changed && bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return changed;
 }
 export function boundaryBlocksStep(grid, idx, side) {
@@ -756,28 +757,25 @@ export function formatGlobalCellIdx(idx) {
  *
  * Live edits must finish with nav.commitEdit(bounds) (Libraries/Sandbox/gridNavEdit.js).
  */
-export const GRID_NAV_EPOCH = { Wall: "wall", Floor: "floor", Topology: "topology" };
-/**
- * @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid
- * @param {(typeof GRID_NAV_EPOCH)[keyof typeof GRID_NAV_EPOCH]} channel
- */
+const GRID_NAV_EPOCH_BUMP = new Array(GRID_NAV_EPOCH_COUNT);
+GRID_NAV_EPOCH_BUMP[GRID_NAV_EPOCH_WALL] = (grid) => {
+    grid.wallGridRevision = (grid.wallGridRevision + 1) | 0;
+    grid.invalidateStructureZLevelsCache();
+    grid.invalidateNavTopology();
+};
+GRID_NAV_EPOCH_BUMP[GRID_NAV_EPOCH_FLOOR] = (grid) => {
+    grid.floorNavEpoch = (grid.floorNavEpoch + 1) | 0;
+    grid.invalidateNavTopology();
+};
+GRID_NAV_EPOCH_BUMP[GRID_NAV_EPOCH_TOPOLOGY] = (grid) => {
+    grid.gridTopologyEpoch = (grid.gridTopologyEpoch + 1) | 0;
+};
 export function bumpGridNavEpoch(grid, channel) {
-    switch (channel) {
-        case GRID_NAV_EPOCH.Wall:
-            grid.wallGridRevision = (grid.wallGridRevision + 1) | 0;
-            grid.invalidateStructureZLevelsCache();
-            grid.invalidateNavTopology();
-            return;
-        case GRID_NAV_EPOCH.Floor:
-            grid.floorNavEpoch = (grid.floorNavEpoch + 1) | 0;
-            grid.invalidateNavTopology();
-            return;
-        case GRID_NAV_EPOCH.Topology:
-            grid.gridTopologyEpoch = (grid.gridTopologyEpoch + 1) | 0;
-            return;
-    }
-    throw new Error(`unknown grid nav epoch channel: ${channel}`);
+    const fn = GRID_NAV_EPOCH_BUMP[channel];
+    if (!fn) throw new Error(`unknown grid nav epoch channel: ${channel}`);
+    fn(grid);
 }
+export { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT };
 /** Canonical live topology key — every staleness check derives from this. */
 export function gridNavCacheKey(grid) {
     return `${grid.wallGridRevision}:${grid.gridTopologyEpoch}:${grid.floorNavEpoch}`;
@@ -1273,7 +1271,7 @@ export class WorldObstacleGrid {
         bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();
-        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
+        bumpGridNavEpoch(this, GRID_NAV_EPOCH_TOPOLOGY);
         if (this.onBoundsResync) this.onBoundsResync(this);
     }
     expandToCoverAabbF32(buf, o) {
@@ -1379,7 +1377,7 @@ export class WorldObstacleGrid {
         bumpSurfaceMaterialRevision(this);
         this.invalidateStructureZLevelsCache();
         this.invalidateNavTopology();
-        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Topology);
+        bumpGridNavEpoch(this, GRID_NAV_EPOCH_TOPOLOGY);
         if (this.onBoundsResync) this.onBoundsResync(this);
         return true;
     }
@@ -1410,7 +1408,7 @@ export class WorldObstacleGrid {
                 }
             }
         }
-        if (changed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Wall);
+        if (changed) bumpGridNavEpoch(this, GRID_NAV_EPOCH_WALL);
         return gridBounds;
     }
     stampCellEdge(idx, side, capHeightLevel, thicknessLevel = 1) {
@@ -1463,7 +1461,7 @@ export class WorldObstacleGrid {
             this._floorBeltAnimMs[idx] = 0;
         }
         this.floorPacked[idx] = packed;
-        if ((hadBelt || hasBelt) && prevPacked !== packed) bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        if ((hadBelt || hasBelt) && prevPacked !== packed) bumpGridNavEpoch(this, GRID_NAV_EPOCH_FLOOR);
         bumpFloorOccupancyStampDrawRevision(this);
         return true;
     }
@@ -1474,7 +1472,7 @@ export class WorldObstacleGrid {
     clearFloorCell(idx) {
         if (idx < 0 || idx >= this.cols * this.rows) return false;
         if (this.floorPacked[idx] === 0) return false;
-        bumpGridNavEpoch(this, GRID_NAV_EPOCH.Floor);
+        bumpGridNavEpoch(this, GRID_NAV_EPOCH_FLOOR);
         this.floorBeltCount--;
         this.floorPacked[idx] = 0;
         this._floorBeltLoad[idx] = 0;
@@ -2233,7 +2231,7 @@ export function clearRailWallsQuiet(state, rails) {
         growCellBoundsIdx(bounds, idx, grid);
     }
     if (!changed) return null;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return bounds;
 }
 export function stampRailWallsQuiet(state, railWalls) {
@@ -2261,7 +2259,7 @@ export function stampRailWallsQuiet(state, railWalls) {
 export function commitGridWallBatch(state, bounds) {
     if (!bounds || isEmptyCellBounds(bounds)) return false;
     const grid = state.obstacleGrid;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     padCellBoundsInPlace(bounds, grid, 1);
     commitGridNavEdit(state, bounds);
     return true;
@@ -2297,7 +2295,7 @@ export function clearVoxelWallsQuiet(state, voxelIndices) {
         growCellBoundsIdx(bounds, idx, grid);
     }
     if (!changed) return null;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return bounds;
 }
 export function clearVoxelWallsBatch(state, voxelIndices) {
@@ -2325,7 +2323,7 @@ export function clearAllStampedGridWalls(state, { notify = true } = {}) {
     }
     for (let idx = 0; idx < size; idx++) for (let side = 0; side < 4; side++) clearPrimaryBoundaryAt(state, idx, side);
     if (notify) {
-        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
         commitGridNavEdit(state, null, { fullNavSync: true });
     }
 }
@@ -2452,7 +2450,7 @@ export function createDeferredGridWallCommit(state) {
                     pending.add(voxelIndices[i]);
                     changed = true;
                 }
-            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH_WALL);
             return changed;
         },
         clearRails(rails) {
@@ -2466,7 +2464,7 @@ export function createDeferredGridWallCommit(state) {
                     changed = true;
                 }
             }
-            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH.Wall);
+            if (changed) bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH_WALL);
             return changed;
         },
         clearWalls({ voxels = [], rails = [] } = {}) {
@@ -2994,7 +2992,7 @@ function clearStaticWallsAndEdgesInBounds(grid, bounds) {
     forEachDenseCellInRect(grid, bounds.startCol, bounds.endCol, bounds.startRow, bounds.endRow, (idx) => {
         clearStaticWallsAndEdgesAtIdx(grid, idx);
     });
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return bounds;
 }
 function stampCellBoundsForConfig(grid, config) {
@@ -3014,7 +3012,7 @@ function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radius
         growCellBoundsIdx(bounds, idx, grid);
     });
     if (isEmptyCellBounds(bounds)) return null;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return bounds;
 }
 function eraseWallsInShape(state) {
@@ -3026,7 +3024,7 @@ function eraseWallsInShape(state) {
         growCellBoundsIdx(bounds, idx, grid);
     });
     if (isEmptyCellBounds(bounds)) return null;
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return bounds;
 }
 function mergeDonutInnerClear(state, config, damageBounds) {
@@ -3150,7 +3148,7 @@ function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, 
             if (idxLeft >= 0 && idxLeft < grid.grid.length) setBoundary(grid, idxLeft, 1, { kind: "railWall", capHeightLevel: heightLevel, thicknessLevel });
         }
     }
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return bounds;
 }
 function createMapGenRun(state) {
@@ -3271,7 +3269,7 @@ export async function generateLabRailMaze(state, options = {}) {
             return inCell || inNeighbor;
         });
     stampGlobalRailWalls(state, rails, { commit: false });
-    bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+    bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     let damageBounds = run.mergeDonut(config, bounds);
     await commitGridNavEdit(state, damageBounds);
     stampRailMazeBeltsPhase(state, config, options);

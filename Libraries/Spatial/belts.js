@@ -1,4 +1,4 @@
-import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, GRID_NAV_EPOCH, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx, floorOccupancyStampDrawCacheKey } from "./spatial.js";
+import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, GRID_NAV_EPOCH_FLOOR, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx, floorOccupancyStampDrawCacheKey } from "./spatial.js";
 import { CorridorPathfinder, createNavGraphViewFromTopology } from "../Navigation/navigation.js";
 import { createSeededRng } from "../Math/math.js";
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
@@ -242,7 +242,7 @@ export class FloorBelt {
             grid.writeFloorCell(idx, packed);
             growCellBoundsIdx(bounds, idx, grid);
         }
-        if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Floor);
+        if (floorNavChanged) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_FLOOR);
         if (isEmptyCellBounds(bounds)) return null;
         bumpFloorOccupancyStampDrawRevision(grid);
         let beltCount = 0;

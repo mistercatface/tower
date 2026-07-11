@@ -8,7 +8,7 @@ import { HpaPathWorker } from "../Libraries/Navigation/HpaPathWorker.js";
 
 
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-import {  GRID_NAV_EPOCH, bumpGridNavEpoch  } from "../Libraries/Spatial/spatial.js";
+import { GRID_NAV_EPOCH_WALL, bumpGridNavEpoch } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 describe("node worker shim", () => {
@@ -55,7 +55,7 @@ describe("node worker shim", () => {
         const nav = await createWorkerNavigation(grid);
         const revision0 = nav.topology.wallRevision;
         grid.grid[worldIdxAtCell(grid, 8, 8)] = 1;
-        bumpGridNavEpoch(grid, GRID_NAV_EPOCH.Wall);
+        bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
         await nav.commitEdit({ startCol: 7, endCol: 9, startRow: 7, endRow: 9 });
         assert.ok(nav.topology.wallRevision > revision0);
         assert.equal(nav.syncedTopologyKey(), nav.topologyKey());
