@@ -48,8 +48,6 @@ describe("active kinetic bodies", () => {
         frame.insertEntity(tail, 1);
         head._physId = 0;
         tail._physId = 1;
-        head._kineticIslandPeers = [head, tail];
-        tail._kineticIslandPeers = [head, tail];
         resetKineticLinkNeighborArena();
         writeKineticLinkNeighbors(head._physId, [tail._physId]);
         writeKineticLinkNeighbors(tail._physId, [head._physId]);
@@ -157,8 +155,8 @@ describe("active kinetic bodies", () => {
         const tail = mockCircleProp(20, 0, 10);
         frame.insertEntity(head, 0);
         frame.insertEntity(tail, 1);
-        head._kineticIslandPeers = [head, tail];
-        tail._kineticIslandPeers = [head, tail];
+        resetKineticLinkNeighborArena();
+        writeKineticLinkNeighbors(head._physId, [1]);
         delete tail._physId;
         frame._kineticBodies.push(head, tail);
         frame.syncActiveKineticBodies();
@@ -184,9 +182,6 @@ describe("active kinetic bodies", () => {
         head._physId = 0;
         mid._physId = 1;
         tail._physId = 2;
-        head._kineticIslandPeers = [head, mid, tail];
-        mid._kineticIslandPeers = [head, mid, tail];
-        tail._kineticIslandPeers = [head, mid, tail];
         resetKineticLinkNeighborArena();
         writeKineticLinkNeighbors(head._physId, [mid._physId]);
         writeKineticLinkNeighbors(mid._physId, [head._physId, tail._physId]);

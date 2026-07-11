@@ -434,7 +434,6 @@ export class WorldProp {
         if (type === "cross_pinwheel") applyCrossPinwheelFootprint(this, this.crossLength ?? 32, this.crossThickness ?? 8);
         this.mass = kineticMassFromFootprint(this);
         normalizeKineticBody(this);
-        this._kineticIslandPeers = null;
         this._neighborEidCount = 0;
         this._neighborsFrameId = -1;
         delete this._physId;

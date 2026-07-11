@@ -110,11 +110,11 @@ describe("kinetic islands", () => {
         const frame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(state.kinetic, frame._kineticBodies);
         assert.ok(shareKineticIsland(bodies[0], bodies[1]));
-        const islandMembers = bodies[0]._kineticIslandPeers;
-        assert.equal(islandMembers.length, count);
-        assert.ok(evaluateKineticIslandSleepEligible(islandMembers, frame));
+        assert.equal(kineticDynamicSlab.islandRoot[bodies[0]._physId], bodies[0].id);
+        assert.equal(kineticDynamicSlab.islandRoot[bodies[count - 1]._physId], bodies[0].id);
+        assert.ok(evaluateKineticIslandSleepEligible(bodies, frame));
         for (let pass = 0; pass < SLEEP_FRAMES; pass++) {
-            for (let i = 0; i < islandMembers.length; i++) advanceKineticSleep(islandMembers[i], true);
+            for (let i = 0; i < bodies.length; i++) advanceKineticSleep(bodies[i], true);
         }
         for (let i = 0; i < bodies.length; i++) assert.equal(bodies[i].isSleeping, true);
     });

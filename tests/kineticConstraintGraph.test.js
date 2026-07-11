@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { addDistanceConstraint, removeKineticConstraint, areBodiesConnected, getConnectedBodyIds, getConnectedComponentPath, getConstraintIslands, getKineticConstraintGraph, createKineticSession } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint, removeKineticConstraint, areBodiesConnected, getConnectedBodyIds, getConnectedComponentPath, getConstraintIslands, createKineticSession } from "../Libraries/Physics/physics.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 function createState() {
     return { kinetic: createKineticSession() };
@@ -46,14 +46,15 @@ describe("kineticConstraintGraph", () => {
             [8, 9],
         ]);
     });
-    it("caches the adjacency map until the constraint topology changes", () => {
+    it("connected-id cache invalidates when constraint topology changes", () => {
         const state = createState();
         const first = link(state, 1, 2);
-        const graphA = getKineticConstraintGraph(state.kinetic);
-        assert.equal(getKineticConstraintGraph(state.kinetic), graphA, "same topology returns the cached graph");
+        const idsA = getConnectedBodyIds(state.kinetic, 1);
+        assert.equal(getConnectedBodyIds(state.kinetic, 1), idsA, "same topology returns the cached member list");
         link(state, 2, 3);
-        const graphB = getKineticConstraintGraph(state.kinetic);
-        assert.notEqual(graphB, graphA, "adding a constraint rebuilds the graph");
+        const idsB = getConnectedBodyIds(state.kinetic, 1);
+        assert.notEqual(idsB, idsA, "adding a constraint rebuilds the cache");
+        assert.deepEqual(idsB.slice().sort((x, y) => x - y), [1, 2, 3]);
         removeKineticConstraint(state.kinetic, first);
         assert.ok(!areBodiesConnected(state.kinetic, 1, 2), "cache reflects removed constraint");
     });

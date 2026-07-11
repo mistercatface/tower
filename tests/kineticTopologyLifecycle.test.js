@@ -73,12 +73,13 @@ describe("kinetic topology lifecycle", () => {
         addDistanceConstraint(world.kinetic, { bodyA: b, bodyB: c, restLength: 18 });
         const frame = setupKineticTestFrame(bodies);
         bakeKineticIslandPlan(world.kinetic, frame._kineticBodies);
-        assert.equal(a._kineticIslandPeers.length, 3);
+        assert.equal(kineticDynamicSlab.islandRoot[a._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[c._physId], a.id);
         const genBefore = getKineticTopologyGeneration(world.kinetic);
         removeChainLinkBetween(state, b.id, c.id);
         assert.ok(getKineticTopologyGeneration(world.kinetic) > genBefore);
         ensureKineticIslandPlan(world.kinetic, frame._kineticBodies);
-        assert.equal(c._kineticIslandPeers, undefined);
+        assert.notEqual(kineticDynamicSlab.islandRoot[c._physId], kineticDynamicSlab.islandRoot[a._physId]);
         assert.equal(kineticDynamicSlab.linkNeighborCount[b._physId], 1);
     });
 

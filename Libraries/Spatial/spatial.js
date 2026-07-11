@@ -3462,27 +3462,15 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     _wakeConstraintLinkedPeers(prop, patchOut) {
         const physId = prop._physId;
-        if (physId !== undefined && physId !== -1) {
-            const count = kineticDynamicSlab.linkNeighborCount[physId];
-            if (count > 0) {
-                const offset = kineticDynamicSlab.linkNeighborOffset[physId];
-                const eids = kineticDynamicSlab.linkNeighborEids;
-                for (let i = 0; i < count; i++) {
-                    const peerEid = eids[offset + i];
-                    const peer = entityRefs[peerEid];
-                    if (!peer || peer === prop || peer._physId === undefined || peer._physId !== peerEid) continue;
-                    if (peer.isSleeping) wakeKineticBody(peer);
-                    this._ensureActive(peer);
-                    if (patchOut) patchOut.push(peer);
-                }
-                return;
-            }
-        }
-        const peers = prop._kineticIslandPeers;
-        if (!peers) return;
-        for (let i = 0; i < peers.length; i++) {
-            const peer = peers[i];
-            if (peer === prop || peer._physId === undefined) continue;
+        if (physId === undefined || physId === -1) return;
+        const count = kineticDynamicSlab.linkNeighborCount[physId];
+        if (count === 0) return;
+        const offset = kineticDynamicSlab.linkNeighborOffset[physId];
+        const eids = kineticDynamicSlab.linkNeighborEids;
+        for (let i = 0; i < count; i++) {
+            const peerEid = eids[offset + i];
+            const peer = entityRefs[peerEid];
+            if (!peer || peer === prop || peer._physId === undefined || peer._physId !== peerEid) continue;
             if (peer.isSleeping) wakeKineticBody(peer);
             this._ensureActive(peer);
             if (patchOut) patchOut.push(peer);

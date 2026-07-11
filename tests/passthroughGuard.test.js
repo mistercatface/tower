@@ -56,7 +56,9 @@ const deletedPassthroughExports = [
     "writebackActiveKineticBodySlab",
     "writebackEntitySlotPoseToRef",
     "sleepContactBuffer",
-    "pairHashKeys",
+    "buildAdjacency",
+    "addAdjacencyEdge",
+    "getKineticConstraintGraph",
 ];
 
 function walkGameStateJs(dir, out = []) {

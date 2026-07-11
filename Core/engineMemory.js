@@ -297,44 +297,9 @@ export const sleepComponentMaxSpeedSq = new Float32Array(MAX_PHYS_BODIES);
 export const sleepComponentHasBlocker = new Uint8Array(MAX_PHYS_BODIES);
 export const sleepComponentMemberCount = new Int32Array(MAX_PHYS_BODIES);
 export const sleepNeighborEids = new GrowI32(256);
-export const pairHash = {
-    keys: new Float64Array(PAIR_HASH_CAPACITY),
-    gen: new Int32Array(PAIR_HASH_CAPACITY),
-    generation: 1,
-    clear() {
-        this.generation++;
-        if (this.generation > 0x7fffffff) {
-            this.gen.fill(0);
-            this.generation = 1;
-        }
-    },
-    add(key) {
-        const keys = this.keys;
-        const gen = this.gen;
-        const generation = this.generation;
-        let idx = (key % PAIR_HASH_CAPACITY) | 0;
-        while (true) {
-            if (gen[idx] !== generation) {
-                keys[idx] = key;
-                gen[idx] = generation;
-                return true;
-            }
-            if (keys[idx] === key) return false;
-            idx = (idx + 1) % PAIR_HASH_CAPACITY;
-        }
-    },
-    has(key) {
-        const keys = this.keys;
-        const gen = this.gen;
-        const generation = this.generation;
-        let idx = (key % PAIR_HASH_CAPACITY) | 0;
-        while (true) {
-            if (gen[idx] !== generation) return false;
-            if (keys[idx] === key) return true;
-            idx = (idx + 1) % PAIR_HASH_CAPACITY;
-        }
-    },
-};
+export const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
+export const pairHashGen = new Int32Array(PAIR_HASH_CAPACITY);
+export const pairHashState = { generation: 1 };
 export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
 export const kineticDebrisSlab = { activeCount: 0, ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 export const pendingWallBreaks = { count: 0, keyToRow: new Map(), kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
