@@ -85,7 +85,7 @@ describe("glass fracture", () => {
         assert.equal(asset.visuals.colors.top != null, true);
         assert.equal(asset.visuals.world.height, 2);
     });
-    it("glass polygon draw recipe uses flat silhouette when flatPresentation", () => {
+    it("glass polygon draw recipe always uses flat silhouette", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         setupGlassPaneForFracture(prop, 12, 8);
         const draw = propCatalog["glass_pane"].drawRecipe;
@@ -102,11 +102,17 @@ describe("glass fracture", () => {
             lineTo() {},
             closePath() {},
         };
-        draw(ctx, prop, { x: 0, y: 0 }, true);
-        assert.equal(calls.beginPath, 1);
-        assert.equal(calls.fill, 1);
-        assert.ok(calls.fillStyle);
-        assert.equal(calls.stroke, 0);
+        for (const flatPresentation of [true, false]) {
+            calls.beginPath = 0;
+            calls.fill = 0;
+            calls.stroke = 0;
+            calls.fillStyle = null;
+            draw(ctx, prop, { x: 0, y: 0 }, flatPresentation);
+            assert.equal(calls.beginPath, 1);
+            assert.equal(calls.fill, 1);
+            assert.ok(calls.fillStyle);
+            assert.equal(calls.stroke, 0);
+        }
     });
     it("glass pane init has no poxel tessellation", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);

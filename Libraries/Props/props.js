@@ -4,12 +4,11 @@ import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
-import { drawExtrudedConvexPolygon, drawSphere, createWallChunkDraw } from "../Render/render.js";
+import { drawSphere, createWallChunkDraw } from "../Render/render.js";
 import { traceClosedFlatPolygon } from "../Canvas/canvas.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
-import { shadeHex } from "../Color/colorMath.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
@@ -24,38 +23,31 @@ export function formatSandboxSpawnLabel(propId) {
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
 export function createPolygonPrimitive(visuals) {
-    const { colors, world } = visuals;
-    return (ctx, prop, viewport, flatPresentation) => {
+    const { colors } = visuals;
+    return (ctx, prop, viewport, _flatPresentation) => {
         const shape = prop.shape;
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
         const localVerts = prop.drawOutline ?? shape.vertices;
         if (!localVerts || localVerts.length < 6) return;
         const tinted = resolveVisualOverrideColorTree(prop, colors);
-        if (flatPresentation) {
-            const facing = readEntityFacing(prop);
-            const cos = Math.cos(facing);
-            const sin = Math.sin(facing);
-            const count = localVerts.length / 2;
-            if (count * 2 > POLYGON_SCALE_SCRATCH.length) throw new Error("flat polygon exceeds scratch capacity");
-            const worldVerts = POLYGON_SCALE_SCRATCH;
-            const px = prop.x;
-            const py = prop.y;
-            for (let i = 0; i < count; i++) {
-                const lx = localVerts[i * 2];
-                const ly = localVerts[i * 2 + 1];
-                worldVerts[i * 2] = px + lx * cos - ly * sin;
-                worldVerts[i * 2 + 1] = py + lx * sin + ly * cos;
-            }
-            ctx.beginPath();
-            traceClosedFlatPolygon(ctx, worldVerts, count);
-            ctx.fillStyle = tinted.top ?? tinted.side;
-            ctx.fill();
-            return;
+        const facing = readEntityFacing(prop);
+        const cos = Math.cos(facing);
+        const sin = Math.sin(facing);
+        const count = localVerts.length / 2;
+        if (count * 2 > POLYGON_SCALE_SCRATCH.length) throw new Error("flat polygon exceeds scratch capacity");
+        const worldVerts = POLYGON_SCALE_SCRATCH;
+        const px = prop.x;
+        const py = prop.y;
+        for (let i = 0; i < count; i++) {
+            const lx = localVerts[i * 2];
+            const ly = localVerts[i * 2 + 1];
+            worldVerts[i * 2] = px + lx * cos - ly * sin;
+            worldVerts[i * 2 + 1] = py + lx * sin + ly * cos;
         }
-        const height = prop.height ?? world?.height ?? 12;
-        fillExtrudeDrawOpts(sDrawOpts, prop, tinted, height);
-        sDrawOpts.localVerts = localVerts;
-        drawExtrudedConvexPolygon(ctx, prop, viewport, sDrawOpts);
+        ctx.beginPath();
+        traceClosedFlatPolygon(ctx, worldVerts, count);
+        ctx.fillStyle = tinted.top ?? tinted.side;
+        ctx.fill();
     };
 }
 export function createSpherePrimitive(visuals) {
@@ -214,31 +206,6 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 const sQuantizeSteps = { facing: 0, view: 0 };
 const sHalfExtents = { x: 0, y: 0 };
 const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, _wallChunkTextures: null };
-const sFaceColors = { shadow: null, mid: null, highlight: null };
-const sBackFaceColors = { shadow: null, mid: null, highlight: null };
-const sTopColors = { light: null, mid: null, dark: null };
-const sDrawOpts = { height: 0, facing: 0, faceColors: sFaceColors, backFaceColors: sBackFaceColors, topColors: sTopColors, localVerts: null, topHx: null, topHy: null };
-function fillExtrudeDrawOpts(out, prop, tinted, height) {
-    out.height = height;
-    out.facing = readEntityFacing(prop);
-    const side = tinted.side;
-    const sideShadow = tinted.sideShadow ?? side;
-    sFaceColors.shadow = sideShadow;
-    sFaceColors.mid = side;
-    sFaceColors.highlight = shadeHex(side, -0.12);
-    sBackFaceColors.shadow = sideShadow;
-    sBackFaceColors.mid = sideShadow;
-    sBackFaceColors.highlight = side;
-    sTopColors.light = shadeHex(tinted.top, -0.1);
-    sTopColors.mid = tinted.top;
-    sTopColors.dark = sideShadow;
-    out.topColors = sTopColors;
-    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
-    out.topHx = ENGINE_F32[M_VEC_A];
-    out.topHy = ENGINE_F32[M_VEC_A + 1];
-    out.localVerts = null;
-    return out;
-}
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
     const override = prop.strategy?.quantizeSteps;

@@ -17,7 +17,6 @@ const polygonVisuals = {
     colors: { side: "#888", sideShadow: "#666", top: "#aaa" },
     world: { height: 10 },
 };
-import { createMockDrawCtx } from "./mockCanvas2d.js";
 describe("draw shape parity", () => {
     it("hex block shares polygon sim and draw footprint with six vertices", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
@@ -50,10 +49,20 @@ describe("draw shape parity", () => {
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         assert.equal(stageProp.halfExtents.x, ENGINE_F32[M_VEC_A]);
     });
-    it("polygon primitive extrudes live shape without a parallel rect path", () => {
+    it("polygon primitive always fills flat silhouette from live shape", () => {
         const prop = new WorldProp(0, 0, "custom_box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         const draw = createPolygonPrimitive(polygonVisuals);
+        const calls = { beginPath: 0, fill: 0, stroke: 0 };
+        const ctx = {
+            beginPath() { calls.beginPath++; },
+            fill() { calls.fill++; },
+            stroke() { calls.stroke++; },
+            fillStyle: "",
+            moveTo() {},
+            lineTo() {},
+            closePath() {},
+        };
         const viewport = {
             x: 100,
             y: 100,
@@ -61,7 +70,10 @@ describe("draw shape parity", () => {
             cameraHeight: DEFAULT_CAMERA_HEIGHT,
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
-        draw(createMockDrawCtx(), prop, viewport);
+        draw(ctx, prop, viewport, false);
+        assert.equal(calls.beginPath, 1);
+        assert.equal(calls.fill, 1);
+        assert.equal(calls.stroke, 0);
         assert.equal(prop.shape.vertices[2], 12);
         assert.equal(prop.shape.vertices[5], 5);
     });
