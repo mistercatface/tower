@@ -70,8 +70,8 @@ describe("kinetic contact solver", () => {
 });
 describe("poly-poly kinetic contact", () => {
     it("axis-aligned crate pair separates with +x normal when B is to the right", () => {
-        const left = new WorldProp(0, 0, "crate", 0);
-        const right = new WorldProp(10, 0, "crate", 0);
+        const left = new WorldProp(0, 0, "box", 0);
+        const right = new WorldProp(10, 0, "box", 0);
         const info = separatePairUntilClear(left, right);
         assert.ok(info);
         assert.ok(info.overlap > 0);
@@ -91,17 +91,17 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(!pairStillOverlaps(wedge, hex));
     });
     it("stacked crates separate vertically with upward normal on upper body", () => {
-        const bottom = new WorldProp(0, 0, "crate", 0);
-        const top = new WorldProp(0, 10, "crate", 0);
+        const bottom = new WorldProp(0, 0, "box", 0);
+        const top = new WorldProp(0, 10, "box", 0);
         const info = separatePairUntilClear(bottom, top);
         assert.ok(info);
         assert.ok(info.ny > 0.9);
         assert.ok(!pairStillOverlaps(bottom, top));
     });
     it("resolveKineticContactPass separates overlapping bar and crate", () => {
-        const bar = new WorldProp(0, 0, "custom_box", 0);
+        const bar = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(bar, 8, 4);
-        const box = new WorldProp(12, 0, "crate", 0);
+        const box = new WorldProp(12, 0, "box", 0);
         box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
         resolveContactUntilClear(createKineticTestTick([bar, box]));
@@ -129,9 +129,9 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(kineticDynamicSlab.vx[b._physId] > -20);
     });
     it("poly pair friction reduces tangential slip on block slide", () => {
-        const left = new WorldProp(0, 0, "custom_box", 0);
+        const left = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(left, 8, 4);
-        const right = new WorldProp(12, 0, "custom_box", 0);
+        const right = new WorldProp(12, 0, "box", 0);
         applyPropBoxFootprint(right, 8, 4);
         left.vx = 35;
         right.vx = 0;
@@ -139,16 +139,16 @@ describe("poly-poly kinetic contact", () => {
         assert.ok(kineticDynamicSlab.vx[left._physId] < 35);
     });
     it("poly-poly crate overlap emits two manifold points", () => {
-        const left = new WorldProp(0, 0, "crate", 0);
-        const right = new WorldProp(10, 0, "crate", 0);
+        const left = new WorldProp(0, 0, "box", 0);
+        const right = new WorldProp(10, 0, "box", 0);
         const collided = checkEntityPairCollision(left, right);
         assert.ok(collided);
         assert.equal(SAT_RESULT[8], 2);
     });
     it("three-crate stack settles without lateral drift", () => {
-        const bottom = new WorldProp(0, 0, "crate", 0);
-        const middle = new WorldProp(0, 12, "crate", 0);
-        const top = new WorldProp(0, 24, "crate", 0);
+        const bottom = new WorldProp(0, 0, "box", 0);
+        const middle = new WorldProp(0, 12, "box", 0);
+        const top = new WorldProp(0, 24, "box", 0);
         const tick = createKineticTestTick([bottom, middle, top]);
         const pairs = gatherKineticContactPairs(tick);
         for (let pass = 0; pass < 10; pass++) resolveKineticContactPassWithPairs(tick, pairs);

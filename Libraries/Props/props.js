@@ -327,6 +327,7 @@ export class WorldProp {
         this.stateTimer = 0;
         this.stateData = {};
         this.height = asset?.visuals?.world?.height ?? 12;
+        this.fractureEnabled = this.strategy.fracture ? undefined : false;
         this._spawnFacing = resolvePropSpawnFacing(this, facing);
         if (this.strategy.rolls) {
             this._spawnRollQw = 1;

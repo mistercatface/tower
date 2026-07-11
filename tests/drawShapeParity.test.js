@@ -34,7 +34,7 @@ describe("draw shape parity", () => {
         assert.notEqual(hexKey, wedgeKey);
     });
     it("resized custom box changes sprite cache footprint bucket", () => {
-        const prop = new WorldProp(0, 0, "custom_box", 0);
+        const prop = new WorldProp(0, 0, "box", 0);
         const before = getBaseSpriteCacheKey(prop, cacheKeyDeps);
         applyPropBoxFootprint(prop, 12, 5);
         const after = getBaseSpriteCacheKey(prop, cacheKeyDeps);
@@ -50,7 +50,7 @@ describe("draw shape parity", () => {
         assert.equal(stageProp.halfExtents.x, ENGINE_F32[M_VEC_A]);
     });
     it("polygon primitive always fills flat silhouette from live shape", () => {
-        const prop = new WorldProp(0, 0, "custom_box", 0);
+        const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         const draw = createPolygonPrimitive(polygonVisuals);
         const calls = { beginPath: 0, fill: 0, stroke: 0 };
@@ -85,14 +85,14 @@ describe("draw shape parity", () => {
         assert.equal(resolveBodyRadius(prop), 7);
     });
     it("large footprints use finer sprite facing steps than crate-sized props", () => {
-        const crate = new WorldProp(0, 0, "crate", 0);
-        const plank = new WorldProp(0, 0, "custom_box", 0);
+        const crate = new WorldProp(0, 0, "box", 0);
+        const plank = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(plank, 64, 8);
         assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
         assert.equal(resolvePropQuantizeSteps(plank).facing, 360);
     });
     it("boid triangle uses finer facing quantization through its prop strategy", () => {
-        const crate = new WorldProp(0, 0, "crate", 0);
+        const crate = new WorldProp(0, 0, "box", 0);
         const triangle = new WorldProp(0, 0, "boid_triangle", 0);
         assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
         assert.equal(resolvePropQuantizeSteps(triangle).facing, 64);

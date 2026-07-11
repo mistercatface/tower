@@ -5,7 +5,6 @@ import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { GRAB_DRAG_BEHAVIOR_ID } from "../Sandbox/dragBehaviors.js";
 import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
-import { createGlassGameSession } from "./glassGameSession.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
@@ -26,10 +25,10 @@ export const GAME_LAUNCHERS = {
         hideEditor: false,
         defaultPathDebugMode: "off",
         async setup(state) {
-            return createGlassGameSession(state);
+            return { bind() {}, tick() {} };
         },
         async launch(state, ctx) {
-            await runGlassLaunch(state, ctx);
+            await runFractureLaunch(state, ctx);
         },
     },
 };
@@ -37,12 +36,12 @@ export function parseGameLaunchQuery(search = window.location.search) {
     const game = new URLSearchParams(search).get("game");
     return game || null;
 }
-const DEFAULT_GLASS_SIZE_PX = 1024;
-export function parseGlassLaunchSizePx(search = window.location.search) {
+const DEFAULT_FRACTURE_LAUNCH_SIZE_PX = 1024;
+export function parseFractureLaunchSizePx(search = window.location.search) {
     const raw = new URLSearchParams(search).get("size");
-    if (raw == null || raw === "") return DEFAULT_GLASS_SIZE_PX;
+    if (raw == null || raw === "") return DEFAULT_FRACTURE_LAUNCH_SIZE_PX;
     const n = Number(raw);
-    if (!Number.isFinite(n) || n <= 0) throw new Error(`glass launch: invalid size "${raw}"`);
+    if (!Number.isFinite(n) || n <= 0) throw new Error(`fracture launch: invalid size "${raw}"`);
     return n;
 }
 const SNAKE_RAIL_MAZE_COLS = 64;
@@ -162,7 +161,7 @@ export async function runGameLaunch(state, launcher, launchOptions = {}) {
     await rebuildLabMapCaches(state);
     return ctx;
 }
-async function runGlassLaunch(state, ctx) {
+async function runFractureLaunch(state, ctx) {
     const railConfig = state.editor.railConfig;
     railConfig.edgeThickness = 4;
     railConfig.wallHeightLevel = 1;
@@ -179,11 +178,12 @@ async function runGlassLaunch(state, ctx) {
     getMapGenBoundsCenterWorldF32(ENGINE_F32, M_VEC_A, grid, railConfig);
     const cx = ENGINE_F32[M_VEC_A];
     const cy = ENGINE_F32[M_VEC_A + 1];
-    const glassSizePx = parseGlassLaunchSizePx();
-    const glassHalf = glassSizePx * 0.5;
-    const pane = spawnPlacedSandboxProp(state, cx, cy, "glass_pane", "alpha");
-    applyPropBoxFootprint(pane, glassHalf, glassHalf);
-    const star = spawnPlacedSandboxProp(state, cx, cy - (glassHalf + 24), "star_block", "alpha");
+    const sizePx = parseFractureLaunchSizePx();
+    const half = sizePx * 0.5;
+    const pane = spawnPlacedSandboxProp(state, cx, cy, "box", "alpha");
+    applyPropBoxFootprint(pane, half, half);
+    pane.fractureEnabled = true;
+    const star = spawnPlacedSandboxProp(state, cx, cy - (half + 24), "star_block", "alpha");
     state.appLaunch?.session?.bind(ctx);
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [star.id] });

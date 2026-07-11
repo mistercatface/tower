@@ -41,8 +41,8 @@ describe("kinetic contact pipeline", () => {
     });
 
     it("poly-poly pass fills buffer with poly-poly tier", () => {
-        const left = new WorldProp(0, 0, "crate", 0);
-        const right = new WorldProp(10, 0, "crate", 0);
+        const left = new WorldProp(0, 0, "box", 0);
+        const right = new WorldProp(10, 0, "box", 0);
         right.vx = -20;
         assert.ok(checkEntityPairCollision(left, right));
         const tick = createKineticTestTick([left, right]);

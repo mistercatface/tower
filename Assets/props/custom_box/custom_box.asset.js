@@ -1,2 +1,0 @@
-import { boxLocalFootprint } from "../../../Libraries/Math/math.js";
-export default { id: "custom_box", primitive: "polygon", sandbox: { tags: ["shapes"], resizableBox: true, spawnLabel: "Custom box", dragInteract: true, dragLaunch: { minPower: 20, maxPower: 260 } }, physics: { localFootprint: boxLocalFootprint(8, 8), wallPhysics: { restitution: 0.15, friction: 0.8 } }, visuals: { colors: { side: "#9575CD", sideShadow: "#7E57C2", top: "#B39DDB", bodyInspect: "#9575CD" }, world: { height: 7 } } };

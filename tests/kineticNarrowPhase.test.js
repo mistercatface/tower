@@ -21,8 +21,8 @@ describe("kinetic narrow phase tiers", () => {
         assert.equal(classifyKineticPairTier(a, b), KINETIC_PAIR_TIER.CIRCLE_CIRCLE);
     });
     it("classifies crate pairs as poly-poly", () => {
-        const a = new WorldProp(0, 0, "crate", 0);
-        const b = new WorldProp(10, 0, "crate", 0);
+        const a = new WorldProp(0, 0, "box", 0);
+        const b = new WorldProp(10, 0, "box", 0);
         assert.equal(classifyKineticPairTier(a, b), KINETIC_PAIR_TIER.POLY_POLY);
     });
     it("classifies ball against wedge as circle-poly", () => {
@@ -31,7 +31,7 @@ describe("kinetic narrow phase tiers", () => {
         assert.equal(classifyKineticPairTier(ball, wedge), KINETIC_PAIR_TIER.CIRCLE_POLY);
     });
     it("classifies multi-part fracture debris as compound", () => {
-        const crate = new WorldProp(0, 0, "crate", 0);
+        const crate = new WorldProp(0, 0, "box", 0);
         crate.collisionParts = [crate.shape, crate.shape];
         const ball = new WorldProp(10, 0, "ball", 0);
         assert.equal(classifyKineticPairTier(crate, ball), KINETIC_PAIR_TIER.COMPOUND);
@@ -73,8 +73,8 @@ describe("kinetic narrow phase tiers", () => {
         assert.ok(!satCheckCollision(ball.x, ball.y, readEntityFacing(ball), ball.shape, wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape));
     });
     it("contact pass still separates poly-poly pairs", () => {
-        const left = new WorldProp(0, 0, "crate", 0);
-        const right = new WorldProp(10, 0, "crate", 0);
+        const left = new WorldProp(0, 0, "box", 0);
+        const right = new WorldProp(10, 0, "box", 0);
         right.vx = -20;
         assert.ok(checkEntityPairCollision(left, right));
         resolveKineticContactPass(createKineticTestTick([left, right]));

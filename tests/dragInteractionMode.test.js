@@ -19,7 +19,7 @@ import { worldIdxAtCell } from "./harness/testGridUtils.js";
 describe("drag interaction mode", () => {
     it("shape assets use dragInteract instead of per-prop grabDrag behavior id", () => {
         assert.equal(sandboxAssetDragInteract(propCatalog.ball), true);
-        assert.equal(sandboxAssetDragInteract(propCatalog.crate), true);
+        assert.equal(sandboxAssetDragInteract(propCatalog.box), true);
         assert.equal(sandboxAssetDragInteract(propCatalog.boid_triangle), true);
     });
 

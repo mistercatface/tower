@@ -5,7 +5,7 @@ import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 describe("prop debris fade-out and removal", () => {
     it("does not fade out or die if fadeOutMs is not configured", () => {
-        const prop = new WorldProp(0, 0, "glass_pane", 0);
+        const prop = new WorldProp(0, 0, "box", 0);
         assert.equal(prop.strategy.fadeOutMs, undefined);
         assert.equal(prop.alpha, undefined);
 

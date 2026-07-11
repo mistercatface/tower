@@ -81,7 +81,7 @@ describe("active kinetic bodies", () => {
     it("begin() keeps admitted prop physId across consecutive frames", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame(50);
-        const prop = new WorldProp(0, 0, "crate", 0);
+        const prop = new WorldProp(0, 0, "box", 0);
         world.worldProps.push(prop);
         frame.begin(world);
         const physId = prop._physId;

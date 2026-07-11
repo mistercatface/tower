@@ -5,10 +5,12 @@ import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
 
 describe("fracture contact queue", () => {
-    it("fractures only the first qualifying glass body when both could fracture", () => {
-        const a = new WorldProp(100, 100, "glass_pane", 0);
+    it("fractures only the first qualifying body when both could fracture", () => {
+        const a = new WorldProp(100, 100, "box", 0);
+        a.fractureEnabled = true;
         applyPropBoxFootprint(a, 32, 32);
-        const b = new WorldProp(108, 100, "glass_pane", 0);
+        const b = new WorldProp(108, 100, "box", 0);
+        b.fractureEnabled = true;
         applyPropBoxFootprint(b, 32, 32);
         const impactor = new WorldProp(92, 100, "ball", 0);
         const tick = createKineticTestTick([a, b, impactor]);
@@ -19,7 +21,8 @@ describe("fracture contact queue", () => {
     });
 
     it("skips fracture when _pendingEviction is already set", () => {
-        const prop = new WorldProp(100, 100, "glass_pane", 0);
+        const prop = new WorldProp(100, 100, "box", 0);
+        prop.fractureEnabled = true;
         applyPropBoxFootprint(prop, 32, 32);
         prop._pendingEviction = true;
         const impactor = new WorldProp(92, 100, "ball", 0);
@@ -29,10 +32,12 @@ describe("fracture contact queue", () => {
         assert.ok(!prop.isDead);
     });
 
-    it("skips glass-on-glass mutual fracture", () => {
-        const a = new WorldProp(100, 100, "glass_pane", 0);
+    it("skips mutual fracture when both bodies are fracturable", () => {
+        const a = new WorldProp(100, 100, "box", 0);
+        a.fractureEnabled = true;
         applyPropBoxFootprint(a, 32, 32);
-        const b = new WorldProp(108, 100, "glass_pane", 0);
+        const b = new WorldProp(108, 100, "box", 0);
+        b.fractureEnabled = true;
         applyPropBoxFootprint(b, 32, 32);
         const tick = createKineticTestTick([a, b]);
         tick.world.fractureEngine.queueFractureKineticContact(a, b, 104, 100, 80);
@@ -41,8 +46,9 @@ describe("fracture contact queue", () => {
         assert.ok(!b.isDead);
     });
 
-    it("respects fracture cooldown on glass props", () => {
-        const prop = new WorldProp(0, 0, "glass_pane", 0);
+    it("respects fracture cooldown on fracturable props", () => {
+        const prop = new WorldProp(0, 0, "box", 0);
+        prop.fractureEnabled = true;
         applyPropBoxFootprint(prop, 32, 32);
         prop._fractureCooldown = 4;
         const tick = createKineticTestTick([prop]);

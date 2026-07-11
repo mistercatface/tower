@@ -93,8 +93,8 @@ describe("kinetic pair stream", () => {
 });
 describe("kinetic pair stream on proof props", () => {
     it("resting crate stack emits no pairs until one body moves", () => {
-        const bottom = new WorldProp(0, 0, "crate", 0);
-        const top = new WorldProp(0, 14, "crate", 0);
+        const bottom = new WorldProp(0, 0, "box", 0);
+        const top = new WorldProp(0, 14, "box", 0);
         separatePairUntilClear(bottom, top);
         const frame = setupKineticTestFrame([bottom, top]);
         snapshotKineticBodySlab(frame._activeKineticBodies);

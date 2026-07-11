@@ -1,7 +1,5 @@
 import ball from "./ball/ball.asset.js";
-import crate from "./crate/crate.asset.js";
-import custom_box from "./custom_box/custom_box.asset.js";
-import glass_pane from "./glass_pane/glass_pane.asset.js";
+import box from "./box/box.asset.js";
 import tri_wedge from "./tri_wedge/tri_wedge.asset.js";
 import boid_triangle from "./boid_triangle/boid_triangle.asset.js";
 import snake from "./snake/snake.asset.js";
@@ -16,7 +14,7 @@ import gear_block from "./gear_block/gear_block.asset.js";
 import wall_voxel_chunk from "./wall_chunk/wallVoxelChunk.asset.js";
 import wall_rail_chunk from "./rail_wall_chunk/railWallChunk.asset.js";
 export const DRAG_LAUNCH_BASELINE = { minDrag: 10, maxPull: 110, pullScale: 1.25, minPower: 55, maxPower: 340 };
-const catalog = { ball, crate, custom_box, glass_pane, tri_wedge, boid_triangle, snake, hex_block, pipe_elbow, floor_belt, floor_belt_elbow_left, floor_belt_elbow_right, cross_pinwheel, star_block, gear_block, wall_voxel_chunk, wall_rail_chunk };
+const catalog = { ball, box, tri_wedge, boid_triangle, snake, hex_block, pipe_elbow, floor_belt, floor_belt_elbow_left, floor_belt_elbow_right, cross_pinwheel, star_block, gear_block, wall_voxel_chunk, wall_rail_chunk };
 for (const asset of Object.values(catalog)) {
     const sandbox = asset.sandbox;
     if (!sandbox) continue;

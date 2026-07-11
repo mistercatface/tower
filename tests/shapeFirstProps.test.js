@@ -7,15 +7,15 @@ import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 describe("shape-first props", () => {
-    it("crate builds a four-corner polygon from localFootprint", () => {
-        const prop = new WorldProp(0, 0, "crate", 0);
+    it("box builds a four-corner polygon from localFootprint", () => {
+        const prop = new WorldProp(0, 0, "box", 0);
         const shape = prop.shape;
         assert.equal(shape.shapeTypeId, SHAPE_TYPE_POLYGON);
         assert.equal(shape.vertices.length / 2, 4);
         assert.equal(kineticFootprintArea(prop), 256);
     });
-    it("custom box can use a 16×8 rectangle footprint", () => {
-        const prop = new WorldProp(0, 0, "custom_box", 0);
+    it("box can use a 16×8 rectangle footprint", () => {
+        const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 8, 4);
         const shape = prop.shape;
         assert.equal(shape.shapeTypeId, SHAPE_TYPE_POLYGON);
@@ -28,8 +28,8 @@ describe("shape-first props", () => {
         assert.equal(prop.shape.shapeTypeId, SHAPE_TYPE_CIRCLE);
         assert.equal(prop.shape.radius, 7);
     });
-    it("custom box footprint can be resized after spawn", () => {
-        const prop = new WorldProp(10, 20, "custom_box", 0);
+    it("box footprint can be resized after spawn", () => {
+        const prop = new WorldProp(10, 20, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         assert.equal(ENGINE_F32[M_VEC_A], 12);

@@ -5,7 +5,7 @@ import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { createFractureWorld, setupGlassPaneForFracture, spawnGlassFractureShards, readImpactFracture } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupPropForFracture, spawnFractureShards, readImpactFracture } from "./harness/fractureHarness.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
     it("EntityRegistry membershipGen increments once for batch operations", () => {
@@ -14,7 +14,7 @@ describe("Shatter / Debris Performance Fixes", () => {
 
         const props = [];
         for (let i = 0; i < 18; i++) {
-            props.push(new WorldProp(i * 10, 0, "glass_pane", 0));
+            props.push(new WorldProp(i * 10, 0, "box", 0));
         }
 
         addWorldPropsToState(world, props);
@@ -23,12 +23,12 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.equal(world.worldProps.length, 18);
     });
 
-    it("debris slab bodies are pooled and reused after glass shatter", () => {
+    it("debris slab bodies are pooled and reused after shatter", () => {
         const world = createFractureWorld();
-        const prop = new WorldProp(0, 0, "glass_pane", 0);
-        setupGlassPaneForFracture(prop, 32, 32);
+        const prop = new WorldProp(0, 0, "box", 0);
+        setupPropForFracture(prop, 32, 32);
 
-        const result = spawnGlassFractureShards(world, prop, 30);
+        const result = spawnFractureShards(world, prop, 30);
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
         const originalBodies = result.shards.slice();
@@ -54,16 +54,16 @@ describe("Shatter / Debris Performance Fixes", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
 
-        const propA = new WorldProp(0, 0, "crate", 0);
-        const propB = new WorldProp(100, 0, "crate", 0);
-        const propC = new WorldProp(200, 0, "crate", 0);
+        const propA = new WorldProp(0, 0, "box", 0);
+        const propB = new WorldProp(100, 0, "box", 0);
+        const propC = new WorldProp(200, 0, "box", 0);
 
         world.worldProps.push(propA, propB, propC);
         frame.begin(world);
 
         assert.equal(frame._nextPhysId, 3);
 
-        const propNew = new WorldProp(300, 0, "crate", 0);
+        const propNew = new WorldProp(300, 0, "box", 0);
         frame.admitKineticProps([propNew], world);
 
         assert.equal(propNew._physId, 3);
@@ -73,11 +73,11 @@ describe("Shatter / Debris Performance Fixes", () => {
     it("begin() keeps physIds stable when membership is unchanged", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
-        const prop = new WorldProp(0, 0, "crate", 0);
+        const prop = new WorldProp(0, 0, "box", 0);
         world.worldProps.push(prop);
         frame.begin(world);
         assert.equal(prop._physId, 0);
-        const propB = new WorldProp(100, 0, "crate", 0);
+        const propB = new WorldProp(100, 0, "box", 0);
         frame.admitKineticProps([propB], world);
         assert.equal(propB._physId, 1);
         world.worldProps.push(propB);
@@ -89,7 +89,7 @@ describe("Shatter / Debris Performance Fixes", () => {
     it("evict returns physId to free list and scrubs slab on reuse", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
-        const prop = new WorldProp(0, 0, "crate", 0);
+        const prop = new WorldProp(0, 0, "box", 0);
         world.worldProps.push(prop);
         frame.begin(world);
         const releasedId = prop._physId;
@@ -100,7 +100,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         frame.evictKineticProp(prop, world.kinetic);
         assert.equal(prop._physId, undefined);
         assert.equal(frame._physIdFreeList.length, 1);
-        const replacement = new WorldProp(50, 0, "crate", 0);
+        const replacement = new WorldProp(50, 0, "box", 0);
         world.worldProps.push(replacement);
         frame.begin(world);
         assert.equal(replacement._physId, releasedId);

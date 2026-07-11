@@ -186,7 +186,7 @@ describe("kinetic wall damage", () => {
         stampVoxel(state.obstacleGrid, 3, 3, 2); // height level 2
         state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
         
-        const entity = { id: 101, type: "crate", vx: 560, vy: 0 };
+        const entity = { id: 101, type: "box", vx: 560, vy: 0 };
         const wallResolver = {
             hits: wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3), {
                     contactX: 3 * 16 + 8,
@@ -234,7 +234,7 @@ describe("kinetic wall damage", () => {
         assert.ok(state.worldSurfaces.surfaceCache.get(seeded.maskKey));
         assert.ok(state.worldSurfaces.surfaceCache.get(seeded.drawKey));
         const revisionBefore = state.obstacleGrid.wallGridRevision;
-        resolveKineticWallDamage(state, { id: 101, type: "crate", vx: 560, vy: 0 }, wallDebrisTestFrame(), {
+        resolveKineticWallDamage(state, { id: 101, type: "box", vx: 560, vy: 0 }, wallDebrisTestFrame(), {
             hits: wallHitBuffer([voxelHit(clearedIdx, { contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 })]),
             resolve() {
                 return true;

@@ -14,7 +14,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
-import { liveGlassCount } from "./harness/fractureHarness.js";
+import { liveFracturePropCount } from "./harness/fractureHarness.js";
 
 function createTestWorld(initialProps) {
     return createKineticTestWorld(initialProps, { constraintsDirty: false });
@@ -48,8 +48,9 @@ describe("kinetic topology lifecycle", () => {
         assert.equal((kineticPairTopologyStale(frame) ? null : ((entityRefs[0]?._physId === 0 && entityRefs[1]?._physId === 1) ? { bodyA: entityRefs[0], bodyB: entityRefs[1] } : null)), null);
     });
 
-    it("contact side effects still fracture glass after topology bump", () => {
-        const glass = new WorldProp(0, 0, "glass_pane", 0);
+    it("contact side effects still fracture after topology bump", () => {
+        const glass = new WorldProp(0, 0, "box", 0);
+        glass.fractureEnabled = true;
         const ball = new WorldProp(18, 0, "ball", 0);
         applyPropBoxFootprint(glass, 24, 18);
         ball.vx = -200;
@@ -58,7 +59,7 @@ describe("kinetic topology lifecycle", () => {
         tick.frame.admitKineticProps([mockKineticCircle(40, 0, 10)], tick.world);
         assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.entityRefs[glass._physId]?._physId === glass._physId && tick.entityRefs[ball._physId]?._physId === ball._physId) ? { bodyA: tick.entityRefs[glass._physId], bodyB: tick.entityRefs[ball._physId] } : null)), null);
         resolveKineticContactPassWithEffects(tick);
-        assert.ok(liveGlassCount(tick.world) > 2);
+        assert.ok(liveFracturePropCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
 
@@ -83,15 +84,16 @@ describe("kinetic topology lifecycle", () => {
         assert.equal(kineticDynamicSlab.linkNeighborCount[b._physId], 1);
     });
 
-    it("runCollisionPipeline does not reproduce glass after persisted pair gather", () => {
-        const glass = new WorldProp(0, 0, "glass_pane", 0);
+    it("runCollisionPipeline does not reproduce fracture after persisted pair gather", () => {
+        const glass = new WorldProp(0, 0, "box", 0);
+        glass.fractureEnabled = true;
         const ball = new WorldProp(18, 0, "ball", 0);
         applyPropBoxFootprint(glass, 24, 18);
         ball.vx = -200;
         assert.ok(satCheckCollision(glass.x, glass.y, readEntityFacing(glass), glass.shape, ball.x, ball.y, readEntityFacing(ball), ball.shape));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
-        assert.ok(liveGlassCount(tick.world) > 2);
+        assert.ok(liveFracturePropCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
 });

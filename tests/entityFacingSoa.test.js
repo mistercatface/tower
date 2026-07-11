@@ -8,7 +8,7 @@ import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 
 describe("entityFacing SoA", () => {
     it("pre-eid facing lives on spawn bag; post-eid uses entityFacing column", () => {
-        const prop = new WorldProp(10, 20, "crate", Math.PI / 4);
+        const prop = new WorldProp(10, 20, "box", Math.PI / 4);
         assert.equal(prop._physId, undefined);
         assert.equal(prop.facing, Math.PI / 4);
         assert.equal(prop._spawnFacing, Math.PI / 4);
@@ -25,7 +25,7 @@ describe("entityFacing SoA", () => {
     });
 
     it("bindEntitySlot copies spawn facing before clear", () => {
-        const prop = new WorldProp(0, 0, "crate", 0.75);
+        const prop = new WorldProp(0, 0, "box", 0.75);
         const x = prop.x;
         const y = prop.y;
         prop._physId = 3;

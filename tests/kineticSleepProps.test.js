@@ -36,14 +36,14 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
 }
 describe("kinetic sleep on proof props", () => {
     it("isolated crate sleeps after consecutive still frames", () => {
-        const crate = new WorldProp(0, 0, "crate", 0);
+        const crate = new WorldProp(0, 0, "box", 0);
         assert.ok(evaluateKineticSleepEligible(crate, EMPTY_NEIGHBOR_EIDS, 0));
         for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(crate, true);
         assert.equal(crate.isSleeping, true);
     });
     it("resting crate stack can sleep together", () => {
-        const bottom = new WorldProp(0, 0, "crate", 0);
-        const top = new WorldProp(0, 14, "crate", 0);
+        const bottom = new WorldProp(0, 0, "box", 0);
+        const top = new WorldProp(0, 14, "box", 0);
         separatePairUntilClear(bottom, top);
         bindPair(bottom, top);
         const bottomN = neighborEids(top);
@@ -58,8 +58,8 @@ describe("kinetic sleep on proof props", () => {
         assert.equal(top.isSleeping, true);
     });
     it("moving neighbor blocks sleep", () => {
-        const rest = new WorldProp(0, 0, "crate", 0);
-        const mover = new WorldProp(0, 14, "crate", 0);
+        const rest = new WorldProp(0, 0, "box", 0);
+        const mover = new WorldProp(0, 14, "box", 0);
         separatePairUntilClear(rest, mover);
         bindPair(rest, mover);
         mover.vx = 5;
@@ -69,8 +69,8 @@ describe("kinetic sleep on proof props", () => {
         assert.ok(!evaluateKineticSleepEligible(rest, n));
     });
     it("sleeping overlapping neighbor does not block sleep", () => {
-        const bottom = new WorldProp(0, 0, "crate", 0);
-        const top = new WorldProp(0, 14, "crate", 0);
+        const bottom = new WorldProp(0, 0, "box", 0);
+        const top = new WorldProp(0, 14, "box", 0);
         separatePairUntilClear(bottom, top);
         bindPair(bottom, top);
         for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(top, true);
@@ -96,8 +96,8 @@ describe("kinetic sleep on proof props", () => {
         assert.equal(hex._sleepFrames, 0);
     });
     it("resting overlapping pair skips contact resolve until something moves", () => {
-        const a = new WorldProp(0, 0, "crate", 0);
-        const b = new WorldProp(0, 14, "crate", 0);
+        const a = new WorldProp(0, 0, "box", 0);
+        const b = new WorldProp(0, 14, "box", 0);
         separatePairUntilClear(a, b);
         assignPhysIdWithPose(a, 0);
         assignPhysIdWithPose(b, 1);

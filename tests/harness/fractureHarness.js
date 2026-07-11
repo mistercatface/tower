@@ -25,23 +25,24 @@ export function createFractureWorld(overrides = {}) {
     return world;
 }
 
-export function liveGlassCount(world) {
+export function liveFracturePropCount(world) {
     let count = 0;
     for (let i = 0; i < world.worldProps.length; i++) {
         const prop = world.worldProps[i];
-        if (!prop.isDead && prop.type === "glass_pane") count++;
+        if (!prop.isDead && prop.type === "box") count++;
     }
     const debris = world.fractureEngine?.debris?.list();
     if (debris) {
         for (let i = 0; i < debris.length; i++) {
             const body = debris[i];
-            if (!body.isDead && body.type === "glass_pane") count++;
+            if (!body.isDead && body.type === "box") count++;
         }
     }
     return count;
 }
 
-export function setupGlassPaneForFracture(prop, hx, hy, physId = 0) {
+export function setupPropForFracture(prop, hx, hy, physId = 0) {
+    prop.fractureEnabled = true;
     assignPhysIdWithPose(prop, physId);
     applyPropBoxFootprint(prop, hx, hy);
     return prop;
@@ -72,7 +73,7 @@ export function materializeDebrisGeometries(stores, debrisStart, debrisCount) {
     return geometries;
 }
 
-export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, stores = moduleStores) {
+export function shatterPolygon(flatVerts, hitX, hitY, impactForce = 10, stores = moduleStores) {
     if (flatVerts.length < 6) return [];
     seedFractureRand(hitX, hitY, impactForce);
     stores.debris.reset();
@@ -87,8 +88,8 @@ export function shatterGlassPolygon(flatVerts, hitX, hitY, impactForce = 10, sto
     return geometries;
 }
 
-export function shatterGlassFootprint(hx, hy, hitX, hitY, impactForce = 10) {
-    return shatterGlassPolygon(boxLocalFootprint(hx, hy), hitX, hitY, impactForce);
+export function shatterFootprint(hx, hy, hitX, hitY, impactForce = 10) {
+    return shatterPolygon(boxLocalFootprint(hx, hy), hitX, hitY, impactForce);
 }
 
 export function readImpactFracture(stores = moduleStores) {
@@ -105,7 +106,7 @@ export function readImpactFracture(stores = moduleStores) {
     };
 }
 
-export function spawnGlassFractureShards(world, prop, impactForce = 30, hitX = 0, hitY = 0) {
+export function spawnFractureShards(world, prop, impactForce = 30, hitX = 0, hitY = 0) {
     if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce, world.fractureEngine)) return null;
     const stores = world.fractureEngine.stores;
     const fracture = readImpactFracture(stores);
@@ -121,8 +122,8 @@ export function removeEditorPropFromWorld(world, prop) {
     prop.isDead = true;
 }
 
-export function createGlassPane(x, y, hx, hy, facing = 0) {
-    const prop = new WorldProp(x, y, "glass_pane", facing);
-    setupGlassPaneForFracture(prop, hx, hy);
+export function createFracturableBox(x, y, hx, hy, facing = 0) {
+    const prop = new WorldProp(x, y, "box", facing);
+    setupPropForFracture(prop, hx, hy);
     return prop;
 }

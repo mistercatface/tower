@@ -616,7 +616,7 @@ export function orderSandboxPalettePropIds(propIds) {
 export function isBallFamilyAsset(asset) {
     return asset?.primitive === "sphere" && isSingleWorldPropSpawnAsset(asset);
 }
-export function isBlockFamilyAsset(asset) {
+export function isPolygonFamilyAsset(asset) {
     return asset?.primitive === "polygon" && isSingleWorldPropSpawnAsset(asset);
 }
 export function createSandboxSelection({ isLiveProp }) {
@@ -759,6 +759,7 @@ const PLACEABLE = {
             const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents, ctx.resolveSpawnVisualOverride(placedAsset));
             if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
             if (spawned && propTypeId === "cross_pinwheel") applyCrossPinwheelFootprint(spawned, ctx.spawnCrossLength, ctx.spawnCrossThickness);
+            if (spawned && isPolygonFamilyAsset(placedAsset) && !placedAsset.physics?.fracture) spawned.fractureEnabled = ctx.spawnFractureEnabled;
             if (spawned) {
                 ctx.placement.touchPropPlacement(spawned.id);
                 if (ctx.selectSpawned !== false) ctx.pickSelection({ kind: "prop", ids: [spawned.id] });
@@ -1073,8 +1074,9 @@ export function createSandboxSession(state) {
     let spawnVisualOverrideTint = null;
     let spawnVisualOverrideBrightness = 1;
     let spawnSnakeLength = 5;
+    let spawnFractureEnabled = false;
     const resolveSpawnVisualOverride = (asset) => {
-        if (!isBallFamilyAsset(asset) && !isBlockFamilyAsset(asset)) return null;
+        if (!isBallFamilyAsset(asset) && !isPolygonFamilyAsset(asset)) return null;
         const tint = spawnVisualOverrideTint ?? sampleAssetBaseTintHex(asset);
         const visualOverride = { tint };
         if (spawnVisualOverrideBrightness !== 1) visualOverride.brightness = spawnVisualOverrideBrightness;
@@ -1092,6 +1094,7 @@ export function createSandboxSession(state) {
         spawnCrossLength,
         spawnCrossThickness,
         spawnSnakeLength,
+        spawnFractureEnabled,
         pickSelection,
         notifyUi,
         placement,
@@ -1434,6 +1437,11 @@ export function createSandboxSession(state) {
         getSpawnBoxHeight: () => spawnBoxHeight,
         setSpawnBoxHeight: (height) => {
             spawnBoxHeight = Math.max(6, Math.min(1024, Math.round(height)));
+            notifyUi();
+        },
+        getSpawnFractureEnabled: () => spawnFractureEnabled,
+        setSpawnFractureEnabled: (enabled) => {
+            spawnFractureEnabled = Boolean(enabled);
             notifyUi();
         },
         getSpawnBallRadius: (asset) => spawnBallRadius ?? ballRadiusFromAsset(asset),
@@ -2576,6 +2584,9 @@ function appendCrossPinwheelDimensionFields(body, length, thickness, onLengthCha
     appendNumberField(body, "Cross length", { value: length, step: 2, min: 8, max: 128, onChange: onLengthChange });
     appendNumberField(body, "Cross thickness", { value: thickness, step: 1, min: 2, max: 64, onChange: onThicknessChange });
 }
+function appendShapeFamilyFractureField(body, checked, onChange) {
+    appendCheckboxField(body, "Fracture", { name: "fracture", checked: Boolean(checked), onChange });
+}
 function appendShapeFamilyFields(body, state, spec) {
     const { mode, controller, spawnId, selectedProp } = spec;
     if (mode === "spawn") {
@@ -2589,6 +2600,8 @@ function appendShapeFamilyFields(body, state, spec) {
                 (val) => session.setSpawnCrossLength(val),
                 (val) => session.setSpawnCrossThickness(val),
             );
+            appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
+            appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
             return;
         }
         if (isBallFamilyAsset(spawnAsset)) {
@@ -2596,7 +2609,7 @@ function appendShapeFamilyFields(body, state, spec) {
             appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
             return;
         }
-        if (isBlockFamilyAsset(spawnAsset)) {
+        if (isPolygonFamilyAsset(spawnAsset)) {
             if (isResizableBoxSpawnAsset(spawnAsset))
                 appendShapeFamilyBoxFields(
                     body,
@@ -2605,6 +2618,7 @@ function appendShapeFamilyFields(body, state, spec) {
                     (width) => session.setSpawnBoxWidth(width),
                     (height) => session.setSpawnBoxHeight(height),
                 );
+            appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
             appendShapeFamilyCoatBlock(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
         }
         return;
@@ -2626,6 +2640,10 @@ function appendShapeFamilyFields(body, state, spec) {
                 dirty();
             },
         );
+        appendShapeFamilyFractureField(body, selectedProp.fractureEnabled, (checked) => {
+            selectedProp.fractureEnabled = checked;
+            dirty();
+        });
         appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
         return;
     }
@@ -2637,7 +2655,7 @@ function appendShapeFamilyFields(body, state, spec) {
         appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
         return;
     }
-    if (isBlockFamilyAsset(asset)) {
+    if (isPolygonFamilyAsset(asset)) {
         if (isResizableBoxSpawnAsset(asset)) {
             propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp);
             const spanX = ENGINE_F32[M_VEC_A];
@@ -2658,6 +2676,10 @@ function appendShapeFamilyFields(body, state, spec) {
                 },
             );
         }
+        appendShapeFamilyFractureField(body, selectedProp.fractureEnabled, (checked) => {
+            selectedProp.fractureEnabled = checked;
+            dirty();
+        });
         appendShapeFamilyCoatBlock(body, state, selectedShapeCoatAccessors(state, selectedProp, asset), selectedProp);
     }
 }
@@ -2890,7 +2912,7 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
         },
     });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
-    if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isBlockFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, state, selectedProp);
+    if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isPolygonFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, state, selectedProp);
     if (isChainLinkBall(selectedProp)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
     const selectedAsset = propCatalog[selectedProp.type];
     if (isSpawnerProp(selectedAsset)) {
@@ -3012,7 +3034,7 @@ export function appendPropPlaceParams(body, state, controller, spawnId, refreshP
             },
         });
         appendCoatFields(body, state, spawnShapeCoatAccessors(state, session, spawnAsset));
-    } else if (isBallFamilyAsset(spawnAsset) || isBlockFamilyAsset(spawnAsset)) appendShapeFamilyFields(body, state, { mode: "spawn", controller, spawnId });
+    } else if (isBallFamilyAsset(spawnAsset) || isPolygonFamilyAsset(spawnAsset)) appendShapeFamilyFields(body, state, { mode: "spawn", controller, spawnId });
     appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera: true });
 }
 export function createSandboxController(state, { getCanvas, clientToWorld, behaviors }) {

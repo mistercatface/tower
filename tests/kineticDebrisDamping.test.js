@@ -8,7 +8,7 @@ import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 describe("kinetic debris damping", () => {
     it("pose accessors read and write entity columns when _physId is set", () => {
         const world = createFractureWorld();
-        const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
+        const body = world.fractureEngine.debris.acquireBody("box", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 8);
         assignPhysIdWithPose(body, 0);
         body.vx = 200;
@@ -31,7 +31,7 @@ describe("kinetic debris damping", () => {
 
     it("tickPropSubstep damping clears velocity on entity columns", () => {
         const world = createFractureWorld();
-        const body = world.fractureEngine.debris.acquireBody("glass_pane", 0, 0, 0);
+        const body = world.fractureEngine.debris.acquireBody("box", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 8);
         assignPhysIdWithPose(body, 0);
         body.vx = 200;

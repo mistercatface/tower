@@ -32,17 +32,17 @@ describe("sandbox editor inspector wiring", () => {
         assert.ok(body.children.length > 0);
     });
 
-    it("appendShapeFamilySelectedFields builds crate fields without throwing", () => {
+    it("appendShapeFamilySelectedFields builds box fields without throwing", () => {
         const state = createEditorTestState();
-        const prop = spawnPlacedSandboxProp(state, 80, 80, "crate", "alpha");
+        const prop = spawnPlacedSandboxProp(state, 80, 80, "box", "alpha");
         const body = mockPanelBody();
         assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
         assert.ok(body.children.length > 0);
     });
 
-    it("appendShapeFamilySelectedFields builds custom_box resizable fields", () => {
+    it("appendShapeFamilySelectedFields builds box resizable fields", () => {
         const state = createEditorTestState();
-        const prop = spawnPlacedSandboxProp(state, 96, 96, "custom_box", "alpha", 0, { x: 12, y: 16 });
+        const prop = spawnPlacedSandboxProp(state, 96, 96, "box", "alpha", 0, { x: 12, y: 16 });
         const body = mockPanelBody();
         assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
         assert.ok(body.children.length > 0);

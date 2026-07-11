@@ -18,14 +18,14 @@ describe("Color visualOverride", () => {
         assert.notEqual(red[0].toLowerCase(), base[0].toLowerCase());
     });
     it("shifts flat and nested extruded color trees", () => {
-        const crateColors = propCatalog["crate"].visuals.colors;
+        const crateColors = propCatalog["box"].visuals.colors;
         const tinted = resolveVisualOverrideColorTree({ visualOverride: { tint: "#00aa00" } }, crateColors);
         assert.notEqual(tinted.side, crateColors.side);
         assert.equal(tinted.top != null, true);
     });
-    it("assetHasTintableColors covers spheres, crates, and goal star", () => {
+    it("assetHasTintableColors covers spheres, boxes, and belts", () => {
         assert.equal(assetHasTintableColors(propCatalog["ball"]), true);
-        assert.equal(assetHasTintableColors(propCatalog["crate"]), true);
+        assert.equal(assetHasTintableColors(propCatalog["box"]), true);
         assert.equal(assetHasTintableColors(propCatalog["floor_belt"]), false);
     });
     it("resolveVisualOverridePanels uses asset panels when prop has no override", () => {

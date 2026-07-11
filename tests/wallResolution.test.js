@@ -18,7 +18,7 @@ function resolveWallUntilClear(prop, segIds, maxPasses = 6) {
     }
 }
 function bar16x8(x, y, physId) {
-    const bar = new WorldProp(x, y, "custom_box", 0);
+    const bar = new WorldProp(x, y, "box", 0);
     applyPropBoxFootprint(bar, 8, 4);
     assignPhysIdWithPose(bar, physId);
     snapshotKineticBodySlab([bar]);
