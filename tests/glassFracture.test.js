@@ -82,6 +82,14 @@ describe("glass fracture", () => {
         assert.equal(asset.physics.fracture.mode, "glass");
         assert.ok(asset.sandbox.resizableBox);
     });
+    it("flat_glass_pane asset uses glass fracture and flat visuals", () => {
+        const asset = propCatalog["flat_glass_pane"];
+        assert.equal(asset.physics.fracture.mode, "glass");
+        assert.equal(asset.visuals.flat, true);
+        assert.ok(asset.sandbox.resizableBox);
+        const prop = new WorldProp(0, 0, "flat_glass_pane", 0);
+        assert.ok(FractureEngine.canFracturePropSplit(prop));
+    });
     it("glass pane init has no poxel tessellation", () => {
         const prop = new WorldProp(0, 0, "glass_pane", 0);
         assert.equal(prop.poxels, undefined);

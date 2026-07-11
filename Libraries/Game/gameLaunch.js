@@ -181,7 +181,7 @@ async function runGlassLaunch(state, ctx) {
     const cy = ENGINE_F32[M_VEC_A + 1];
     const glassSizePx = parseGlassLaunchSizePx();
     const glassHalf = glassSizePx * 0.5;
-    const pane = spawnPlacedSandboxProp(state, cx, cy, "glass_pane", "alpha");
+    const pane = spawnPlacedSandboxProp(state, cx, cy, "flat_glass_pane", "alpha");
     applyPropBoxFootprint(pane, glassHalf, glassHalf);
     const star = spawnPlacedSandboxProp(state, cx, cy - (glassHalf + 24), "star_block", "alpha");
     state.appLaunch?.session?.bind(ctx);

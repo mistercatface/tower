@@ -5,6 +5,7 @@ import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRoll
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
 import { drawExtrudedConvexPolygon, drawExtrudedCompoundPolygon, drawSphere } from "../Render/render.js";
+import { traceClosedFlatPolygon } from "../Canvas/canvas.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { resolveVisualOverrideColorTree, resolveVisualOverridePanels, visualOverrideCacheId } from "../Color/visualOverride.js";
@@ -23,6 +24,41 @@ export function formatSandboxSpawnLabel(propId) {
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
 export function createPolygonPrimitive(visuals) {
+    if (visuals.flat === true) {
+        const { colors, lineWidth } = visuals;
+        return (ctx, prop) => {
+            const shape = prop.shape;
+            if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return;
+            const localVerts = prop.drawOutline ?? shape.vertices;
+            if (!localVerts || localVerts.length < 6) return;
+            const tinted = resolveVisualOverrideColorTree(prop, colors);
+            const fill = tinted.fill;
+            const stroke = tinted.stroke;
+            const facing = readEntityFacing(prop);
+            const cos = Math.cos(facing);
+            const sin = Math.sin(facing);
+            const count = localVerts.length / 2;
+            if (count * 2 > POLYGON_SCALE_SCRATCH.length) throw new Error("flat polygon exceeds scratch capacity");
+            const world = POLYGON_SCALE_SCRATCH;
+            const px = prop.x;
+            const py = prop.y;
+            for (let i = 0; i < count; i++) {
+                const lx = localVerts[i * 2];
+                const ly = localVerts[i * 2 + 1];
+                world[i * 2] = px + lx * cos - ly * sin;
+                world[i * 2 + 1] = py + lx * sin + ly * cos;
+            }
+            ctx.beginPath();
+            traceClosedFlatPolygon(ctx, world, count);
+            ctx.fillStyle = fill;
+            ctx.fill();
+            if (stroke) {
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = lineWidth ?? 0.4;
+                ctx.stroke();
+            }
+        };
+    }
     const { colors, world, plankTs, topCross, lineWidth } = visuals;
     return (ctx, prop, viewport) => {
         const shape = prop.shape;
