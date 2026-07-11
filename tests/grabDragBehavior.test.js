@@ -3,15 +3,15 @@ import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
-import { createGrabDragBehavior, getGrabDragConfig, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
+import { createGrabDragBehavior, getDragLaunchConfig, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
 import { createDefaultSandboxBehaviors, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 describe("grabDrag behavior", () => {
-    it("getGrabDragConfig uses dragLaunch", () => {
-        assert.equal(getGrabDragConfig({ sandbox: { dragLaunch: { minPower: 42 } } }).minPower, 42);
+    it("getDragLaunchConfig uses dragLaunch for grab", () => {
+        assert.equal(getDragLaunchConfig({ sandbox: { dragLaunch: { minPower: 42 } } }).minPower, 42);
     });
 
     it("onPointerDown returns true for kinetic props and false otherwise", () => {

@@ -28,9 +28,6 @@ function hueFromPullRatio(ratio) {
 export function getDragLaunchConfig(asset) {
     return asset.sandbox.dragLaunch;
 }
-export function getGrabDragConfig(asset) {
-    return asset.sandbox.dragLaunch;
-}
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
     return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
 }
@@ -244,7 +241,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
     const propRuns = new Map();
     const activeRunIds = [];
     const tickPull = (prop, run, dtMs) => {
-        const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
+        const grabConfig = getDragLaunchConfig(propCatalog[prop.type]);
         const rollConfig = getKineticRollConfig(prop);
         const tx = run.targetWorld.x + run.offsetX;
         const ty = run.targetWorld.y + run.offsetY;
@@ -337,7 +334,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         appendOverlayCommands(commands, prop) {
             const run = propRuns.get(prop.id);
             if (!run?.dragging) return;
-            const grabConfig = getGrabDragConfig(propCatalog[prop.type]);
+            const grabConfig = getDragLaunchConfig(propCatalog[prop.type]);
             grabDragAnchorWorld(prop, run);
             const ax = GRAB_ANCHOR_SCRATCH[G_WX];
             const ay = GRAB_ANCHOR_SCRATCH[G_WY];

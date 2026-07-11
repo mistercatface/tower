@@ -4,7 +4,7 @@ import { entityFacing, wakeKineticBody, kineticDynamicSlab, KINETIC_PAIR_TIER, w
 import { entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol } from "../Entity/entitySlots.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { ENGINE_F32, ENGINE_FRAC_BASE } from "../Math/math.js";
-import { transformPoint2DInto, convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
+import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, glass: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };

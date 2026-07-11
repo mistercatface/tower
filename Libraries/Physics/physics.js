@@ -1,4 +1,4 @@
-import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findClosestWorldVertexInto, findExtremeVertexInto, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ } from "../Math/math.js";
+import { ENGINE_F32, ENGINE_PHYS_BASE, multiplyQuatInto, axisAngleQuatInto, normalizeQuat, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, M_OUT_CX, M_OUT_CY, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ } from "../Math/math.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityRefs, syncEntitySlotPoseFromRef, writebackEntitySlotPoseToRef } from "../Entity/entitySlots.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 import { MAX_ENTITIES as MAX_PHYS_BODIES, MAX_ENTITIES as MAX_CONTACTS, MAX_ENTITIES as MAX_KINETIC_PAIRS } from "../../Core/engineLimits.js";
@@ -192,7 +192,7 @@ export function kineticInertiaFromBody(body) {
     const r = shape?.type === "Circle" ? shape.radius : (body.radius ?? 0);
     return (m * r * r) / 2;
 }
-export function massFromBody(body) {
+function massFromBody(body) {
     if (body.mass == null) throw new Error("Kinetic body missing mass");
     return body.mass;
 }
@@ -1227,10 +1227,6 @@ export function entityCollisionSpan(entity) {
 }
 export function markBroadphaseDirty(entity) {
     entity._broadphaseDirty = true;
-}
-export function entityContainedInAabb(entity, outer) {
-    entityWorldAabbF32(ENGINE_F32, P_AABB_A, entity);
-    return outer.minX <= ENGINE_F32[P_AABB_A] && outer.minY <= ENGINE_F32[P_AABB_A + 1] && outer.maxX >= ENGINE_F32[P_AABB_A + 2] && outer.maxY >= ENGINE_F32[P_AABB_A + 3];
 }
 export function entityContainedInAabbF32(entity, buf, o) {
     entityWorldAabbF32(ENGINE_F32, P_AABB_A, entity);
@@ -2545,11 +2541,6 @@ export function worldAnchorFromSlab(body, physId, localX, localY, slab, destOffs
     const sin = Math.sin(angle);
     ENGINE_F32[destOffset] = slab.x[physId] + localX * cos - localY * sin;
     ENGINE_F32[destOffset + 1] = slab.y[physId] + localX * sin + localY * cos;
-}
-export function distanceBetweenAnchors(bodyA, anchorA, bodyB, anchorB) {
-    worldAnchorFromBodyIntoF32(bodyA, anchorA.x, anchorA.y, P_VEC_A);
-    worldAnchorFromBodyIntoF32(bodyB, anchorB.x, anchorB.y, P_VEC_B);
-    return Math.hypot(ENGINE_F32[P_VEC_B] - ENGINE_F32[P_VEC_A], ENGINE_F32[P_VEC_B + 1] - ENGINE_F32[P_VEC_A + 1]);
 }
 export const PAIR_KEY_SCALE = 1_000_000;
 const WARM_START_FEATURE_STRIDE = 1024;
@@ -4177,14 +4168,6 @@ function ensureBodyRollQuat(body) {
 export function transformRollVertexInto(buf, o, lx, ly, lz, radius, qw, qx, qy, qz) {
     rotateVecByQuatInto(buf, o, lx, ly, lz - radius, qw, qx, qy, qz);
     buf[o + 2] += radius;
-}
-export function worldAnchorFromRolledBody(body, localX, localY, dst) {
-    const radius = getRollRadius(body);
-    const q = body.rollQuat ?? IDENTITY_ROLL_QUAT;
-    transformRollVertexInto(ENGINE_F32, M_OUT_VX, localX, localY, 0, radius, q.w, q.x, q.y, q.z);
-    dst.x = body.x + ENGINE_F32[M_OUT_VX];
-    dst.y = body.y + ENGINE_F32[M_OUT_VY];
-    return dst;
 }
 export function getRollRadius(body) {
     return Math.max(1, resolveBodyRadius(body));

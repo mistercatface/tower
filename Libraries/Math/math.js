@@ -335,50 +335,6 @@ export function findClosestWorldVertexIndex(vertices, posX, posY, cos, sin, targ
     }
     return bestIndex;
 }
-export function findExtremeVertexInto(out, vertices, pos, cos, sin, axisX, axisY, findMax = true) {
-    let bestProj = findMax ? -Infinity : Infinity;
-    let bestIndex = 0;
-    out.x = pos.x;
-    out.y = pos.y;
-    const count = vertices.length;
-    for (let i = 0; i < count; i += 2) {
-        const lx = vertices[i];
-        const ly = vertices[i + 1];
-        const vx = pos.x + lx * cos - ly * sin;
-        const vy = pos.y + lx * sin + ly * cos;
-        const proj = vx * axisX + vy * axisY;
-        if (findMax ? proj > bestProj : proj < bestProj) {
-            bestProj = proj;
-            out.x = vx;
-            out.y = vy;
-            bestIndex = i / 2;
-        }
-    }
-    return bestIndex;
-}
-export function findClosestWorldVertexInto(out, vertices, pos, cos, sin, targetX, targetY) {
-    let bestDistSq = Infinity;
-    let bestIndex = 0;
-    out.x = pos.x;
-    out.y = pos.y;
-    const count = vertices.length;
-    for (let i = 0; i < count; i += 2) {
-        const lx = vertices[i];
-        const ly = vertices[i + 1];
-        const vx = pos.x + lx * cos - ly * sin;
-        const vy = pos.y + lx * sin + ly * cos;
-        const dx = targetX - vx;
-        const dy = targetY - vy;
-        const distSq = dx * dx + dy * dy;
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq;
-            out.x = vx;
-            out.y = vy;
-            bestIndex = i / 2;
-        }
-    }
-    return bestIndex;
-}
 export function findCircleRimGrabPointInto(buf, o, posX, posY, facing, radius, targetX, targetY) {
     let dx = targetX - posX;
     let dy = targetY - posY;
