@@ -1,5 +1,5 @@
 import { removeWorldPropFromState, addWorldPropsToState } from "../../GameState/EntityRegistry.js";
-import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
+import { PolygonShape, writeLivePolygon, ensureLivePolygonCapacity, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, kineticMassFromFootprint, wakeKineticBody, pruneKineticConstraintsForBody, entityFacing, KINETIC_PAIR_TIER, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, packRollOrientId } from "../Physics/physics.js";
 import { kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing as entityFacingCol, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
@@ -126,6 +126,7 @@ export function setCirclePropRadius(prop, radius) {
     prop.radius = radius;
     invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
+    if (prop._physId !== undefined) stampKineticBodyFromEntity(prop._physId, prop);
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
     wakeKineticBody(prop);
@@ -598,6 +599,7 @@ export function applyCrossPinwheelFootprint(prop, length, thickness) {
     crossPinwheelOutlineInto(ensureDrawOutline(prop, 24), length, thickness);
     invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
+    if (prop._physId !== undefined) stampKineticBodyFromEntity(prop._physId, prop);
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
 }

@@ -128,6 +128,34 @@ export function ensureGrowF32(obj, key, minCap, copyLen = -1) {
     obj[key] = next;
     return next;
 }
+export function ensureGrowU8(obj, key, minCap, copyLen = -1) {
+    const cur = obj[key];
+    if (!cur) {
+        const next = new Uint8Array(Math.max(minCap, 16));
+        obj[key] = next;
+        return next;
+    }
+    if (cur.length >= minCap) return cur;
+    const next = new Uint8Array(Math.max(minCap, cur.length * 2));
+    const n = copyLen < 0 ? cur.length : copyLen;
+    if (n > 0) next.set(cur.subarray(0, Math.min(n, cur.length)));
+    obj[key] = next;
+    return next;
+}
+export function ensureGrowU16(obj, key, minCap, copyLen = -1) {
+    const cur = obj[key];
+    if (!cur) {
+        const next = new Uint16Array(Math.max(minCap, 16));
+        obj[key] = next;
+        return next;
+    }
+    if (cur.length >= minCap) return cur;
+    const next = new Uint16Array(Math.max(minCap, cur.length * 2));
+    const n = copyLen < 0 ? cur.length : copyLen;
+    if (n > 0) next.set(cur.subarray(0, Math.min(n, cur.length)));
+    obj[key] = next;
+    return next;
+}
 export class GrowI32 {
     constructor(initialCap = 256) {
         this.buf = new Int32Array(initialCap);
@@ -162,13 +190,50 @@ export class GrowF32 {
     }
 }
 export const pickWorldPoly = new GrowF32(64);
-export const kineticDynamicSlab = { x: entityX, y: entityY, vx: entityVx, vy: entityVy, w: entityW, activeSlot: new Int32Array(MAX_PHYS_BODIES), activePhysIds: new Int32Array(MAX_PHYS_BODIES), activePhysCount: 0, islandRoot: new Int32Array(MAX_PHYS_BODIES), partCount: new Uint8Array(MAX_PHYS_BODIES), shapeKind: new Uint8Array(MAX_PHYS_BODIES), linkNeighborOffset: new Int32Array(MAX_PHYS_BODIES), linkNeighborCount: new Int32Array(MAX_PHYS_BODIES), linkNeighborEids: new Int32Array(256), linkNeighborEidsUsed: 0, spatialNeighborOffset: new Int32Array(MAX_PHYS_BODIES), spatialNeighborCount: new Int32Array(MAX_PHYS_BODIES), spatialNeighborEids: new Int32Array(256), spatialNeighborEidsUsed: 0, r: new Float32Array(MAX_PHYS_BODIES), hx: new Float32Array(MAX_PHYS_BODIES), hy: new Float32Array(MAX_PHYS_BODIES), cos: new Float32Array(MAX_PHYS_BODIES), sin: new Float32Array(MAX_PHYS_BODIES) };
+const SHAPE_POOL_FLOATS_INIT = MAX_PHYS_BODIES * 16;
+const PART_TABLE_INIT = MAX_PHYS_BODIES * 2;
+export const kineticDynamicSlab = {
+    x: entityX,
+    y: entityY,
+    vx: entityVx,
+    vy: entityVy,
+    w: entityW,
+    activeSlot: new Int32Array(MAX_PHYS_BODIES),
+    activePhysIds: new Int32Array(MAX_PHYS_BODIES),
+    activePhysCount: 0,
+    islandRoot: new Int32Array(MAX_PHYS_BODIES),
+    partCount: new Uint8Array(MAX_PHYS_BODIES),
+    shapeKind: new Uint8Array(MAX_PHYS_BODIES),
+    linkNeighborOffset: new Int32Array(MAX_PHYS_BODIES),
+    linkNeighborCount: new Int32Array(MAX_PHYS_BODIES),
+    linkNeighborEids: new Int32Array(256),
+    linkNeighborEidsUsed: 0,
+    spatialNeighborOffset: new Int32Array(MAX_PHYS_BODIES),
+    spatialNeighborCount: new Int32Array(MAX_PHYS_BODIES),
+    spatialNeighborEids: new Int32Array(256),
+    spatialNeighborEidsUsed: 0,
+    r: new Float32Array(MAX_PHYS_BODIES),
+    hx: new Float32Array(MAX_PHYS_BODIES),
+    hy: new Float32Array(MAX_PHYS_BODIES),
+    cos: new Float32Array(MAX_PHYS_BODIES),
+    sin: new Float32Array(MAX_PHYS_BODIES),
+    partGeomOffset: new Int32Array(MAX_PHYS_BODIES),
+    partShapeKind: new Uint8Array(PART_TABLE_INIT),
+    partRadius: new Float32Array(PART_TABLE_INIT),
+    partVertOffset: new Int32Array(PART_TABLE_INIT),
+    partVertFloatCount: new Uint16Array(PART_TABLE_INIT),
+    partTableUsed: 0,
+    shapeVertPool: new Float32Array(SHAPE_POOL_FLOATS_INIT),
+    shapeNormPool: new Float32Array(SHAPE_POOL_FLOATS_INIT),
+    shapePoolUsed: 0,
+};
 kineticDynamicSlab.activeSlot.fill(-1);
 kineticDynamicSlab.islandRoot.fill(-1);
 kineticDynamicSlab.linkNeighborOffset.fill(0);
 kineticDynamicSlab.linkNeighborCount.fill(0);
 kineticDynamicSlab.spatialNeighborOffset.fill(0);
 kineticDynamicSlab.spatialNeighborCount.fill(0);
+kineticDynamicSlab.partGeomOffset.fill(-1);
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 export const CONSTRAINT_TYPE_DISTANCE = 0;
 export const CONSTRAINT_TYPE_ANGLE = 1;
