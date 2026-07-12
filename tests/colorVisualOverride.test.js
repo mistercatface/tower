@@ -2,17 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { resolveVisualOverrideColorTree, setPropVisualTint, visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import propCatalog from "../Assets/props/index.js";
-import { WALL_CHUNK_FALLBACK_COLORS, SPHERE_PENDING_FILL } from "../Libraries/Render/render.js";
 
 describe("Color visualOverride", () => {
     it("shifts flat and nested extruded color trees", () => {
-        const tinted = resolveVisualOverrideColorTree({ visualOverride: { tint: "#00aa00" } }, WALL_CHUNK_FALLBACK_COLORS);
-        assert.notEqual(tinted.side, WALL_CHUNK_FALLBACK_COLORS.side);
+        const base = { side: "#9E9E9E", sideShadow: "#757575", top: "#BDBDBD" };
+        const tinted = resolveVisualOverrideColorTree({ visualOverride: { tint: "#00aa00" } }, base);
+        assert.notEqual(tinted.side, base.side);
         assert.equal(tinted.top != null, true);
     });
-    it("ball asset has no coat visuals; sphere draw uses shared pending fill", () => {
+    it("ball asset has no coat visuals", () => {
         assert.equal(propCatalog["ball"].visuals, undefined);
-        assert.equal(SPHERE_PENDING_FILL, "#9A9A9A");
     });
     it("visualOverrideCacheKey keys tinted props by hex", () => {
         const prop = {};

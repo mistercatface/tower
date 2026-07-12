@@ -40,7 +40,6 @@ export const WALL_SEG_STATIC_FACE = 4;
 export const WALL_STAMP_VOXEL = 0;
 export const WALL_STAMP_RAIL = 1;
 export const WALL_FACE_ATLAS_MISS = -1;
-export const WALL_FACE_ATLAS_SOLID = -2;
 export const WALL_FACE_SUBDIV_NONE = -3;
 //
 // Surface motif mask (profile motif.surfaceMask)

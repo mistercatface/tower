@@ -4,7 +4,7 @@ import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRoll
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
-import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, getWallChunkSpriteCacheKey, DEFAULT_PROP_HEIGHT, SPHERE_PENDING_FILL } from "../Render/render.js";
+import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, getWallChunkSpriteCacheKey, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { visualOverrideCacheId } from "../Color/visualOverride.js";
@@ -31,18 +31,13 @@ export function formatSandboxSpawnLabel(propId) {
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
 const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
-export function createSpherePrimitive(visuals) {
-    const v = visuals ?? {};
-    const pendingFill = v.pendingFill ?? SPHERE_PENDING_FILL;
-    const panelCount = v.panelCount ?? 6;
-    const latBands = v.latBands ?? 5;
+export function createSpherePrimitive() {
     return (ctx, prop, viewport, flatPresentation) => {
-        const radius = prop.radius;
         if (flatPresentation) {
-            drawFlatSphereDisc(ctx, prop, radius, pendingFill);
+            drawFlatSphereDisc(ctx, prop, prop.radius);
             return;
         }
-        drawSphere(ctx, prop, viewport, { panelCount, latBands, pendingFill });
+        drawSphere(ctx, prop, viewport);
     };
 }
 function stampSurfaceProfileFields(prop, asset) {

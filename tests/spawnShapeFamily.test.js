@@ -127,7 +127,7 @@ describe("sphere surface profile draw", () => {
             _wallChunkSideCanvas: null,
             settings: { surfaceBakeScale: 1, cellSize: 16, cellsPerChunk: 8 },
         });
-        const draw = createSpherePrimitive(propCatalog.ball.visuals);
+        const draw = createSpherePrimitive();
         let arcs = 0;
         let fills = 0;
         let patterns = 0;
@@ -157,15 +157,14 @@ describe("sphere surface profile draw", () => {
         bindWallChunkTexturePipeline(null);
     });
 
-    it("radial pending sphere fills faces without coat panels", () => {
+    it("radial sphere draws nothing until wall-chunk textures are ready", () => {
         bindWallChunkTexturePipeline(null);
         const prop = new WorldProp(0, 0, "ball", 0);
-        const draw = createSpherePrimitive(propCatalog.ball.visuals);
+        const draw = createSpherePrimitive();
         let fills = 0;
-        const fillStyles = new Set();
         const ctx = {
             get fillStyle() { return ""; },
-            set fillStyle(v) { fillStyles.add(v); },
+            set fillStyle(_v) {},
             beginPath() {},
             moveTo() {},
             lineTo() {},
@@ -178,8 +177,7 @@ describe("sphere surface profile draw", () => {
             createPattern() { return null; },
         };
         draw(ctx, prop, viewport, false);
-        assert.ok(fills > 4);
-        assert.equal(fillStyles.size, 1);
+        assert.equal(fills, 0);
     });
 
     it("boid attachment stamps profile from parent", () => {

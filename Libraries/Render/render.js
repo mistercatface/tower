@@ -1,15 +1,12 @@
-import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
+import { traceAabbRect, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
-import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
-import { shadeHex } from "../Color/colorMath.js";
-import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_PATH_ARROW_HEAD, OVERLAY_RENDER_KEY_FLOW_DIRECTION_ARROW, OVERLAY_RENDER_KEY_WIRE_ENDPOINT, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
+import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_PATH_ARROW_HEAD, OVERLAY_RENDER_KEY_FLOW_DIRECTION_ARROW, OVERLAY_RENDER_KEY_WIRE_ENDPOINT, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, collectRailWallBoxesInAabbF32, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { VOXEL_FACE_CX, VOXEL_FACE_CY, VOXEL_FACE_OUT_X, VOXEL_FACE_OUT_Y, VOXEL_FACE_X1, VOXEL_FACE_Y1, VOXEL_FACE_X2, VOXEL_FACE_Y2, VOXEL_FACE_WALL_HEIGHT, VOXEL_FACE_WALL_BASE_Z, VOXEL_FACE_WALL_CAP_HEIGHT, VOXEL_FACE_GRID_SIDE, VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE, RAIL_BOX_MIN_X, RAIL_BOX_MAX_X, RAIL_BOX_MIN_Y, RAIL_BOX_MAX_Y, RAIL_BOX_INNER_P1X, RAIL_BOX_INNER_P1Y, RAIL_BOX_INNER_P2X, RAIL_BOX_INNER_P2Y, RAIL_BOX_OUTER_P1X, RAIL_BOX_OUTER_P1Y, RAIL_BOX_OUTER_P2X, RAIL_BOX_OUTER_P2Y, RAIL_BOX_INWARD_X, RAIL_BOX_INWARD_Y, RAIL_BOX_CX, RAIL_BOX_CY, RAIL_BOX_WALL_CAP_HEIGHT, RAIL_BOX_WALL_HEIGHT, RAIL_BOX_WALL_BASE_Z, RAIL_BOX_GRID_SIDE, RAIL_BOX_GRID_IDX, RAIL_BOX_STRIDE } from "../World/wallGridStride.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
-import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import propCatalog from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision, SS_POINTS } from "../WorldSurface/worldSurface.js";
 import { propShapeFootprintId } from "../Props/props.js";
@@ -590,16 +587,6 @@ function isSphereFaceVisible(prop, viewport, i0, i1, i2) {
     const vz = viewport.cameraHeight - cz;
     return nx * vx + ny * vy + nz * vz > 0;
 }
-function drawSphereFace(ctx, prop, viewport, i0, i1, i2, fill) {
-    ensureFlatProjectedVertScratch(3);
-    projectPropVertexScalarsInto(flatProjectedVerts, 0, prop, viewport, sSphereVertLx[i0], sSphereVertLy[i0], sSphereVertZ[i0]);
-    projectPropVertexScalarsInto(flatProjectedVerts, 2, prop, viewport, sSphereVertLx[i1], sSphereVertLy[i1], sSphereVertZ[i1]);
-    projectPropVertexScalarsInto(flatProjectedVerts, 4, prop, viewport, sSphereVertLx[i2], sSphereVertLy[i2], sSphereVertZ[i2]);
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    traceClosedFlatPolygon(ctx, flatProjectedVerts, 3);
-    ctx.fill();
-}
 function drawSphereFaceTextured(ctx, prop, viewport, i0, i1, i2) {
     const canvas = wallChunkPipeline._wallChunkCapCanvas;
     if (!canvas) return;
@@ -745,28 +732,22 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
     }
     return sSphereFaceCount;
 }
-export function drawFlatSphereDisc(ctx, prop, radius, pendingFill) {
-    if (wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas && fillCapPathWithChunkTexture(ctx, prop.x, prop.y)) {
-        traceCircle(ctx, prop.x, prop.y, radius);
-        ctx.closePath();
-        ctx.fill();
-        return;
-    }
-    ctx.fillStyle = pendingFill;
-    fillCircle(ctx, prop.x, prop.y, radius);
+export const SPHERE_LON_BANDS = 6;
+export const SPHERE_LAT_BANDS = 5;
+export function drawFlatSphereDisc(ctx, prop, radius) {
+    if (!(wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas && fillCapPathWithChunkTexture(ctx, prop.x, prop.y))) return;
+    traceCircle(ctx, prop.x, prop.y, radius);
+    ctx.closePath();
+    ctx.fill();
 }
-export function drawSphere(ctx, prop, viewport, options = {}) {
+export function drawSphere(ctx, prop, viewport) {
+    if (!(wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas)) return;
     const radius = prop.radius;
-    const panelCount = Math.max(3, options.panelCount ?? 6);
-    const latBands = Math.max(3, options.latBands ?? 5);
-    const lonBands = panelCount;
-    const pendingFill = options.pendingFill ?? SPHERE_PENDING_FILL;
-    const textured = !!(wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas);
     const qw = prop.rollQw ?? 1;
     const qx = prop.rollQx ?? 0;
     const qy = prop.rollQy ?? 0;
     const qz = prop.rollQz ?? 0;
-    buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz);
+    buildSphereMesh(radius, SPHERE_LAT_BANDS, SPHERE_LON_BANDS, qw, qx, qy, qz);
     let backN = 0;
     let frontN = 0;
     for (let f = 0; f < sSphereFaceCount; f++)
@@ -777,16 +758,13 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const drawPass = (order, count) => {
         for (let i = 0; i < count; i++) {
             const f = order[i];
-            if (textured) drawSphereFaceTextured(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f]);
-            else drawSphereFace(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f], pendingFill);
+            drawSphereFaceTextured(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f]);
         }
     };
     drawPass(sSphereBackOrder, backN);
     drawPass(sSphereFrontOrder, frontN);
 }
 export const DEFAULT_PROP_HEIGHT = 14;
-export const SPHERE_PENDING_FILL = "#9A9A9A";
-export const WALL_CHUNK_FALLBACK_COLORS = { side: "#9E9E9E", sideShadow: "#757575", top: "#BDBDBD", bodyInspect: "#9E9E9E" };
 let wallChunkPipeline = null;
 export function bindWallChunkTexturePipeline(worldSurfaces) {
     wallChunkPipeline = worldSurfaces;
@@ -1002,71 +980,30 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = readEntityF
     ctx.fill();
     return true;
 }
-const wallFaceColor = ["", "", ""];
-const wallBackColor = ["", "", ""];
-const wallTopColor = ["", "", ""];
-const WALL_DRAW_F_HEIGHT = 0;
-const WALL_DRAW_F_FACING = 1;
-const wallDrawF32 = new Float32Array(2);
-let wallDrawLocalVerts = null;
-const sWallFlatVerts = new Float32Array(1024);
-function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts, colors) {
+function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts) {
     if (!localVerts || localVerts.length < 6) return;
     if (flatPresentation) {
-        if (wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas && drawFlatWallChunkCap(ctx, prop, localVerts)) return;
-        const tinted = resolveVisualOverrideColorTree(prop, colors);
-        const facing = readEntityFacing(prop);
-        const cos = Math.cos(facing);
-        const sin = Math.sin(facing);
-        const count = localVerts.length / 2;
-        if (count * 2 > sWallFlatVerts.length) throw new Error("flat wall chunk exceeds scratch capacity");
-        const px = prop.x;
-        const py = prop.y;
-        for (let i = 0; i < count; i++) {
-            const lx = localVerts[i * 2];
-            const ly = localVerts[i * 2 + 1];
-            sWallFlatVerts[i * 2] = px + lx * cos - ly * sin;
-            sWallFlatVerts[i * 2 + 1] = py + lx * sin + ly * cos;
-        }
-        ctx.beginPath();
-        traceClosedFlatPolygon(ctx, sWallFlatVerts, count);
-        ctx.fillStyle = tinted.top ?? tinted.side;
-        ctx.fill();
+        drawFlatWallChunkCap(ctx, prop, localVerts);
         return;
     }
-    if (drawWallChunkTextured(ctx, prop, viewport, localVerts)) return;
-    const tinted = resolveVisualOverrideColorTree(prop, colors);
-    const height = prop.height ?? DEFAULT_PROP_HEIGHT;
-    const side = tinted.side;
-    const sideShadow = tinted.sideShadow ?? side;
-    wallFaceColor[0] = sideShadow;
-    wallFaceColor[1] = side;
-    wallFaceColor[2] = shadeHex(side, -0.12);
-    wallBackColor[0] = sideShadow;
-    wallBackColor[1] = sideShadow;
-    wallBackColor[2] = side;
-    wallTopColor[1] = tinted.top;
-    wallDrawF32[WALL_DRAW_F_HEIGHT] = height;
-    wallDrawF32[WALL_DRAW_F_FACING] = readEntityFacing(prop);
-    wallDrawLocalVerts = localVerts;
-    drawExtrudedPrism(ctx, prop, viewport, wallDrawLocalVerts, wallDrawF32[WALL_DRAW_F_HEIGHT], wallDrawF32[WALL_DRAW_F_FACING], wallFaceColor[0], wallFaceColor[1], wallFaceColor[2], wallBackColor[0], wallBackColor[1], wallBackColor[2], wallTopColor[1]);
+    drawWallChunkTextured(ctx, prop, viewport, localVerts);
 }
 export function createWallChunkDraw() {
     return (ctx, prop, viewport, flatPresentation) => {
         const outline = prop.drawOutline;
         if (outline) {
-            drawWallChunkContour(ctx, prop, viewport, flatPresentation, outline, WALL_CHUNK_FALLBACK_COLORS);
+            drawWallChunkContour(ctx, prop, viewport, flatPresentation, outline);
             return;
         }
         const parts = prop.collisionParts;
         if (parts?.length > 1) {
             for (let i = 0; i < parts.length; i++) {
                 const verts = parts[i].vertices;
-                if (verts?.length >= 6) drawWallChunkContour(ctx, prop, viewport, flatPresentation, verts, WALL_CHUNK_FALLBACK_COLORS);
+                if (verts?.length >= 6) drawWallChunkContour(ctx, prop, viewport, flatPresentation, verts);
             }
             return;
         }
-        drawWallChunkContour(ctx, prop, viewport, flatPresentation, prop.shape?.vertices, WALL_CHUNK_FALLBACK_COLORS);
+        drawWallChunkContour(ctx, prop, viewport, flatPresentation, prop.shape?.vertices);
     };
 }
 function parallelInsertionSort(kinds, baseIndices, depths, refs, start, end) {
@@ -1485,7 +1422,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state) {
         }
     }
     const canvas = canvases[0];
-    if (!canvas) return WALL_FACE_ATLAS_SOLID;
+    if (!canvas) return WALL_FACE_ATLAS_MISS;
     if (row < 0) {
         syncWallFaceDrawMemoRevision(state.obstacleGrid);
         row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot());
@@ -1583,50 +1520,29 @@ function resolveWallFaceSubdiv(row, viewport, grid, settings) {
     return computeWallFaceSubdivInto(row, settings, viewport);
 }
 function drawFaceTextureScalars(ctx, x1, y1, x2, y2, botBuf, botO, topBuf, topO, viewport, state) {
-    const fillStyle = gameWorldSurfaceSettings.floorShadow;
     const row = resolveWallFaceAtlasScalars(x1, y1, x2, y2, state);
     if (row === WALL_FACE_ATLAS_MISS) return;
-    if (row === WALL_FACE_ATLAS_SOLID) {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-        return;
-    }
     const subdivRow = resolveWallFaceSubdiv(row, viewport, state.obstacleGrid, state.worldSurfaces.settings);
-    if (subdivRow === WALL_FACE_SUBDIV_NONE) {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-        return;
-    }
+    if (subdivRow === WALL_FACE_SUBDIV_NONE) return;
     blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, subdivRow, viewport);
 }
 export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state) {
+    if (!state.worldSurfaces) return;
     const wallHeight = wallFaceF32[WF_F_WALL_HEIGHT];
     const wallBaseZ = wallFaceF32[WF_F_WALL_BASE_Z];
-    const fillStyle = gameWorldSurfaceSettings.floorShadow;
     const topZ = wallBaseZ + wallHeight;
     projectWallFaceBandInto(ENGINE_F32, R_FACE_BAND_BOT, x1, y1, x2, y2, wallBaseZ, viewport);
     projectWallFaceBandInto(ENGINE_F32, R_FACE_BAND_TOP, x1, y1, x2, y2, topZ, viewport);
     traceProjectedFaceBand(ctx, ENGINE_F32, R_FACE_BAND_BOT, ENGINE_F32, R_FACE_BAND_TOP);
-    if (state.worldSurfaces) {
-        ctx.save();
-        ctx.clip();
-        drawFaceTextureScalars(ctx, x1, y1, x2, y2, ENGINE_F32, R_FACE_BAND_BOT, ENGINE_F32, R_FACE_BAND_TOP, viewport, state);
-        ctx.restore();
-    } else {
-        ctx.fillStyle = fillStyle;
-        ctx.fill();
-    }
+    ctx.save();
+    ctx.clip();
+    drawFaceTextureScalars(ctx, x1, y1, x2, y2, ENGINE_F32, R_FACE_BAND_BOT, ENGINE_F32, R_FACE_BAND_TOP, viewport, state);
+    ctx.restore();
 }
 export function projectRailWallTopCornersIntoFlat(out8, data, base, viewport) {
     const z = data[base + RAIL_BOX_WALL_CAP_HEIGHT];
     projectWorldQuad(out8, 0, data[base + RAIL_BOX_OUTER_P1X], data[base + RAIL_BOX_OUTER_P1Y], data[base + RAIL_BOX_OUTER_P2X], data[base + RAIL_BOX_OUTER_P2Y], data[base + RAIL_BOX_INNER_P2X], data[base + RAIL_BOX_INNER_P2Y], data[base + RAIL_BOX_INNER_P1X], data[base + RAIL_BOX_INNER_P1Y], z, viewport);
     return out8;
-}
-function fillProjectedCapPolygonFlat(ctx, corners8, fillStyle) {
-    ctx.beginPath();
-    traceClosedFlatPolygon(ctx, corners8, 4);
-    ctx.fillStyle = fillStyle;
-    ctx.fill();
 }
 function blitHorizontalCapSampleFlat(ctx, dest8, src8, canvas) {
     ctx.save();
@@ -1640,19 +1556,12 @@ function blitHorizontalCapSampleFlat(ctx, dest8, src8, canvas) {
 }
 export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state) {
     const worldSurfaces = state.worldSurfaces;
-    const fillStyle = gameWorldSurfaceSettings.floorShadow;
+    if (!worldSurfaces) return;
     projectRailWallTopCornersIntoFlat(rCapCorners, data, base, viewport);
-    if (!worldSurfaces) {
-        fillProjectedCapPolygonFlat(ctx, rCapCorners, fillStyle);
-        return;
-    }
     flatRailWallCapUvCornersIntoFlat(rCapUv, state.obstacleGrid, data, base);
     const wallCapHeight = data[base + RAIL_BOX_WALL_CAP_HEIGHT];
     const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleIntoFlat(rCapUv, wallCapHeight, state, rCapSrc);
-    if (!capCanvas) {
-        fillProjectedCapPolygonFlat(ctx, rCapCorners, fillStyle);
-        return;
-    }
+    if (!capCanvas) return;
     blitHorizontalCapSampleFlat(ctx, rCapCorners, rCapSrc, capCanvas);
 }
 export function createConveyorDraw(options = {}) {
