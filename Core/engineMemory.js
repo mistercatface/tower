@@ -75,6 +75,7 @@ export const entityRollQy = new Float32Array(MAX_ENTITIES);
 export const entityRollQz = new Float32Array(MAX_ENTITIES);
 entityRollQw.fill(1);
 export const entityR = new Float32Array(MAX_ENTITIES);
+export const entityAgeMs = new Float32Array(MAX_ENTITIES);
 export const entityKind = new Uint8Array(MAX_ENTITIES);
 export const entityFlags = new Uint32Array(MAX_ENTITIES);
 export const entityAlive = new Uint8Array(MAX_ENTITIES);
@@ -256,6 +257,8 @@ export const kineticDynamicSlab = {
     cos: new Float32Array(MAX_PHYS_BODIES),
     sin: new Float32Array(MAX_PHYS_BODIES),
     partGeomOffset: new Int32Array(MAX_PHYS_BODIES),
+    sleeping: new Uint8Array(MAX_PHYS_BODIES),
+    sleepFrames: new Uint16Array(MAX_PHYS_BODIES),
     partShapeKind: new Uint8Array(PART_TABLE_INIT),
     partRadius: new Float32Array(PART_TABLE_INIT),
     partVertOffset: new Int32Array(PART_TABLE_INIT),
@@ -278,16 +281,13 @@ kineticDynamicSlab.linkNeighborCount.fill(0);
 kineticDynamicSlab.spatialNeighborOffset.fill(0);
 kineticDynamicSlab.spatialNeighborCount.fill(0);
 kineticDynamicSlab.partGeomOffset.fill(-1);
+kineticDynamicSlab.sleeping.fill(0);
+kineticDynamicSlab.sleepFrames.fill(0);
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 export const PRIMITIVE_PHYSICS_ROWS = 2;
 export const PRIMITIVE_PHYSICS_ROW_CIRCLE = 0;
 export const PRIMITIVE_PHYSICS_ROW_POLYGON = 1;
-export const primitivePhysics = {
-    density: new Float32Array([0.007958, 1.5 / 256]),
-    dragFriction: new Float32Array([4, 8]),
-    wallRestitution: new Float32Array([0.35, 0.15]),
-    wallFriction: new Float32Array([0.4, 0.8]),
-};
+export const primitivePhysics = { density: new Float32Array([0.007958, 1.5 / 256]), dragFriction: new Float32Array([4, 8]), wallRestitution: new Float32Array([0.35, 0.15]), wallFriction: new Float32Array([0.4, 0.8]) };
 export const kineticConstraintStore = { count: 0, id: new Int32Array(MAX_KINETIC_CONSTRAINTS), type: new Uint8Array(MAX_KINETIC_CONSTRAINTS), bodyAId: new Int32Array(MAX_KINETIC_CONSTRAINTS), bodyBId: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS), anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS) }; // persistent constraint rows
 export const kineticConstraintSlab = {
     // per-tick gathered active constraints + island groups
@@ -300,7 +300,7 @@ export const kineticConstraintSlab = {
     physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS),
     dynamic: { accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS), nx: new Float32Array(MAX_KINETIC_CONSTRAINTS), ny: new Float32Array(MAX_KINETIC_CONSTRAINTS), rAn: new Float32Array(MAX_KINETIC_CONSTRAINTS), rBn: new Float32Array(MAX_KINETIC_CONSTRAINTS), k: new Float32Array(MAX_KINETIC_CONSTRAINTS), error: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
-    static: { anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), massA: new Float32Array(MAX_KINETIC_CONSTRAINTS), massB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS), capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
+    static: { anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invMassB: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIA: new Float32Array(MAX_KINETIC_CONSTRAINTS), invIB: new Float32Array(MAX_KINETIC_CONSTRAINTS), capsuleRadius: new Float32Array(MAX_KINETIC_CONSTRAINTS) },
     reset() {
         this.count = 0;
         this.activeCount = 0;

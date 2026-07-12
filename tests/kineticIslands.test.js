@@ -6,7 +6,7 @@ import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, cr
 
 const pairBuffer = kineticPairBuffer;
 
-const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
+const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleepFrames;
 
 function createState(props) {
     return {

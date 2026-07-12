@@ -9,7 +9,7 @@ import { isRotatingEntity, pairBroadphaseOverlapSlab, shouldResolveKineticPair, 
 import { entityRefs } from "../Core/engineMemory.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
-const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
+const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleepFrames;
 const EMPTY_NEIGHBOR_EIDS = new Int32Array(0);
 function bindPair(a, b) {
     assignPhysIdWithPose(a, 0);

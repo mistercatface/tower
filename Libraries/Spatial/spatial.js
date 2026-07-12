@@ -3404,7 +3404,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 prop._activeSlot = -1;
                 continue;
             }
-            if (!prop.isSleeping) {
+            if (!kineticDynamicSlab.sleeping[prop._physId]) {
                 prop._activeSlot = active.length;
                 active.push(prop);
                 appendActiveKineticBodySlabPhysId(prop._physId);
@@ -3452,7 +3452,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const peerEid = eids[offset + i];
             const peer = entityRefs[peerEid];
             if (!peer || peer === prop || peer._physId === undefined || peer._physId !== peerEid) continue;
-            if (peer.isSleeping) wakeKineticBody(peer);
+            if (kineticDynamicSlab.sleeping[peer._physId]) wakeKineticBody(peer);
             this._ensureActive(peer);
             if (patchOut) patchOut.push(peer);
         }
@@ -3469,7 +3469,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     activateKineticBody(prop, snapshot = true) {
         if (prop._physId === undefined) return;
-        if (prop.isSleeping) wakeKineticBody(prop);
+        if (kineticDynamicSlab.sleeping[prop._physId]) wakeKineticBody(prop);
         this._ensureActive(prop, snapshot);
         this._wakeConstraintLinkedPeers(prop);
     }

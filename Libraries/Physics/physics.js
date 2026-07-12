@@ -144,14 +144,14 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     motionSubsteps: { maxStepPx: 4, maxSubsteps: 8 },
     /** Shared still/moving thresholds for sleep, contact resolve, and wall queries. */
     kineticActivity: { movingSpeedSq: 0.25, rotatingSpeedRad: 0.1, neighborQueryPad: { minPad: 2, padScale: 0.5, maxPad: 15 } },
-    kineticSleep: { frames: 30 },
-    restitution: { rigidBody: 0.15, kineticPair: 0.4 },
+    kineticSleepFrames: 30,
+    restitution: { kineticPair: 0.4 },
     /** Coulomb pair friction when slab friction is unset (-1). */
     pairFriction: 0.35,
     /** Prior-frame normal/tangent impulse decay for kinetic contact warm-start. */
     kineticWarmStartDecay: 0.8,
     /** Area-based kinetic mass: mass = density × collision footprint area. */
-    material: { densityDefault: 1.5 / 256, minMass: 0.01 },
+    material: { minMass: 0.01 },
     /** Post-contact distance joints — separate from kinetic pair stream. */
     kineticConstraints: { iterations: 4, velocityBias: 0.2 },
     /** Stop outer kinetic iterations when constraints + velocities settle. */
@@ -608,6 +608,8 @@ export function invalidateKineticSlabSlot(physId) {
     dyn.spatialNeighborOffset[physId] = 0;
     dyn.spatialNeighborCount[physId] = 0;
     dyn.partGeomOffset[physId] = -1;
+    dyn.sleeping[physId] = 0;
+    dyn.sleepFrames[physId] = 0;
     entityRollQw[physId] = 1;
     entityRollQx[physId] = 0;
     entityRollQy[physId] = 0;
@@ -1667,12 +1669,9 @@ export function entityWorldAabbF32(buf, o, entity) {
     }
     entityWorldAabbFromShapeF32(buf, o, entity);
 }
-function kineticActivity() {
-    return collisionSettings.kineticActivity;
-}
 /** @param {number} extent */
 export function neighborQueryPadForExtent(extent) {
-    const pad = kineticActivity().neighborQueryPad;
+    const pad = collisionSettings.kineticActivity.neighborQueryPad;
     return Math.min(pad.maxPad, Math.max(pad.minPad, extent * pad.padScale));
 }
 export function entityCollisionSpan(entity) {
@@ -1692,11 +1691,11 @@ export function entityContainedInAabbF32(entity, buf, o) {
 export function isMovingEntity(entity) {
     const vx = entity.vx || 0;
     const vy = entity.vy || 0;
-    return speedSqXY(vx, vy) > kineticActivity().movingSpeedSq;
+    return speedSqXY(vx, vy) > collisionSettings.kineticActivity.movingSpeedSq;
 }
 export function isRotatingEntity(entity) {
     const w = entity.angularVelocity ?? 0;
-    const rotatingSpeedRad = kineticActivity().rotatingSpeedRad;
+    const rotatingSpeedRad = collisionSettings.kineticActivity.rotatingSpeedRad;
     return w * w > rotatingSpeedRad * rotatingSpeedRad;
 }
 export function isKinematicallyActive(entity) {
@@ -1707,7 +1706,7 @@ export function isKinematicallyActiveSlab(physId) {
     const vx = slab.vx[physId];
     const vy = slab.vy[physId];
     const w = slab.w[physId];
-    const { movingSpeedSq, rotatingSpeedRad } = kineticActivity();
+    const { movingSpeedSq, rotatingSpeedRad } = collisionSettings.kineticActivity;
     return speedSqXY(vx, vy) > movingSpeedSq || w * w > rotatingSpeedRad * rotatingSpeedRad;
 }
 function slabCollisionSpan(physId) {
@@ -2141,8 +2140,6 @@ function appendConstraintEntry(slab, islandIdx, store) {
     normalizeKineticBody(bodyA);
     normalizeKineticBody(bodyB);
     const stat = kineticStaticSlab;
-    slab.static.massA[idx] = stat.mass[physIdA];
-    slab.static.massB[idx] = stat.mass[physIdB];
     slab.static.invMassA[idx] = stat.invMass[physIdA];
     slab.static.invMassB[idx] = stat.invMass[physIdB];
     slab.static.invIA[idx] = stat.invI[physIdA];
@@ -2150,11 +2147,10 @@ function appendConstraintEntry(slab, islandIdx, store) {
     slab.dynamic.accumulatedImpulse[idx] = store.accumulatedImpulse[storeRow];
 }
 function islandItemsAsleep(startIdx, count) {
+    const sleeping = kineticDynamicSlab.sleeping;
     for (let i = 0; i < count; i++) {
         const idx = startIdx + i;
-        const bodyA = constraintBodyAt(sIslandPhysA[idx]);
-        const bodyB = constraintBodyAt(sIslandPhysB[idx]);
-        if (!bodyA.isSleeping || !bodyB.isSleeping) return false;
+        if (!sleeping[sIslandPhysA[idx]] || !sleeping[sIslandPhysB[idx]]) return false;
     }
     return count > 0;
 }
@@ -2308,7 +2304,7 @@ function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWall
     const physIdB = slab.physIdB[i];
     const bodyA = constraintBodyAt(physIdA);
     const bodyB = constraintBodyAt(physIdB);
-    if (bodyA.isSleeping && bodyB.isSleeping) {
+    if (kineticDynamicSlab.sleeping[physIdA] && kineticDynamicSlab.sleeping[physIdB]) {
         linkWallsOut.clear();
         return false;
     }
@@ -2412,9 +2408,11 @@ function projectDistanceConstraint(slab, index) {
     separateAlongNormalSlab(physIdA, physIdB, nx, ny, -error);
 }
 function projectAngleConstraint(slab, index) {
-    const bodyA = constraintBodyAt(slab.physIdA[index]);
-    const bodyB = constraintBodyAt(slab.physIdB[index]);
-    if (bodyA.isSleeping && bodyB.isSleeping) return;
+    const physIdA = slab.physIdA[index];
+    const physIdB = slab.physIdB[index];
+    if (kineticDynamicSlab.sleeping[physIdA] && kineticDynamicSlab.sleeping[physIdB]) return;
+    const bodyA = constraintBodyAt(physIdA);
+    const bodyB = constraintBodyAt(physIdB);
     const facingA = readEntityFacing(bodyA);
     const facingB = readEntityFacing(bodyB);
     const refAngle = slab.static.referenceAngle[index];
@@ -3689,7 +3687,8 @@ export function countMotionSubsteps(dtMs, bodies, { maxStepPx = 4, maxSubsteps =
     let maxDisp = 0;
     for (let i = 0; i < bodies.length; i++) {
         const body = bodies[i];
-        if (body.isSleeping) continue;
+        const physId = body._physId;
+        if (physId !== undefined && kineticDynamicSlab.sleeping[physId]) continue;
         const disp = lengthXY(body.vx ?? 0, body.vy ?? 0) * dtSec;
         if (disp > maxDisp) maxDisp = disp;
     }
@@ -3967,9 +3966,6 @@ export function advanceKineticSleepIslands(frame, session) {
         advanceKineticSleep(body, eligible);
     }
 }
-export function kineticSleepFramesRequired() {
-    return collisionSettings.kineticSleep.frames;
-}
 function propBlocksSleep(prop) {
     const fn = prop.currentState?.blocksSleep;
     if (fn) return fn.call(prop.currentState);
@@ -3990,14 +3986,17 @@ export function wakeKineticBody(entity) {
     const count = kineticDynamicSlab.linkNeighborCount[physId];
     if (count === 0) return;
     const offset = kineticDynamicSlab.linkNeighborOffset[physId];
+    const sleeping = kineticDynamicSlab.sleeping;
+    const sleepFrames = kineticDynamicSlab.sleepFrames;
     for (let i = 0; i < count; i++) {
-        const peer = constraintBodyAt(kineticDynamicSlab.linkNeighborEids[offset + i]);
+        const peerPhysId = kineticDynamicSlab.linkNeighborEids[offset + i];
+        const peer = constraintBodyAt(peerPhysId);
         if (!peer || peer === entity) continue;
-        peer._sleepFrames = 0;
-        peer.isSleeping = false;
+        sleepFrames[peerPhysId] = 0;
+        sleeping[peerPhysId] = 0;
     }
 }
-export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSleepFramesRequired()) {
+export function advanceKineticSleep(entity, eligible, requiredFrames = collisionSettings.kineticSleepFrames) {
     if (!entity?.strategy?.isKinetic) return;
     if (!eligible) {
         entity._sleepFrames = 0;
@@ -4009,6 +4008,7 @@ export function advanceKineticSleep(entity, eligible, requiredFrames = kineticSl
 }
 export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = neighborEids.length) {
     const propEid = prop._physId;
+    const sleeping = kineticDynamicSlab.sleeping;
     for (let i = 0; i < neighborCount; i++) {
         const eidB = neighborEids[i];
         if (eidB === propEid) continue;
@@ -4016,7 +4016,7 @@ export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = nei
         if (!other?.strategy?.isKinetic) continue;
         if (shareKineticIsland(prop, other)) continue;
         if (!pairBroadphaseOverlapSlab(propEid, eidB)) continue;
-        if (other.isSleeping) continue;
+        if (sleeping[eidB]) continue;
         if (isKinematicallyActive(other)) return true;
     }
     return false;

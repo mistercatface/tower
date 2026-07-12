@@ -279,7 +279,8 @@ class KineticDebrisBody {
         this.wallChunkProfileId = undefined;
         this.wallChunkHeightPx = undefined;
         this.faction = undefined;
-        this.isSleeping = false;
+        this._spawnSleeping = false;
+        this._spawnSleepFrames = 0;
         this.isDead = false;
         this._fractureCooldown = 0;
         this._neighborEidCount = 0;
@@ -340,6 +341,24 @@ class KineticDebrisBody {
         const eid = this._physId;
         if (eid !== undefined) entityFacing[eid] = v;
         else this._spawnFacing = v;
+    }
+    get isSleeping() {
+        const eid = this._physId;
+        return eid !== undefined ? kineticDynamicSlab.sleeping[eid] !== 0 : !!this._spawnSleeping;
+    }
+    set isSleeping(v) {
+        const eid = this._physId;
+        if (eid !== undefined) kineticDynamicSlab.sleeping[eid] = v ? 1 : 0;
+        else this._spawnSleeping = !!v;
+    }
+    get _sleepFrames() {
+        const eid = this._physId;
+        return eid !== undefined ? kineticDynamicSlab.sleepFrames[eid] : (this._spawnSleepFrames ?? 0);
+    }
+    set _sleepFrames(v) {
+        const eid = this._physId;
+        if (eid !== undefined) kineticDynamicSlab.sleepFrames[eid] = v;
+        else this._spawnSleepFrames = v;
     }
     get ageMs() {
         return kineticDebrisSlab.ageMs[this._row];
@@ -431,6 +450,7 @@ class KineticDebrisStore {
         body._wallChunkTextureReady = undefined;
         body.isDead = false;
         body.isSleeping = false;
+        body._sleepFrames = 0;
         body.collisionParts = undefined;
         body.chunks = undefined;
         body.footprintArea = undefined;

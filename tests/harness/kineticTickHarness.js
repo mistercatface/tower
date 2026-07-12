@@ -2,10 +2,44 @@ import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticStaticSlab, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, kineticStaticSlab, kineticDynamicSlab, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
+}
+function attachSleepAccessors(body) {
+    Object.defineProperties(body, {
+        isSleeping: {
+            get() {
+                return kineticDynamicSlab.sleeping[this._physId] !== 0;
+            },
+            set(v) {
+                kineticDynamicSlab.sleeping[this._physId] = v ? 1 : 0;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        _sleepFrames: {
+            get() {
+                return kineticDynamicSlab.sleepFrames[this._physId];
+            },
+            set(v) {
+                kineticDynamicSlab.sleepFrames[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+        ageMs: {
+            get() {
+                return entityAgeMs[this._physId];
+            },
+            set(v) {
+                entityAgeMs[this._physId] = v;
+            },
+            enumerable: true,
+            configurable: true,
+        },
+    });
 }
 function attachRollAccessors(body) {
     Object.defineProperties(body, {
@@ -130,6 +164,9 @@ export function assignPhysIdWithPose(body, physId) {
     const rqx = body.rollQx ?? body._spawnRollQx ?? 0;
     const rqy = body.rollQy ?? body._spawnRollQy ?? 0;
     const rqz = body.rollQz ?? body._spawnRollQz ?? 0;
+    const sleeping = body.isSleeping ? 1 : 0;
+    const sleepFrames = body._sleepFrames ?? 0;
+    const ageMs = body.ageMs ?? 0;
     body._physId = physId;
     entityX[physId] = x;
     entityY[physId] = y;
@@ -141,7 +178,13 @@ export function assignPhysIdWithPose(body, physId) {
     entityRollQx[physId] = rqx;
     entityRollQy[physId] = rqy;
     entityRollQz[physId] = rqz;
-    if (!body.isKineticDebris) attachPoseAccessors(body);
+    entityAgeMs[physId] = ageMs;
+    kineticDynamicSlab.sleeping[physId] = sleeping;
+    kineticDynamicSlab.sleepFrames[physId] = sleepFrames;
+    if (!body.isKineticDebris) {
+        attachPoseAccessors(body);
+        attachSleepAccessors(body);
+    }
     clearWorldPropSpawnPose(body);
 }
 export function mockKineticBody(isSleeping = false) {

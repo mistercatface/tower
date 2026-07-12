@@ -1,5 +1,5 @@
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab } from "../../Core/engineMemory.js";
 export const ENTITY_KIND_NONE = 0;
 export const ENTITY_KIND_WORLD_PROP = 1;
 export const ENTITY_KIND_DEBRIS = 2;
@@ -28,11 +28,15 @@ export function releaseEntityEid(eid) {
     entityFlags[eid] = 0;
     entityGameId[eid] = -1;
     entityR[eid] = 0;
+    entityAgeMs[eid] = 0;
     entityRefs[eid] = null;
     entityGridTileIdx[eid] = -1;
     eidFreeList.push(eid);
 }
 export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
+    const sleeping = ref.isSleeping ? 1 : 0;
+    const sleepFrames = ref._sleepFrames ?? 0;
+    const ageMs = ref.ageMs ?? 0;
     entityAlive[eid] = 1;
     entityKind[eid] = kind;
     entityFlags[eid] = flags;
@@ -48,7 +52,10 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityRollQy[eid] = ref._spawnRollQy ?? 0;
     entityRollQz[eid] = ref._spawnRollQz ?? 0;
     entityR[eid] = r;
+    entityAgeMs[eid] = ageMs;
     entityRefs[eid] = ref;
+    kineticDynamicSlab.sleeping[eid] = sleeping;
+    kineticDynamicSlab.sleepFrames[eid] = sleepFrames;
 }
 export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnX;
@@ -61,6 +68,9 @@ export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnRollQx;
     delete ref._spawnRollQy;
     delete ref._spawnRollQz;
+    delete ref._spawnSleeping;
+    delete ref._spawnSleepFrames;
+    delete ref._spawnAgeMs;
 }
 export function entitySlotRef(eid) {
     return entityAlive[eid] ? entityRefs[eid] : null;

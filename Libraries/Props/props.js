@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { writeLivePolygon, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
@@ -285,7 +285,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
         else stampPrimitivePhysics(strategy, primitivePhysicsRow(asset ?? strategy));
         return strategy;
     }
-    const { spawn, renderMode, density, friction, wallPhysics, ...strategy } = asset.physics;
+    const { spawn, renderMode, ...strategy } = asset.physics;
     if (strategy.localFootprint) strategy.localFootprint = new Float32Array(ensureFlatVerts(strategy.localFootprint));
     if (strategy.collisionParts) throw new Error(`${asset.id}: physics.collisionParts is deleted — use localFootprint (concave outlines auto-decompose)`);
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? PROP_RENDER_MODE_3D, inspectKey: null, ...strategy };
@@ -330,9 +330,9 @@ export class WorldProp {
         this._spawnVx = 0;
         this._spawnVy = 0;
         this._spawnW = 0;
-        this.ageMs = 0;
-        this._sleepFrames = 0;
-        this.isSleeping = false;
+        this._spawnAgeMs = 0;
+        this._spawnSleepFrames = 0;
+        this._spawnSleeping = false;
         this.stateTimer = 0;
         this.stateData = {};
         this.height = resolveAssetPropHeight(asset);
@@ -459,6 +459,33 @@ export class WorldProp {
         const eid = this._physId;
         if (eid !== undefined) entityRollQz[eid] = v;
         else this._spawnRollQz = v;
+    }
+    get ageMs() {
+        const eid = this._physId;
+        return eid !== undefined ? entityAgeMs[eid] : (this._spawnAgeMs ?? 0);
+    }
+    set ageMs(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityAgeMs[eid] = v;
+        else this._spawnAgeMs = v;
+    }
+    get isSleeping() {
+        const eid = this._physId;
+        return eid !== undefined ? kineticDynamicSlab.sleeping[eid] !== 0 : !!this._spawnSleeping;
+    }
+    set isSleeping(v) {
+        const eid = this._physId;
+        if (eid !== undefined) kineticDynamicSlab.sleeping[eid] = v ? 1 : 0;
+        else this._spawnSleeping = !!v;
+    }
+    get _sleepFrames() {
+        const eid = this._physId;
+        return eid !== undefined ? kineticDynamicSlab.sleepFrames[eid] : (this._spawnSleepFrames ?? 0);
+    }
+    set _sleepFrames(v) {
+        const eid = this._physId;
+        if (eid !== undefined) kineticDynamicSlab.sleepFrames[eid] = v;
+        else this._spawnSleepFrames = v;
     }
     get momentOfInertia() {
         return kineticInertiaFromBody(this);
