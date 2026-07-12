@@ -1,10 +1,9 @@
 import propCatalog from "../../Assets/props/index.js";
 import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
-import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityFlags } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics, physicsSettings } from "../Physics/physics.js";
-import { entityFlags } from "../../Core/engineMemory.js";
 import { ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
 import { stampOverlayAimSegment, stampOverlayCircleFillStroke, stampOverlayCircleStroke, stampOverlaySegment, OVERLAY_STYLE_DRAG_GRAB_LINE, OVERLAY_STYLE_DRAG_GRAB_DOT_A, OVERLAY_STYLE_DRAG_GRAB_DOT_B, OVERLAY_STYLE_DRAG_BAND, OVERLAY_STYLE_DRAG_PULL_LINE, OVERLAY_STYLE_DRAG_PULL_DOT, OVERLAY_STYLE_DRAG_START_RING, OVERLAY_STYLE_DRAG_START_DOT, OVERLAY_STYLE_DRAG_RUBBER, OVERLAY_STYLE_DRAG_ANCHOR } from "../Render/render.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PRIMITIVE_PHYSICS_ROW_CIRCLE, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_DRAG_LAUNCH } from "../../Core/engineEnums.js";
@@ -245,26 +244,32 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         grabEid = -1;
     };
     const grabAnchorWorld = (prop) => {
-        if ((entityFlags[prop._physId] & ENTITY_FLAG_ROLLS) !== 0) {
-            findCircleRimGrabPointInto(ENGINE_F32, G_WX, prop.x, prop.y, readEntityFacing(prop), prop.radius, targetX, targetY);
+        const eid = prop._physId;
+        const px = entityX[eid];
+        const py = entityY[eid];
+        if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) {
+            findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, readEntityFacing(prop), prop.radius, targetX, targetY);
             return;
         }
         const angle = readEntityFacing(prop);
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        ENGINE_F32[G_WX] = prop.x + anchorLocalX * cos - anchorLocalY * sin;
-        ENGINE_F32[G_WY] = prop.y + anchorLocalX * sin + anchorLocalY * cos;
+        ENGINE_F32[G_WX] = px + anchorLocalX * cos - anchorLocalY * sin;
+        ENGINE_F32[G_WY] = py + anchorLocalX * sin + anchorLocalY * cos;
     };
     const tickPull = (prop, dtMs) => {
+        const eid = prop._physId;
+        const px = entityX[eid];
+        const py = entityY[eid];
         const grabConfig = resolveDragLaunchConfigFromSize(prop.radius);
         const rollConfig = physicsSettings.groundNavRoll;
         const tx = targetX + offsetX;
         const ty = targetY + offsetY;
         let dx;
         let dy;
-        if ((entityFlags[prop._physId] & ENTITY_FLAG_ROLLS) !== 0) {
-            dx = tx - prop.x;
-            dy = ty - prop.y;
+        if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) {
+            dx = tx - px;
+            dy = ty - py;
         } else {
             grabAnchorWorld(prop);
             dx = tx - ENGINE_F32[G_WX];
@@ -272,20 +277,20 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         }
         const dist = Math.hypot(dx, dy);
         if (dist < rollConfig.stopRadius) {
-            decelerateRoll(prop._physId, rollConfig);
+            decelerateRoll(eid, rollConfig);
             return;
         }
         const power = computeLaunchPower(dist, grabConfig);
         if (power <= 0) {
-            decelerateRoll(prop._physId, rollConfig);
+            decelerateRoll(eid, rollConfig);
             return;
         }
         const ratio = power / grabConfig.maxPower;
-        steerRollToward(prop._physId, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
-        if ((entityFlags[prop._physId] & ENTITY_FLAG_ROLLS) !== 0) return;
+        steerRollToward(eid, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
+        if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) return;
         grabAnchorWorld(prop);
-        const rx = ENGINE_F32[G_WX] - prop.x;
-        const ry = ENGINE_F32[G_WY] - prop.y;
+        const rx = ENGINE_F32[G_WX] - px;
+        const ry = ENGINE_F32[G_WY] - py;
         const leverArmSq = rx * rx + ry * ry;
         if (leverArmSq > 0.25) {
             const fx = (dx / dist) * power;

@@ -10,7 +10,7 @@ import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY, kineticDynamicSlab } from "../Core/engineMemory.js";
+import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY, kineticDynamicSlab, entityX, entityY } from "../Core/engineMemory.js";
 
 describe("grabDrag behavior", () => {
     it("resolveDragLaunchConfigFromSize scales maxPower with prop radius", () => {
@@ -44,6 +44,26 @@ describe("grabDrag behavior", () => {
         assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
         assert.ok(kineticDynamicSlab.rollDriveDirX[prop._physId] > 0.9);
         assert.ok(Math.abs(prop.x) < 20);
+    });
+
+    it("tickPull steers from entityX/entityY not stale object pose", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
+        const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
+        const eid = prop._physId;
+        assert.ok(behavior.onPointerDown(prop, { x: 0, y: 0 }));
+        entityX[eid] = 0;
+        entityY[eid] = 0;
+        Object.defineProperties(prop, {
+            x: { value: 999, writable: true, configurable: true, enumerable: true },
+            y: { value: 999, writable: true, configurable: true, enumerable: true },
+        });
+        behavior.onPointerMove(prop, { x: 120, y: 0 });
+        behavior.tickWorld(16);
+        assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
+        assert.ok(kineticDynamicSlab.rollDriveDirX[eid] > 0.9);
+        assert.equal(prop.x, 999);
+        assert.equal(entityX[eid], 0);
     });
 
     it("sustains thrust while cursor stays beyond a wall without snapping through", () => {
