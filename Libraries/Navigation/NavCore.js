@@ -7,15 +7,6 @@ import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
 import { FlowFieldGrid } from "./NavFlowField.js";
-const navPoseScratch = { x: 0, y: 0, radius: 0, vx: 0, vy: 0 };
-function fillNavPoseScratch(eid) {
-    navPoseScratch.x = entityX[eid];
-    navPoseScratch.y = entityY[eid];
-    navPoseScratch.radius = entityR[eid];
-    navPoseScratch.vx = entityVx[eid];
-    navPoseScratch.vy = entityVy[eid];
-    return navPoseScratch;
-}
 // --- NavMath.js ---
 export function buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, seedIdx, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
@@ -1150,12 +1141,12 @@ export class PathSteeringEvaluator {
         this.centeredClearance = 0;
         this.hasNearWalls = false;
     }
-    init(pose, worker, slot, pathLen, grid, settings) {
-        this.x = pose.x;
-        this.y = pose.y;
-        this.vx = pose.vx ?? 0;
-        this.vy = pose.vy ?? 0;
-        this.radius = pose.radius;
+    init(eid, worker, slot, pathLen, grid, settings) {
+        this.x = entityX[eid];
+        this.y = entityY[eid];
+        this.vx = entityVx[eid];
+        this.vy = entityVy[eid];
+        this.radius = entityR[eid];
         this.worker = worker;
         this.slot = slot;
         this.pathLen = pathLen;
@@ -1414,12 +1405,12 @@ export function writeSabPathOverlayInto(poly, x, y, worker, slot, pathLen, progr
     }
     return (poly.used - base) >> 1;
 }
-export function computeSabPathSteering(buf, o, pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
-    const x = pose.x;
-    const y = pose.y;
+export function computeSabPathSteering(buf, o, eid, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
+    const x = entityX[eid];
+    const y = entityY[eid];
     const bodyIdx = grid.worldToIdx(x, y);
     // Initialize evaluator and resolve wall clearance first so we can use its properties
-    tempEvaluator.init(pose, worker, slot, pathLen, grid, settings);
+    tempEvaluator.init(eid, worker, slot, pathLen, grid, settings);
     tempEvaluator.resolveClearanceRadius();
     let waypointArrival = settings.pathWaypointArrival;
     if (tempEvaluator.hasNearWalls) waypointArrival = Math.min(waypointArrival, Math.max(3.0, tempEvaluator.radius + 1.0));
@@ -2325,7 +2316,7 @@ export class HpaNavSession {
             if (sandboxResult) return sandboxResult;
         }
         if (!navHasPath(this.navState)) return { hasSteering: false, replanReason: routePending ? "pending" : "noPath" };
-        const offPath = computeSabPathSteering(ENGINE_F32, N_OUT_STEER, fillNavPoseScratch(eid), nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
+        const offPath = computeSabPathSteering(ENGINE_F32, N_OUT_STEER, eid, nav.worker, this.navState.pathSlot, this.navState.pathLen, targetX, targetY, state.obstacleGrid, nav.topology, pathSettings, this.navState);
         const offPathDecision = this.replanManager.evaluateOffPath(offPath, eid, state);
         if (offPathDecision.shouldReplan) return this.requestReplan(eid, targetX, targetY, state, offPathDecision.priority, offPathDecision.reason);
         return { hasSteering: true, replanReason: null };
