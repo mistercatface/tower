@@ -5,8 +5,7 @@ import { BeltPacked } from "../Libraries/Spatial/belts.js";
 import { EDITOR_NAV_MODE_HPA, ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
 import {
     resolveDragInteractionBehaviorId,
-    sandboxAssetDragInteract,
-    assetSupportsDragLaunch,
+    assetSupportsDragInteraction,
     GRAB_DRAG_BEHAVIOR_ID,
     DRAG_LAUNCH_BEHAVIOR_ID,
 } from "../Libraries/Sandbox/dragBehaviors.js";
@@ -18,19 +17,20 @@ import {
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
 describe("drag interaction mode", () => {
-    it("shape assets use dragInteract instead of per-prop grabDrag behavior id", () => {
-        assert.equal(sandboxAssetDragInteract(propCatalog.ball), true);
-        assert.equal(sandboxAssetDragInteract(propCatalog.box), true);
-        assert.equal(sandboxAssetDragInteract(propCatalog.boid_triangle), true);
+    it("kinetic shape assets support drag; floor belts do not", () => {
+        assert.equal(assetSupportsDragInteraction(propCatalog.ball), true);
+        assert.equal(assetSupportsDragInteraction(propCatalog.box), true);
+        assert.equal(assetSupportsDragInteraction(propCatalog.boid_triangle), true);
+        assert.equal(assetSupportsDragInteraction(propCatalog.floor_belt), false);
     });
 
-    it("resolveDragInteractionBehaviorId honors global mode for dragInteract props", () => {
+    it("resolveDragInteractionBehaviorId honors global mode for kinetic props", () => {
         assert.equal(resolveDragInteractionBehaviorId(propCatalog.ball, DRAG_LAUNCH_BEHAVIOR_ID), DRAG_LAUNCH_BEHAVIOR_ID);
         assert.equal(resolveDragInteractionBehaviorId(propCatalog.ball, GRAB_DRAG_BEHAVIOR_ID), GRAB_DRAG_BEHAVIOR_ID);
     });
 
     it("boid honors global grab mode", () => {
-        assert.equal(assetSupportsDragLaunch(propCatalog.boid_triangle), true);
+        assert.equal(assetSupportsDragInteraction(propCatalog.boid_triangle), true);
         assert.equal(resolveDragInteractionBehaviorId(propCatalog.boid_triangle, GRAB_DRAG_BEHAVIOR_ID), GRAB_DRAG_BEHAVIOR_ID);
         assert.equal(resolveDragInteractionBehaviorId(propCatalog.boid_triangle, DRAG_LAUNCH_BEHAVIOR_ID), DRAG_LAUNCH_BEHAVIOR_ID);
     });

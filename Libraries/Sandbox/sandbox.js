@@ -21,7 +21,7 @@ import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import propCatalog from "../../Assets/props/index.js";
-import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, applyDragLaunchVelocity, createDragLaunchBehaviors, createGrabDragBehavior, assetSupportsDragLaunch, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE, createDragLaunchInteraction, dragLaunchAimLineContextForState } from "./dragBehaviors.js";
+import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, createDragLaunchBehaviors, createGrabDragBehavior, assetSupportsDragInteraction, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
     constructor() {
         this.byEntityId = new Map();
@@ -129,7 +129,7 @@ export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
 export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
 export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
 export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID]);
-export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", spawner: "Spawner", [GRAB_DRAG_BEHAVIOR_ID]: "Grab drag", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
+export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", [GRAB_DRAG_BEHAVIOR_ID]: "Grab drag", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
@@ -165,7 +165,7 @@ function syncSandboxBehaviorById(state, behaviors) {
     state.sandbox.behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
 }
 export function isSandboxPointerSelectableProp(asset) {
-    return assetSupportsDragLaunch(asset) || isSpawnerProp(asset);
+    return assetSupportsDragInteraction(asset);
 }
 const BOUNDS_SHAPE_OPTIONS = [
     { value: "rect", label: "Rectangle" },
@@ -1469,62 +1469,6 @@ export function createSandboxSession(state) {
         sync: notifyUi,
     };
 }
-export const SPAWNER_BEHAVIOR_ID = "spawner";
-function aimSpawnerFacing(prop, aim) {
-    if (aim?.shotNx == null || aim.shotNy == null) return;
-    prop.facing = Math.atan2(aim.shotNy, aim.shotNx);
-    prop.angularVelocity = 0;
-}
-/** @param {object | null | undefined} asset */
-export function isSpawnerProp(asset) {
-    return asset?.sandbox?.spawner != null && typeof asset.sandbox.spawner === "object";
-}
-/**
- * @param {object} state
- * @param {object} spawnerWorldProp
- * @param {{ power?: number, nx?: number, ny?: number }} [options]
- */
-export function fireSpawner(state, spawnerWorldProp, { power, nx, ny } = {}) {
-    const asset = propCatalog[spawnerWorldProp.type];
-    if (!isSpawnerProp(asset)) return null;
-    const config = asset.sandbox.spawner.dragLaunch;
-    const facing = readEntityFacing(spawnerWorldProp);
-    const reach = resolveBodyRadius(spawnerWorldProp);
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
-    const outlet = { x: spawnerWorldProp.x + cos * reach, y: spawnerWorldProp.y + sin * reach, nx: cos, ny: sin };
-    const launchNx = nx ?? outlet.nx;
-    const launchNy = ny ?? outlet.ny;
-    const launchPower = power ?? config.maxPower;
-    const spawnId = spawnerWorldProp.sandboxSpawnerPropId ?? asset.sandbox.spawner.defaultPropId;
-    const spawned = new WorldProp(outlet.x, outlet.y, spawnId, Math.atan2(launchNy, launchNx));
-    spawned.faction = spawnerWorldProp.faction;
-    applyDragLaunchVelocity(spawned, launchNx, launchNy, launchPower);
-    addWorldPropToState(state, spawned);
-    return spawned;
-}
-function buildSpawnerDragBehavior(state) {
-    return createDragLaunchInteraction({
-        id: SPAWNER_BEHAVIOR_ID,
-        getConfig(prop) {
-            return propCatalog[prop.type].sandbox.spawner.dragLaunch;
-        },
-        buildAimLineContext: dragLaunchAimLineContextForState(state),
-        onAim: aimSpawnerFacing,
-        onLaunch(prop, shot) {
-            return fireSpawner(state, prop, { nx: shot.nx, ny: shot.ny, power: shot.power });
-        },
-    });
-}
-/** @returns {string[]} */
-export function listSpawnerSpawnPropIds() {
-    return Object.keys(propCatalog)
-        .filter((id) => {
-            const asset = propCatalog[id];
-            return isSandboxSpawnable(asset) && !isSpawnerProp(asset);
-        })
-        .sort();
-}
 function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId, resolvePropId }) {
     if (resolvePropId) return resolvePropId(index);
     const leaderId = leaderPropId ?? headPropId ?? bodyPropId;
@@ -2066,7 +2010,7 @@ export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, i
     return actions;
 }
 export function createDefaultSandboxBehaviors(state) {
-    return [...createDragLaunchBehaviors(state), buildSpawnerDragBehavior(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
+    return [...createDragLaunchBehaviors(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
 }
 /**
  * @param {import("../Viewport/Viewport.js").Viewport} viewport
@@ -2785,19 +2729,6 @@ export function appendSelectedPropInspector(body, state, controller, selectedPro
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
     if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isPolygonFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, state, selectedProp);
     if (isChainLinkBall(selectedProp)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
-    const selectedAsset = propCatalog[selectedProp.type];
-    if (isSpawnerProp(selectedAsset)) {
-        const spawnPropIds = listSpawnerSpawnPropIds();
-        if (spawnPropIds.length)
-            appendSelectField(body, "Spawn prop", {
-                value: selectedProp.sandboxSpawnerPropId ?? selectedAsset.sandbox.spawner.defaultPropId,
-                options: spawnPropIds.map((id) => ({ value: id, label: formatSandboxSpawnLabel(id) })),
-                onChange: (value) => {
-                    selectedProp.sandboxSpawnerPropId = value;
-                    refreshPanel();
-                },
-            });
-    }
     appendCheckboxField(body, "Focus", {
         name: "cameraFocus",
         checked: controller.isCameraTarget(selectedProp),
@@ -2923,8 +2854,6 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const resolvePointerBehavior = () => {
         const prop = session.getSelectedProp();
         if (!prop) return null;
-        const asset = propCatalog[prop.type];
-        if (isSpawnerProp(asset)) return behaviorById.get(SPAWNER_BEHAVIOR_ID) ?? null;
         return resolveDragInteractionBehavior(prop, state, behaviorById);
     };
     const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });

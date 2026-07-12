@@ -5,7 +5,7 @@ crossPinwheelOutlineInto(verts, 32, 8);
 export default {
     id: "cross_pinwheel",
     primitive: PROP_PRIMITIVE_POLYGON,
-    sandbox: { tags: ["shapes"], dragInteract: true, dragLaunch: { minPower: 20, maxPower: 260 }, spawnLabel: "Cross pinwheel" },
+    sandbox: { tags: ["shapes"], spawnLabel: "Cross pinwheel" },
     physics: {
         density: 0.0005,
         wallPhysics: { restitution: 0.5, friction: 0.1 },

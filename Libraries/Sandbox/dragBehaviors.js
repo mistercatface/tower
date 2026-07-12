@@ -21,8 +21,19 @@ const GRAB_ANCHOR_SCRATCH = ENGINE_F32;
 function hueFromPullRatio(ratio) {
     return 180 - ratio * 180;
 }
-export function getDragLaunchConfig(asset) {
-    return asset.sandbox.dragLaunch;
+export function resolveDragLaunchConfigFromSize(radius) {
+    const R = Math.max(2, radius);
+    const maxPower = Math.min(700, Math.max(200, 70 * R + 220));
+    return {
+        minDrag: 10,
+        maxPull: Math.min(200, Math.max(90, 90 + 5 * R)),
+        pullScale: 1.25,
+        minPower: Math.max(12, maxPower * 0.08),
+        maxPower,
+    };
+}
+export function resolveDragLaunchConfig(prop) {
+    return resolveDragLaunchConfigFromSize(resolveBodyRadius(prop));
 }
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
     return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
@@ -108,9 +119,6 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
     }
     wakeKineticBody(body);
 }
-function dragLaunchConfigForProp(prop) {
-    return getDragLaunchConfig(propCatalog[prop?.type]);
-}
 export function dragLaunchAimLineContextForState(state) {
     return (prop) => buildDragLaunchAimLineContext(prop, state);
 }
@@ -124,8 +132,7 @@ export function createDragLaunchInteraction(spec) {
             if (spec.canStart && !spec.canStart(prop, world)) return false;
             wakeKineticBody(prop);
             aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
-            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
-            spec.onAim?.(prop, aim);
+            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfig(prop));
             return true;
         },
         onPointerMove(prop, world, _e) {
@@ -134,20 +141,18 @@ export function createDragLaunchInteraction(spec) {
                 aim = null;
                 return;
             }
-            updateDragLaunchAim(aim, world.x, world.y, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
-            spec.onAim?.(prop, aim);
+            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfig(prop));
         },
         onPointerUp(prop, _e) {
             if (!aim?.active) return;
-            const shot = releaseDragLaunch(aim, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop));
+            const shot = releaseDragLaunch(aim, resolveDragLaunchConfig(prop));
             aim = null;
             if (!shot) return;
-            if (spec.onLaunch) spec.onLaunch(prop, shot);
-            else applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
+            applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
         },
         appendOverlayCommands(commands, prop) {
             if (!aim?.active) return;
-            appendDragLaunchOverlayCommands(commands, aim, spec.getConfig?.(prop) ?? dragLaunchConfigForProp(prop), buildCtx(prop), resolveLine);
+            appendDragLaunchOverlayCommands(commands, aim, resolveDragLaunchConfig(prop), buildCtx(prop), resolveLine);
         },
         reset() {
             aim = null;
@@ -164,33 +169,33 @@ export function toggleDragInteractionMode(mode) {
 export function dragInteractionModeLabel(mode) {
     return normalizeDragInteractionMode(mode) === GRAB_DRAG_BEHAVIOR_ID ? "Drag: Grab" : "Drag: Launch";
 }
-export function sandboxAssetDragInteract(asset) {
-    return asset?.sandbox?.dragInteract === true;
+export function assetSupportsDragInteraction(asset) {
+    if (!asset) return false;
+    if (asset.sandbox?.gridFloorBelt) return false;
+    if (asset.physics?.isKinetic === false) return false;
+    return true;
 }
-export function assetSupportsDragLaunch(asset) {
-    if (!asset?.sandbox) return false;
-    if (sandboxAssetDragInteract(asset)) return true;
-    return asset.sandbox.dragLaunch != null;
+export function propSupportsDragInteraction(prop) {
+    return prop?.strategy?.isKinetic === true && !prop.isDead;
 }
 export function resolveDragInteractionBehaviorId(asset, dragInteractionMode = DEFAULT_DRAG_INTERACTION_MODE) {
-    if (!asset?.sandbox) return null;
-    if (!assetSupportsDragLaunch(asset)) return null;
+    if (!assetSupportsDragInteraction(asset)) return null;
     return dragInteractionMode === GRAB_DRAG_BEHAVIOR_ID ? GRAB_DRAG_BEHAVIOR_ID : DRAG_LAUNCH_BEHAVIOR_ID;
 }
 export function resolveDragInteractionBehavior(prop, state, behaviorById) {
-    const asset = propCatalog[prop.type];
+    if (!propSupportsDragInteraction(prop)) return null;
     const mode = state.sandbox.dragInteractionMode ?? DEFAULT_DRAG_INTERACTION_MODE;
-    const behaviorId = resolveDragInteractionBehaviorId(asset, mode);
+    const behaviorId = resolveDragInteractionBehaviorId(propCatalog[prop.type], mode);
     return behaviorId ? (behaviorById.get(behaviorId) ?? null) : null;
 }
 export function createDragLaunchBehaviors(state) {
     return [
         createDragLaunchInteraction({
             id: DRAG_LAUNCH_BEHAVIOR_ID,
-            getConfig: dragLaunchConfigForProp,
             buildAimLineContext: dragLaunchAimLineContextForState(state),
             resolveAimLine: getDragLaunchAimLine,
             canStart: (prop) => {
+                if (!propSupportsDragInteraction(prop)) return false;
                 const grid = state?.obstacleGrid;
                 return !(grid && FloorBelt.isEntityOnBelt(grid, prop.x, prop.y));
             },
@@ -238,7 +243,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
     const propRuns = new Map();
     const activeRunIds = [];
     const tickPull = (prop, run, dtMs) => {
-        const grabConfig = getDragLaunchConfig(propCatalog[prop.type]);
+        const grabConfig = resolveDragLaunchConfig(prop);
         const rollConfig = getKineticRollConfig(prop);
         const tx = run.targetWorld.x + run.offsetX;
         const ty = run.targetWorld.y + run.offsetY;
@@ -331,7 +336,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         appendOverlayCommands(commands, prop) {
             const run = propRuns.get(prop.id);
             if (!run?.dragging) return;
-            const grabConfig = getDragLaunchConfig(propCatalog[prop.type]);
+            const grabConfig = resolveDragLaunchConfig(prop);
             grabDragAnchorWorld(prop, run);
             const ax = GRAB_ANCHOR_SCRATCH[G_WX];
             const ay = GRAB_ANCHOR_SCRATCH[G_WY];
