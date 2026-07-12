@@ -3,7 +3,7 @@ import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
-import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction } from "../Physics/physics.js";
+import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction, slabCollisionSpan } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -89,9 +89,9 @@ export class SpatialFrameCore {
         this.frameId = (this.frameId + 1) | 0;
         invalidateWallCandidateBucketFrame(this._wallBuckets);
     }
-    getWallCandidates(entity) {
+    getWallCandidates(eid) {
         if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
-        return this._wallCandidatesNearWorld(entity.x, entity.y, entityCollisionSpan(entity));
+        return this._wallCandidatesNearWorld(kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], slabCollisionSpan(eid));
     }
     ensureNeighborEids(entity) {
         if (entity._neighborsFrameId === this.frameId) return entity._neighborEidCount;
@@ -3261,14 +3261,9 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             bumpKineticTopologyGeneration(world.kinetic);
         }
     }
-    getWallCandidates(entity) {
-        if (entity._physId !== undefined && entity._physId !== -1) {
-            if (!this._obstacleGrid) return [];
-            const slabX = kineticDynamicSlab.x[entity._physId];
-            const slabY = kineticDynamicSlab.y[entity._physId];
-            return this._wallCandidatesNearWorld(slabX, slabY, entityCollisionSpan(entity));
-        }
-        return super.getWallCandidates(entity);
+    getWallCandidates(eid) {
+        if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
+        return this._wallCandidatesNearWorld(kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], slabCollisionSpan(eid));
     }
     syncActiveKineticBodies() {
         clearActiveKineticBodySlab();

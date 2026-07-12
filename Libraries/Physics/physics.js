@@ -1,4 +1,4 @@
-import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabbF32, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32, earClipConvexPartsInto, pointInPolygon } from "../Math/math.js";
+import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabbF32, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, normalizeAngle, rotateAngleTowards, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32, earClipConvexPartsInto, pointInPolygon } from "../Math/math.js";
 import {
     ENGINE_F32,
     ENGINE_U8,
@@ -51,6 +51,7 @@ import {
     P_WALL_NORMS,
     P_COMPOUND,
     entityRefs,
+    entityAlive,
     entityFlags,
     entityFacing,
     entityX,
@@ -58,6 +59,7 @@ import {
     entityVx,
     entityVy,
     entityW,
+    entityR,
     entityRollQw,
     entityRollQx,
     entityRollQy,
@@ -116,7 +118,7 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_DEAD } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -1696,7 +1698,7 @@ export function isKinematicallyActiveSlab(physId) {
     const { movingSpeedSq, rotatingSpeedRad } = collisionSettings.kineticActivity;
     return speedSqXY(vx, vy) > movingSpeedSq || w * w > rotatingSpeedRad * rotatingSpeedRad;
 }
-function slabCollisionSpan(physId) {
+export function slabCollisionSpan(physId) {
     const slab = kineticDynamicSlab;
     if (slab.shapeKind[physId] === SHAPE_TYPE_CIRCLE) return slab.r[physId];
     return lengthXY(slab.hx[physId], slab.hy[physId]);
@@ -1783,44 +1785,34 @@ function kineticPairPassesBroadphase(physIdA, physIdB) {
     if (!isKinematicallyActiveSlab(physIdA) && !isKinematicallyActiveSlab(physIdB)) return false;
     return pairBroadphaseOverlapSlab(physIdA, physIdB);
 }
-function kineticOverlapsWallCandidates(px, py, body, candidates) {
+function kineticOverlapsWallCandidates(eid, candidates) {
     if (!candidates.used) return false;
-    const bodyFacing = readEntityFacing(body);
-    const bodyCos = Math.cos(bodyFacing);
-    const bodySin = Math.sin(bodyFacing);
-    const parts = collisionPartsList(body);
-    if (parts) {
-        for (let p = 0; p < parts.length; p++) {
-            const shape = parts[p];
-            if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-                const radiusSq = shape.radius * shape.radius;
-                for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
-                continue;
-            }
-            for (let i = 0; i < candidates.used; i++) {
-                const segId = candidates.buf[i];
-                if (satPolygonVsWallSegmentF32(px, py, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) return true;
-            }
+    const dyn = kineticDynamicSlab;
+    const px = dyn.x[eid];
+    const py = dyn.y[eid];
+    const bodyCos = dyn.cos[eid];
+    const bodySin = dyn.sin[eid];
+    const geom0 = dyn.partGeomOffset[eid];
+    const nParts = dyn.partCount[eid];
+    if (geom0 < 0 || nParts <= 0) return false;
+    for (let p = 0; p < nParts; p++) {
+        const row = geom0 + p;
+        if (dyn.partShapeKind[row] === SHAPE_TYPE_CIRCLE) {
+            const radius = dyn.partRadius[row];
+            const radiusSq = radius * radius;
+            for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
+            continue;
         }
-        return false;
-    }
-    const shape = body.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-        const radiusSq = shape.radius * shape.radius;
-        for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
-        return false;
-    }
-    for (let i = 0; i < candidates.used; i++) {
-        const segId = candidates.buf[i];
-        if (satPolygonVsWallSegmentF32(px, py, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) return true;
+        const vo = dyn.partVertOffset[row];
+        const n = dyn.partVertFloatCount[row];
+        for (let i = 0; i < candidates.used; i++) if (satPolygonVsWallSegmentF32(px, py, bodyCos, bodySin, dyn.shapeVertPool, dyn.shapeNormPool, vo, n, candidates.buf[i])) return true;
     }
     return false;
 }
-export function shouldResolveKineticBodyAgainstWalls(body, candidates) {
-    const eid = body._physId;
+export function shouldResolveKineticBodyAgainstWalls(eid, candidates) {
     if (eid === undefined || eid === -1 || (entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return false;
-    if (body.needsWallCollision?.()) return true;
-    return kineticOverlapsWallCandidates(kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], body, candidates);
+    if (isKinematicallyActiveSlab(eid)) return true;
+    return kineticOverlapsWallCandidates(eid, candidates);
 }
 function applyStaticSurfaceImpulseSlab(physId, normalX, normalY, cx, cy, restitution, friction) {
     const dyn = kineticDynamicSlab;
@@ -1880,119 +1872,125 @@ function appendWallHit(outHits, approachDot, normalX, normalY, contactX, contact
     outHits.flags[i] = slab.flags[segId];
     outHits.count = i + 1;
 }
-function resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution, friction, passes, shouldBreakWallHit, outHits) {
+function resolveAgainstWallSegmentsSlab(physId, segIds, restitution, friction, passes, shouldBreakWallHit, outHits) {
     const dyn = kineticDynamicSlab;
-    const slab = staticWallSegmentSlab;
+    const wallSlab = staticWallSegmentSlab;
+    const geom0 = dyn.partGeomOffset[physId];
+    const nParts = dyn.partCount[physId];
+    if (geom0 < 0 || nParts <= 0) return false;
     let collided = false;
     const wantHits = shouldBreakWallHit != null && outHits != null;
-    const radius = shape.getBoundingRadius();
-    let bestNormalX = 0;
-    let bestNormalY = 0;
-    let bestOverlap = 0;
-    let bestCx = NaN;
-    let bestCy = NaN;
-    let bestSegId = -1;
-    for (let pass = 0; pass < passes; pass++) {
-        let hasBest = false;
-        const bx0 = dyn.x[physId];
-        const by0 = dyn.y[physId];
-        const approachVx = dyn.vx[physId];
-        const approachVy = dyn.vy[physId];
-        const bodyAngle = readEntityFacing(body);
-        const bodyCos = Math.cos(bodyAngle);
-        const bodySin = Math.sin(bodyAngle);
-        for (let si = 0; si < segIds.used; si++) {
-            const segId = segIds.buf[si];
-            const maxDist = radius + slab.size[segId] * 0.75;
-            if (Math.abs(bx0 - slab.x[segId]) > maxDist || Math.abs(by0 - slab.y[segId]) > maxDist) continue;
-            let normalX, normalY, overlap;
-            let satCollisionFound = false;
-            if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-                if (!circleSegmentPenetration(bx0, by0, shape.radius, segId, approachVx, approachVy)) continue;
-                normalX = ENGINE_F32[P_OUT_PEN_NX];
-                normalY = ENGINE_F32[P_OUT_PEN_NY];
-                overlap = ENGINE_F32[P_OUT_PEN_OVERLAP];
-            } else if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-                if (!satPolygonVsWallSegmentF32(bx0, by0, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) continue;
-                normalX = -SAT_RESULT[1];
-                normalY = -SAT_RESULT[2];
-                overlap = SAT_RESULT[0];
-                satCollisionFound = true;
-            } else throw new Error(`resolveAgainstWallSegmentsSlab: unknown shapeTypeId ${shape.shapeTypeId}`);
-            if (!hasBest || overlap > bestOverlap) {
-                bestNormalX = normalX;
-                bestNormalY = normalY;
-                bestOverlap = overlap;
-                bestCx = satCollisionFound ? SAT_RESULT[3] : NaN;
-                bestCy = satCollisionFound ? SAT_RESULT[4] : NaN;
-                bestSegId = segId;
-                hasBest = true;
+    const radius = slabCollisionSpan(physId);
+    for (let p = 0; p < nParts; p++) {
+        const row = geom0 + p;
+        const kind = dyn.partShapeKind[row];
+        const partRadius = dyn.partRadius[row];
+        const vo = dyn.partVertOffset[row];
+        const vn = dyn.partVertFloatCount[row];
+        for (let pass = 0; pass < passes; pass++) {
+            let hasBest = false;
+            let bestNormalX = 0;
+            let bestNormalY = 0;
+            let bestOverlap = 0;
+            let bestCx = NaN;
+            let bestCy = NaN;
+            let bestSegId = -1;
+            const bx0 = dyn.x[physId];
+            const by0 = dyn.y[physId];
+            const approachVx = dyn.vx[physId];
+            const approachVy = dyn.vy[physId];
+            const bodyCos = dyn.cos[physId];
+            const bodySin = dyn.sin[physId];
+            for (let si = 0; si < segIds.used; si++) {
+                const segId = segIds.buf[si];
+                const maxDist = radius + wallSlab.size[segId] * 0.75;
+                if (Math.abs(bx0 - wallSlab.x[segId]) > maxDist || Math.abs(by0 - wallSlab.y[segId]) > maxDist) continue;
+                let normalX, normalY, overlap;
+                let satCollisionFound = false;
+                if (kind === SHAPE_TYPE_CIRCLE) {
+                    if (!circleSegmentPenetration(bx0, by0, partRadius, segId, approachVx, approachVy)) continue;
+                    normalX = ENGINE_F32[P_OUT_PEN_NX];
+                    normalY = ENGINE_F32[P_OUT_PEN_NY];
+                    overlap = ENGINE_F32[P_OUT_PEN_OVERLAP];
+                } else if (kind === SHAPE_TYPE_POLYGON) {
+                    if (!satPolygonVsWallSegmentF32(bx0, by0, bodyCos, bodySin, dyn.shapeVertPool, dyn.shapeNormPool, vo, vn, segId)) continue;
+                    normalX = -SAT_RESULT[1];
+                    normalY = -SAT_RESULT[2];
+                    overlap = SAT_RESULT[0];
+                    satCollisionFound = true;
+                } else throw new Error(`resolveAgainstWallSegmentsSlab: unknown partShapeKind ${kind}`);
+                if (!hasBest || overlap > bestOverlap) {
+                    bestNormalX = normalX;
+                    bestNormalY = normalY;
+                    bestOverlap = overlap;
+                    bestCx = satCollisionFound ? SAT_RESULT[3] : NaN;
+                    bestCy = satCollisionFound ? SAT_RESULT[4] : NaN;
+                    bestSegId = segId;
+                    hasBest = true;
+                }
             }
-        }
-        if (!hasBest) break;
-        collided = true;
-        const bx = dyn.x[physId];
-        const by = dyn.y[physId];
-        if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) computeCircleWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, shape.radius);
-        else computePolygonWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
-        const contactX = ENGINE_F32[P_VEC_A];
-        const contactY = ENGINE_F32[P_VEC_A + 1];
-        const bvx = dyn.vx[physId];
-        const bvy = dyn.vy[physId];
-        const bw = dyn.w[physId];
-        const approachDot = dotXY(bvx - bw * (contactY - by), bvy + bw * (contactX - bx), bestNormalX, bestNormalY);
-        if (wantHits && shouldBreakWallHit(approachDot)) {
-            appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegId);
+            if (!hasBest) break;
+            collided = true;
+            const bx = dyn.x[physId];
+            const by = dyn.y[physId];
+            if (kind === SHAPE_TYPE_CIRCLE) computeCircleWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, partRadius);
+            else computePolygonWallContact(ENGINE_F32, P_VEC_A, bx, by, bestNormalX, bestNormalY, bestOverlap, bestCx, bestCy);
+            const contactX = ENGINE_F32[P_VEC_A];
+            const contactY = ENGINE_F32[P_VEC_A + 1];
+            const bvx = dyn.vx[physId];
+            const bvy = dyn.vy[physId];
+            const bw = dyn.w[physId];
+            const approachDot = dotXY(bvx - bw * (contactY - by), bvy + bw * (contactX - bx), bestNormalX, bestNormalY);
+            if (wantHits && shouldBreakWallHit(approachDot)) {
+                appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegId);
+                applyStaticSurfaceImpulseSlab(physId, bestNormalX, bestNormalY, contactX, contactY, restitution, friction);
+                break;
+            }
+            applySlabPositionCorrection(physId, bestNormalX, bestNormalY, bestOverlap);
             applyStaticSurfaceImpulseSlab(physId, bestNormalX, bestNormalY, contactX, contactY, restitution, friction);
-            break;
+            if (wantHits) appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegId);
         }
-        applySlabPositionCorrection(physId, bestNormalX, bestNormalY, bestOverlap);
-        applyStaticSurfaceImpulseSlab(physId, bestNormalX, bestNormalY, contactX, contactY, restitution, friction);
-        if (wantHits) appendWallHit(outHits, approachDot, bestNormalX, bestNormalY, contactX, contactY, bestSegId);
     }
     return collided;
 }
-export function resolveBodyAgainstWallSegments(body, shape, segIds, restitution = 0, friction = 0.9, shouldBreakWallHit = null, outHits = null, passes = 2) {
-    const physId = body._physId;
-    if (physId === undefined || physId === -1) throw new Error("resolveBodyAgainstWallSegments requires _physId");
+export function resolveBodyAgainstWallSegments(eid, segIds, restitution = 0, friction = 0.9, shouldBreakWallHit = null, outHits = null, passes = 2) {
+    if (eid === undefined || eid === -1) throw new Error("resolveBodyAgainstWallSegments requires eid");
     if (outHits) outHits.count = 0;
-    normalizeKineticBody(body);
-    return resolveAgainstWallSegmentsSlab(physId, body, shape, segIds, restitution, friction, passes, shouldBreakWallHit, outHits);
+    return resolveAgainstWallSegmentsSlab(eid, segIds, restitution, friction, passes, shouldBreakWallHit, outHits);
 }
+const wallResolvedFrameByEid = new Int32Array(MAX_PHYS_BODIES);
+wallResolvedFrameByEid.fill(-1);
+const wallResolvedCollidedByEid = new Uint8Array(MAX_PHYS_BODIES);
+const linkWallGatherMarkByEid = new Int32Array(MAX_PHYS_BODIES);
+let linkWallGatherGen = 0;
 /** Clear wall-resolve frame cache so entity-pair contacts can re-resolve against walls. */
-export function invalidateWallResolveCache(...entities) {
-    for (let i = 0; i < entities.length; i++) entities[i]._wallResolvedFrame = null;
+export function invalidateWallResolveCache(...eids) {
+    for (let i = 0; i < eids.length; i++) wallResolvedFrameByEid[eids[i]] = -1;
 }
 export class WallCollisionResolver {
     constructor() {
         this.hits = createWallHitBuffer();
     }
-    resolve(entity, spatialFrame, shouldBreakWallHit = null) {
-        if (entity._wallResolvedFrame === spatialFrame.frameId) {
+    resolve(eid, spatialFrame, shouldBreakWallHit = null) {
+        if (wallResolvedFrameByEid[eid] === spatialFrame.frameId) {
             this.hits.count = 0;
-            return entity._wallResolvedCollided;
+            return wallResolvedCollidedByEid[eid] !== 0;
         }
-        entity._wallResolvedFrame = spatialFrame.frameId;
-        const candidateWalls = spatialFrame.getWallCandidates(entity);
+        wallResolvedFrameByEid[eid] = spatialFrame.frameId;
+        const candidateWalls = spatialFrame.getWallCandidates(eid);
         const hits = this.hits;
         hits.count = 0;
         if (candidateWalls.used === 0) {
-            entity._wallResolvedCollided = false;
+            wallResolvedCollidedByEid[eid] = 0;
             return false;
         }
-        const physId = entity._physId;
-        if (physId === undefined || physId === -1) throw new Error("WallCollisionResolver requires _physId");
-        const restitution = kineticStaticSlab.restitution[physId];
-        const friction = kineticStaticSlab.friction[physId];
-        let collided = false;
+        const restitution = kineticStaticSlab.restitution[eid];
+        const friction = kineticStaticSlab.friction[eid];
         const wantHits = shouldBreakWallHit != null;
         const outHits = wantHits ? hits : null;
-        if (collisionPartsList(entity)) {
-            const parts = entity.collisionParts;
-            for (let i = 0; i < parts.length; i++) if (resolveAgainstWallSegmentsSlab(physId, entity, parts[i], candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
-        } else if (entity.shape) if (resolveAgainstWallSegmentsSlab(physId, entity, entity.shape, candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
-        if (collided) wakeKineticBody(entity._physId);
-        entity._wallResolvedCollided = collided;
+        const collided = resolveAgainstWallSegmentsSlab(eid, candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits);
+        if (collided) wakeKineticBody(eid);
+        wallResolvedCollidedByEid[eid] = collided ? 1 : 0;
         return collided;
     }
 }
@@ -2001,9 +1999,11 @@ const islandLinkWallCandidates = new GrowI32(64);
 const linkFilteredWallCandidates = new GrowI32(32);
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
 const sIslandSessionIndex = new Int32Array(MAX_KINETIC_CONSTRAINTS);
-function constraintBodyAt(physId) {
-    const body = entityRefs[physId];
-    return body?._physId === physId ? body : null;
+function constraintEidValid(physId, expectedEntityId) {
+    return entityAlive[physId] !== 0 && (entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0 && (entityFlags[physId] & ENTITY_FLAG_DEAD) === 0 && kineticStaticSlab.entityId[physId] === expectedEntityId;
+}
+function constraintEidPresent(physId) {
+    return entityAlive[physId] !== 0 && (entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0 && (entityFlags[physId] & ENTITY_FLAG_DEAD) === 0;
 }
 function orderIslandConstraintItems(startIdx, count) {
     if (count <= 1) {
@@ -2028,9 +2028,9 @@ function orderIslandConstraintItems(startIdx, count) {
     let startPhysId = null;
     const uniqueBuf = orderUniquePhysIds.buf;
     const uniqueUsed = orderUniquePhysIds.used;
+    const entityIds = kineticStaticSlab.entityId;
     for (let i = 0; i < uniqueUsed; i++) {
         const physId = uniqueBuf[i];
-        const body = constraintBodyAt(physId);
         const offset = kineticDynamicSlab.linkNeighborOffset[physId];
         const nCount = kineticDynamicSlab.linkNeighborCount[physId];
         let inIslandCount = 0;
@@ -2040,7 +2040,7 @@ function orderIslandConstraintItems(startIdx, count) {
         }
         if (inIslandCount <= 1) {
             startPhysId = physId;
-            startId = body.id;
+            startId = entityIds[physId];
             break;
         }
     }
@@ -2048,11 +2048,11 @@ function orderIslandConstraintItems(startIdx, count) {
         let minId = Infinity;
         for (let i = 0; i < uniqueUsed; i++) {
             const physId = uniqueBuf[i];
-            const body = constraintBodyAt(physId);
-            if (body.id < minId) {
-                minId = body.id;
+            const id = entityIds[physId];
+            if (id < minId) {
+                minId = id;
                 startPhysId = physId;
-                startId = body.id;
+                startId = id;
             }
         }
     }
@@ -2060,7 +2060,6 @@ function orderIslandConstraintItems(startIdx, count) {
     orderUsedItems.fill(0, 0, count);
     let currentPhysId = startPhysId;
     while (orderOrdered.used < count) {
-        const body = constraintBodyAt(currentPhysId);
         const offset = kineticDynamicSlab.linkNeighborOffset[currentPhysId];
         const nCount = kineticDynamicSlab.linkNeighborCount[currentPhysId];
         let advanced = false;
@@ -2092,23 +2091,21 @@ function orderIslandConstraintItems(startIdx, count) {
     const orderedBuf = orderOrdered.buf;
     for (let i = 0; i < count; i++) orderOrderedIdxs[i] = orderedBuf[i];
 }
-function circleRadiusFromBody(body) {
-    const parts = collisionPartsList(body);
-    if (parts) {
-        for (let i = 0; i < parts.length; i++) if (parts[i].shapeTypeId === SHAPE_TYPE_CIRCLE) return parts[i].radius;
-    } else if (body.shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return body.shape.radius;
-    return body.radius;
+function circleRadiusFromEid(eid) {
+    const slab = kineticDynamicSlab;
+    const row0 = slab.partGeomOffset[eid];
+    const n = slab.partCount[eid];
+    if (row0 >= 0 && n > 0) for (let i = 0; i < n; i++) if (slab.partShapeKind[row0 + i] === SHAPE_TYPE_CIRCLE) return slab.partRadius[row0 + i];
+    return slab.r[eid];
 }
-function linkCapsuleRadius(bodyA, bodyB) {
-    return Math.max(circleRadiusFromBody(bodyA), circleRadiusFromBody(bodyB)) + 0.05;
+function linkCapsuleRadiusFromEids(a, b) {
+    return Math.max(circleRadiusFromEid(a), circleRadiusFromEid(b)) + 0.05;
 }
 function appendConstraintEntry(slab, islandIdx, store) {
     const idx = slab.count++;
     const physIdA = sIslandPhysA[islandIdx];
     const physIdB = sIslandPhysB[islandIdx];
     const storeRow = sIslandSessionIndex[islandIdx];
-    const bodyA = constraintBodyAt(physIdA);
-    const bodyB = constraintBodyAt(physIdB);
     const ctype = store.type[storeRow];
     slab.type[idx] = ctype;
     slab.storeRow[idx] = storeRow;
@@ -2129,10 +2126,8 @@ function appendConstraintEntry(slab, islandIdx, store) {
         slab.static.anchorBx[idx] = store.anchorBx[storeRow];
         slab.static.anchorBy[idx] = store.anchorBy[storeRow];
         slab.static.restLength[idx] = store.restLength[storeRow];
-        slab.static.capsuleRadius[idx] = linkCapsuleRadius(bodyA, bodyB);
+        slab.static.capsuleRadius[idx] = linkCapsuleRadiusFromEids(physIdA, physIdB);
     }
-    normalizeKineticBody(bodyA);
-    normalizeKineticBody(bodyB);
     const stat = kineticStaticSlab;
     slab.static.invMassA[idx] = stat.invMass[physIdA];
     slab.static.invMassB[idx] = stat.invMass[physIdB];
@@ -2174,12 +2169,8 @@ export function gatherKineticConstraintSlab(tick) {
         const physIdA = store.physIdA[i];
         const physIdB = store.physIdB[i];
         if (physIdA < 0 || physIdB < 0) continue;
-        const bodyA = constraintBodyAt(physIdA);
-        const bodyB = constraintBodyAt(physIdB);
-        if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
-        if (bodyA.id !== store.bodyAId[i] || bodyB.id !== store.bodyBId[i]) continue;
-        if ((entityFlags[bodyA._physId] & ENTITY_FLAG_KINETIC) === 0 || (entityFlags[bodyB._physId] & ENTITY_FLAG_KINETIC) === 0) continue;
-        let root = bodyA.id;
+        if (!constraintEidValid(physIdA, store.bodyAId[i]) || !constraintEidValid(physIdB, store.bodyBId[i])) continue;
+        let root = kineticStaticSlab.entityId[physIdA];
         const r = kineticDynamicSlab.islandRoot[physIdA];
         if (r !== -1) root = r;
         let bucketIdx = -1;
@@ -2208,12 +2199,8 @@ export function gatherKineticConstraintSlab(tick) {
         const physIdA = store.physIdA[i];
         const physIdB = store.physIdB[i];
         if (physIdA < 0 || physIdB < 0) continue;
-        const bodyA = constraintBodyAt(physIdA);
-        const bodyB = constraintBodyAt(physIdB);
-        if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
-        if (bodyA.id !== store.bodyAId[i] || bodyB.id !== store.bodyBId[i]) continue;
-        if ((entityFlags[bodyA._physId] & ENTITY_FLAG_KINETIC) === 0 || (entityFlags[bodyB._physId] & ENTITY_FLAG_KINETIC) === 0) continue;
-        let root = bodyA.id;
+        if (!constraintEidValid(physIdA, store.bodyAId[i]) || !constraintEidValid(physIdB, store.bodyBId[i])) continue;
+        let root = kineticStaticSlab.entityId[physIdA];
         const r = kineticDynamicSlab.islandRoot[physIdA];
         if (r !== -1) root = r;
         let bucketIdx = -1;
@@ -2273,17 +2260,17 @@ function mergeWallCandidatesInto(candidates, out) {
         out.push(segId);
     }
 }
-function appendBodyWallCandidates(spatialFrame, body, gatherMark, out) {
-    if (body._linkWallGatherMark === gatherMark) return;
-    body._linkWallGatherMark = gatherMark;
-    mergeWallCandidatesInto(spatialFrame.getWallCandidates(body), out);
+function appendEidWallCandidates(spatialFrame, eid, gatherMark, out) {
+    if (linkWallGatherMarkByEid[eid] === gatherMark) return;
+    linkWallGatherMarkByEid[eid] = gatherMark;
+    mergeWallCandidatesInto(spatialFrame.getWallCandidates(eid), out);
 }
 function gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, out) {
     out.clear();
     clearIslandLinkWallSegSeen();
     for (let i = start; i < start + count; i++) {
-        appendBodyWallCandidates(spatialFrame, constraintBodyAt(slab.physIdA[i]), gatherMark, out);
-        appendBodyWallCandidates(spatialFrame, constraintBodyAt(slab.physIdB[i]), gatherMark, out);
+        appendEidWallCandidates(spatialFrame, slab.physIdA[i], gatherMark, out);
+        appendEidWallCandidates(spatialFrame, slab.physIdB[i], gatherMark, out);
     }
 }
 function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) {
@@ -2296,15 +2283,13 @@ function collectLinkOverlappingWalls(ax, ay, bx, by, capsuleRadius, walls, out) 
 function shouldProjectLinkCapsuleAgainstWalls(slab, i, capsuleRadius, islandWalls, linkWallsOut) {
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const bodyA = constraintBodyAt(physIdA);
-    const bodyB = constraintBodyAt(physIdB);
     if (kineticDynamicSlab.sleeping[physIdA] && kineticDynamicSlab.sleeping[physIdB]) {
         linkWallsOut.clear();
         return false;
     }
     const dynSlab = kineticDynamicSlab;
-    worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
-    worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+    worldAnchorFromSlab(physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
     const waX = ENGINE_F32[P_VEC_A];
     const waY = ENGINE_F32[P_VEC_A + 1];
     const wbX = ENGINE_F32[P_VEC_B];
@@ -2320,15 +2305,13 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
     if (!linkWalls.used) return;
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const bodyA = constraintBodyAt(physIdA);
-    const bodyB = constraintBodyAt(physIdB);
     const capsuleRadius = slab.static.capsuleRadius[i];
     const dynSlab = kineticDynamicSlab;
     const approachX = (dynSlab.vx[physIdA] + dynSlab.vx[physIdB]) * 0.5;
     const approachY = (dynSlab.vy[physIdA] + dynSlab.vy[physIdB]) * 0.5;
     for (let pass = 0; pass < LINK_CAPSULE_WALL_PASSES; pass++) {
-        worldAnchorFromSlab(bodyA, physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
-        worldAnchorFromSlab(bodyB, physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+        worldAnchorFromSlab(physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+        worldAnchorFromSlab(physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
         const waX = ENGINE_F32[P_VEC_A];
         const waY = ENGINE_F32[P_VEC_A + 1];
         const wbX = ENGINE_F32[P_VEC_B];
@@ -2354,17 +2337,17 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
         }
         if (!hasBest) break;
         translateLinkAwayFromSlabWall(physIdA, physIdB, bestNx, bestNy, bestOverlap);
-        wakeKineticBody(bodyA._physId);
-        wakeKineticBody(bodyB._physId);
-        spatialFrame.scheduleKineticActivation(bodyA._physId);
-        spatialFrame.scheduleKineticActivation(bodyB._physId);
+        wakeKineticBody(physIdA);
+        wakeKineticBody(physIdB);
+        spatialFrame.scheduleKineticActivation(physIdA);
+        spatialFrame.scheduleKineticActivation(physIdB);
     }
 }
 function projectIslandLinkCapsulesAgainstWalls(spatialFrame) {
     const slab = kineticConstraintSlab;
     const islandWalls = islandLinkWallCandidates;
     const linkWalls = linkFilteredWallCandidates;
-    const gatherMark = spatialFrame.frameId;
+    const gatherMark = ++linkWallGatherGen;
     let currentGroupStart = 0;
     for (let g = 0; g < slab.groupCount; g++) {
         const count = slab.groupCounts[g];
@@ -2385,8 +2368,8 @@ function projectDistanceConstraint(slab, index) {
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
     const dynSlab = kineticDynamicSlab;
-    worldAnchorFromSlab(constraintBodyAt(physIdA), physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab, P_VEC_A);
-    worldAnchorFromSlab(constraintBodyAt(physIdB), physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab, P_VEC_B);
+    worldAnchorFromSlab(physIdA, slab.static.anchorAx[index], slab.static.anchorAy[index], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(physIdB, slab.static.anchorBx[index], slab.static.anchorBy[index], dynSlab, P_VEC_B);
     const waX = ENGINE_F32[P_VEC_A];
     const waY = ENGINE_F32[P_VEC_A + 1];
     const wbX = ENGINE_F32[P_VEC_B];
@@ -2401,14 +2384,12 @@ function projectDistanceConstraint(slab, index) {
     if (Math.abs(error) < 1e-5) return;
     separateAlongNormalSlab(physIdA, physIdB, nx, ny, -error);
 }
-function projectAngleConstraint(slab, index) {
+function projectAngleConstraint(slab, index, spatialFrame) {
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
     if (kineticDynamicSlab.sleeping[physIdA] && kineticDynamicSlab.sleeping[physIdB]) return;
-    const bodyA = constraintBodyAt(physIdA);
-    const bodyB = constraintBodyAt(physIdB);
-    const facingA = readEntityFacing(bodyA);
-    const facingB = readEntityFacing(bodyB);
+    const facingA = entityFacing[physIdA];
+    const facingB = entityFacing[physIdB];
     const refAngle = slab.static.referenceAngle[index];
     const error = normalizeAngle(facingB - facingA - refAngle);
     if (Math.abs(error) < 1e-4) return;
@@ -2420,15 +2401,20 @@ function projectAngleConstraint(slab, index) {
     const ratioB = invIB / sum;
     const correctionA = error * ratioA;
     const correctionB = error * ratioB;
-    bodyA.facing = normalizeAngle(facingA + correctionA);
-    bodyB.facing = normalizeAngle(facingB - correctionB);
-    bodyA.stateTimer = (bodyA.stateTimer ?? 0) + 1;
-    bodyB.stateTimer = (bodyB.stateTimer ?? 0) + 1;
-    markBroadphaseDirty(bodyA);
-    markBroadphaseDirty(bodyB);
+    const newA = normalizeAngle(facingA + correctionA);
+    const newB = normalizeAngle(facingB - correctionB);
+    entityFacing[physIdA] = newA;
+    entityFacing[physIdB] = newB;
+    const dyn = kineticDynamicSlab;
+    dyn.cos[physIdA] = Math.cos(newA);
+    dyn.sin[physIdA] = Math.sin(newA);
+    dyn.cos[physIdB] = Math.cos(newB);
+    dyn.sin[physIdB] = Math.sin(newB);
+    spatialFrame.scheduleKineticActivation(physIdA);
+    spatialFrame.scheduleKineticActivation(physIdB);
 }
-function projectConstraint(slab, index) {
-    if (slab.type[index] === CONSTRAINT_TYPE_ANGLE) projectAngleConstraint(slab, index);
+function projectConstraint(slab, index, spatialFrame) {
+    if (slab.type[index] === CONSTRAINT_TYPE_ANGLE) projectAngleConstraint(slab, index, spatialFrame);
     else projectDistanceConstraint(slab, index);
 }
 function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias) {
@@ -2436,8 +2422,6 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
     if (k <= 1e-12) return 0;
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
-    const bodyA = constraintBodyAt(physIdA);
-    const bodyB = constraintBodyAt(physIdB);
     const dynSlab = kineticDynamicSlab;
     const nx = slab.dynamic.nx[index];
     const ny = slab.dynamic.ny[index];
@@ -2460,8 +2444,8 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
     dynSlab.vy[physIdB] += lambda * ny * invMassB;
     dynSlab.w[physIdA] -= lambda * rAn * invIA;
     dynSlab.w[physIdB] += lambda * rBn * invIB;
-    spatialFrame.scheduleKineticActivation(bodyA._physId);
-    spatialFrame.scheduleKineticActivation(bodyB._physId);
+    spatialFrame.scheduleKineticActivation(physIdA);
+    spatialFrame.scheduleKineticActivation(physIdB);
     return Math.abs(lambda);
 }
 function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
@@ -2469,8 +2453,6 @@ function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     if (k <= 1e-12) return 0;
     const physIdA = slab.physIdA[index];
     const physIdB = slab.physIdB[index];
-    const bodyA = constraintBodyAt(physIdA);
-    const bodyB = constraintBodyAt(physIdB);
     const dynSlab = kineticDynamicSlab;
     const error = slab.dynamic.error[index];
     const vRelN = dynSlab.w[physIdB] - dynSlab.w[physIdA];
@@ -2481,24 +2463,24 @@ function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     const invIB = slab.static.invIB[index];
     dynSlab.w[physIdA] -= lambda * invIA;
     dynSlab.w[physIdB] += lambda * invIB;
-    spatialFrame.scheduleKineticActivation(bodyA._physId);
-    spatialFrame.scheduleKineticActivation(bodyB._physId);
+    spatialFrame.scheduleKineticActivation(physIdA);
+    spatialFrame.scheduleKineticActivation(physIdB);
     return Math.abs(lambda);
 }
 function solveConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     if (slab.type[index] === CONSTRAINT_TYPE_ANGLE) return solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias);
     else return solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias);
 }
-function projectKineticConstraintSlab() {
+function projectKineticConstraintSlab(spatialFrame) {
     const slab = kineticConstraintSlab;
-    for (let i = 0; i < slab.activeCount; i += 2) projectConstraint(slab, i);
-    for (let i = 1; i < slab.activeCount; i += 2) projectConstraint(slab, i);
+    for (let i = 0; i < slab.activeCount; i += 2) projectConstraint(slab, i, spatialFrame);
+    for (let i = 1; i < slab.activeCount; i += 2) projectConstraint(slab, i, spatialFrame);
 }
 function warmStartDistanceConstraint(slab, i, dynSlab) {
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    worldAnchorFromSlab(constraintBodyAt(physIdA), physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
-    worldAnchorFromSlab(constraintBodyAt(physIdB), physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+    worldAnchorFromSlab(physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+    worldAnchorFromSlab(physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
     const waX = ENGINE_F32[P_VEC_A];
     const waY = ENGINE_F32[P_VEC_A + 1];
     const wbX = ENGINE_F32[P_VEC_B];
@@ -2549,12 +2531,10 @@ function warmStartDistanceConstraint(slab, i, dynSlab) {
     }
 }
 function warmStartAngleConstraint(slab, i, dynSlab) {
-    const bodyA = constraintBodyAt(slab.physIdA[i]);
-    const bodyB = constraintBodyAt(slab.physIdB[i]);
     const physIdA = slab.physIdA[i];
     const physIdB = slab.physIdB[i];
-    const facingA = readEntityFacing(bodyA);
-    const facingB = readEntityFacing(bodyB);
+    const facingA = entityFacing[physIdA];
+    const facingB = entityFacing[physIdB];
     const refAngle = slab.static.referenceAngle[i];
     const error = normalizeAngle(facingB - facingA - refAngle);
     const invIA = slab.static.invIA[i];
@@ -2603,7 +2583,7 @@ function solveKineticConstraintSlab(spatialFrame, session) {
     for (let i = 0; i < slab.activeCount; i++) store.accumulatedImpulse[slab.storeRow[i]] = slab.dynamic.accumulatedImpulse[i];
 }
 function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
-    for (let i = 0; i < slab.activeCount; i++) if (!constraintBodyAt(slab.physIdA[i]) || !constraintBodyAt(slab.physIdB[i])) return true;
+    for (let i = 0; i < slab.activeCount; i++) if (!constraintEidPresent(slab.physIdA[i]) || !constraintEidPresent(slab.physIdB[i])) return true;
     return false;
 }
 /** Collision substep: slab is authoritative pose; body synced only at pipeline boundaries. */
@@ -2615,7 +2595,7 @@ export function resolveGatheredKineticConstraintSlab(tick) {
         gatherKineticConstraintSlab(tick);
         if (slab.count === 0) return;
     }
-    projectKineticConstraintSlab();
+    projectKineticConstraintSlab(spatialFrame);
     projectIslandLinkCapsulesAgainstWalls(spatialFrame);
     solveKineticConstraintSlab(spatialFrame, tick.world.kinetic);
 }
@@ -2627,8 +2607,8 @@ export function measureConstraintSlabMaxError() {
         if (slab.type[i] === CONSTRAINT_TYPE_ANGLE) continue;
         const physIdA = slab.physIdA[i];
         const physIdB = slab.physIdB[i];
-        worldAnchorFromSlab(constraintBodyAt(physIdA), physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
-        worldAnchorFromSlab(constraintBodyAt(physIdB), physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
+        worldAnchorFromSlab(physIdA, slab.static.anchorAx[i], slab.static.anchorAy[i], dynSlab, P_VEC_A);
+        worldAnchorFromSlab(physIdB, slab.static.anchorBx[i], slab.static.anchorBy[i], dynSlab, P_VEC_B);
         const waX = ENGINE_F32[P_VEC_A];
         const waY = ENGINE_F32[P_VEC_A + 1];
         const wbX = ENGINE_F32[P_VEC_B];
@@ -2877,10 +2857,9 @@ export function worldAnchorFromBodyIntoF32(body, localX, localY, destOffset) {
     ENGINE_F32[destOffset] = body.x + localX * cos - localY * sin;
     ENGINE_F32[destOffset + 1] = body.y + localX * sin + localY * cos;
 }
-export function worldAnchorFromSlab(body, physId, localX, localY, slab, destOffset) {
-    const angle = readEntityFacing(body);
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
+export function worldAnchorFromSlab(physId, localX, localY, slab, destOffset) {
+    const cos = slab.cos[physId];
+    const sin = slab.sin[physId];
     ENGINE_F32[destOffset] = slab.x[physId] + localX * cos - localY * sin;
     ENGINE_F32[destOffset + 1] = slab.y[physId] + localX * sin + localY * cos;
 }
@@ -3209,12 +3188,11 @@ function solveKineticContactVelocities(contacts, iterations, restingCount) {
 }
 function applyKineticContactWake(contacts, spatialFrame) {
     for (let i = 0; i < contacts.count; i++) {
-        const bodyA = entityRefs[contacts.physIdA[i]]?._physId === contacts.physIdA[i] ? entityRefs[contacts.physIdA[i]] : null;
-        const bodyB = entityRefs[contacts.physIdB[i]]?._physId === contacts.physIdB[i] ? entityRefs[contacts.physIdB[i]] : null;
-        if (!bodyA || !bodyB) continue;
-        invalidateWallResolveCache(bodyA, bodyB);
-        spatialFrame.scheduleKineticActivation(bodyA._physId);
-        spatialFrame.scheduleKineticActivation(bodyB._physId);
+        const eidA = contacts.physIdA[i];
+        const eidB = contacts.physIdB[i];
+        invalidateWallResolveCache(eidA, eidB);
+        spatialFrame.scheduleKineticActivation(eidA);
+        spatialFrame.scheduleKineticActivation(eidB);
     }
 }
 export function gatherKineticContactPairs(tick) {
@@ -3450,11 +3428,9 @@ function resolveActiveBodyWalls(spatialFrame, resolveWalls) {
     const slab = kineticDynamicSlab;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const eid = slab.activePhysIds[i];
-        const prop = entityRefs[eid];
-        if (!prop || prop._physId !== eid) continue;
-        const wallCandidates = spatialFrame.getWallCandidates(prop);
-        if (!shouldResolveKineticBodyAgainstWalls(prop, wallCandidates)) continue;
-        resolveWalls(prop);
+        const wallCandidates = spatialFrame.getWallCandidates(eid);
+        if (!shouldResolveKineticBodyAgainstWalls(eid, wallCandidates)) continue;
+        resolveWalls(eid);
     }
 }
 /** Kinetic collision substeps: contact solve + wall resolve. */
@@ -3646,15 +3622,32 @@ export function runKineticPhysics(tick, dt, hooks) {
     const subDtSec = subDt / 1000;
     const { velocityEpsilonSq } = collisionSettings.kineticEarlyOut;
     let substepsRun = steps;
-    const resolveWalls = (entity) => hooks.resolveWalls(entity, spatialFrame);
+    const resolveWalls = (eid) => hooks.resolveWalls(eid, spatialFrame);
     for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updatePropFrame(world.worldProps[i], dt, spatialFrame);
     world.fractureEngine.debris.tickFrames(dt, spatialFrame);
     const slab = kineticDynamicSlab;
+    const dragFriction = primitivePhysics.dragFriction;
+    const physicsRow = kineticStaticSlab.physicsRow;
     for (let s = 0; s < steps; s++) {
         for (let i = 0; i < slab.activePhysCount; i++) applyGroundRollDrive(slab.activePhysIds[i], subDtSec);
         for (let i = 0; i < slab.activePhysCount; i++) {
-            const prop = entityRefs[slab.activePhysIds[i]];
-            if (prop) hooks.updatePropSubstep(prop, subDt, spatialFrame);
+            const eid = slab.activePhysIds[i];
+            if (slab.sleeping[eid]) continue;
+            if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) integratePropMotion(eid, subDt);
+            else applyVelocityDamping(eid, subDt, dragFriction[physicsRow[eid]], true, 1);
+            if ((entityFlags[eid] & ENTITY_FLAG_ORIENT_TO_MOTION) !== 0) {
+                const vx = entityVx[eid];
+                const vy = entityVy[eid];
+                const speed = Math.hypot(vx, vy);
+                if (speed > 0.1) {
+                    const moveAngle = Math.atan2(vy, vx);
+                    const maxStep = Math.PI * 1.5 * (subDt / 1000);
+                    const facing = rotateAngleTowards(entityFacing[eid], moveAngle, maxStep);
+                    entityFacing[eid] = facing;
+                    slab.cos[eid] = Math.cos(facing);
+                    slab.sin[eid] = Math.sin(facing);
+                }
+            }
         }
         spatialFrame.reindexActiveKineticBodies();
         runCollisionPipeline(tick, resolveWalls, hooks.applyContactSideEffects);
@@ -3831,13 +3824,10 @@ export function ensureKineticIslandPlan(session, eids, count = eids.length) {
     bakeKineticIslandPlan(session, eids, count);
     return session._kineticIslandPlan;
 }
-export function shareKineticIsland(bodyA, bodyB) {
-    const physIdA = bodyA._physId;
-    const physIdB = bodyB._physId;
-    if (physIdA === undefined || physIdA === -1 || physIdB === undefined || physIdB === -1) return false;
-    const root = kineticDynamicSlab.islandRoot[physIdA];
+export function shareKineticIsland(eidA, eidB) {
+    const root = kineticDynamicSlab.islandRoot[eidA];
     if (root === -1) return false;
-    return root === kineticDynamicSlab.islandRoot[physIdB];
+    return root === kineticDynamicSlab.islandRoot[eidB];
 }
 export function areKineticLinkNeighborsSlab(physIdA, physIdB) {
     const count = kineticDynamicSlab.linkNeighborCount[physIdA];
@@ -3945,16 +3935,9 @@ export function advanceKineticSleepIslands(frame, session) {
         advanceKineticSleep(physId, eligible);
     }
 }
-function propBlocksSleep(prop) {
-    const fn = prop.currentState?.blocksSleep;
-    if (fn) return fn.call(prop.currentState);
-    return false;
-}
 export function canSleepKinetic(eid) {
     if ((entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return false;
-    const entity = entityRefs[eid];
-    if (propBlocksSleep(entity)) return false;
-    return !isKinematicallyActive(entity);
+    return !isKinematicallyActiveSlab(eid);
 }
 export function wakeKineticBody(eid) {
     if ((entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return;
@@ -3986,31 +3969,29 @@ export function advanceKineticSleep(eid, eligible, requiredFrames = collisionSet
     sleepFrames[eid]++;
     if (sleepFrames[eid] >= requiredFrames) sleeping[eid] = 1;
 }
-export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = neighborEids.length) {
-    const propEid = prop._physId;
+export function hasSleepBlockingNeighbor(eid, neighborEids, neighborCount = neighborEids.length) {
     const sleeping = kineticDynamicSlab.sleeping;
     for (let i = 0; i < neighborCount; i++) {
         const eidB = neighborEids[i];
-        if (eidB === propEid) continue;
+        if (eidB === eid) continue;
         if ((entityFlags[eidB] & ENTITY_FLAG_KINETIC) === 0) continue;
-        const other = entityRefs[eidB];
-        if (shareKineticIsland(prop, other)) continue;
-        if (!pairBroadphaseOverlapSlab(propEid, eidB)) continue;
+        if (shareKineticIsland(eid, eidB)) continue;
+        if (!pairBroadphaseOverlapSlab(eid, eidB)) continue;
         if (sleeping[eidB]) continue;
-        if (isKinematicallyActive(other)) return true;
+        if (isKinematicallyActiveSlab(eidB)) return true;
     }
     return false;
 }
-export function evaluateKineticSleepEligible(prop, neighborEids, neighborCount = neighborEids.length) {
-    return canSleepKinetic(prop._physId) && !hasSleepBlockingNeighbor(prop, neighborEids, neighborCount);
+export function evaluateKineticSleepEligible(eid, neighborEids, neighborCount = neighborEids.length) {
+    return canSleepKinetic(eid) && !hasSleepBlockingNeighbor(eid, neighborEids, neighborCount);
 }
-export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) {
+export function evaluateKineticIslandSleepEligible(islandEids, spatialFrame) {
     emptyAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
-    for (let i = 0; i < islandMembers.length; i++) {
-        const prop = islandMembers[i];
-        if (!canSleepKinetic(prop._physId)) return false;
-        const extent = entityCollisionSpan(prop);
-        growAabbFromCenterF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, prop.x, prop.y, extent, extent);
+    for (let i = 0; i < islandEids.length; i++) {
+        const eid = islandEids[i];
+        if (!canSleepKinetic(eid)) return false;
+        const extent = slabCollisionSpan(eid);
+        growAabbFromCenterF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], extent, extent);
     }
     const eg = spatialFrame.entityGrid;
     padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, eg.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
@@ -4019,53 +4000,33 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
         sleepNeighborEids.ensure(sleepNeighborEids.buf.length * 2);
         n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, 0, sleepNeighborEids.buf.length);
     }
-    for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], sleepNeighborEids.buf, n)) return false;
+    for (let i = 0; i < islandEids.length; i++) if (hasSleepBlockingNeighbor(islandEids[i], sleepNeighborEids.buf, n)) return false;
     return true;
 }
-export function applyVelocityDamping(body, dtMs, friction = 8.0, integrateFacing = true, snapSpeed = 1) {
-    const physId = body._physId;
-    if (physId !== undefined) {
-        const dyn = kineticDynamicSlab;
-        const dt = dtMs / 1000;
-        let vx = dyn.vx[physId];
-        let vy = dyn.vy[physId];
-        if (vx || vy) {
-            dyn.x[physId] += vx * dt;
-            dyn.y[physId] += vy * dt;
-            const dragFactor = Math.exp(-friction * dt);
-            vx *= dragFactor;
-            vy *= dragFactor;
-            if (lengthXY(vx, vy) < snapSpeed) {
-                vx = 0;
-                vy = 0;
-            }
-            dyn.vx[physId] = vx;
-            dyn.vy[physId] = vy;
+export function applyVelocityDamping(eid, dtMs, friction = 8.0, integrateFacing = true, snapSpeed = 1) {
+    const dyn = kineticDynamicSlab;
+    const dt = dtMs / 1000;
+    let vx = dyn.vx[eid];
+    let vy = dyn.vy[eid];
+    if (vx || vy) {
+        dyn.x[eid] += vx * dt;
+        dyn.y[eid] += vy * dt;
+        const dragFactor = Math.exp(-friction * dt);
+        vx *= dragFactor;
+        vy *= dragFactor;
+        if (lengthXY(vx, vy) < snapSpeed) {
+            vx = 0;
+            vy = 0;
         }
-        if (integrateFacing && dyn.w[physId]) {
-            entityFacing[physId] += dyn.w[physId] * dt;
-            const angularDrag = Math.exp(-friction * 0.8 * dt);
-            let w = dyn.w[physId] * angularDrag;
-            if (Math.abs(w) < 0.1) w = 0;
-            dyn.w[physId] = w;
-        }
-        return;
+        dyn.vx[eid] = vx;
+        dyn.vy[eid] = vy;
     }
-    if (body.vx || body.vy) {
-        addXY(body, body.vx * (dtMs / 1000), body.vy * (dtMs / 1000));
-        const dragFactor = Math.exp(-friction * (dtMs / 1000));
-        body.vx *= dragFactor;
-        body.vy *= dragFactor;
-        if (lengthXY(body.vx, body.vy) < snapSpeed) {
-            body.vx = 0;
-            body.vy = 0;
-        }
-    }
-    if (integrateFacing && body.angularVelocity) {
-        body.facing += body.angularVelocity * (dtMs / 1000);
-        const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
-        body.angularVelocity *= angularDrag;
-        if (Math.abs(body.angularVelocity) < 0.1) body.angularVelocity = 0;
+    if (integrateFacing && dyn.w[eid]) {
+        entityFacing[eid] += dyn.w[eid] * dt;
+        const angularDrag = Math.exp(-friction * 0.8 * dt);
+        let w = dyn.w[eid] * angularDrag;
+        if (Math.abs(w) < 0.1) w = 0;
+        dyn.w[eid] = w;
     }
 }
 /**
@@ -4569,13 +4530,14 @@ function readBodyRollComponents(body) {
     ENGINE_F32[M_OUT_QY] = body._spawnRollQy ?? 0;
     ENGINE_F32[M_OUT_QZ] = body._spawnRollQz ?? 0;
 }
-function integrateGroundRoll(body, dtMs) {
-    const vx = body.vx ?? 0;
-    const vy = body.vy ?? 0;
+function integrateGroundRoll(eid, dtMs) {
+    const vx = entityVx[eid];
+    const vy = entityVy[eid];
     const speed = lengthXY(vx, vy);
     if (speed < 0.01) return;
-    const physId = body._physId;
-    const r = body.radius;
+    let r = kineticDynamicSlab.r[eid];
+    if (!(r > 0)) r = entityR[eid];
+    if (!(r > 0)) return;
     const angle = -(speed / r) * (dtMs / 1000);
     const ax = -vy / speed;
     const ay = vx / speed;
@@ -4584,30 +4546,29 @@ function integrateGroundRoll(body, dtMs) {
     const dx = ENGINE_F32[M_OUT_QX];
     const dy = ENGINE_F32[M_OUT_QY];
     const dz = ENGINE_F32[M_OUT_QZ];
-    multiplyQuatInto(dw, dx, dy, dz, entityRollQw[physId], entityRollQx[physId], entityRollQy[physId], entityRollQz[physId]);
-    entityRollQw[physId] = ENGINE_F32[M_OUT_QW];
-    entityRollQx[physId] = ENGINE_F32[M_OUT_QX];
-    entityRollQy[physId] = ENGINE_F32[M_OUT_QY];
-    entityRollQz[physId] = ENGINE_F32[M_OUT_QZ];
-    normalizeEntityRollQuat(physId);
+    multiplyQuatInto(dw, dx, dy, dz, entityRollQw[eid], entityRollQx[eid], entityRollQy[eid], entityRollQz[eid]);
+    entityRollQw[eid] = ENGINE_F32[M_OUT_QW];
+    entityRollQx[eid] = ENGINE_F32[M_OUT_QX];
+    entityRollQy[eid] = ENGINE_F32[M_OUT_QY];
+    entityRollQz[eid] = ENGINE_F32[M_OUT_QZ];
+    normalizeEntityRollQuat(eid);
 }
-export function absorbCollisionRollImpulse(body, dtMs) {
-    if ((entityFlags[body._physId] & ENTITY_FLAG_ROLLS) !== 0) return;
-    const angW = body.angularVelocity ?? 0;
+export function absorbCollisionRollImpulse(eid, dtMs) {
+    if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) return;
+    const angW = entityW[eid];
     if (Math.abs(angW) < 0.02) return;
-    const physId = body._physId;
     const angle = -angW * (dtMs / 1000);
     axisAngleQuatInto(0, 0, 1, angle);
     const dw = ENGINE_F32[M_OUT_QW];
     const dx = ENGINE_F32[M_OUT_QX];
     const dy = ENGINE_F32[M_OUT_QY];
     const dz = ENGINE_F32[M_OUT_QZ];
-    multiplyQuatInto(dw, dx, dy, dz, entityRollQw[physId], entityRollQx[physId], entityRollQy[physId], entityRollQz[physId]);
-    entityRollQw[physId] = ENGINE_F32[M_OUT_QW];
-    entityRollQx[physId] = ENGINE_F32[M_OUT_QX];
-    entityRollQy[physId] = ENGINE_F32[M_OUT_QY];
-    entityRollQz[physId] = ENGINE_F32[M_OUT_QZ];
-    normalizeEntityRollQuat(physId);
+    multiplyQuatInto(dw, dx, dy, dz, entityRollQw[eid], entityRollQx[eid], entityRollQy[eid], entityRollQz[eid]);
+    entityRollQw[eid] = ENGINE_F32[M_OUT_QW];
+    entityRollQx[eid] = ENGINE_F32[M_OUT_QX];
+    entityRollQy[eid] = ENGINE_F32[M_OUT_QY];
+    entityRollQz[eid] = ENGINE_F32[M_OUT_QZ];
+    normalizeEntityRollQuat(eid);
 }
 function quantizeRollQuatF32(qw, qx, qy, qz, steps = 16) {
     const angle = 2 * Math.acos(clamp(qw, -1, 1));
@@ -4651,24 +4612,12 @@ export function packRollOrientId(body, steps = 16) {
     const axisBucket = Math.round(((heading + Math.PI) / (Math.PI * 2)) * steps) % steps;
     return 0x10000 | (angleBucket & 0xff) | ((axisBucket & 0xff) << 8);
 }
-function resolveRollingFriction(strategy, body) {
-    const base = primitiveDragFriction(strategy);
-    const threshold = strategy.lowSpeedFrictionThreshold;
-    const boosted = strategy.lowSpeedFriction;
-    if (threshold == null || boosted == null) return base;
-    const speed = lengthXY(body.vx ?? 0, body.vy ?? 0);
-    if (speed >= threshold) return base;
-    const t = 1 - speed / threshold;
-    return base + (boosted - base) * t * t;
-}
-export function integratePropMotion(body, dtMs) {
-    const strategy = body.strategy ?? {};
-    const friction = resolveRollingFriction(strategy, body);
-    const snapSpeed = strategy.snapSpeed ?? 1;
-    absorbCollisionRollImpulse(body, dtMs);
-    integrateGroundRoll(body, dtMs);
-    body.angularVelocity = 0;
-    applyVelocityDamping(body, dtMs, friction, false, snapSpeed);
+export function integratePropMotion(eid, dtMs) {
+    const friction = primitivePhysics.dragFriction[kineticStaticSlab.physicsRow[eid]];
+    absorbCollisionRollImpulse(eid, dtMs);
+    integrateGroundRoll(eid, dtMs);
+    entityW[eid] = 0;
+    applyVelocityDamping(eid, dtMs, friction, false, 1);
 }
 // --- MOVED FROM kineticRollActuator.js ---
 export function applyGroundRollDrive(eid, dtSec) {

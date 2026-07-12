@@ -1,5 +1,5 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
-import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS } from "./engineEnums.js";
+import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION } from "./engineEnums.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab } from "./engineMemory.js";
 let nextEid = 0;
 const eidFreeList = [];
@@ -24,6 +24,7 @@ export function worldPropBindFlags(ref) {
     const strategy = ref.strategy;
     if (strategy?.isKinetic) flags |= ENTITY_FLAG_KINETIC;
     if (strategy?.rolls) flags |= ENTITY_FLAG_ROLLS;
+    if (strategy?.orientToMotion) flags |= ENTITY_FLAG_ORIENT_TO_MOTION;
     return flags;
 }
 export function releaseEntityEid(eid) {

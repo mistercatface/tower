@@ -3,7 +3,7 @@ import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityAlive, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE } from "../../Core/engineEnums.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
@@ -171,12 +171,14 @@ export function assignPhysIdWithPose(body, physId) {
     const ageMs = body.ageMs ?? 0;
     body._physId = physId;
     entityRefs[physId] = body;
+    entityAlive[physId] = 1;
     entityX[physId] = x;
     entityY[physId] = y;
     entityVx[physId] = vx;
     entityVy[physId] = vy;
     entityW[physId] = w;
     entityFacing[physId] = facing;
+    entityR[physId] = body.radius ?? 0;
     entityRollQw[physId] = rqw;
     entityRollQx[physId] = rqx;
     entityRollQy[physId] = rqy;
@@ -187,6 +189,7 @@ export function assignPhysIdWithPose(body, physId) {
     kineticDynamicSlab.rollDriveKind[physId] = ROLL_DRIVE_NONE;
     entityFlags[physId] = worldPropBindFlags(body);
     if (body.strategy?.physicsRow != null) kineticStaticSlab.physicsRow[physId] = body.strategy.physicsRow;
+    if (body.id != null) kineticStaticSlab.entityId[physId] = body.id;
     if (!body.isKineticDebris) {
         attachPoseAccessors(body);
         attachSleepAccessors(body);

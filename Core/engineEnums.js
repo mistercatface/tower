@@ -86,6 +86,7 @@ export const ENTITY_KIND_DEBRIS = 2;
 export const ENTITY_FLAG_DEAD = 1 << 0;
 export const ENTITY_FLAG_KINETIC = 1 << 1;
 export const ENTITY_FLAG_ROLLS = 1 << 2;
+export const ENTITY_FLAG_ORIENT_TO_MOTION = 1 << 3;
 //
 // Kinetic
 export const KINETIC_PAIR_CIRCLE_CIRCLE = 0;

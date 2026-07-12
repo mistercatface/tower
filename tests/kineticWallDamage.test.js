@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
 import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, queueWallHits, resolveKineticWallDamage, classifyWallDamageSegment, packWallDamageKey } from "../Libraries/Physics/fracture.js";
-import { pendingBreakRowForKey, GrowI32, staticWallSegmentSlab, kineticStaticSlab } from "../Core/engineMemory.js";
+import { pendingBreakRowForKey, GrowI32, staticWallSegmentSlab, kineticStaticSlab, entityVx, entityVy } from "../Core/engineMemory.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
@@ -18,13 +18,18 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { WallCollisionResolver, createWallHitBuffer, snapshotKineticBodySlab, createKineticSession, runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
-import { kineticIntegrateHooks, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { kineticPhysicsHooks, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wallSurfaceInvalidateHarness.js";
 import { collectVoxelWallFacesInAabbFlatF32 } from "../Libraries/World/wallGridBake.js";
 import { VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridStride.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../Core/engineEnums.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
+function stampWallHitSource(eid, vx, vy, mass = 1) {
+    entityVx[eid] = vx;
+    entityVy[eid] = vy;
+    kineticStaticSlab.mass[eid] = mass;
+}
 async function createWallDamageTestState(opts = {}) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
@@ -99,14 +104,14 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampVoxel(state.obstacleGrid, 6, 6);
-        const entity = { id: 42, vx: 560, vy: 0, mass: 1 };
+        stampWallHitSource(0, 560, 0, 1);
         const wallResolver = {
             hits: wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 6, 6))]),
             resolve() {
                 return true;
             },
         };
-        resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
+        resolveKineticWallDamage(state, 0, wallDebrisTestFrame(), wallResolver);
         const voxelKey = packWallDamageKey(0, worldIdxAtCell(state.obstacleGrid, 6, 6), 0);
         assert.equal(state.gridWallDamage.pending.strength[pendingBreakRowForKey(voxelKey)], 1);
         applyPendingWallDamage(state);
@@ -118,14 +123,14 @@ describe("kinetic wall damage", () => {
         const state = await createWallDamageTestState();
         state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 5, 5), 0, 2, 4));
-        const entity = { id: 42, vx: 560, vy: 0, mass: 1 };
+        stampWallHitSource(0, 560, 0, 1);
         const wallResolver = {
             hits: createWallHitBuffer(),
             resolve() {
                 return true;
             },
         };
-        resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
+        resolveKineticWallDamage(state, 0, wallDebrisTestFrame(), wallResolver);
         assert.equal(state.gridWallDamage.pending.count, 0);
         terminateWorkerNavigation(state.nav);
     });
@@ -144,7 +149,8 @@ describe("kinetic wall damage", () => {
         stampVoxel(grid, 3, 3);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         state.gridWallDamage = wallDamage;
-        queueWallHits(wallDamage, grid, wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3))]), 560, { mass: 1 });
+        stampWallHitSource(0, 0, 0, 1);
+        queueWallHits(wallDamage, grid, wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3))]), 560, 0);
         wallDamage.spatialFrame = wallDebrisTestFrame();
         await applyPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(grid, worldIdxAtCell(state.obstacleGrid,3, 3)));
@@ -157,7 +163,8 @@ describe("kinetic wall damage", () => {
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(grid, 5, 5), 0, 2, 4));
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         state.gridWallDamage = wallDamage;
-        queueWallHits(wallDamage, grid, wallHitBuffer([railHit(worldIdxAtCell(state.obstacleGrid, 5, 5), 0, { normalX: 0, normalY: 1 })]), 560, { mass: 1 });
+        stampWallHitSource(0, 0, 0, 1);
+        queueWallHits(wallDamage, grid, wallHitBuffer([railHit(worldIdxAtCell(state.obstacleGrid, 5, 5), 0, { normalX: 0, normalY: 1 })]), 560, 0);
         wallDamage.spatialFrame = wallDebrisTestFrame();
         await applyPendingWallDamage(state);
         assert.ok(!isRailWallEdge(grid.getCellEdge(worldIdxAtCell(state.obstacleGrid,5, 5), 0)));
@@ -181,7 +188,8 @@ describe("kinetic wall damage", () => {
         stampVoxel(grid, 3, 3);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
         state.gridWallDamage = wallDamage;
-        queueWallHits(wallDamage, grid, wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3))]), 560, { mass: 1 });
+        stampWallHitSource(0, 0, 0, 1);
+        queueWallHits(wallDamage, grid, wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3))]), 560, 0);
         assert.throws(() => applyPendingWallDamage(state));
         terminateWorkerNavigation(state.nav);
     });
@@ -191,8 +199,7 @@ describe("kinetic wall damage", () => {
         stampVoxel(state.obstacleGrid, 3, 3, 2); // height level 2
         state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
         
-        const entity = { id: 101, type: "box", vx: 560, vy: 0, mass: 1, _physId: 0 };
-        kineticStaticSlab.mass[0] = 1;
+        stampWallHitSource(0, 560, 0, 1);
         const wallResolver = {
             hits: wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3), {
                     contactX: 3 * 16 + 8,
@@ -203,7 +210,7 @@ describe("kinetic wall damage", () => {
             },
         };
         
-        resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
+        resolveKineticWallDamage(state, 0, wallDebrisTestFrame(), wallResolver);
         
         const pending = state.gridWallDamage.pending;
         const row = pendingBreakRowForKey(packWallDamageKey(0, worldIdxAtCell(state.obstacleGrid, 3, 3), 0));
@@ -240,7 +247,8 @@ describe("kinetic wall damage", () => {
         assert.ok(state.worldSurfaces.surfaceCache.get(seeded.maskKey));
         assert.ok(state.worldSurfaces.surfaceCache.get(seeded.drawKey));
         const revisionBefore = state.obstacleGrid.wallGridRevision;
-        resolveKineticWallDamage(state, { id: 101, type: "box", vx: 560, vy: 0, mass: 1 }, wallDebrisTestFrame(), {
+        stampWallHitSource(0, 560, 0, 1);
+        resolveKineticWallDamage(state, 0, wallDebrisTestFrame(), {
             hits: wallHitBuffer([voxelHit(clearedIdx, { contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 })]),
             resolve() {
                 return true;
@@ -267,7 +275,8 @@ describe("kinetic wall damage", () => {
         state.kinetic = createKineticSession();
         stampVoxel(state.obstacleGrid, 3, 3, 2);
         state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
-        resolveKineticWallDamage(state, { id: 101, type: "ball", vx: 560, vy: 0, mass: 1 }, wallDebrisTestFrame(), {
+        stampWallHitSource(0, 560, 0, 1);
+        resolveKineticWallDamage(state, 0, wallDebrisTestFrame(), {
             hits: wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3), { contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 })]),
             resolve() {
                 return true;
@@ -285,7 +294,7 @@ describe("kinetic wall damage", () => {
         runKineticPhysics(
             { frame, world: { obstacleGrid: state.obstacleGrid, worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
             100,
-            kineticIntegrateHooks((prop, subDt) => prop.tickPropSubstep(subDt))
+            kineticPhysicsHooks()
         );
         assert.ok(Math.hypot(shard.x - x0, shard.y - y0) > 1);
         terminateWorkerNavigation(state.nav);
@@ -296,7 +305,7 @@ describe("kinetic wall damage", () => {
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 4, 4), 1, 2, 4));
         state.obstacleGrid.setEdgeSurfaceProfile(worldIdxAtCell(state.obstacleGrid,4, 4), 1, "edge-profile");
         
-        const entity = { id: 102, type: "ball", vx: 0, vy: -560, mass: 1 };
+        stampWallHitSource(0, 0, -560, 1);
         const wallResolver = {
             hits: wallHitBuffer([railHit(worldIdxAtCell(state.obstacleGrid, 4, 4), 1, {
                     approachDot: -560,
@@ -310,7 +319,7 @@ describe("kinetic wall damage", () => {
             },
         };
         
-        resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
+        resolveKineticWallDamage(state, 0, wallDebrisTestFrame(), wallResolver);
         
         const pending = state.gridWallDamage.pending;
         const row = pendingBreakRowForKey(packWallDamageKey(1, worldIdxAtCell(state.obstacleGrid, 4, 4), 1, state.obstacleGrid));
@@ -336,7 +345,7 @@ describe("kinetic wall damage", () => {
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 4, 4), 1, 1, 4));
         state.obstacleGrid.setEdgeSurfaceProfile(worldIdxAtCell(state.obstacleGrid,4, 4), 1, "edge-profile");
         
-        const entity = { id: 102, type: "cross_pinwheel", vx: 0, vy: -5000, mass: 100 };
+        stampWallHitSource(0, 0, -5000, 100);
         const wallResolver = {
             hits: wallHitBuffer([railHit(worldIdxAtCell(state.obstacleGrid, 4, 4), 1, {
                     approachDot: -5000,
@@ -350,7 +359,7 @@ describe("kinetic wall damage", () => {
             },
         };
         
-        resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
+        resolveKineticWallDamage(state, 0, wallDebrisTestFrame(), wallResolver);
         applyPendingWallDamage(state);
         
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
@@ -391,7 +400,7 @@ describe("kinetic wall damage", () => {
             getWallCandidates: () => candidates,
         });
         
-        resolveKineticWallDamage(state, ballProp, spatialFrame, resolver);
+        resolveKineticWallDamage(state, ballProp._physId, spatialFrame, resolver);
         assert.ok(pendingBreakRowForKey(packWallDamageKey(1, worldIdxAtCell(state.obstacleGrid, 4, 4), 1, state.obstacleGrid)) >= 0);
         
         applyPendingWallDamage(state);
@@ -420,7 +429,7 @@ describe("kinetic wall damage", () => {
         assert.ok(candidates.used > 0);
         const startX = ball.x;
         const spatialFrame = wallDebrisTestFrame({ frameId: 7, getWallCandidates: () => candidates });
-        resolveKineticWallDamage(state, ball, spatialFrame, new WallCollisionResolver());
+        resolveKineticWallDamage(state, ball._physId, spatialFrame, new WallCollisionResolver());
         applyPendingWallDamage(state);
         assert.ok(Math.abs(ball.x - startX) < 1, `expected bounded displacement, got ${ball.x - startX}`);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,6, 6)));

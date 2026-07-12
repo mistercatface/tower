@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, kineticDynamicSlab } from "../../Core/engineMemory.js";
-import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, getWallChunkSpriteCacheKey, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
@@ -12,7 +12,6 @@ import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
 /** Crate-sized facing baseline (16 steps); larger footprints scale up in resolvePropQuantizeSteps. Optional overrides: strategy.quantizeSteps, gameDefinition.propQuantizeSteps. */
 export const LIBRARY_PROP_QUANTIZE_STEPS = { facing: 16, view: 30 };
@@ -511,15 +510,18 @@ export class WorldProp {
     }
     tickPropSubstep(dt) {
         if (this.isSleeping) return;
-        if (this.strategy.rolls) integratePropMotion(this, dt);
-        else applyVelocityDamping(this, dt, primitiveDragFriction(this));
-        if (this.strategy.orientToMotion) {
-            const speed = Math.hypot(this.vx, this.vy);
+        const eid = this._physId;
+        if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) integratePropMotion(eid, dt);
+        else applyVelocityDamping(eid, dt, primitiveDragFriction(this));
+        if ((entityFlags[eid] & ENTITY_FLAG_ORIENT_TO_MOTION) !== 0) {
+            const vx = entityVx[eid];
+            const vy = entityVy[eid];
+            const speed = Math.hypot(vx, vy);
             if (speed > 0.1) {
-                const moveAngle = Math.atan2(this.vy, this.vx);
+                const moveAngle = Math.atan2(vy, vx);
                 const turnRadPerSec = Math.PI * 1.5;
                 const maxStep = turnRadPerSec * (dt / 1000);
-                this.facing = rotateAngleTowards(readEntityFacing(this), moveAngle, maxStep);
+                entityFacing[eid] = rotateAngleTowards(entityFacing[eid], moveAngle, maxStep);
             }
         }
     }

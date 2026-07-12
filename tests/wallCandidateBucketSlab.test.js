@@ -13,7 +13,8 @@ import {
 } from "../Libraries/Spatial/spatial.js";
 import { staticWallSegmentSlab, resetStaticWallSegmentSlab, MAX_STATIC_WALL_SEGMENTS } from "../Core/engineMemory.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 
 function stampBlockedCell(grid, col, row) {
     grid.grid[worldIdxAtCell(grid, col, row)] = 1;
@@ -95,8 +96,10 @@ describe("wall candidate bucket slab", () => {
         const frame = new SpatialFrameCore(16);
         frame.resetFrame(grid);
         const entity = mockKineticCircle(grid.gridCenterXByIdx(4 + 4 * grid.cols), grid.gridCenterYByIdx(4 + 4 * grid.cols), 4);
-        const a = frame.getWallCandidates(entity);
-        const b = frame.getWallCandidates(entity);
+        assignPhysIdWithPose(entity, 0);
+        snapshotKineticBodySlab([entity._physId], 1);
+        const a = frame.getWallCandidates(entity._physId);
+        const b = frame.getWallCandidates(entity._physId);
         assert.equal(a, b);
         assert.ok(a.used > 0);
     });
@@ -107,9 +110,11 @@ describe("wall candidate bucket slab", () => {
         const frame = new SpatialFrameCore(16);
         frame.resetFrame(grid);
         const entity = mockKineticCircle(grid.gridCenterXByIdx(4 + 4 * grid.cols), grid.gridCenterYByIdx(4 + 4 * grid.cols), 4);
-        const frameOne = frame.getWallCandidates(entity);
+        assignPhysIdWithPose(entity, 0);
+        snapshotKineticBodySlab([entity._physId], 1);
+        const frameOne = frame.getWallCandidates(entity._physId);
         frame.resetFrame(grid);
-        const frameTwo = frame.getWallCandidates(entity);
+        const frameTwo = frame.getWallCandidates(entity._physId);
         assert.equal(frameOne, frameTwo);
         assert.ok(frameTwo.used > 0);
     });

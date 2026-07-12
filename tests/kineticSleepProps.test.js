@@ -40,7 +40,7 @@ describe("kinetic sleep on proof props", () => {
     it("isolated crate sleeps after consecutive still frames", () => {
         const crate = new WorldProp(0, 0, "box", 0);
         assignPhysIdWithPose(crate, 0);
-        assert.ok(evaluateKineticSleepEligible(crate, EMPTY_NEIGHBOR_EIDS, 0));
+        assert.ok(evaluateKineticSleepEligible(crate._physId, EMPTY_NEIGHBOR_EIDS, 0));
         for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(crate._physId, true);
         assert.equal(crate.isSleeping, true);
     });
@@ -51,11 +51,11 @@ describe("kinetic sleep on proof props", () => {
         bindPair(bottom, top);
         const bottomN = neighborEids(top);
         const topN = neighborEids(bottom);
-        assert.ok(evaluateKineticSleepEligible(bottom, bottomN));
-        assert.ok(evaluateKineticSleepEligible(top, topN));
+        assert.ok(evaluateKineticSleepEligible(bottom._physId, bottomN));
+        assert.ok(evaluateKineticSleepEligible(top._physId, topN));
         for (let i = 0; i < SLEEP_FRAMES; i++) {
-            advanceKineticSleep(bottom._physId, evaluateKineticSleepEligible(bottom, bottomN));
-            advanceKineticSleep(top._physId, evaluateKineticSleepEligible(top, topN));
+            advanceKineticSleep(bottom._physId, evaluateKineticSleepEligible(bottom._physId, bottomN));
+            advanceKineticSleep(top._physId, evaluateKineticSleepEligible(top._physId, topN));
         }
         assert.equal(bottom.isSleeping, true);
         assert.equal(top.isSleeping, true);
@@ -68,8 +68,8 @@ describe("kinetic sleep on proof props", () => {
         mover.vx = 5;
         snapshotKineticBodySlab([rest._physId, mover._physId], 2);
         const n = neighborEids(mover);
-        assert.ok(hasSleepBlockingNeighbor(rest, n));
-        assert.ok(!evaluateKineticSleepEligible(rest, n));
+        assert.ok(hasSleepBlockingNeighbor(rest._physId, n));
+        assert.ok(!evaluateKineticSleepEligible(rest._physId, n));
     });
     it("sleeping overlapping neighbor does not block sleep", () => {
         const bottom = new WorldProp(0, 0, "box", 0);
@@ -79,8 +79,8 @@ describe("kinetic sleep on proof props", () => {
         for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(top._physId, true);
         top.isSleeping = true;
         const n = neighborEids(top);
-        assert.ok(!hasSleepBlockingNeighbor(bottom, n));
-        assert.ok(evaluateKineticSleepEligible(bottom, n));
+        assert.ok(!hasSleepBlockingNeighbor(bottom._physId, n));
+        assert.ok(evaluateKineticSleepEligible(bottom._physId, n));
     });
     it("slow spin keeps tri wedge eligible for wall collision", () => {
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);

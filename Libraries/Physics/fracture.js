@@ -398,7 +398,7 @@ class KineticDebrisBody {
     }
     tickPropSubstep(dt) {
         if (this.isSleeping) return;
-        applyVelocityDamping(this, dt, primitiveDragFriction(this.strategy));
+        applyVelocityDamping(this._physId, dt, primitiveDragFriction(this.strategy));
     }
 }
 class KineticDebrisStore {
@@ -714,18 +714,18 @@ export function createGridWallDamage(state, config) {
     clearPendingWallBreaks(pendingWallBreaks);
     return { config, pending: pendingWallBreaks, commit: createDeferredGridWallCommit(state), spatialFrame: null, lastCommitBounds: null, lastSpawned: [], lastSpawnedCount: 0 };
 }
-export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
+export function resolveKineticWallDamage(state, eid, spatialFrame, wallResolver) {
     const wallDamage = state.gridWallDamage;
-    const preSpeed = Math.hypot(entity.vx, entity.vy);
+    const preSpeed = Math.hypot(entityVx[eid], entityVy[eid]);
     const shouldBreakWallHit = preSpeed > 0 ? (approachDot) => computeWallBreakStrength(preSpeed, approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
-    const collided = wallResolver.resolve(entity, spatialFrame, shouldBreakWallHit);
+    const collided = wallResolver.resolve(eid, spatialFrame, shouldBreakWallHit);
     const hits = wallResolver.hits;
     if (!hits.count) return collided;
     wallDamage.spatialFrame = spatialFrame;
-    queueWallHits(wallDamage, state.obstacleGrid, hits, preSpeed, entity);
+    queueWallHits(wallDamage, state.obstacleGrid, hits, preSpeed, eid);
     return collided;
 }
-export function queueWallHits(wallDamage, grid, hits, preSpeed, entity) {
+export function queueWallHits(wallDamage, grid, hits, preSpeed, eid) {
     const config = wallDamage.config;
     const pending = wallDamage.pending;
     for (let i = 0; i < hits.count; i++) {
@@ -751,7 +751,7 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity) {
         pending.normalX[row] = hits.normalX[i];
         pending.normalY[row] = hits.normalY[i];
         pending.sourceSpeed[row] = preSpeed;
-        pending.sourceMass[row] = kineticStaticSlab.mass[entity._physId];
+        pending.sourceMass[row] = kineticStaticSlab.mass[eid];
     }
 }
 export function applyPendingWallDamage(state) {

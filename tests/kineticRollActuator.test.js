@@ -76,7 +76,7 @@ describe("kineticRollActuator", () => {
         steerRollToward(eid, 1, 0, { accel: 600, maxSpeed: 180 });
         applyGroundRollDrive(eid, 1 / 60);
         const vxAfterDrive = prop.vx;
-        integratePropMotion(prop, 1000 / 60);
+        integratePropMotion(prop._physId, 1000 / 60);
         assert.ok(prop.x > 0);
         assert.ok(prop.vx < vxAfterDrive);
     });
