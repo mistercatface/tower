@@ -4,14 +4,14 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
-    const force = FractureEngine.impactForceFromContact(relativeSpeed, kineticMass(bodyA), kineticMass(bodyB));
+    const force = FractureEngine.impactForceFromContact(relativeSpeed, kineticStaticSlab.mass[bodyA._physId], kineticStaticSlab.mass[bodyB._physId]);
     tick.world.fractureEngine.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force);
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
 import { FRACTURE_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
 import { transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y } from "../Core/engineMemory.js";
-import { satCheckCollision, readEntityFacing, kineticMass } from "../Libraries/Physics/physics.js";
+import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, kineticStaticSlab } from "../Core/engineMemory.js";
+import { satCheckCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";

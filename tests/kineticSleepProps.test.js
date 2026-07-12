@@ -7,7 +7,8 @@ import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Physics/physics.js";
 import { isRotatingEntity, pairBroadphaseOverlapSlab, shouldResolveKineticPair, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { entityRefs } from "../Core/engineMemory.js";
-import { assignPhysIdWithPose, kineticMass } from "./harness/kineticTickHarness.js";
+import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleep.frames;
 const EMPTY_NEIGHBOR_EIDS = new Int32Array(0);
 function bindPair(a, b) {
@@ -31,7 +32,7 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
         const ny = SAT_RESULT[2];
         const coincident = SAT_RESULT[5] !== 0;
         if (coincident) return;
-        separateAlongNormal(a, b, nx, ny, overlap, kineticMass(a), kineticMass(b));
+        separateAlongNormal(a, b, nx, ny, overlap, kineticMassFromFootprint(a), kineticMassFromFootprint(b));
     }
 }
 describe("kinetic sleep on proof props", () => {

@@ -1,9 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { CircleShape, PolygonShape, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, kineticMass, stampPrimitivePhysics } from "../Libraries/Physics/physics.js";
+import { CircleShape, PolygonShape, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, stampPrimitivePhysics, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, primitivePhysics } from "../Core/engineMemory.js";
+import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, primitivePhysics, kineticStaticSlab } from "../Core/engineMemory.js";
+import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
         const smallVerts = new Float32Array([
@@ -80,13 +81,15 @@ describe("bodyMass", () => {
         assert.equal(triangleArea, 135);
         assert.ok(triangleArea < aabbArea);
         assert.equal(kineticFootprintArea(prop), triangleArea);
-        const mass = kineticMass(prop);
-        assert.ok(Math.abs(mass - kineticMassFromFootprint(prop)) < 1e-6);
+        const mass = kineticMassFromFootprint(prop);
         assert.ok(Math.abs(kineticInertiaFromBody(prop) - mass * (polygonSecondMomentAboutCentroid2D(prop.shape.vertices) / triangleArea)) < 1e-6);
     });
     it("ball default density matches canonical asset", () => {
         const prop = new WorldProp(0, 0, "ball", 0);
-        assert.ok(Math.abs(kineticDensity(prop) - 0.007958) < 1e-6);
-        assert.ok(kineticMass(prop) > 0);
+        assert.ok(Math.abs(primitivePhysics.density[prop.strategy.physicsRow] - 0.007958) < 1e-6);
+        assert.ok(kineticMassFromFootprint(prop) > 0);
+        assignPhysIdWithPose(prop, 0);
+        normalizeKineticBody(prop);
+        assert.ok(kineticStaticSlab.mass[prop._physId] > 0);
     });
 });

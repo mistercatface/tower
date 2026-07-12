@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMass, gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
+import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint, gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, kineticStaticSlab, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
@@ -19,7 +19,7 @@ describe("cross pinwheel prop", () => {
         assert.ok(pinwheel.drawOutline instanceof Float32Array);
         assert.equal(pinwheel.drawOutline.length, 24);
         assert.equal(kineticFootprintArea(pinwheel), Math.abs(polygonSignedArea2D(pinwheel.strategy.localFootprint)));
-        assert.ok(kineticMass(pinwheel) > 0);
+        assert.ok(kineticMassFromFootprint(pinwheel) > 0);
         assert.ok(kineticInertiaFromBody(pinwheel) > 0);
         assignPhysIdWithPose(pinwheel, 0);
         normalizeKineticBody(pinwheel);

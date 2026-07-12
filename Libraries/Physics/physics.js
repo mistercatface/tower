@@ -255,10 +255,6 @@ export function kineticFootprintArea(body) {
     if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return Math.PI * shape.radius * shape.radius;
     throw new Error(`kineticFootprintArea: unknown shapeTypeId ${shape?.shapeTypeId}`);
 }
-export function kineticDensity(body) {
-    const row = body.strategy.physicsRow;
-    return primitivePhysics.density[row];
-}
 export function primitivePhysicsRow(assetOrStrategy) {
     if (assetOrStrategy?.primitive === PROP_PRIMITIVE_SPHERE) return PRIMITIVE_PHYSICS_ROW_CIRCLE;
     if (assetOrStrategy?.rolls === true) return PRIMITIVE_PHYSICS_ROW_CIRCLE;
@@ -273,27 +269,12 @@ export function primitiveDragFriction(strategy) {
 }
 export function kineticMassFromFootprint(body) {
     const minMass = collisionSettings.material.minMass;
-    return Math.max(minMass, kineticDensity(body) * kineticFootprintArea(body));
-}
-export function kineticMass(body) {
-    const physId = body._physId;
-    if (physId !== undefined && physId !== -1) {
-        const m = kineticStaticSlab.mass[physId];
-        if (m > 0) return m;
-    }
-    return kineticMassFromFootprint(body);
-}
-export function stampKineticMass(body, mass) {
-    const physId = body._physId;
-    if (physId === undefined || physId === -1) throw new Error("stampKineticMass requires _physId");
-    kineticStaticSlab.mass[physId] = mass;
-    kineticStaticSlab.invMass[physId] = mass > 0 ? 1 / mass : 0;
-}
-export function stampKineticMassFromFootprint(body) {
-    stampKineticMass(body, kineticMassFromFootprint(body));
+    const density = primitivePhysics.density[body.strategy.physicsRow];
+    return Math.max(minMass, density * kineticFootprintArea(body));
 }
 export function kineticInertiaFromBody(body) {
-    const m = kineticMass(body);
+    const physId = body._physId;
+    const m = physId !== undefined && physId !== -1 ? kineticStaticSlab.mass[physId] : kineticMassFromFootprint(body);
     const parts = collisionPartsList(body);
     if (parts) return m * compoundInertiaFactor(parts);
     const shape = body.shape;
