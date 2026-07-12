@@ -7,7 +7,7 @@ import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, min
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
-import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
+import { stampRailEdgeSegment, rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
 import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, bindEntitySlot, clearWorldPropSpawnPose, ENTITY_FLAG_KINETIC } from "../Entity/entitySlots.js";
@@ -2065,9 +2065,9 @@ export function hitTestRailWallEdgeAtWorld(grid, worldX, worldY, hitWorld = grid
     if (bestSide < 0) return null;
     return { idx, side: bestSide };
 }
-export function appendGridEdgeOverlayCommand(out, grid, edge, { stroke, lineWidth = 3, dash = null }) {
-    cellEdgeEndpointsIdx(grid, edge.idx, edge.side, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
-    out.push(overlaySegment(ENGINE_F32[S_EDGE_P1X], ENGINE_F32[S_EDGE_P1Y], ENGINE_F32[S_EDGE_P2X], ENGINE_F32[S_EDGE_P2Y], { stroke, lineWidth, dash: dash ?? undefined }));
+export function appendGridEdgeOverlayCommand(slab, grid, idx, side) {
+    cellEdgeEndpointsIdx(grid, idx, side, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
+    stampRailEdgeSegment(slab, ENGINE_F32[S_EDGE_P1X], ENGINE_F32[S_EDGE_P1Y], ENGINE_F32[S_EDGE_P2X], ENGINE_F32[S_EDGE_P2Y]);
 }
 export function ensureObstacleGridAtWorld(grid, worldX, worldY) {
     centeredAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, worldX, worldY, grid.cellSize, grid.cellSize);

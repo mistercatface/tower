@@ -265,8 +265,7 @@ export function setEditorNavMode(state, mode) {
             const oldBehavior = behaviorById?.get(currentBehaviorId);
             const nextBehavior = behaviorById?.get(nextBehaviorId);
             if (oldBehavior && nextBehavior) {
-                const overlay = oldBehavior.getPathOverlay(boid);
-                const targetWorld = overlay?.targetX != null ? { x: overlay.targetX, y: overlay.targetY } : null;
+                const targetWorld = oldBehavior.getMoveTargetWorld?.(boid) ?? null;
                 if (oldBehavior.clearMoveTarget) oldBehavior.clearMoveTarget(boid);
                 entityMeta.setActiveBehaviorId(boid.id, nextBehaviorId);
                 if (targetWorld) nextBehavior.setMoveTarget(boid, targetWorld);

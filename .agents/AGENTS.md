@@ -107,6 +107,7 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - Grid stamps: `GRID_STAMP_RENDER_KEY_*` bare ints; filmstrip strip keys packed/role ints; bake calls `draw(ctx, hx, hy, facing, ageMs)` — no stamp stage prop proxy; blit via SoA slab + scalar frame/alpha/scale.
 - Spatial wall-candidate lookup: typed I32 columns (no `sWallBucketLookup` bag); `setBoundary(grid, idx, side, cap, thickness)`.
 - Aim/ray: `castSteppedCircleRay` writes F32/I32 outs + bare hit enum — no `{ hit, x, y, dist }` / string hit kinds.
+- Overlay commands: write-into `overlayCommandSlab` poly arena (`beginOverlayPoly` / `writeOverlayPolyXY` / `stampOverlay*` + `OVERLAY_STYLE_*`); `behavior.appendPathOverlay(slab, prop, visual)` — no PathOverlayData / `getPathOverlay` / scratch→copy, no per-call stroke/fill/dash scalar lists on public stamps.
 
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:
 `npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.

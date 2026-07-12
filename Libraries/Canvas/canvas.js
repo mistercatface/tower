@@ -127,11 +127,18 @@ export function traceSegment(ctx, x0, y0, x1, y1) {
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
 }
-/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
-export function traceOpenPolyline(ctx, points) {
-    if (points.length < 2) return;
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+export function traceOpenPolylineF32(ctx, buf, o, count) {
+    if (count < 2) return;
+    ctx.moveTo(buf[o], buf[o + 1]);
+    for (let i = 1; i < count; i++) {
+        const p = o + i * 2;
+        ctx.lineTo(buf[p], buf[p + 1]);
+    }
+}
+export function strokeOpenPolylineF32(ctx, buf, o, count) {
+    ctx.beginPath();
+    traceOpenPolylineF32(ctx, buf, o, count);
+    ctx.stroke();
 }
 export function traceClosedFlatPolygon(ctx, flatVerts, count) {
     if (count < 3) return;
@@ -183,12 +190,6 @@ export function fillStrokeCircle(ctx, cx, cy, radius) {
 export function strokeSegment(ctx, x0, y0, x1, y1) {
     ctx.beginPath();
     traceSegment(ctx, x0, y0, x1, y1);
-    ctx.stroke();
-}
-/** @param {CanvasRenderingContext2D} ctx @param {{ x: number, y: number }[]} points */
-export function strokeOpenPolyline(ctx, points) {
-    ctx.beginPath();
-    traceOpenPolyline(ctx, points);
     ctx.stroke();
 }
 /**

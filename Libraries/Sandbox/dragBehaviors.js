@@ -4,10 +4,8 @@ import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
-import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
+import { stampOverlayAimSegment, stampOverlayCircleFillStrokeColor, stampOverlayCircleStrokeColor, stampOverlaySegmentStroke } from "../Render/render.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineEnums.js";
-/** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
-/** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
@@ -16,18 +14,24 @@ const REFERENCE_GRAB_INERTIA = (() => {
     const body = { shape: new CircleShape(4), radius: 4, strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE) };
     return kineticInertiaFromBody(body);
 })();
+const dragConfigScratch = { minDrag: 10, maxPull: 90, pullScale: 1.25, minPower: 12, maxPower: 200 };
 function hueFromPullRatio(ratio) {
     return 180 - ratio * 180;
 }
 export function resolveDragLaunchConfigFromSize(radius) {
     const R = Math.max(2, radius);
     const maxPower = Math.min(700, Math.max(200, 70 * R + 220));
-    return { minDrag: 10, maxPull: Math.min(200, Math.max(90, 90 + 5 * R)), pullScale: 1.25, minPower: Math.max(12, maxPower * 0.08), maxPower };
+    dragConfigScratch.minDrag = 10;
+    dragConfigScratch.maxPull = Math.min(200, Math.max(90, 90 + 5 * R));
+    dragConfigScratch.pullScale = 1.25;
+    dragConfigScratch.minPower = Math.max(12, maxPower * 0.08);
+    dragConfigScratch.maxPower = maxPower;
+    return dragConfigScratch;
 }
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
-    return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
+    return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null, drag: 0, pullBack: 0, previewPullX: startX, previewPullY: startY, power: 0 };
 }
-function resolveDragAimPhysics(aim, config) {
+function resolveDragAimPhysicsInto(aim, config) {
     const startX = aim.startX ?? aim.anchorX;
     const startY = aim.startY ?? aim.anchorY;
     const dx = aim.pullX - startX;
@@ -37,13 +41,16 @@ function resolveDragAimPhysics(aim, config) {
     const ny = ENGINE_F32[M_OUT_NY];
     const drag = ENGINE_F32[M_OUT_LEN];
     if (drag < 0.5) {
-        if (aim.shotNx == null || aim.shotNy == null) return null;
-        return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag: 0, pullBack: 0 };
+        if (aim.shotNx == null || aim.shotNy == null) return false;
+        aim.drag = 0;
+        aim.pullBack = 0;
+        return true;
     }
     aim.shotNx = -nx;
     aim.shotNy = -ny;
-    const pullBack = Math.min(config.maxPull, drag * config.pullScale);
-    return { shotNx: aim.shotNx, shotNy: aim.shotNy, drag, pullBack };
+    aim.drag = drag;
+    aim.pullBack = Math.min(config.maxPull, drag * config.pullScale);
+    return true;
 }
 export function resolveDragLaunchPullRatio(drag, config) {
     if (drag < config.minDrag) return 0;
@@ -61,26 +68,27 @@ export function computeLaunchPower(drag, config) {
     return minPower + curved * (maxPower - minPower);
 }
 export function updateDragLaunchAim(aim, pullX, pullY, config) {
-    if (!aim?.active) return null;
+    if (!aim?.active) return false;
     aim.pullX = pullX;
     aim.pullY = pullY;
-    return resolveDragAimPhysics(aim, config);
+    return resolveDragAimPhysicsInto(aim, config);
 }
-export function getDragLaunchPreview(aim, config) {
-    if (!aim?.active) return null;
-    const physics = resolveDragAimPhysics(aim, config);
-    if (!physics || aim.shotNx == null || aim.shotNy == null) return null;
+export function writeDragLaunchPreviewInto(aim, config) {
+    if (!aim?.active) return false;
+    if (!resolveDragAimPhysicsInto(aim, config) || aim.shotNx == null || aim.shotNy == null) return false;
     const startX = aim.startX ?? aim.anchorX;
     const startY = aim.startY ?? aim.anchorY;
     const dx = aim.pullX - startX;
     const dy = aim.pullY - startY;
-    return { anchorX: aim.anchorX, anchorY: aim.anchorY, pullX: aim.anchorX + dx, pullY: aim.anchorY + dy, nx: physics.shotNx, ny: physics.shotNy, power: computeLaunchPower(physics.drag, config), drag: physics.drag };
+    aim.previewPullX = aim.anchorX + dx;
+    aim.previewPullY = aim.anchorY + dy;
+    aim.power = computeLaunchPower(aim.drag, config);
+    return true;
 }
 export function releaseDragLaunch(aim, config) {
     if (!aim?.active) return null;
-    const physics = resolveDragAimPhysics(aim, config);
-    if (!physics || physics.drag < config.minDrag || aim.shotNx == null || aim.shotNy == null) return null;
-    const power = computeLaunchPower(physics.drag, config);
+    if (!resolveDragAimPhysicsInto(aim, config) || aim.drag < config.minDrag || aim.shotNx == null || aim.shotNy == null) return null;
+    const power = computeLaunchPower(aim.drag, config);
     if (power <= 0) return null;
     return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power };
 }
@@ -94,10 +102,10 @@ export function buildDragLaunchAimLineContext(prop, state) {
     const maxRayDist = dragLaunchMaxRayDist(grid);
     return { prop, radius: prop.radius, maxRayDist, obstacleGrid: grid };
 }
-export function getDragLaunchAimLine(preview, aimLineContext) {
-    if (!preview || preview.power <= 0 || !aimLineContext) return false;
-    const travelDist = estimateRollingTravelDistance(preview.power, aimLineContext.prop?.strategy ?? {});
-    return computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, preview.anchorX, preview.anchorY, aimLineContext.radius, preview.nx, preview.ny, travelDist, aimLineContext.maxRayDist, aimLineContext.obstacleGrid);
+export function getDragLaunchAimLine(aim, aimLineContext) {
+    if (!aim || aim.power <= 0 || !aimLineContext) return false;
+    const travelDist = estimateRollingTravelDistance(aim.power, aimLineContext.prop?.strategy ?? {});
+    return computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, aim.anchorX, aim.anchorY, aimLineContext.radius, aim.shotNx, aim.shotNy, travelDist, aimLineContext.maxRayDist, aimLineContext.obstacleGrid);
 }
 export function applyDragLaunchVelocity(body, nx, ny, power) {
     body.vx = nx * power;
@@ -139,9 +147,9 @@ export function createDragLaunchInteraction(spec) {
             if (!shot) return;
             applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
         },
-        appendOverlayCommands(commands, prop) {
+        appendOverlayCommands(slab, prop) {
             if (!aim?.active) return;
-            appendDragLaunchOverlayCommands(commands, aim, resolveDragLaunchConfigFromSize(prop.radius), buildCtx(prop), resolveLine);
+            appendDragLaunchOverlayCommands(slab, aim, prop, buildCtx(prop), resolveLine);
         },
         reset() {
             aim = null;
@@ -322,7 +330,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
                 tickPull(prop, run, dtMs);
             }
         },
-        appendOverlayCommands(commands, prop) {
+        appendOverlayCommands(slab, prop) {
             const run = propRuns.get(prop.id);
             if (!run?.dragging) return;
             const grabConfig = resolveDragLaunchConfigFromSize(prop.radius);
@@ -334,9 +342,9 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             const dist = Math.hypot(tx - ax, ty - ay);
             const ratio = resolveDragLaunchPullRatio(dist, grabConfig);
             const hue = hueFromPullRatio(ratio);
-            commands.push(overlaySegment(ax, ay, tx, ty, { stroke: `hsla(${hue}, 90%, 55%, 0.35)`, lineWidth: 1.5, dash: [3, 3] }));
-            commands.push(overlayCircleFillStroke(ax, ay, 3, { fill: `hsla(${hue}, 90%, 55%, 0.45)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
-            commands.push(overlayCircleFillStroke(tx, ty, 4, { fill: `hsla(${hue}, 90%, 55%, 0.35)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
+            stampOverlaySegmentStroke(slab, ax, ay, tx, ty, `hsla(${hue}, 90%, 55%, 0.35)`, 1.5, 3, 3);
+            stampOverlayCircleFillStrokeColor(slab, ax, ay, 3, `hsla(${hue}, 90%, 55%, 0.45)`, `hsla(${hue}, 90%, 55%, 0.85)`, 1.5);
+            stampOverlayCircleFillStrokeColor(slab, tx, ty, 4, `hsla(${hue}, 90%, 55%, 0.35)`, `hsla(${hue}, 90%, 55%, 0.85)`, 1.5);
         },
         reset() {
             propRuns.clear();
@@ -344,27 +352,27 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         },
     };
 }
-export function appendDragLaunchOverlayCommands(commands, aim, config, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
-    const preview = getDragLaunchPreview(aim, config);
-    if (!preview) return;
-    const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (preview.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
+export function appendDragLaunchOverlayCommands(slab, aim, prop, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
+    const config = resolveDragLaunchConfigFromSize(prop.radius);
+    if (!writeDragLaunchPreviewInto(aim, config)) return;
+    const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (aim.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
     const hue = hueFromPullRatio(ratio);
-    const startX = aim?.startX ?? preview.anchorX;
-    const startY = aim?.startY ?? preview.anchorY;
+    const startX = aim.startX ?? aim.anchorX;
+    const startY = aim.startY ?? aim.anchorY;
     const maxFingerDrag = config.maxPull / config.pullScale;
-    commands.push(overlayCircleStroke(startX, startY, maxFingerDrag, { stroke: `hsla(${hue}, 90%, 55%, 0.15)`, lineWidth: 1, dash: [4, 4] }));
-    if (aim && aim.pullX != null && aim.pullY != null) {
-        commands.push(overlaySegment(startX, startY, aim.pullX, aim.pullY, { stroke: `hsla(${hue}, 90%, 55%, 0.12)`, lineWidth: 1, dash: [3, 3] }));
-        commands.push(overlayCircleFillStroke(aim.pullX, aim.pullY, 4, { fill: `hsla(${hue}, 90%, 55%, 0.35)`, stroke: `hsla(${hue}, 90%, 55%, 0.85)`, lineWidth: 1.5 }));
+    stampOverlayCircleStrokeColor(slab, startX, startY, maxFingerDrag, `hsla(${hue}, 90%, 55%, 0.15)`, 1, 4, 4);
+    if (aim.pullX != null && aim.pullY != null) {
+        stampOverlaySegmentStroke(slab, startX, startY, aim.pullX, aim.pullY, `hsla(${hue}, 90%, 55%, 0.12)`, 1, 3, 3);
+        stampOverlayCircleFillStrokeColor(slab, aim.pullX, aim.pullY, 4, `hsla(${hue}, 90%, 55%, 0.35)`, `hsla(${hue}, 90%, 55%, 0.85)`, 1.5);
     }
-    if (Math.hypot(startX - preview.anchorX, startY - preview.anchorY) > 0.1) {
-        commands.push(overlayCircleStroke(startX, startY, 5, { stroke: `hsla(${hue}, 90%, 55%, 0.4)`, lineWidth: 1.5 }));
-        commands.push(overlayCircleFillStroke(startX, startY, 1.5, { fill: `hsla(${hue}, 90%, 55%, 0.65)`, stroke: `hsla(${hue}, 90%, 55%, 0.65)`, lineWidth: 1 }));
+    if (Math.hypot(startX - aim.anchorX, startY - aim.anchorY) > 0.1) {
+        stampOverlayCircleStrokeColor(slab, startX, startY, 5, `hsla(${hue}, 90%, 55%, 0.4)`, 1.5);
+        stampOverlayCircleFillStrokeColor(slab, startX, startY, 1.5, `hsla(${hue}, 90%, 55%, 0.65)`, `hsla(${hue}, 90%, 55%, 0.65)`, 1);
     }
-    commands.push(overlaySegment(preview.pullX, preview.pullY, preview.anchorX, preview.anchorY, { stroke: `hsla(${hue}, 90%, 55%, 0.4)`, lineWidth: 2, dash: [6, 4] }));
-    commands.push(overlayCircleStroke(preview.anchorX, preview.anchorY, 7, { stroke: `hsla(${hue}, 100%, 60%, 0.85)`, lineWidth: 2 }));
-    if (preview.power <= 0) return;
-    if (!resolveAimLine(preview, aimLineContext)) return;
+    stampOverlaySegmentStroke(slab, aim.previewPullX, aim.previewPullY, aim.anchorX, aim.anchorY, `hsla(${hue}, 90%, 55%, 0.4)`, 2, 6, 4);
+    stampOverlayCircleStrokeColor(slab, aim.anchorX, aim.anchorY, 7, `hsla(${hue}, 100%, 60%, 0.85)`, 2);
+    if (aim.power <= 0) return;
+    if (!resolveAimLine(aim, aimLineContext)) return;
     const aimO = ENGINE_BOUNDS_BASE + B_TMP;
-    commands.push(overlayAimSegment(ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3, glowHue: hue }));
+    stampOverlayAimSegment(slab, ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], `hsl(${hue}, 100%, 50%)`, hue);
 }

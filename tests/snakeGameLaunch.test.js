@@ -195,11 +195,9 @@ describe("snake game launch actions", () => {
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorFlow");
         
         const flowBehavior = state.sandbox.behaviorById.get("rollToCursorFlow");
-        const overlay = flowBehavior.getPathOverlay(boid);
-        assert.ok(overlay);
-        assert.equal(overlay.targetX, 104);
-        assert.equal(overlay.targetY, 120);
-        assert.ok(overlay.pathNodes);
-        assert.ok(overlay.pathNodes.length >= 2);
+        const target = flowBehavior.getMoveTargetWorld(boid);
+        assert.ok(target);
+        assert.equal(target.x, 104);
+        assert.equal(target.y, 120);
     });
 });

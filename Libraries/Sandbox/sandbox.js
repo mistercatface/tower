@@ -9,11 +9,11 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
-import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
-import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, appendPathOverlayCommands } from "../Render/render.js";
+import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
+import { overlayCommandSlab, clearOverlayCommands, beginOverlayPoly, writeOverlayPolyXY, stampPathDirect, stampPathPolyline, stampSelectionRing, stampFloorCellHighlight, stampVoxelCellHighlight, stampMarqueeAabb } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
@@ -1736,9 +1736,13 @@ function createGroundNavBehavior(state, config) {
                 if (!run.targetWorld) activeRunIds.splice(i, 1);
             }
         },
-        getPathOverlay(prop) {
+        appendPathOverlay(slab, prop, visual) {
             const run = propRuns.get(prop.id);
-            return config.getPathOverlay(state, prop, run);
+            config.appendPathOverlay(slab, state, prop, run, visual);
+        },
+        getMoveTargetWorld(prop) {
+            const run = propRuns.get(prop.id);
+            return run?.targetWorld ?? null;
         },
         reset() {
             config.onReset(state, propRuns);
@@ -1790,26 +1794,21 @@ const DIRECT_GROUND_NAV_CONFIG = {
         }
         steerRollToward(prop, dx / dist, dy / dist, config);
     },
-    getPathOverlay(state, prop, run) {
-        if (!run?.targetWorld || (!run.dragging && !run.moveTargetActive)) return null;
-        return {
-            mode: PATH_OVERLAY_MODE_DIRECT,
-            pathNodes: [
-                { x: prop.x, y: prop.y },
-                { x: run.targetWorld.x, y: run.targetWorld.y },
-            ],
-        };
+    appendPathOverlay(slab, state, prop, run, visual) {
+        if (!run?.targetWorld || (!run.dragging && !run.moveTargetActive)) return;
+        stampPathDirect(slab, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y, visual);
     },
     onReset(state, propRuns) {
         propRuns.clear();
     },
 };
-export function traceFlowFieldPath(startX, startY, targetX, targetY, flowFieldGrid, grid) {
+export function writeFlowFieldPathInto(slab, startX, startY, targetX, targetY, flowFieldGrid, grid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
-    if (!flowField) return [];
-    const path = [{ x: startX, y: startY }];
+    const used0 = slab.poly.used;
+    if (!flowField) return 0;
+    writeOverlayPolyXY(slab, startX, startY);
     let currentIdx = flowFieldGrid.worldToIdx(startX, startY);
-    if (currentIdx < 0) return path;
+    if (currentIdx < 0) return (slab.poly.used - used0) >> 1;
     const visited = new Set([currentIdx]);
     const maxSteps = 500;
     for (let step = 0; step < maxSteps; step++) {
@@ -1819,7 +1818,7 @@ export function traceFlowFieldPath(startX, startY, targetX, targetY, flowFieldGr
             const nextIdx = PortalLink.targetIdx(grid, currentIdx);
             if (nextIdx >= 0 && nextIdx < flowFieldGrid.cols * flowFieldGrid.rows && !visited.has(nextIdx)) {
                 visited.add(nextIdx);
-                path.push({ x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextIdx % flowFieldGrid.cols), y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(Math.floor(nextIdx / flowFieldGrid.cols)) });
+                writeOverlayPolyXY(slab, (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextIdx % flowFieldGrid.cols), (flowFieldGrid.window || flowFieldGrid).gridCenterY(Math.floor(nextIdx / flowFieldGrid.cols)));
                 currentIdx = nextIdx;
                 continue;
             }
@@ -1834,11 +1833,11 @@ export function traceFlowFieldPath(startX, startY, targetX, targetY, flowFieldGr
         const nextIdx = nextRow * flowFieldGrid.cols + nextCol;
         if (visited.has(nextIdx)) break;
         visited.add(nextIdx);
-        path.push({ x: (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextCol), y: (flowFieldGrid.window || flowFieldGrid).gridCenterY(nextRow) });
+        writeOverlayPolyXY(slab, (flowFieldGrid.window || flowFieldGrid).gridCenterX(nextCol), (flowFieldGrid.window || flowFieldGrid).gridCenterY(nextRow));
         currentIdx = nextIdx;
     }
-    path.push({ x: targetX, y: targetY });
-    return path;
+    writeOverlayPolyXY(slab, targetX, targetY);
+    return (slab.poly.used - used0) >> 1;
 }
 const FLOW_GROUND_NAV_CONFIG = {
     id: FLOW_GROUND_NAV_BEHAVIOR_ID,
@@ -1880,13 +1879,12 @@ const FLOW_GROUND_NAV_CONFIG = {
         if (!computeFlowFieldSteering(prop, steerX, steerY, flowFieldGrid)) return;
         steerRollToward(prop, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
     },
-    getPathOverlay(state, prop, run) {
-        if (!run?.targetWorld) return null;
+    appendPathOverlay(slab, state, prop, run, visual) {
+        if (!run?.targetWorld) return;
         snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
-        const steerX = ENGINE_F32[N_OUT_XY];
-        const steerY = ENGINE_F32[N_OUT_XY + 1];
-        const pathNodes = traceFlowFieldPath(prop.x, prop.y, steerX, steerY, state.flowFieldGrid, state.obstacleGrid);
-        return { mode: PATH_OVERLAY_MODE_FLOW, pathNodes, targetX: steerX, targetY: steerY };
+        const polyBase = beginOverlayPoly(slab);
+        const pathLen = writeFlowFieldPathInto(slab, prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.flowFieldGrid, state.obstacleGrid);
+        stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_FLOW, visual);
     },
     onReset(state, propRuns) {
         propRuns.clear();
@@ -1950,12 +1948,12 @@ const HPA_GROUND_NAV_CONFIG = {
         const nav = run.hpaNav.navState;
         return { hasRoute: navHasPath(nav), replanPending: run.hpaNav.isRoutePending(), stuckFrames: nav.stuckFrames, pathLen: nav.pathLen };
     },
-    getPathOverlay(state, prop, run) {
-        if (!run?.targetWorld) return null;
+    appendPathOverlay(slab, state, prop, run, visual) {
+        if (!run?.targetWorld) return;
         const nav = run.hpaNav.navState;
-        const progressIdx = nav.pathProgressIdx;
-        const trace = nav.pathLen > 0 && nav.pathSlot >= 0 ? buildSabPathOverlayFromProgress(prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, progressIdx, state.obstacleGrid) : { pathNodes: [] };
-        return { mode: PATH_OVERLAY_MODE_HPA, pathNodes: trace.pathNodes, targetX: run.targetWorld.x, targetY: run.targetWorld.y };
+        const polyBase = beginOverlayPoly(slab);
+        const pathLen = nav.pathLen > 0 && nav.pathSlot >= 0 ? writeSabPathOverlayInto(slab.poly, prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, nav.pathProgressIdx, state.obstacleGrid) : 0;
+        stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_HPA, visual);
     },
     onReset(state, propRuns) {
         propRuns.forEach((run) => run.hpaNav.reset(state));
@@ -2113,39 +2111,37 @@ export class FollowCamera {
         this._pickResolverFn = null;
     }
 }
-const PROP_SELECTION_STROKE = "rgba(255, 252, 245, 0.32)";
-const PROP_SELECTION_DASH = [4, 4];
 const SELECTION_RING_PAD = 4;
 function selectionRingRadius(prop) {
     const base = prop.radius;
     return base + SELECTION_RING_PAD;
 }
-export function appendSelectionOverlayCommands(out, { selectedProps, showRings, selectedFloorIdx = null, selectedVoxelIdx = null, selectedRailEdge = null, grid = null }) {
+export function appendSelectionOverlayCommands(slab, selectedProps, showRings, selectedFloorIdx, selectedVoxelIdx, railIdx, railSide, grid) {
     if (!showRings) return;
     for (let i = 0; i < selectedProps.length; i++) {
         const prop = selectedProps[i];
-        out.push(overlayCachedSelectionRing(prop.x, prop.y, selectionRingRadius(prop), { stroke: PROP_SELECTION_STROKE, lineWidth: 1, dash: PROP_SELECTION_DASH }));
+        stampSelectionRing(slab, prop.x, prop.y, selectionRingRadius(prop));
     }
     if (selectedFloorIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedFloorIdx);
         const y = grid.gridCenterYByIdx(selectedFloorIdx);
         const o = ENGINE_BOUNDS_BASE + B_TMP;
         centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
-        out.push(overlayGridCellHighlight(ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid, "floor", { fill: "rgba(120, 200, 255, 0.1)", stroke: "rgba(120, 200, 255, 0.75)", lineWidth: 1, dash: [4, 3] }));
+        stampFloorCellHighlight(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid.cellSize);
     }
     if (selectedVoxelIdx != null && grid) {
         const x = grid.gridCenterXByIdx(selectedVoxelIdx);
         const y = grid.gridCenterYByIdx(selectedVoxelIdx);
         const o = ENGINE_BOUNDS_BASE + B_TMP;
         centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
-        out.push(overlayGridCellHighlight(ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid, "voxel", { fill: "rgba(255, 152, 0, 0.12)", stroke: "rgba(255, 152, 0, 0.85)", lineWidth: 1, dash: [4, 3] }));
+        stampVoxelCellHighlight(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid.cellSize);
     }
-    if (selectedRailEdge && grid) appendGridEdgeOverlayCommand(out, grid, selectedRailEdge, { stroke: "rgba(255, 152, 0, 0.9)", lineWidth: 3 });
+    if (railIdx >= 0 && grid) appendGridEdgeOverlayCommand(slab, grid, railIdx, railSide);
 }
-export function appendMarqueeOverlayCommands(out, { marqueeActive }) {
+export function appendMarqueeOverlayCommands(slab, marqueeActive) {
     if (!marqueeActive) return;
     const o = ENGINE_BOUNDS_BASE + B_TMP;
-    out.push(overlayAabb(ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], { fill: "rgba(255, 252, 245, 0.05)", stroke: "rgba(255, 252, 245, 0.32)", lineWidth: 1, dash: [4, 4] }));
+    stampMarqueeAabb(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3]);
 }
 export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
@@ -2377,9 +2373,9 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
     };
     return { modifierTool, interactTool, gestureTool };
 }
-export function buildSandboxOverlayCommands({ state, session, spatialFrame, placePreviewWorld, marqueeActive, behaviorById, resolveBehavior, selectedProp }) {
-    const commands = [];
-    const viewport = state.viewport;
+export function buildSandboxOverlayCommands(state, session, spatialFrame, marqueeActive, behaviorById, resolveBehavior, selectedProp) {
+    const slab = overlayCommandSlab;
+    clearOverlayCommands(slab);
     const sel = session.getSelection();
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
@@ -2399,17 +2395,18 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
             const activeId = state.sandbox.entityMeta.getActiveBehaviorId(prop.id);
             const isGroundNav = activeId && GROUND_NAV_BEHAVIOR_IDS.has(activeId);
             const behavior = isGroundNav ? behaviorById.get(activeId) : null;
-            if (!behavior?.getPathOverlay) continue;
-            const overlay = behavior.getPathOverlay(prop);
-            appendPathOverlayCommands(commands, overlay, state.obstacleGrid, visual);
+            if (!behavior?.appendPathOverlay) continue;
+            behavior.appendPathOverlay(slab, prop, visual);
         }
     }
-    appendSelectionOverlayCommands(commands, { selectedProps: visibleSelectedProps, showRings: state.editor.showSelectionRings, selectedFloorIdx: sel?.kind === "floor" ? sel.idx : null, selectedVoxelIdx: sel?.kind === "voxel" ? sel.idx : null, selectedRailEdge: sel?.kind === "rail" ? { idx: sel.idx, side: sel.side } : null, grid: state.obstacleGrid });
-    appendMarqueeOverlayCommands(commands, { marqueeActive });
-    state.appLaunch?.session?.appendOverlayCommands?.(commands, state, sel);
+    const railIdx = sel?.kind === "rail" ? sel.idx : -1;
+    const railSide = sel?.kind === "rail" ? sel.side : -1;
+    appendSelectionOverlayCommands(slab, visibleSelectedProps, state.editor.showSelectionRings, sel?.kind === "floor" ? sel.idx : null, sel?.kind === "voxel" ? sel.idx : null, railIdx, railSide, state.obstacleGrid);
+    appendMarqueeOverlayCommands(slab, marqueeActive);
+    state.appLaunch?.session?.appendOverlayCommands?.(slab, state, sel);
     const behavior = resolveBehavior();
-    if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(commands, selectedProp);
-    return commands;
+    if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(slab, selectedProp);
+    return slab;
 }
 function appendShapeFamilyRadiusField(body, value, onChange) {
     appendNumberField(body, "Radius", { value, step: 1, min: 1, max: 32, onChange });
@@ -3062,9 +3059,8 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             resetBehaviors();
         },
         collectOverlayCommands() {
-            const showPlacePreview = placePreviewWorld && !canvasTools.capturesPointerMove() && !canvasTools.isDragging() && !canvasTools.blocksPlacePreview() && !session.isMapGenPlaceMode();
             const marqueeActive = marqueeTool.writeMarqueeAabb();
-            return buildSandboxOverlayCommands({ state, session, spatialFrame: state.spatialFrame, placePreviewWorld: showPlacePreview ? placePreviewWorld : null, marqueeActive, behaviorById, resolveBehavior, selectedProp: session.getSelectedProp() });
+            return buildSandboxOverlayCommands(state, session, state.spatialFrame, marqueeActive, behaviorById, resolveBehavior, session.getSelectedProp());
         },
         tick(dtMs) {
             session.pruneSelection();

@@ -1368,29 +1368,43 @@ export function findSabPathProgressIdx(x, y, worker, slot, pathLen, grid, navTop
     }
     return idx;
 }
-export function buildSabPathOverlayFromProgress(x, y, worker, slot, pathLen, progressIdx, grid) {
-    if (pathLen <= 0) return { pathNodes: [] };
+export function writeSabPathOverlayInto(poly, x, y, worker, slot, pathLen, progressIdx, grid) {
+    const base = poly.used;
+    if (pathLen <= 0) return 0;
     const idx = Math.max(0, Math.min(progressIdx ?? 0, pathLen - 1));
-    const pathNodes = [];
+    const writeXY = (px, py) => {
+        poly.ensure(poly.used + 2);
+        poly.buf[poly.used++] = px;
+        poly.buf[poly.used++] = py;
+    };
     for (let i = idx; i < pathLen; i++) {
         const cellIdx = worker.pathIdx(slot, i);
-        const node = { x: grid.gridCenterXByIdx(cellIdx), y: grid.gridCenterYByIdx(cellIdx) };
-        pathNodes.push(node);
+        writeXY(grid.gridCenterXByIdx(cellIdx), grid.gridCenterYByIdx(cellIdx));
     }
-    const first = pathNodes[0];
-    if (first && Math.hypot(first.x - x, first.y - y) > 1) {
-        const aIdx = grid.worldToIdx(x, y);
-        const bIdx = grid.worldToIdx(first.x, first.y);
-        if (aIdx >= 0 && bIdx >= 0) {
-            const cols = grid.cols;
-            const aCol = aIdx % cols;
-            const aRow = (aIdx / cols) | 0;
-            const bCol = bIdx % cols;
-            const bRow = (bIdx / cols) | 0;
-            if (Math.abs(aCol - bCol) <= 1 && Math.abs(aRow - bRow) <= 1) pathNodes.unshift({ x, y });
+    const pointCount = (poly.used - base) >> 1;
+    if (pointCount > 0) {
+        const firstX = poly.buf[base];
+        const firstY = poly.buf[base + 1];
+        if (Math.hypot(firstX - x, firstY - y) > 1) {
+            const aIdx = grid.worldToIdx(x, y);
+            const bIdx = grid.worldToIdx(firstX, firstY);
+            if (aIdx >= 0 && bIdx >= 0) {
+                const cols = grid.cols;
+                const aCol = aIdx % cols;
+                const aRow = (aIdx / cols) | 0;
+                const bCol = bIdx % cols;
+                const bRow = (bIdx / cols) | 0;
+                if (Math.abs(aCol - bCol) <= 1 && Math.abs(aRow - bRow) <= 1) {
+                    poly.ensure(poly.used + 2);
+                    for (let i = poly.used - 1; i >= base; i--) poly.buf[i + 2] = poly.buf[i];
+                    poly.buf[base] = x;
+                    poly.buf[base + 1] = y;
+                    poly.used += 2;
+                }
+            }
         }
     }
-    return { pathNodes };
+    return (poly.used - base) >> 1;
 }
 export function computeSabPathSteering(buf, o, pose, worker, slot, pathLen, targetX, targetY, grid, navTopology, settings, navState = null) {
     const x = pose.x;
