@@ -188,7 +188,7 @@ function collisionPartMassProperties(shape) {
         ENGINE_F32[P_OUT_MASS_INERTIA] = 0;
         return;
     }
-    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, verts);
+    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, verts, 0, verts.length);
     ENGINE_F32[P_OUT_MASS_AREA] = area;
     ENGINE_F32[P_OUT_MASS_CX] = ENGINE_F32[M_OUT_CX];
     ENGINE_F32[P_OUT_MASS_CY] = ENGINE_F32[M_OUT_CY];
@@ -1059,15 +1059,6 @@ function nearestIncidentVertexIndex(vertices, vo, floatCount, pxVal, pyVal, cos,
     }
     return bestIndex;
 }
-const sVertMetaA = { verts: null, norms: null, vo: 0, n: 0 };
-const sVertMetaB = { verts: null, norms: null, vo: 0, n: 0 };
-function bindShapeVertMeta(out, shape) {
-    out.verts = shape.vertices;
-    out.norms = shape.normals;
-    out.vo = shape._vertOffset || 0;
-    out.n = shape._floatCount != null ? shape._floatCount : shape.vertices.length;
-    return out;
-}
 function findExtremeVertexIndexAt(vertices, vo, floatCount, posX, posY, cos, sin, axisX, axisY, findMax) {
     let bestProj = findMax ? -Infinity : Infinity;
     let bestIndex = 0;
@@ -1211,7 +1202,7 @@ export function markHitCompoundParts(parts, lx, ly) {
     for (let i = 0; i < n; i++) {
         const part = parts[i];
         if (part.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
-        polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, part.vertices);
+        polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, part.vertices, 0, part.vertices.length);
         const dx = ENGINE_F32[M_OUT_CX] - lx;
         const dy = ENGINE_F32[M_OUT_CY] - ly;
         const d = dx * dx + dy * dy;
@@ -1224,21 +1215,19 @@ export function markHitCompoundParts(parts, lx, ly) {
     ENGINE_U8[best] = 1;
     return 1;
 }
-const sSatPartA = { shapeTypeId: 0, radius: 0, vertices: null, normals: null, _vertOffset: 0, _floatCount: 0 };
-const sSatPartB = { shapeTypeId: 0, radius: 0, vertices: null, normals: null, _vertOffset: 0, _floatCount: 0 };
-function bindSatPartProxy(proxy, partRow) {
-    const slab = kineticDynamicSlab;
-    proxy.shapeTypeId = slab.partShapeKind[partRow];
-    proxy.radius = slab.partRadius[partRow];
-    proxy.vertices = slab.shapeVertPool;
-    proxy.normals = slab.shapeNormPool;
-    proxy._vertOffset = slab.partVertOffset[partRow];
-    proxy._floatCount = slab.partVertFloatCount[partRow];
-}
 function satCheckPartRowsAtPose(partRowA, partRowB, xA, yA, cosA, sinA, xB, yB, cosB, sinB) {
-    bindSatPartProxy(sSatPartA, partRowA);
-    bindSatPartProxy(sSatPartB, partRowB);
-    return satCheckShapesAtPose(xA, yA, cosA, sinA, sSatPartA, xB, yB, cosB, sinB, sSatPartB);
+    const slab = kineticDynamicSlab;
+    const kindA = slab.partShapeKind[partRowA];
+    const kindB = slab.partShapeKind[partRowB];
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return circleCircleContactR(xA, yA, slab.partRadius[partRowA], xB, yB, slab.partRadius[partRowB]);
+    if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_POLYGON) return satPolygonPolygonF32(xA, yA, cosA, sinA, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[partRowA], slab.partVertFloatCount[partRowA], xB, yB, cosB, sinB, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[partRowB], slab.partVertFloatCount[partRowB]);
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_POLYGON) return satCirclePolygonF32(xA, yA, slab.partRadius[partRowA], xB, yB, cosB, sinB, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[partRowB], slab.partVertFloatCount[partRowB]);
+    if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_CIRCLE) {
+        const hit = satCirclePolygonF32(xB, yB, slab.partRadius[partRowB], xA, yA, cosA, sinA, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[partRowA], slab.partVertFloatCount[partRowA]);
+        if (hit) satSwapCirclePolyContactFeatures();
+        return hit;
+    }
+    return false;
 }
 export function checkPairCollisionAtSlabPose(physIdA, physIdB, xA, yA, xB, yB) {
     const slab = kineticDynamicSlab;
@@ -1255,10 +1244,13 @@ export function checkPairCollisionAtSlabPose(physIdA, physIdB, xA, yA, xB, yB) {
     return false;
 }
 export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
+    return circleCircleContactR(xA, yA, shapeA.radius, xB, yB, shapeB.radius);
+}
+function circleCircleContactR(xA, yA, rA, xB, yB, rB) {
     const dx = xB - xA;
     const dy = yB - yA;
     const distSq = dx * dx + dy * dy;
-    const radii = shapeA.radius + shapeB.radius;
+    const radii = rA + rB;
     if (distSq >= radii * radii) return false;
     if (distSq <= COINCIDENT_CIRCLE_EPS * COINCIDENT_CIRCLE_EPS) {
         SAT_RESULT[0] = radii;
@@ -1276,8 +1268,8 @@ export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
     const overlap = radii - dist;
     const nx = dx / dist;
     const ny = dy / dist;
-    const cx = xA + nx * (shapeA.radius - overlap / 2);
-    const cy = yA + ny * (shapeA.radius - overlap / 2);
+    const cx = xA + nx * (rA - overlap / 2);
+    const cy = yA + ny * (rA - overlap / 2);
     SAT_RESULT[0] = overlap;
     SAT_RESULT[1] = nx;
     SAT_RESULT[2] = ny;
@@ -1309,11 +1301,25 @@ function satSwapCirclePolyContactFeatures() {
 }
 function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
     if (!shapeA || !shapeB) return false;
-    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return circleCircleContact(xA, yA, shapeA, xB, yB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_POLYGON && shapeB.shapeTypeId === SHAPE_TYPE_POLYGON) return satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_POLYGON) return satCirclePolygon(xA, yA, shapeA, xB, yB, cosB, sinB, shapeB);
-    if (shapeA.shapeTypeId === SHAPE_TYPE_POLYGON && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-        const hit = satCirclePolygon(xB, yB, shapeB, xA, yA, cosA, sinA, shapeA);
+    const kindA = shapeA.shapeTypeId;
+    const kindB = shapeB.shapeTypeId;
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return circleCircleContactR(xA, yA, shapeA.radius, xB, yB, shapeB.radius);
+    if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_POLYGON) {
+        const voA = shapeA._vertOffset || 0;
+        const nA = shapeA._floatCount != null ? shapeA._floatCount : shapeA.vertices.length;
+        const voB = shapeB._vertOffset || 0;
+        const nB = shapeB._floatCount != null ? shapeB._floatCount : shapeB.vertices.length;
+        return satPolygonPolygonF32(xA, yA, cosA, sinA, shapeA.vertices, shapeA.normals, voA, nA, xB, yB, cosB, sinB, shapeB.vertices, shapeB.normals, voB, nB);
+    }
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_POLYGON) {
+        const voB = shapeB._vertOffset || 0;
+        const nB = shapeB._floatCount != null ? shapeB._floatCount : shapeB.vertices.length;
+        return satCirclePolygonF32(xA, yA, shapeA.radius, xB, yB, cosB, sinB, shapeB.vertices, shapeB.normals, voB, nB);
+    }
+    if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_CIRCLE) {
+        const voA = shapeA._vertOffset || 0;
+        const nA = shapeA._floatCount != null ? shapeA._floatCount : shapeA.vertices.length;
+        const hit = satCirclePolygonF32(xB, yB, shapeB.radius, xA, yA, cosA, sinA, shapeA.vertices, shapeA.normals, voA, nA);
         if (hit) satSwapCirclePolyContactFeatures();
         return hit;
     }
@@ -1454,25 +1460,18 @@ function satPolygonPolygonF32(xA, yA, cosA, sinA, vertsA, normsA, voA, nA, xB, y
     SAT_RESULT[8] = pointCount;
     return true;
 }
-function satPolygonPolygon(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
-    const metaA = bindShapeVertMeta(sVertMetaA, shapeA);
-    const metaB = bindShapeVertMeta(sVertMetaB, shapeB);
-    return satPolygonPolygonF32(xA, yA, cosA, sinA, metaA.verts, metaA.norms, metaA.vo, metaA.n, xB, yB, cosB, sinB, metaB.verts, metaB.norms, metaB.vo, metaB.n);
-}
-function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, cosP, sinP, polyShape) {
+function satCirclePolygonF32(cxCircle, cyCircle, radius, pxPoly, pyPoly, cosP, sinP, verts, norms, vo, n) {
     if (isNaN(cxCircle) || isNaN(cyCircle) || isNaN(pxPoly) || isNaN(pyPoly)) return false;
     let minOverlap = Infinity;
     let minNormalX = 0;
     let minNormalY = 0;
-    const meta = bindShapeVertMeta(sVertMetaA, polyShape);
-    const radius = circleShape.radius;
-    for (let i = 0; i < meta.n; i += 2) {
-        const nx = meta.norms[meta.vo + i];
-        const ny = meta.norms[meta.vo + i + 1];
+    for (let i = 0; i < n; i += 2) {
+        const nx = norms[vo + i];
+        const ny = norms[vo + i + 1];
         const rNx = nx * cosP - ny * sinP;
         const rNy = nx * sinP + ny * cosP;
         satProjectCircleR(PROJ_A, rNx, rNy, cxCircle, cyCircle, radius);
-        satProjectPolygonF32(PROJ_B, rNx, rNy, meta.verts, meta.vo, meta.n, pxPoly, pyPoly, cosP, sinP);
+        satProjectPolygonF32(PROJ_B, rNx, rNy, verts, vo, n, pxPoly, pyPoly, cosP, sinP);
         if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
         const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
         if (overlap < minOverlap) {
@@ -1481,10 +1480,10 @@ function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, cosP,
             minNormalY = rNy;
         }
     }
-    const featureB = findClosestWorldVertexIndexAt(meta.verts, meta.vo, meta.n, pxPoly, pyPoly, cosP, sinP, cxCircle, cyCircle);
+    const featureB = findClosestWorldVertexIndexAt(verts, vo, n, pxPoly, pyPoly, cosP, sinP, cxCircle, cyCircle);
     const vi = featureB * 2;
-    const closestVx = pxPoly + meta.verts[meta.vo + vi] * cosP - meta.verts[meta.vo + vi + 1] * sinP;
-    const closestVy = pyPoly + meta.verts[meta.vo + vi] * sinP + meta.verts[meta.vo + vi + 1] * cosP;
+    const closestVx = pxPoly + verts[vo + vi] * cosP - verts[vo + vi + 1] * sinP;
+    const closestVy = pyPoly + verts[vo + vi] * sinP + verts[vo + vi + 1] * cosP;
     const dx = closestVx - cxCircle;
     const dy = closestVy - cyCircle;
     if (dx !== 0 || dy !== 0) {
@@ -1492,7 +1491,7 @@ function satCirclePolygon(cxCircle, cyCircle, circleShape, pxPoly, pyPoly, cosP,
         const nX = dx / len;
         const nY = dy / len;
         satProjectCircleR(PROJ_A, nX, nY, cxCircle, cyCircle, radius);
-        satProjectPolygonF32(PROJ_B, nX, nY, meta.verts, meta.vo, meta.n, pxPoly, pyPoly, cosP, sinP);
+        satProjectPolygonF32(PROJ_B, nX, nY, verts, vo, n, pxPoly, pyPoly, cosP, sinP);
         if (PROJ_A[0] >= PROJ_B[1] || PROJ_B[0] >= PROJ_A[1]) return false;
         const overlap = Math.min(PROJ_A[1] - PROJ_B[0], PROJ_B[1] - PROJ_A[0]);
         if (overlap < minOverlap) {
@@ -1541,17 +1540,10 @@ function satProjectPolygonF32(out, axisX, axisY, verts, vo, floatCount, px, py, 
     out[0] = min;
     out[1] = max;
 }
-function satProjectPolygon(out, axisX, axisY, shape, px, py, cos, sin) {
-    const meta = bindShapeVertMeta(sVertMetaA, shape);
-    satProjectPolygonF32(out, axisX, axisY, meta.verts, meta.vo, meta.n, px, py, cos, sin);
-}
 function satProjectCircleR(out, axisX, axisY, cx, cy, radius) {
     const projection = cx * axisX + cy * axisY;
     out[0] = projection - radius;
     out[1] = projection + radius;
-}
-function satProjectCircle(out, axisX, axisY, cx, cy, shape) {
-    satProjectCircleR(out, axisX, axisY, cx, cy, shape.radius);
 }
 /**
  * Position correction along contact normals (no velocity change).
