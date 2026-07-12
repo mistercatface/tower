@@ -96,6 +96,7 @@ export const MAX_PENDING_WALL_BREAKS = 256;
 export const PENDING_BREAK_HASH_CAPACITY = MAX_PENDING_WALL_BREAKS * 2;
 export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1; // power-of-two probe mask
 export const MAX_DEFERRED_FRACTURES = 256;
+export const MAX_STATIC_WALL_SEGMENTS = 4096;
 // --- Fracture / grab scratch slots (ENGINE_F32 Frac + Phys grab band) ---
 export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
 export const F_OUT_CENTROID_Y = ENGINE_FRAC_BASE + 1;
@@ -337,6 +338,17 @@ export const sBucketStartIdx = new Int32Array(MAX_ISLAND_GROUPS);
 export const sBucketFillIdx = new Int32Array(MAX_ISLAND_GROUPS);
 export const sIslandAwake = new Int32Array(MAX_ISLAND_GROUPS);
 export const orderOrderedIdxs = new Int32Array(MAX_KINETIC_CONSTRAINTS);
+export const orderUniquePhysIds = new GrowI32(64);
+export const orderOrdered = new GrowI32(64);
+export const islandLinkWallSegSeen = new Uint8Array(MAX_STATIC_WALL_SEGMENTS);
+export let islandLinkWallSegGen = 1;
+export function clearIslandLinkWallSegSeen() {
+    islandLinkWallSegGen++;
+    if (islandLinkWallSegGen > 255) {
+        islandLinkWallSegSeen.fill(0);
+        islandLinkWallSegGen = 1;
+    }
+}
 export const sleepIslandParent = new Int32Array(MAX_PHYS_BODIES);
 export const sleepIslandRank = new Int32Array(MAX_PHYS_BODIES);
 export const sleepComponentRoot = new Int32Array(MAX_PHYS_BODIES);
@@ -361,10 +373,45 @@ export function resetDeferredFractureSlab() {
 export const pendingWallBreaks = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 export const pendingBreakHashKeys = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
 export const pendingBreakHashRows = new Int32Array(PENDING_BREAK_HASH_CAPACITY); // key → pending row
-export const pendingBreakHashGen = new Int32Array(PENDING_BREAK_HASH_CAPACITY); // gen epoch lives in fracture.js
+export const pendingBreakHashGen = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
+let pendingBreakHashGeneration = 1;
+export function clearPendingBreakHash() {
+    pendingBreakHashGeneration++;
+    if (pendingBreakHashGeneration > 0x7fffffff) {
+        pendingBreakHashGen.fill(0);
+        pendingBreakHashGeneration = 1;
+    }
+}
+export function pendingBreakRowForKey(key) {
+    const generation = pendingBreakHashGeneration;
+    let idx = (key >>> 0) & PENDING_BREAK_HASH_MASK;
+    for (let n = 0; n < PENDING_BREAK_HASH_CAPACITY; n++) {
+        if (pendingBreakHashGen[idx] !== generation) return -1;
+        if (pendingBreakHashKeys[idx] === key) return pendingBreakHashRows[idx];
+        idx = (idx + 1) & PENDING_BREAK_HASH_MASK;
+    }
+    return -1;
+}
+export function insertPendingBreakKey(key, row) {
+    const generation = pendingBreakHashGeneration;
+    let idx = (key >>> 0) & PENDING_BREAK_HASH_MASK;
+    for (let n = 0; n < PENDING_BREAK_HASH_CAPACITY; n++) {
+        if (pendingBreakHashGen[idx] !== generation) {
+            pendingBreakHashKeys[idx] = key;
+            pendingBreakHashRows[idx] = row;
+            pendingBreakHashGen[idx] = generation;
+            return;
+        }
+        if (pendingBreakHashKeys[idx] === key) {
+            pendingBreakHashRows[idx] = row;
+            return;
+        }
+        idx = (idx + 1) & PENDING_BREAK_HASH_MASK;
+    }
+    throw new Error("pending break hash capacity exceeded");
+}
 export const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 // --- Static wall segments (broadphase SAT sources) ---
-export const MAX_STATIC_WALL_SEGMENTS = 4096;
 export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS) };
 export function resetStaticWallSegmentSlab() {
     staticWallSegmentSlab.count = 0;

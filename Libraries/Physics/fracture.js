@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList, markHitCompoundParts } from "./physics.js";
-import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, pendingBreakHashKeys, pendingBreakHashRows, pendingBreakHashGen, PENDING_BREAK_HASH_CAPACITY, PENDING_BREAK_HASH_MASK, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -251,42 +251,6 @@ function dropShatterSeed(seeds, seedIndex, seedCount) {
         seeds[seedIndex * 2 + 1] = seeds[last * 2 + 1];
     }
     return last;
-}
-let pendingBreakHashGeneration = 1;
-function clearPendingBreakHash() {
-    pendingBreakHashGeneration++;
-    if (pendingBreakHashGeneration > 0x7fffffff) {
-        pendingBreakHashGen.fill(0);
-        pendingBreakHashGeneration = 1;
-    }
-}
-export function pendingBreakRowForKey(key) {
-    const generation = pendingBreakHashGeneration;
-    let idx = (key >>> 0) & PENDING_BREAK_HASH_MASK;
-    for (let n = 0; n < PENDING_BREAK_HASH_CAPACITY; n++) {
-        if (pendingBreakHashGen[idx] !== generation) return -1;
-        if (pendingBreakHashKeys[idx] === key) return pendingBreakHashRows[idx];
-        idx = (idx + 1) & PENDING_BREAK_HASH_MASK;
-    }
-    return -1;
-}
-function insertPendingBreakKey(key, row) {
-    const generation = pendingBreakHashGeneration;
-    let idx = (key >>> 0) & PENDING_BREAK_HASH_MASK;
-    for (let n = 0; n < PENDING_BREAK_HASH_CAPACITY; n++) {
-        if (pendingBreakHashGen[idx] !== generation) {
-            pendingBreakHashKeys[idx] = key;
-            pendingBreakHashRows[idx] = row;
-            pendingBreakHashGen[idx] = generation;
-            return;
-        }
-        if (pendingBreakHashKeys[idx] === key) {
-            pendingBreakHashRows[idx] = row;
-            return;
-        }
-        idx = (idx + 1) & PENDING_BREAK_HASH_MASK;
-    }
-    throw new Error("pending break hash capacity exceeded");
 }
 function clearPendingWallBreaks(pending) {
     clearPendingBreakHash();

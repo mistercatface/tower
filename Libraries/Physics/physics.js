@@ -48,6 +48,11 @@ import {
     sBucketFillIdx,
     sIslandAwake,
     orderOrderedIdxs,
+    orderUniquePhysIds,
+    orderOrdered,
+    islandLinkWallSegSeen,
+    islandLinkWallSegGen,
+    clearIslandLinkWallSegSeen,
     sleepIslandParent,
     sleepIslandRank,
     sleepComponentRoot,
@@ -67,7 +72,6 @@ import {
     WARM_START_CACHE_MASK,
     PAIR_HASH_CAPACITY,
     staticWallSegmentSlab,
-    MAX_STATIC_WALL_SEGMENTS,
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
@@ -1998,12 +2002,8 @@ export class WallCollisionResolver {
 }
 const LINK_CAPSULE_WALL_PASSES = 4;
 const islandLinkWallCandidates = new GrowI32(64);
-const islandLinkWallSegSeen = new Uint8Array(MAX_STATIC_WALL_SEGMENTS);
-let islandLinkWallSegGen = 1;
 const linkFilteredWallCandidates = new GrowI32(32);
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
-const orderUniquePhysIds = new GrowI32(64);
-const orderOrdered = new GrowI32(64);
 const sIslandSessionIndex = new Int32Array(MAX_KINETIC_CONSTRAINTS);
 function constraintBodyAt(physId) {
     const body = entityRefs[physId];
@@ -2270,13 +2270,6 @@ function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segId) {
     const sx = slab.x[segId];
     const sy = slab.y[segId];
     return sx >= minX && sx <= maxX && sy >= minY && sy <= maxY;
-}
-function clearIslandLinkWallSegSeen() {
-    islandLinkWallSegGen++;
-    if (islandLinkWallSegGen > 255) {
-        islandLinkWallSegSeen.fill(0);
-        islandLinkWallSegGen = 1;
-    }
 }
 function mergeWallCandidatesInto(candidates, out) {
     const gen = islandLinkWallSegGen;
