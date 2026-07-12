@@ -1,6 +1,7 @@
-import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32 } from "../Math/math.js";
+import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32, earClipConvexPartsInto, pointInPolygon } from "../Math/math.js";
 import {
     ENGINE_F32,
+    ENGINE_U8,
     ENGINE_PHYS_BASE,
     ENGINE_BOUNDS_BASE,
     B_QUERY,
@@ -230,7 +231,7 @@ function compoundInertiaFactor(parts) {
 }
 export function kineticFootprintArea(body) {
     if (body.footprintArea != null) return body.footprintArea;
-    const parts = collisionPartsList(body);
+    const parts = CompoundPolygon.parts(body);
     if (parts) {
         let area = 0;
         for (let i = 0; i < parts.length; i++) {
@@ -254,7 +255,7 @@ export function kineticMassFromFootprint(body) {
 }
 export function kineticInertiaFromBody(body) {
     const m = massFromBody(body);
-    const parts = collisionPartsList(body);
+    const parts = CompoundPolygon.parts(body);
     if (parts) return m * compoundInertiaFactor(parts);
     const shape = body.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
@@ -1168,10 +1169,59 @@ export function readEntityFacing(entity) {
     if (entity == null) return 0;
     return entity.facing ?? entity.angle ?? 0;
 }
-export function collisionPartsList(entity) {
-    const parts = entity.collisionParts;
-    if (parts?.length > 1) return parts;
-    return null;
+export class CompoundPolygon {
+    static parts(entity) {
+        const parts = entity.collisionParts;
+        if (parts?.length > 1) return parts;
+        return null;
+    }
+    static isCompound(entity) {
+        return CompoundPolygon.parts(entity) != null;
+    }
+    static maxRadius(parts) {
+        let maxR = 0;
+        for (let i = 0; i < parts.length; i++) maxR = Math.max(maxR, parts[i].getBoundingRadius());
+        return maxR;
+    }
+    static applyFootprint(prop, flatVerts) {
+        prop.drawOutline = new Float32Array(flatVerts);
+        const partVerts = [];
+        earClipConvexPartsInto(partVerts, flatVerts);
+        releaseLivePolygon(prop);
+        prop.collisionParts = partVerts.map((verts) => new PolygonShape(verts));
+        prop.radius = CompoundPolygon.maxRadius(prop.collisionParts);
+        prop.shape = prop.collisionParts[0];
+    }
+    static markHitParts(parts, lx, ly) {
+        const n = parts.length;
+        if (n > ENGINE_U8.length) throw new Error(`CompoundPolygon.markHitParts: ${n} parts exceeds ENGINE_U8`);
+        let hitCount = 0;
+        for (let i = 0; i < n; i++) {
+            const part = parts[i];
+            if (part.shapeTypeId === SHAPE_TYPE_POLYGON && pointInPolygon(lx, ly, part.vertices)) {
+                ENGINE_U8[i] = 1;
+                hitCount++;
+            } else ENGINE_U8[i] = 0;
+        }
+        if (hitCount > 0) return hitCount;
+        let best = -1;
+        let bestD = Infinity;
+        for (let i = 0; i < n; i++) {
+            const part = parts[i];
+            if (part.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
+            polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, part.vertices);
+            const dx = ENGINE_F32[M_OUT_CX] - lx;
+            const dy = ENGINE_F32[M_OUT_CY] - ly;
+            const d = dx * dx + dy * dy;
+            if (d < bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        if (best < 0) return 0;
+        ENGINE_U8[best] = 1;
+        return 1;
+    }
 }
 const sSatPartA = { shapeTypeId: 0, radius: 0, vertices: null, normals: null, _vertOffset: 0, _floatCount: 0 };
 const sSatPartB = { shapeTypeId: 0, radius: 0, vertices: null, normals: null, _vertOffset: 0, _floatCount: 0 };
@@ -1275,8 +1325,8 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
     const sinA = Math.sin(facingA);
     const cosB = Math.cos(facingB);
     const sinB = Math.sin(facingB);
-    const partsA = collisionPartsList(bodyA);
-    const partsB = collisionPartsList(bodyB);
+    const partsA = CompoundPolygon.parts(bodyA);
+    const partsB = CompoundPolygon.parts(bodyB);
     if (!partsA && !partsB) return satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, bodyB.shape);
     if (partsA && partsB) {
         for (let i = 0; i < partsA.length; i++) for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, partsA[i], xB, yB, cosB, sinB, partsB[j])) return true;
@@ -1560,7 +1610,7 @@ function entityWorldAabbFromShapeF32(buf, o, entity) {
     const x = entity.x;
     const y = entity.y;
     const angle = readEntityFacing(entity);
-    if (collisionPartsList(entity)) {
+    if (CompoundPolygon.parts(entity)) {
         computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, entity.collisionParts);
         const hx = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
         const hy = (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5;
@@ -1621,7 +1671,7 @@ export function neighborQueryPadForExtent(extent) {
     return Math.min(pad.maxPad, Math.max(pad.minPad, extent * pad.padScale));
 }
 export function entityCollisionSpan(entity) {
-    if (collisionPartsList(entity)) {
+    if (CompoundPolygon.parts(entity)) {
         computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, entity.collisionParts);
         return lengthXY((ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5, (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5);
     }
@@ -1740,7 +1790,7 @@ function kineticOverlapsWallCandidates(px, py, body, candidates) {
     const bodyFacing = readEntityFacing(body);
     const bodyCos = Math.cos(bodyFacing);
     const bodySin = Math.sin(bodyFacing);
-    const parts = collisionPartsList(body);
+    const parts = CompoundPolygon.parts(body);
     if (parts) {
         for (let p = 0; p < parts.length; p++) {
             const shape = parts[p];
@@ -1941,7 +1991,7 @@ export class WallCollisionResolver {
         let collided = false;
         const wantHits = shouldBreakWallHit != null;
         const outHits = wantHits ? hits : null;
-        if (collisionPartsList(entity)) {
+        if (CompoundPolygon.parts(entity)) {
             const parts = entity.collisionParts;
             for (let i = 0; i < parts.length; i++) if (resolveAgainstWallSegmentsSlab(physId, entity, parts[i], candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
         } else if (entity.shape) if (resolveAgainstWallSegmentsSlab(physId, entity, entity.shape, candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
@@ -2049,7 +2099,7 @@ function orderIslandConstraintItems(startIdx, count) {
     for (let i = 0; i < count; i++) orderOrderedIdxs[i] = orderOrdered[i];
 }
 function circleRadiusFromBody(body) {
-    const parts = collisionPartsList(body);
+    const parts = CompoundPolygon.parts(body);
     if (parts) {
         for (let i = 0; i < parts.length; i++) if (parts[i].shapeTypeId === SHAPE_TYPE_CIRCLE) return parts[i].radius;
     } else if (body.shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return body.shape.radius;
@@ -3266,7 +3316,7 @@ export function classifyKineticPairTier(bodyA, bodyB) {
     const physIdA = bodyA._physId;
     const physIdB = bodyB._physId;
     if (physIdA !== undefined && physIdA !== -1 && physIdB !== undefined && physIdB !== -1 && kineticDynamicSlab.partCount[physIdA] > 0 && kineticDynamicSlab.partCount[physIdB] > 0) return classifyKineticPairTierSlab(physIdA, physIdB);
-    if (collisionPartsList(bodyA) || collisionPartsList(bodyB)) return KINETIC_PAIR_COMPOUND;
+    if (CompoundPolygon.parts(bodyA) || CompoundPolygon.parts(bodyB)) return KINETIC_PAIR_COMPOUND;
     const shapeA = bodyA.collisionParts?.[0] ?? bodyA.shape;
     const shapeB = bodyB.collisionParts?.[0] ?? bodyB.shape;
     if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_CIRCLE;

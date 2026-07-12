@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList } from "./physics.js";
+import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, CompoundPolygon } from "./physics.js";
 import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_U8, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
@@ -972,36 +972,6 @@ export class FractureEngine {
         stores.debris.reset();
         return shards;
     }
-    static markHitCompoundParts(parts, lx, ly) {
-        const n = parts.length;
-        if (n > ENGINE_U8.length) throw new Error(`markHitCompoundParts: ${n} parts exceeds ENGINE_U8`);
-        let hitCount = 0;
-        for (let i = 0; i < n; i++) {
-            const part = parts[i];
-            if (part.shapeTypeId === SHAPE_TYPE_POLYGON && pointInPolygon(lx, ly, part.vertices)) {
-                ENGINE_U8[i] = 1;
-                hitCount++;
-            } else ENGINE_U8[i] = 0;
-        }
-        if (hitCount > 0) return hitCount;
-        let best = -1;
-        let bestD = Infinity;
-        for (let i = 0; i < n; i++) {
-            const part = parts[i];
-            if (part.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
-            polygonCentroid2DInto(ENGINE_F32, F_OUT_CENTROID_X, part.vertices);
-            const dx = ENGINE_F32[F_OUT_CENTROID_X] - lx;
-            const dy = ENGINE_F32[F_OUT_CENTROID_Y] - ly;
-            const d = dx * dx + dy * dy;
-            if (d < bestD) {
-                bestD = d;
-                best = i;
-            }
-        }
-        if (best < 0) return 0;
-        ENGINE_U8[best] = 1;
-        return 1;
-    }
     static _appendIntactPolygonIntoStore(stores, flatVerts) {
         const vertCount = flatVerts.length >> 1;
         if (vertCount < 3) return;
@@ -1026,9 +996,9 @@ export class FractureEngine {
         const impactLocalY = -dx * sin + dy * cos;
         seedFractureRand(worldHitX, worldHitY, impactForce);
         ENGINE_F32[F_OUT_REMNANT] = 0;
-        const parts = collisionPartsList(prop);
+        const parts = CompoundPolygon.parts(prop);
         if (parts) {
-            const hitCount = FractureEngine.markHitCompoundParts(parts, impactLocalX, impactLocalY);
+            const hitCount = CompoundPolygon.markHitParts(parts, impactLocalX, impactLocalY);
             if (hitCount === 0) return false;
             const batchStart = stores.debris.write;
             for (let i = 0; i < parts.length; i++)
@@ -1083,7 +1053,7 @@ export class FractureEngine {
     }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!effectiveFracture(prop)) return false;
-        const parts = collisionPartsList(prop);
+        const parts = CompoundPolygon.parts(prop);
         if (parts) {
             let maxSpan = 0;
             let refVerts = null;
