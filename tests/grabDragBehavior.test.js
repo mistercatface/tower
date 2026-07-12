@@ -88,6 +88,24 @@ describe("grabDrag behavior", () => {
         assert.equal(entityX[eid], 0);
     });
 
+    it("sphere rim grab uses entityR not stale object radius", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
+        const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", radius: 8, shape: new CircleShape(8) }));
+        const eid = prop._physId;
+        entityX[eid] = 0;
+        entityY[eid] = 0;
+        entityR[eid] = 8;
+        Object.defineProperty(prop, "radius", { value: 100, writable: true, configurable: true, enumerable: true });
+        assert.ok(behavior.onPointerDown(prop, { x: 8, y: 0 }));
+        behavior.onPointerMove(prop, { x: -50, y: 0 });
+        behavior.tickWorld(16);
+        assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
+        assert.ok(kineticDynamicSlab.rollDriveDirX[eid] < -0.9);
+        assert.equal(prop.radius, 100);
+        assert.equal(entityR[eid], 8);
+    });
+
     it("drag launch aim anchor uses entityX/entityY not stale object pose", () => {
         const state = createGrabDragTestState();
         const behavior = createDragLaunchBehavior(state);

@@ -139,7 +139,9 @@ export function createDragLaunchBehavior(state) {
         return true;
     };
     const appendAimOverlay = (slab, prop) => {
-        const config = resolveDragLaunchConfigFromSize(prop.radius);
+        const eid = prop._physId;
+        const radius = entityR[eid];
+        const config = resolveDragLaunchConfigFromSize(radius);
         if (!writeAimPreview(config)) return;
         const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (aimPower - config.minPower) / (config.maxPower - config.minPower))) : 0;
         const hue = hueFromPullRatio(ratio);
@@ -156,7 +158,7 @@ export function createDragLaunchBehavior(state) {
         if (aimPower <= 0) return;
         const grid = state.obstacleGrid;
         const travelDist = estimateRollingTravelDistance(aimPower, prop.strategy);
-        if (!computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, aimAnchorX, aimAnchorY, prop.radius, aimShotNx, aimShotNy, travelDist, dragLaunchMaxRayDist(grid), grid)) return;
+        if (!computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, aimAnchorX, aimAnchorY, radius, aimShotNx, aimShotNy, travelDist, dragLaunchMaxRayDist(grid), grid)) return;
         const aimO = ENGINE_BOUNDS_BASE + B_TMP;
         stampOverlayAimSegment(slab, ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], hue);
     };
@@ -164,10 +166,11 @@ export function createDragLaunchBehavior(state) {
         id: SANDBOX_BEHAVIOR_DRAG_LAUNCH,
         onPointerDown(prop, world) {
             if (!propCanStartDrag(state, prop)) return false;
-            wakeKineticBody(prop._physId);
+            const eid = prop._physId;
+            wakeKineticBody(eid);
             aimActive = 1;
-            aimAnchorX = entityX[prop._physId];
-            aimAnchorY = entityY[prop._physId];
+            aimAnchorX = entityX[eid];
+            aimAnchorY = entityY[eid];
             aimStartX = world.x;
             aimStartY = world.y;
             aimPullX = world.x;
@@ -179,7 +182,7 @@ export function createDragLaunchBehavior(state) {
             aimPreviewPullX = world.x;
             aimPreviewPullY = world.y;
             aimPower = 0;
-            resolveAimPhysics(resolveDragLaunchConfigFromSize(prop.radius));
+            resolveAimPhysics(resolveDragLaunchConfigFromSize(entityR[eid]));
             return true;
         },
         onPointerMove(prop, world) {
@@ -190,7 +193,7 @@ export function createDragLaunchBehavior(state) {
             }
             aimPullX = world.x;
             aimPullY = world.y;
-            resolveAimPhysics(resolveDragLaunchConfigFromSize(prop.radius));
+            resolveAimPhysics(resolveDragLaunchConfigFromSize(entityR[prop._physId]));
         },
         onPointerUp(prop) {
             if (!aimActive) return;
@@ -228,7 +231,7 @@ function resolveGrabDragAnchor(prop, world) {
     }
     if (asset?.primitive === PROP_PRIMITIVE_SPHERE && asset.physics?.isKinetic !== false) {
         const facing = readEntityFacing(prop);
-        findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, facing, prop.radius, world.x, world.y);
+        findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, facing, entityR[eid], world.x, world.y);
         ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
         ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
         return;
@@ -254,7 +257,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         const px = entityX[eid];
         const py = entityY[eid];
         if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) {
-            findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, readEntityFacing(prop), prop.radius, targetX, targetY);
+            findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, readEntityFacing(prop), entityR[eid], targetX, targetY);
             return;
         }
         const angle = readEntityFacing(prop);
@@ -350,7 +353,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         },
         appendOverlayCommands(slab, prop) {
             if (grabEid !== prop._physId) return;
-            const grabConfig = resolveDragLaunchConfigFromSize(prop.radius);
+            const grabConfig = resolveDragLaunchConfigFromSize(entityR[grabEid]);
             grabAnchorWorld(prop);
             const ax = ENGINE_F32[G_WX];
             const ay = ENGINE_F32[G_WY];
