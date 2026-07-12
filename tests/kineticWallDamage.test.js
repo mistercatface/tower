@@ -142,9 +142,10 @@ describe("kinetic wall damage", () => {
         const grid = state.obstacleGrid;
         stampVoxel(grid, 3, 3);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        state.gridWallDamage = wallDamage;
         queueWallHits(wallDamage, grid, wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3))]), 560, { mass: 1 });
         wallDamage.spatialFrame = wallDebrisTestFrame();
-        await applyPendingWallDamage(state, wallDamage);
+        await applyPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(grid, worldIdxAtCell(state.obstacleGrid,3, 3)));
         assert.equal(wallDamage.pending.count, 0);
         terminateWorkerNavigation(state.nav);
@@ -154,9 +155,10 @@ describe("kinetic wall damage", () => {
         const grid = state.obstacleGrid;
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(grid, 5, 5), 0, 2, 4));
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        state.gridWallDamage = wallDamage;
         queueWallHits(wallDamage, grid, wallHitBuffer([railHit(worldIdxAtCell(state.obstacleGrid, 5, 5), 0, { normalX: 0, normalY: 1 })]), 560, { mass: 1 });
         wallDamage.spatialFrame = wallDebrisTestFrame();
-        await applyPendingWallDamage(state, wallDamage);
+        await applyPendingWallDamage(state);
         assert.ok(!isRailWallEdge(grid.getCellEdge(worldIdxAtCell(state.obstacleGrid,5, 5), 0)));
         assert.equal(wallDamage.pending.count, 0);
         terminateWorkerNavigation(state.nav);
@@ -177,8 +179,9 @@ describe("kinetic wall damage", () => {
         const grid = state.obstacleGrid;
         stampVoxel(grid, 3, 3);
         const wallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        state.gridWallDamage = wallDamage;
         queueWallHits(wallDamage, grid, wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3))]), 560, { mass: 1 });
-        assert.throws(() => applyPendingWallDamage(state, wallDamage));
+        assert.throws(() => applyPendingWallDamage(state));
         terminateWorkerNavigation(state.nav);
     });
     it("voxel wall hit clears grid wall, spawns a voxel chunk prop, and fractures it", async () => {

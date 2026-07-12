@@ -697,9 +697,8 @@ export function createGridWallDamage(state, config) {
 export function resolveKineticWallDamage(state, entity, spatialFrame, wallResolver) {
     const wallDamage = state.gridWallDamage;
     const preSpeed = Math.hypot(entity.vx, entity.vy);
-    const shouldBreakWallHit = wallDamage && preSpeed > 0 ? (approachDot) => computeWallBreakStrength(preSpeed, approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
+    const shouldBreakWallHit = preSpeed > 0 ? (approachDot) => computeWallBreakStrength(preSpeed, approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;
     const collided = wallResolver.resolve(entity, spatialFrame, shouldBreakWallHit);
-    if (!wallDamage) return collided;
     const hits = wallResolver.hits;
     if (!hits.count) return collided;
     wallDamage.spatialFrame = spatialFrame;
@@ -735,8 +734,9 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity) {
         pending.sourceMass[row] = entity.mass;
     }
 }
-export function applyPendingWallDamage(state, wallDamage = state.gridWallDamage) {
-    if (!wallDamage || !wallDamage.pending.count) return;
+export function applyPendingWallDamage(state) {
+    const wallDamage = state.gridWallDamage;
+    if (!wallDamage.pending.count) return;
     const grid = state.obstacleGrid;
     const pending = wallDamage.pending;
     const spawn = wallSpawnScratch;

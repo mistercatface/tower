@@ -7,7 +7,7 @@ import { Scheduler } from "../Libraries/Scheduler/Scheduler.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
 import { WallCollisionResolver, createKineticSession } from "../Libraries/Physics/physics.js";
 import { EntityRegistry } from "./EntityRegistry.js";
-import { FractureEngine } from "../Libraries/Physics/fracture.js";
+import { FractureEngine, createGridWallDamage } from "../Libraries/Physics/fracture.js";
 import { FollowCamera } from "../Libraries/Sandbox/sandbox.js";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 const navigationSettings = { recenterThreshold: 400, stuckReplanFrames: 60, stuckMoveThreshold: 1.5, pathOffPathDistance: 80 };
@@ -35,7 +35,7 @@ export class SharedGameState {
         this.fractureEngine = new FractureEngine(this);
         this.spatialFrame = kineticSpatial;
         this.wallResolver = new WallCollisionResolver();
-        this.gridWallDamage = null;
+        this.gridWallDamage = createGridWallDamage(this, { minBreakStrength: 0.1, referenceMaxSpeed: 560, minStrikeSpeed: 28 });
         this.simulationFrameHooks = null;
         this.obstacleGrid.rebuildFixed(0, 0, worldSpanPx(gridSettings.cols), worldSpanPx(gridSettings.rows));
         void this.nav.commitEdit(null, { fullNavSync: true });

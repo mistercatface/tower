@@ -9,7 +9,6 @@ export function createSandboxSessionState(overrides = {}) {
     return {
         sandbox: new SandboxWorldState(),
         editor: { cavernConfig: overrides.cavernConfig ?? null, navWalkableCellsCache: null },
-        gridWallDamage: null,
         simulationFrameHooks: null,
         ...overrides,
     };

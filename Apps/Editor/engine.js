@@ -5,7 +5,7 @@ import { installEditorDefaults } from "../../Core/engineGlobals.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
 import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";
-import { createGridWallDamage, applyPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/fracture.js";
+import { applyPendingWallDamage, resolveKineticWallDamage } from "../../Libraries/Physics/fracture.js";
 import { commitGridNavEdit } from "../../Libraries/Spatial/spatial.js";
 import { FloatingText } from "../../Libraries/Render/FloatingText.js";
 import { TileLabGameState } from "./state.js";
@@ -48,9 +48,8 @@ function simulationKineticHooks(state) {
         },
         afterKineticPhysics(tick, dt) {
             state.appLaunch?.session?.afterKineticPhysics?.();
-            const flushDamage = state.gridWallDamage;
             applyPendingWallDamage(state);
-            if (flushDamage?.lastSpawnedCount) state.fractureEngine.debris.integrateSpawned(tick.frame, flushDamage.lastSpawned, dt);
+            if (state.gridWallDamage.lastSpawnedCount) state.fractureEngine.debris.integrateSpawned(tick.frame, state.gridWallDamage.lastSpawned, dt);
         },
     };
 }
@@ -98,7 +97,6 @@ export function createEditorApp(options = {}) {
         document.head.appendChild(link);
     }
     installEditorDefaults(state);
-    state.gridWallDamage = createGridWallDamage(state, { minBreakStrength: 0.1, referenceMaxSpeed: 560, minStrikeSpeed: 28 });
     const pauseManager = new PauseManager(state);
     installRadioOverlay(document.getElementById("gameWrapper"), { eventBus: events, requestPause: (reason) => pauseManager.pause(reason), requestResume: (reason) => pauseManager.resume(reason), content: { conversations: {}, speakers: {}, mainCharacterId: "player" } });
     const playbackHandlers = {
