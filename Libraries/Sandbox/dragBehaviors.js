@@ -1,10 +1,10 @@
 import propCatalog from "../../Assets/props/index.js";
 import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
-import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityVx, entityVy, entityW, entityR, entityFlags } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityVx, entityVy, entityW, entityR, entityFlags, entityFacing, entityRefs, entityGameId } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics, physicsSettings } from "../Physics/physics.js";
-import { ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
+import { ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_DEAD } from "../../Core/engineEnums.js";
 import { stampOverlayAimSegment, stampOverlayCircleFillStroke, stampOverlayCircleStroke, stampOverlaySegment, OVERLAY_STYLE_DRAG_GRAB_LINE, OVERLAY_STYLE_DRAG_GRAB_DOT_A, OVERLAY_STYLE_DRAG_GRAB_DOT_B, OVERLAY_STYLE_DRAG_BAND, OVERLAY_STYLE_DRAG_PULL_LINE, OVERLAY_STYLE_DRAG_PULL_DOT, OVERLAY_STYLE_DRAG_START_RING, OVERLAY_STYLE_DRAG_START_DOT, OVERLAY_STYLE_DRAG_RUBBER, OVERLAY_STYLE_DRAG_ANCHOR } from "../Render/render.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PRIMITIVE_PHYSICS_ROW_CIRCLE, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_DRAG_LAUNCH } from "../../Core/engineEnums.js";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
@@ -41,8 +41,7 @@ export function computeLaunchPower(drag, config) {
 function dragLaunchMaxRayDist(obstacleGrid) {
     return Math.hypot(obstacleGrid.maxX - obstacleGrid.minX, obstacleGrid.maxY - obstacleGrid.minY) * 1.25;
 }
-export function applyDragLaunchVelocity(body, nx, ny, power) {
-    const eid = body._physId;
+export function applyDragLaunchVelocity(eid, nx, ny, power) {
     entityVx[eid] = nx * power;
     entityVy[eid] = ny * power;
     if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) entityW[eid] = (power / entityR[eid]) * 0.12;
@@ -64,29 +63,30 @@ export function assetSupportsDragInteraction(asset) {
     if (asset.physics?.isKinetic === false) return false;
     return true;
 }
-export function propSupportsDragInteraction(prop) {
-    return (entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0 && !prop.isDead;
+export function entitySupportsDragInteraction(eid) {
+    return (entityFlags[eid] & ENTITY_FLAG_KINETIC) !== 0 && (entityFlags[eid] & ENTITY_FLAG_DEAD) === 0;
 }
 export function resolveDragInteractionBehaviorId(asset, dragInteractionMode = DEFAULT_DRAG_INTERACTION_MODE) {
     if (!assetSupportsDragInteraction(asset)) return null;
     return dragInteractionMode === SANDBOX_BEHAVIOR_GRAB_DRAG ? SANDBOX_BEHAVIOR_GRAB_DRAG : SANDBOX_BEHAVIOR_DRAG_LAUNCH;
 }
-export function resolveDragInteractionBehavior(prop, state, behaviorById) {
-    if (!propSupportsDragInteraction(prop)) return null;
+export function resolveDragInteractionBehavior(eid, state, behaviorById) {
+    if (!entitySupportsDragInteraction(eid)) return null;
     const mode = state.sandbox.dragInteractionMode ?? DEFAULT_DRAG_INTERACTION_MODE;
-    const behaviorId = resolveDragInteractionBehaviorId(propCatalog[prop.type], mode);
+    const ref = entityRefs[eid];
+    if (!ref) return null;
+    const behaviorId = resolveDragInteractionBehaviorId(propCatalog[ref.type], mode);
     return behaviorId ? (behaviorById.get(behaviorId) ?? null) : null;
 }
-function propCanStartDrag(state, prop) {
-    if (!propSupportsDragInteraction(prop)) return false;
-    const eid = prop._physId;
+function entityCanStartDrag(state, eid) {
+    if (!entitySupportsDragInteraction(eid)) return false;
     return !FloorBelt.isEntityOnBelt(state.obstacleGrid, entityX[eid], entityY[eid]);
 }
-function clearGroundNavForProp(state, groundNavBehaviorIds, prop) {
+function clearGroundNavForEntity(state, groundNavBehaviorIds, eid) {
     const byId = state.sandbox.behaviorById;
-    const eid = prop._physId;
     for (const id of groundNavBehaviorIds) byId.get(id).clearMoveTarget(eid);
-    state.sandbox.entityMeta.clearActiveBehaviorId(prop.id);
+    const gameId = entityGameId[eid];
+    if (gameId >= 0) state.sandbox.entityMeta.clearActiveBehaviorId(gameId);
 }
 export function createDragLaunchBehavior(state) {
     let aimActive = 0;
@@ -138,8 +138,7 @@ export function createDragLaunchBehavior(state) {
         aimPower = computeLaunchPower(aimDrag, config);
         return true;
     };
-    const appendAimOverlay = (slab, prop) => {
-        const eid = prop._physId;
+    const appendAimOverlay = (slab, eid) => {
         const radius = entityR[eid];
         const config = resolveDragLaunchConfigFromSize(radius);
         if (!writeAimPreview(config)) return;
@@ -157,16 +156,16 @@ export function createDragLaunchBehavior(state) {
         stampOverlayCircleStroke(slab, aimAnchorX, aimAnchorY, 7, OVERLAY_STYLE_DRAG_ANCHOR, hue);
         if (aimPower <= 0) return;
         const grid = state.obstacleGrid;
-        const travelDist = estimateRollingTravelDistance(aimPower, prop.strategy);
+        const ref = entityRefs[eid];
+        const travelDist = estimateRollingTravelDistance(aimPower, ref.strategy);
         if (!computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, aimAnchorX, aimAnchorY, radius, aimShotNx, aimShotNy, travelDist, dragLaunchMaxRayDist(grid), grid)) return;
         const aimO = ENGINE_BOUNDS_BASE + B_TMP;
         stampOverlayAimSegment(slab, ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], hue);
     };
     return {
         id: SANDBOX_BEHAVIOR_DRAG_LAUNCH,
-        onPointerDown(prop, world) {
-            if (!propCanStartDrag(state, prop)) return false;
-            const eid = prop._physId;
+        onPointerDown(eid, world) {
+            if (!entityCanStartDrag(state, eid)) return false;
             wakeKineticBody(eid);
             aimActive = 1;
             aimAnchorX = entityX[eid];
@@ -185,19 +184,18 @@ export function createDragLaunchBehavior(state) {
             resolveAimPhysics(resolveDragLaunchConfigFromSize(entityR[eid]));
             return true;
         },
-        onPointerMove(prop, world) {
+        onPointerMove(eid, world) {
             if (!aimActive) return;
-            if (!propCanStartDrag(state, prop)) {
+            if (!entityCanStartDrag(state, eid)) {
                 clearAim();
                 return;
             }
             aimPullX = world.x;
             aimPullY = world.y;
-            resolveAimPhysics(resolveDragLaunchConfigFromSize(entityR[prop._physId]));
+            resolveAimPhysics(resolveDragLaunchConfigFromSize(entityR[eid]));
         },
-        onPointerUp(prop) {
+        onPointerUp(eid) {
             if (!aimActive) return;
-            const eid = prop._physId;
             const config = resolveDragLaunchConfigFromSize(entityR[eid]);
             const ok = resolveAimPhysics(config) && aimDrag >= config.minDrag && Number.isFinite(aimShotNx) && Number.isFinite(aimShotNy);
             const power = ok ? computeLaunchPower(aimDrag, config) : 0;
@@ -205,32 +203,33 @@ export function createDragLaunchBehavior(state) {
             const ny = aimShotNy;
             clearAim();
             if (!ok || power <= 0) return;
-            applyDragLaunchVelocity(prop, nx, ny, power);
+            applyDragLaunchVelocity(eid, nx, ny, power);
         },
-        appendOverlayCommands(slab, prop) {
+        appendOverlayCommands(slab, eid) {
             if (!aimActive) return;
-            appendAimOverlay(slab, prop);
+            appendAimOverlay(slab, eid);
         },
         reset() {
             clearAim();
         },
     };
 }
-function resolveGrabDragAnchor(prop, world) {
-    const eid = prop._physId;
+function resolveGrabDragAnchor(eid, world) {
     const px = entityX[eid];
     const py = entityY[eid];
-    const asset = propCatalog[prop.type];
-    const verts = prop.drawOutline?.length >= 6 ? prop.drawOutline : prop.shape?.vertices;
+    const ref = entityRefs[eid];
+    if (!ref) return;
+    const asset = propCatalog[ref.type];
+    const verts = ref.drawOutline?.length >= 6 ? ref.drawOutline : ref.shape?.vertices;
     if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && verts?.length >= 6) {
-        const facing = readEntityFacing(prop);
+        const facing = entityFacing[eid];
         findClosestPolygonBoundaryGrabPointInto(ENGINE_F32, G_WX, verts, px, py, facing, world.x, world.y);
         ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
         ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
         return;
     }
     if (asset?.primitive === PROP_PRIMITIVE_SPHERE && asset.physics?.isKinetic !== false) {
-        const facing = readEntityFacing(prop);
+        const facing = entityFacing[eid];
         findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, facing, entityR[eid], world.x, world.y);
         ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
         ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
@@ -252,22 +251,20 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
     const clearGrab = () => {
         grabEid = -1;
     };
-    const grabAnchorWorld = (prop) => {
-        const eid = prop._physId;
+    const grabAnchorWorld = (eid) => {
         const px = entityX[eid];
         const py = entityY[eid];
         if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) {
-            findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, readEntityFacing(prop), entityR[eid], targetX, targetY);
+            findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, entityFacing[eid], entityR[eid], targetX, targetY);
             return;
         }
-        const angle = readEntityFacing(prop);
+        const angle = entityFacing[eid];
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         ENGINE_F32[G_WX] = px + anchorLocalX * cos - anchorLocalY * sin;
         ENGINE_F32[G_WY] = py + anchorLocalX * sin + anchorLocalY * cos;
     };
-    const tickPull = (prop, dtMs) => {
-        const eid = prop._physId;
+    const tickPull = (eid, dtMs) => {
         const px = entityX[eid];
         const py = entityY[eid];
         const grabConfig = resolveDragLaunchConfigFromSize(entityR[eid]);
@@ -280,7 +277,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
             dx = tx - px;
             dy = ty - py;
         } else {
-            grabAnchorWorld(prop);
+            grabAnchorWorld(eid);
             dx = tx - ENGINE_F32[G_WX];
             dy = ty - ENGINE_F32[G_WY];
         }
@@ -297,7 +294,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         const ratio = power / grabConfig.maxPower;
         steerRollToward(eid, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
         if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) return;
-        grabAnchorWorld(prop);
+        grabAnchorWorld(eid);
         const rx = ENGINE_F32[G_WX] - px;
         const ry = ENGINE_F32[G_WY] - py;
         const leverArmSq = rx * rx + ry * ry;
@@ -313,48 +310,47 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
     };
     return {
         id: SANDBOX_BEHAVIOR_GRAB_DRAG,
-        onPointerDown(prop, world) {
-            if (!propCanStartDrag(state, prop)) return false;
-            clearGroundNavForProp(state, groundNavBehaviorIds, prop);
-            resolveGrabDragAnchor(prop, world);
-            grabEid = prop._physId;
+        onPointerDown(eid, world) {
+            if (!entityCanStartDrag(state, eid)) return false;
+            clearGroundNavForEntity(state, groundNavBehaviorIds, eid);
+            resolveGrabDragAnchor(eid, world);
+            grabEid = eid;
             targetX = world.x;
             targetY = world.y;
             offsetX = ENGINE_F32[G_OX];
             offsetY = ENGINE_F32[G_OY];
             anchorLocalX = ENGINE_F32[G_LX];
             anchorLocalY = ENGINE_F32[G_LY];
-            wakeKineticBody(prop._physId);
+            wakeKineticBody(eid);
             return true;
         },
-        onPointerMove(prop, world) {
-            if (grabEid !== prop._physId) return;
+        onPointerMove(eid, world) {
+            if (grabEid !== eid) return;
             targetX = world.x;
             targetY = world.y;
         },
-        onPointerUp(prop) {
-            if (grabEid !== prop._physId) return;
-            clearGroundRollDrive(prop._physId);
+        onPointerUp(eid) {
+            if (grabEid !== eid) return;
+            clearGroundRollDrive(eid);
             clearGrab();
         },
         tickWorld(dtMs = 16) {
             if (grabEid < 0) return;
-            const prop = state.entityRegistry.getRef(grabEid);
-            if (!prop) {
+            if (!state.entityRegistry.getRef(grabEid)) {
                 clearGrab();
                 return;
             }
             if (FloorBelt.isEntityOnBelt(state.obstacleGrid, entityX[grabEid], entityY[grabEid])) {
-                clearGroundRollDrive(prop._physId);
+                clearGroundRollDrive(grabEid);
                 clearGrab();
                 return;
             }
-            tickPull(prop, dtMs);
+            tickPull(grabEid, dtMs);
         },
-        appendOverlayCommands(slab, prop) {
-            if (grabEid !== prop._physId) return;
+        appendOverlayCommands(slab, eid) {
+            if (grabEid !== eid) return;
             const grabConfig = resolveDragLaunchConfigFromSize(entityR[grabEid]);
-            grabAnchorWorld(prop);
+            grabAnchorWorld(eid);
             const ax = ENGINE_F32[G_WX];
             const ay = ENGINE_F32[G_WY];
             const tx = targetX + offsetX;

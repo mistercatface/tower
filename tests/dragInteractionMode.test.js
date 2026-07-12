@@ -66,12 +66,12 @@ describe("drag interaction mode", () => {
 
         controller.setDragInteractionMode(SANDBOX_BEHAVIOR_DRAG_LAUNCH);
         assert.equal(controller.getDragInteractionMode(), SANDBOX_BEHAVIOR_DRAG_LAUNCH);
-        assert.equal(behaviorById.get(SANDBOX_BEHAVIOR_DRAG_LAUNCH).onPointerDown(prop, { x: 64, y: 64 }), true);
+        assert.equal(behaviorById.get(SANDBOX_BEHAVIOR_DRAG_LAUNCH).onPointerDown(prop._physId, { x: 64, y: 64 }), true);
 
         controller.setDragInteractionMode(SANDBOX_BEHAVIOR_GRAB_DRAG);
         assert.equal(controller.getDragInteractionMode(), SANDBOX_BEHAVIOR_GRAB_DRAG);
         const grabBehavior = behaviorById.get(SANDBOX_BEHAVIOR_GRAB_DRAG);
-        assert.equal(grabBehavior.onPointerDown(prop, { x: 70, y: 64 }), true);
+        assert.equal(grabBehavior.onPointerDown(prop._physId, { x: 70, y: 64 }), true);
 
         controller.destroy();
     });
@@ -155,7 +155,7 @@ describe("drag interaction mode", () => {
 
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), null);
         assert.equal(hpaBehavior.hasMoveTarget(prop._physId), false);
-        assert.equal(dragBehavior.onPointerDown(prop, { x: 64, y: 64 }), true);
+        assert.equal(dragBehavior.onPointerDown(prop._physId, { x: 64, y: 64 }), true);
         controller.destroy();
     });
 });

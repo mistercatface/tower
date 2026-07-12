@@ -1808,22 +1808,19 @@ export function createDirectGroundNavBehavior(state) {
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_DIRECT,
-        onPointerDown(prop, world) {
-            const eid = prop._physId;
+        onPointerDown(eid, world) {
             const slot = getSlot(eid);
             slab.flags[slot] = (slab.flags[slot] | GROUND_NAV_RUN_DRAGGING) & ~GROUND_NAV_RUN_MOVE_ACTIVE;
             setRunTargetXY(slab, slot, world.x, world.y);
             markPropRunActive(activeRunEids, eid);
             return true;
         },
-        onPointerMove(prop, world) {
-            const eid = prop._physId;
+        onPointerMove(eid, world) {
             const slot = getSlot(eid);
             if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
             setRunTargetXY(slab, slot, world.x, world.y);
         },
-        onPointerUp(prop) {
-            const eid = prop._physId;
+        onPointerUp(eid) {
             const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
             if ((slab.flags[slot] & GROUND_NAV_RUN_MOVE_ACTIVE) === 0) {
@@ -1865,8 +1862,7 @@ export function createDirectGroundNavBehavior(state) {
         tickWorld(dt) {
             forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickSteering, dt);
         },
-        appendPathOverlay(overlaySlab, prop, visual) {
-            const eid = prop._physId;
+        appendPathOverlay(overlaySlab, eid, visual) {
             const slot = eidToSlot.get(eid);
             if (slot == null) return;
             const flags = slab.flags[slot];
@@ -1925,22 +1921,19 @@ export function createFlowGroundNavBehavior(state) {
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_FLOW,
-        onPointerDown(prop, world) {
-            const eid = prop._physId;
+        onPointerDown(eid, world) {
             const slot = getSlot(eid);
             slab.flags[slot] |= GROUND_NAV_RUN_DRAGGING;
             applyMoveTargetXY(slot, world.x, world.y, eid);
             markPropRunActive(activeRunEids, eid);
             return true;
         },
-        onPointerMove(prop, world) {
-            const eid = prop._physId;
+        onPointerMove(eid, world) {
             const slot = getSlot(eid);
             if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
             applyMoveTargetXY(slot, world.x, world.y, eid);
         },
-        onPointerUp(prop) {
-            const eid = prop._physId;
+        onPointerUp(eid) {
             const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
         },
@@ -1976,8 +1969,7 @@ export function createFlowGroundNavBehavior(state) {
         tickWorld(dt) {
             forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickSteering, dt);
         },
-        appendPathOverlay(overlaySlab, prop, visual) {
-            const eid = prop._physId;
+        appendPathOverlay(overlaySlab, eid, visual) {
             const slot = eidToSlot.get(eid);
             if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
             const px = entityX[eid];
@@ -2037,22 +2029,19 @@ export function createHpaGroundNavBehavior(state) {
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_HPA,
-        onPointerDown(prop, world) {
-            const eid = prop._physId;
+        onPointerDown(eid, world) {
             const slot = getSlot(eid);
             slab.flags[slot] |= GROUND_NAV_RUN_DRAGGING;
             applyMoveTargetXY(slot, world.x, world.y, true);
             markPropRunActive(activeRunEids, eid);
             return true;
         },
-        onPointerMove(prop, world) {
-            const eid = prop._physId;
+        onPointerMove(eid, world) {
             const slot = getSlot(eid);
             if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
             applyMoveTargetXY(slot, world.x, world.y, false);
         },
-        onPointerUp(prop) {
-            const eid = prop._physId;
+        onPointerUp(eid) {
             const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
         },
@@ -2106,8 +2095,7 @@ export function createHpaGroundNavBehavior(state) {
         tickWorld(dt) {
             forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickSteering, dt);
         },
-        appendPathOverlay(overlaySlab, prop, visual) {
-            const eid = prop._physId;
+        appendPathOverlay(overlaySlab, eid, visual) {
             const slot = eidToSlot.get(eid);
             if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
             const nav = slab.sessions[slot].navState;
@@ -2277,13 +2265,13 @@ export class FollowCamera {
 const SELECTION_RING_PAD = 4;
 export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
-    let groundNavProp = null;
+    let groundNavEid = -1;
     let groundNavBehavior = null;
     return {
-        hasCapture: () => interactionBehavior != null || groundNavProp != null,
+        hasCapture: () => interactionBehavior != null || groundNavEid !== -1,
         reset() {
             interactionBehavior = null;
-            groundNavProp = null;
+            groundNavEid = -1;
             groundNavBehavior = null;
         },
         startPropInteraction(behavior, e) {
@@ -2291,33 +2279,33 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
             getCanvas().setPointerCapture(e.pointerId);
         },
         startGroundNav(move, world, e) {
-            move.behavior.setMoveTarget(move.prop._physId, world.x, world.y);
-            groundNavProp = move.prop;
+            move.behavior.setMoveTarget(move.eid, world.x, world.y);
+            groundNavEid = move.eid;
             groundNavBehavior = move.behavior;
             getCanvas().setPointerCapture(e.pointerId);
         },
-        capturesPointerMove: () => groundNavProp != null || interactionBehavior != null,
+        capturesPointerMove: () => groundNavEid !== -1 || interactionBehavior != null,
         onPointerMove(_world, e) {
-            if (groundNavProp) {
+            if (groundNavEid !== -1) {
                 const w = clientToWorld(e.clientX, e.clientY);
-                groundNavBehavior.updateMoveTarget(groundNavProp._physId, w.x, w.y);
+                groundNavBehavior.updateMoveTarget(groundNavEid, w.x, w.y);
                 return;
             }
             if (!interactionBehavior) return;
             const prop = session.getSelectedProp();
             if (!prop) return;
-            interactionBehavior.onPointerMove(prop, clientToWorld(e.clientX, e.clientY), e);
+            interactionBehavior.onPointerMove(prop._physId, clientToWorld(e.clientX, e.clientY), e);
             e.stopPropagation();
         },
         onPointerUp(_world, e) {
-            if (groundNavProp) {
-                const prop = groundNavProp;
+            if (groundNavEid !== -1) {
+                const eid = groundNavEid;
                 const behavior = groundNavBehavior;
-                groundNavProp = null;
+                groundNavEid = -1;
                 groundNavBehavior = null;
                 releasePointerCapture(getCanvas(), e);
                 const w = clientToWorld(e.clientX, e.clientY);
-                behavior.updateMoveTarget(prop._physId, w.x, w.y);
+                behavior.updateMoveTarget(eid, w.x, w.y);
                 session.sync();
                 return true;
             }
@@ -2325,8 +2313,8 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
             const prop = session.getSelectedProp();
             if (prop) {
                 const world = clientToWorld(e.clientX, e.clientY);
-                interactionBehavior.onPointerMove(prop, world, e);
-                interactionBehavior.onPointerUp(prop, e);
+                interactionBehavior.onPointerMove(prop._physId, world, e);
+                interactionBehavior.onPointerUp(prop._physId, e);
             }
             interactionBehavior = null;
             releasePointerCapture(getCanvas(), e);
@@ -2478,7 +2466,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
                 }
                 const prop = session.getSelectedProp();
                 const behavior = resolveBehavior();
-                if (prop && behavior?.onPointerDown(prop, world, e)) {
+                if (prop && behavior?.onPointerDown(prop._physId, world, e)) {
                     gestures.startPropInteraction(behavior, e);
                     return true;
                 }
@@ -2538,7 +2526,7 @@ export function buildSandboxOverlayCommands(state, session, spatialFrame, marque
             const isGroundNav = activeId && GROUND_NAV_BEHAVIOR_IDS.has(activeId);
             const behavior = isGroundNav ? behaviorById.get(activeId) : null;
             if (!behavior?.appendPathOverlay) continue;
-            behavior.appendPathOverlay(slab, prop, visual);
+            behavior.appendPathOverlay(slab, prop._physId, visual);
         }
     }
     const railIdx = sel?.kind === "rail" ? sel.idx : -1;
@@ -2574,7 +2562,7 @@ export function buildSandboxOverlayCommands(state, session, spatialFrame, marque
     }
     state.appLaunch?.session?.appendOverlayCommands?.(slab, state, sel);
     const behavior = resolveBehavior();
-    if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(slab, selectedProp);
+    if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(slab, selectedProp._physId);
     return slab;
 }
 function appendShapeFamilyRadiusField(body, value, onChange) {
@@ -3011,7 +2999,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
     const resolvePointerBehavior = () => {
         const prop = session.getSelectedProp();
         if (!prop) return null;
-        return resolveDragInteractionBehavior(prop, state, behaviorById);
+        return resolveDragInteractionBehavior(prop._physId, state, behaviorById);
     };
     const gestures = createSandboxPointerGestures({ getCanvas, session, clientToWorld });
     const wallPlaceTool = {
@@ -3058,7 +3046,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         if (!activeId || !GROUND_NAV_BEHAVIOR_IDS.has(activeId)) return null;
         const behavior = behaviorById.get(activeId) ?? null;
         if (!behavior?.setMoveTarget) return null;
-        return { prop, behavior };
+        return { eid: prop._physId, behavior };
     };
     const issueGroundNavToSelected = (behaviorId, world) => {
         const sel = session.getSelection();

@@ -32,16 +32,16 @@ describe("grabDrag behavior", () => {
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const kinetic = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 32, y: 32, type: "ball" }));
         const staticProp = registerGrabDragTestProp(state, { id: 2, x: 48, y: 48, radius: 8, shape: new CircleShape(8), strategy: { isKinetic: false }, isDead: false });
-        assert.equal(behavior.onPointerDown(kinetic, { x: 32, y: 32 }), true);
-        assert.equal(behavior.onPointerDown(staticProp, { x: 48, y: 48 }), false);
+        assert.equal(behavior.onPointerDown(kinetic._physId, { x: 32, y: 32 }), true);
+        assert.equal(behavior.onPointerDown(staticProp._physId, { x: 48, y: 48 }), false);
     });
 
     it("tickWorld steers toward pull target instead of teleporting", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
-        assert.ok(behavior.onPointerDown(prop, { x: 0, y: 0 }));
-        behavior.onPointerMove(prop, { x: 120, y: 0 });
+        assert.ok(behavior.onPointerDown(prop._physId, { x: 0, y: 0 }));
+        behavior.onPointerMove(prop._physId, { x: 120, y: 0 });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
         assert.ok(kineticDynamicSlab.rollDriveDirX[prop._physId] > 0.9);
@@ -53,14 +53,14 @@ describe("grabDrag behavior", () => {
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
         const eid = prop._physId;
-        assert.ok(behavior.onPointerDown(prop, { x: 0, y: 0 }));
+        assert.ok(behavior.onPointerDown(prop._physId, { x: 0, y: 0 }));
         entityX[eid] = 0;
         entityY[eid] = 0;
         Object.defineProperties(prop, {
             x: { value: 999, writable: true, configurable: true, enumerable: true },
             y: { value: 999, writable: true, configurable: true, enumerable: true },
         });
-        behavior.onPointerMove(prop, { x: 120, y: 0 });
+        behavior.onPointerMove(prop._physId, { x: 120, y: 0 });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
         assert.ok(kineticDynamicSlab.rollDriveDirX[eid] > 0.9);
@@ -79,8 +79,8 @@ describe("grabDrag behavior", () => {
             x: { value: 200, writable: true, configurable: true, enumerable: true },
             y: { value: 0, writable: true, configurable: true, enumerable: true },
         });
-        assert.ok(behavior.onPointerDown(prop, { x: 8, y: 0 }));
-        behavior.onPointerMove(prop, { x: -50, y: 0 });
+        assert.ok(behavior.onPointerDown(prop._physId, { x: 8, y: 0 }));
+        behavior.onPointerMove(prop._physId, { x: -50, y: 0 });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
         assert.ok(kineticDynamicSlab.rollDriveDirX[eid] < -0.9);
@@ -97,8 +97,8 @@ describe("grabDrag behavior", () => {
         entityY[eid] = 0;
         entityR[eid] = 8;
         Object.defineProperty(prop, "radius", { value: 100, writable: true, configurable: true, enumerable: true });
-        assert.ok(behavior.onPointerDown(prop, { x: 8, y: 0 }));
-        behavior.onPointerMove(prop, { x: -50, y: 0 });
+        assert.ok(behavior.onPointerDown(prop._physId, { x: 8, y: 0 }));
+        behavior.onPointerMove(prop._physId, { x: -50, y: 0 });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
         assert.ok(kineticDynamicSlab.rollDriveDirX[eid] < -0.9);
@@ -117,10 +117,10 @@ describe("grabDrag behavior", () => {
             x: { value: 999, writable: true, configurable: true, enumerable: true },
             y: { value: 999, writable: true, configurable: true, enumerable: true },
         });
-        assert.ok(behavior.onPointerDown(prop, { x: 40, y: 10 }));
-        behavior.onPointerMove(prop, { x: 10, y: 10 });
+        assert.ok(behavior.onPointerDown(prop._physId, { x: 40, y: 10 }));
+        behavior.onPointerMove(prop._physId, { x: 10, y: 10 });
         clearOverlayCommands(overlayCommandSlab);
-        behavior.appendOverlayCommands(overlayCommandSlab, prop);
+        behavior.appendOverlayCommands(overlayCommandSlab, prop._physId);
         const stride = 12;
         let found = false;
         for (let i = 0; i < overlayCommandSlab.count; i++) {
@@ -147,8 +147,8 @@ describe("grabDrag behavior", () => {
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: offX, y: offY, type: "ball" }));
         const eid = prop._physId;
-        assert.ok(behavior.onPointerDown(prop, { x: offX, y: offY }));
-        behavior.onPointerMove(prop, { x: offX + 80, y: offY });
+        assert.ok(behavior.onPointerDown(prop._physId, { x: offX, y: offY }));
+        behavior.onPointerMove(prop._physId, { x: offX + 80, y: offY });
         entityX[eid] = offX;
         entityY[eid] = offY;
         Object.defineProperties(prop, {
@@ -171,8 +171,8 @@ describe("grabDrag behavior", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
-        behavior.onPointerDown(prop, { x: 0, y: 0 });
-        behavior.onPointerMove(prop, { x: 200, y: 0 });
+        behavior.onPointerDown(prop._physId, { x: 0, y: 0 });
+        behavior.onPointerMove(prop._physId, { x: 200, y: 0 });
         for (let i = 0; i < 5; i++) behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
         assert.ok(prop.x < 100);
@@ -182,11 +182,11 @@ describe("grabDrag behavior", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", vx: 12, vy: 3 }));
-        behavior.onPointerDown(prop, { x: 0, y: 0 });
-        behavior.onPointerMove(prop, { x: 80, y: 0 });
+        behavior.onPointerDown(prop._physId, { x: 0, y: 0 });
+        behavior.onPointerMove(prop._physId, { x: 80, y: 0 });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
-        behavior.onPointerUp(prop);
+        behavior.onPointerUp(prop._physId);
         assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_NONE);
         applyGroundRollDrive(prop._physId, 0.016);
         assert.ok(Math.hypot(prop.vx, prop.vy) > 0);
@@ -206,8 +206,8 @@ describe("grabDrag behavior", () => {
         });
         const middle = chain.members[1];
         const headX = chain.head.x;
-        behavior.onPointerDown(middle, { x: middle.x, y: middle.y });
-        behavior.onPointerMove(middle, { x: middle.x + 80, y: middle.y });
+        behavior.onPointerDown(middle._physId, { x: middle.x, y: middle.y });
+        behavior.onPointerMove(middle._physId, { x: middle.x + 80, y: middle.y });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[middle._physId], ROLL_DRIVE_THRUST);
         assert.equal(kineticDynamicSlab.rollDriveKind[chain.head._physId], ROLL_DRIVE_NONE);
@@ -258,7 +258,7 @@ describe("grabDrag behavior", () => {
         const distOutline = Math.hypot(outline[0] - tipX, outline[1] - tipY);
         assert.ok(distOutline < 0.5, "outline snap should land on right arm tip");
         assert.ok(distPart > distOutline + 2, "first collision part alone should miss the outer tip");
-        assert.ok(behavior.onPointerDown(prop, { x: tipX, y: tipY }));
+        assert.ok(behavior.onPointerDown(prop._physId, { x: tipX, y: tipY }));
         assert.ok(Math.abs(ENGINE_F32[G_WX] - tipX) < 1);
         assert.ok(Math.abs(ENGINE_F32[G_WY] - tipY) < 1);
         assert.ok(Math.abs(ENGINE_F32[G_LX] - tipX) < 1);
@@ -271,8 +271,8 @@ describe("grabDrag behavior", () => {
         const prop = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
         const eid = prop._physId;
         entityW[eid] = 0;
-        behavior.onPointerDown(prop, { x: -9, y: -5 });
-        behavior.onPointerMove(prop, { x: -9, y: 80 });
+        behavior.onPointerDown(prop._physId, { x: -9, y: -5 });
+        behavior.onPointerMove(prop._physId, { x: -9, y: 80 });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
         assert.ok(kineticDynamicSlab.rollDriveDirY[eid] > 0.5);
@@ -286,8 +286,8 @@ describe("grabDrag behavior", () => {
         const eid = prop._physId;
         entityW[eid] = 0;
         Object.defineProperty(prop, "angularVelocity", { value: 999, writable: true, configurable: true, enumerable: true });
-        behavior.onPointerDown(prop, { x: -9, y: -5 });
-        behavior.onPointerMove(prop, { x: -9, y: 80 });
+        behavior.onPointerDown(prop._physId, { x: -9, y: -5 });
+        behavior.onPointerMove(prop._physId, { x: -9, y: 80 });
         behavior.tickWorld(16);
         assert.notEqual(entityW[eid], 0);
         assert.equal(prop.angularVelocity, 999);
@@ -305,7 +305,7 @@ describe("grabDrag behavior", () => {
             vy: { value: 7, writable: true, configurable: true, enumerable: true },
             angularVelocity: { value: 7, writable: true, configurable: true, enumerable: true },
         });
-        applyDragLaunchVelocity(prop, 1, 0, 50);
+        applyDragLaunchVelocity(prop._physId, 1, 0, 50);
         assert.equal(entityVx[eid], 50);
         assert.equal(entityVy[eid], 0);
         assert.ok(Math.abs(entityW[eid] - (50 / entityR[eid]) * 0.12) < 1e-9);
@@ -330,8 +330,8 @@ describe("grabDrag behavior", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", angularVelocity: 0 }));
-        behavior.onPointerDown(prop, { x: 10, y: 0 });
-        behavior.onPointerMove(prop, { x: 10, y: 100 });
+        behavior.onPointerDown(prop._physId, { x: 10, y: 0 });
+        behavior.onPointerMove(prop._physId, { x: 10, y: 100 });
         behavior.tickWorld(16);
         assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
         assert.ok(kineticDynamicSlab.rollDriveDirY[prop._physId] > 0.5);
@@ -344,12 +344,12 @@ describe("grabDrag behavior", () => {
         const heavy = registerGrabDragTestProp(state, new WorldProp(100, 0, "tri_wedge", 0));
         entityW[light._physId] = 0;
         entityW[heavy._physId] = 0;
-        behavior.onPointerDown(light, { x: -9, y: -5 });
-        behavior.onPointerMove(light, { x: -9, y: 80 });
+        behavior.onPointerDown(light._physId, { x: -9, y: -5 });
+        behavior.onPointerMove(light._physId, { x: -9, y: 80 });
         behavior.tickWorld(16);
         const lightSpin = entityW[light._physId];
-        behavior.onPointerDown(heavy, { x: 91, y: -5 });
-        behavior.onPointerMove(heavy, { x: 91, y: 80 });
+        behavior.onPointerDown(heavy._physId, { x: 91, y: -5 });
+        behavior.onPointerMove(heavy._physId, { x: 91, y: 80 });
         behavior.tickWorld(16);
         assert.ok(Math.abs(lightSpin) > 0);
         assert.ok(Math.abs(entityW[heavy._physId] - lightSpin) < 1e-6);
