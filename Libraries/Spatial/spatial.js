@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entityR, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, entityNeighborsFrameId, entityNeighborOffset, entityNeighborEidCount, entityNeighborEidStore, ensureEntityNeighborEidArena, resetEntityNeighborEidArena, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entityR, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction, slabCollisionSpan } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
@@ -23,7 +23,7 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
 }
 const EMPTY_WALL_CANDIDATES = new GrowI32(0);
 /**
- * Duck-typed per-tick spatial frame: entity grid, neighbor cache, wall segment cache.
+ * Duck-typed per-tick spatial frame: entity grid, wall segment cache.
  * Game adapters call resetFrame / insertEntity then run pair policies.
  */
 export class SpatialFrameCore {
@@ -36,7 +36,6 @@ export class SpatialFrameCore {
     }
     resetFrame(obstacleGrid) {
         this.frameId = (this.frameId + 1) | 0;
-        resetEntityNeighborEidArena();
         invalidateWallCandidateBucketFrame(this._wallBuckets);
         this._obstacleGrid = obstacleGrid?.appendStaticWallSegmentsNearWorld ? obstacleGrid : null;
         resetStaticWallSegmentSlab();
@@ -67,6 +66,7 @@ export class SpatialFrameCore {
         commitWallCandidateBucket(this._wallBuckets, sWallBucketHitSlot[1], keyLo, keyHi, this.frameId, revision, segIds);
         return segIds;
     }
+    // NEXT eid: insertEntity → insertEid (SoA-only grid insert; no entity.x seed after bind)
     insertEntity(entity, physId) {
         entity._physId = physId;
         noteEntityEidHighWater(physId);
@@ -83,28 +83,9 @@ export class SpatialFrameCore {
             const eid = bodies[i]._physId;
             this.entityGrid.remove(eid);
             this.entityGrid.insert(eid);
-            entityNeighborsFrameId[eid] = -1;
-            entityNeighborEidCount[eid] = 0;
         }
         this.frameId = (this.frameId + 1) | 0;
-        resetEntityNeighborEidArena();
         invalidateWallCandidateBucketFrame(this._wallBuckets);
-    }
-    ensureNeighborEids(eid) {
-        if (entityNeighborsFrameId[eid] === this.frameId) return entityNeighborEidCount[eid];
-        const store = entityNeighborEidStore;
-        let offset = store.used;
-        ensureEntityNeighborEidArena(offset + 16);
-        let count = this.entityGrid.collectNearbyEidsInto(eid, store.eids, store.eids.length - offset, offset);
-        while (count < 0) {
-            ensureEntityNeighborEidArena(Math.max(offset + 16, store.eids.length * 2));
-            count = this.entityGrid.collectNearbyEidsInto(eid, store.eids, store.eids.length - offset, offset);
-        }
-        entityNeighborOffset[eid] = offset;
-        entityNeighborEidCount[eid] = count;
-        entityNeighborsFrameId[eid] = this.frameId;
-        store.used = offset + count;
-        return count;
     }
     collectEntityEidsInBoundsF32(buf, o, outEids, outStart, outCap, excludeEid = -1) {
         return this.entityGrid.collectEidsInBoundsF32(buf, o, outEids, outStart, outCap, excludeEid);
@@ -3207,8 +3188,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(prop._physId);
             } else this.entityGrid.remove(prop._physId);
             this.entityGrid.insert(prop._physId);
-            entityNeighborsFrameId[prop._physId] = -1;
-            entityNeighborEidCount[prop._physId] = 0;
             if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) {
                 this.activateKineticBody(prop._physId, false);
                 admittedEids[admittedCount++] = prop._physId;
@@ -3218,7 +3197,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (admittedCount) snapshotKineticBodySlab(admittedEids, admittedCount);
         if (anyAdmitted) {
             this.frameId = (this.frameId + 1) | 0;
-            resetEntityNeighborEidArena();
             this.populatedMembershipGen = world.entityRegistry.membershipGen;
             bumpKineticTopologyGeneration(world.kinetic);
         }
@@ -3301,11 +3279,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (!entity || entity._physId !== eid) continue;
             this.entityGrid.remove(eid);
             this.entityGrid.insert(eid);
-            entityNeighborsFrameId[eid] = -1;
-            entityNeighborEidCount[eid] = 0;
         }
         this.frameId = (this.frameId + 1) | 0;
-        resetEntityNeighborEidArena();
         invalidateWallCandidateBucketFrame(this._wallBuckets);
     }
     reindexKineticBodies(eids, count = eids.length) {
@@ -3315,11 +3290,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (!entityRefs[eid]) continue;
             this.entityGrid.remove(eid);
             this.entityGrid.insert(eid);
-            entityNeighborsFrameId[eid] = -1;
-            entityNeighborEidCount[eid] = 0;
         }
         this.frameId = (this.frameId + 1) | 0;
-        resetEntityNeighborEidArena();
         invalidateWallCandidateBucketFrame(this._wallBuckets);
     }
     evictKineticProp(prop, session) {
@@ -3345,10 +3317,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._removeFromActive(physId);
         this._activationScheduled.delete(physId);
         this.releasePhysId(physId, prop, session);
-        entityNeighborsFrameId[physId] = -1;
-        entityNeighborEidCount[physId] = 0;
         this.frameId = (this.frameId + 1) | 0;
-        resetEntityNeighborEidArena();
     }
 }
 /** Shared frame for simulation ticks. Call begin() once per update. */

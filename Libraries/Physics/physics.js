@@ -64,8 +64,6 @@ import {
     entityRollQx,
     entityRollQy,
     entityRollQz,
-    entityNeighborsFrameId,
-    entityNeighborEidCount,
     ensureGrowI32,
     ensureGrowF32,
     ensureGrowU8,
@@ -3543,8 +3541,6 @@ function portalTeleportHandler(eid) {
     if (eg) {
         eg.remove(eid);
         eg.insert(eid);
-        entityNeighborsFrameId[eid] = -1;
-        entityNeighborEidCount[eid] = 0;
     }
     wakeKineticBody(eid);
 }

@@ -161,90 +161,6 @@ export const P_COMPOUND = ENGINE_COMPOUND_BASE;
 export const I_SPRITE_KEY_LO = 64;
 export const I_SPRITE_KEY_HI = 65;
 export const I_OUT_RAY_HIT = 66;
-// --- Entity SoA (eid === physId) ---
-// Pose / motion (aliased by kineticDynamicSlab.x/y/vx/vy/w)
-export const entityX = new Float32Array(MAX_ENTITIES);
-export const entityY = new Float32Array(MAX_ENTITIES);
-export const entityVx = new Float32Array(MAX_ENTITIES);
-export const entityVy = new Float32Array(MAX_ENTITIES);
-export const entityW = new Float32Array(MAX_ENTITIES);
-// Facing + roll orientation
-export const entityFacing = new Float32Array(MAX_ENTITIES);
-export const entityRollQw = new Float32Array(MAX_ENTITIES);
-export const entityRollQx = new Float32Array(MAX_ENTITIES);
-export const entityRollQy = new Float32Array(MAX_ENTITIES);
-export const entityRollQz = new Float32Array(MAX_ENTITIES);
-entityRollQw.fill(1);
-// Collision span + lifecycle meta
-export const entityR = new Float32Array(MAX_ENTITIES);
-export const entityAgeMs = new Float32Array(MAX_ENTITIES);
-export const entityKind = new Uint8Array(MAX_ENTITIES);
-export const entityFlags = new Uint32Array(MAX_ENTITIES);
-export const entityAlive = new Uint8Array(MAX_ENTITIES);
-export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
-export const entityRenderKeyId = new Uint16Array(MAX_ENTITIES);
-// JS ref slot (shape / strategy / editor identity) — not pose
-export const entityRefs = new Array(MAX_ENTITIES);
-// EntityGrid membership
-export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
-export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);
-export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
-// ensureNeighborEids CSR (frame-scoped arena; kinetic pairs use slab.spatialNeighbor*)
-export const entityNeighborsFrameId = new Int32Array(MAX_ENTITIES).fill(-1);
-export const entityNeighborOffset = new Int32Array(MAX_ENTITIES);
-export const entityNeighborEidCount = new Int32Array(MAX_ENTITIES);
-export const entityNeighborEidStore = { eids: new Int32Array(256), used: 0 };
-// --- Camera view bounds (session SoA; not ENGINE_F32 scratch) ---
-export const VIEW_TIER_CLIP = 0;
-export const VIEW_TIER_PROPS = 4;
-export const VIEW_TIER_STRUCTURE = 8;
-export const VIEW_TIER_CHUNKS = 12;
-export const VIEW_TIER_COUNT = 4;
-export const VIEW_BOUNDS_PROPS_PAD_PX = 20;
-export const viewBoundsBuf = new Float32Array(VIEW_TIER_COUNT * 4);
-export const viewBoundsPad = new Float32Array(VIEW_TIER_COUNT);
-viewBoundsPad[1] = VIEW_BOUNDS_PROPS_PAD_PX;
-export function configureViewBoundsPads(viewQueryPadPx, viewPaddingPx) {
-    if (viewBoundsPad[2] === viewQueryPadPx && viewBoundsPad[3] === viewPaddingPx) return false;
-    viewBoundsPad[2] = viewQueryPadPx;
-    viewBoundsPad[3] = viewPaddingPx;
-    return true;
-}
-export function recomputeViewBounds(centerX, centerY, halfW, halfH) {
-    for (let i = 0; i < VIEW_TIER_COUNT; i++) {
-        const o = i * 4;
-        const pad = viewBoundsPad[i];
-        viewBoundsBuf[o] = centerX - halfW - pad;
-        viewBoundsBuf[o + 1] = centerY - halfH - pad;
-        viewBoundsBuf[o + 2] = centerX + halfW + pad;
-        viewBoundsBuf[o + 3] = centerY + halfH + pad;
-    }
-}
-export function circleInViewBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER_PROPS) {
-    const half = radius / 2;
-    const minX = worldX - half;
-    const minY = worldY - half;
-    const maxX = worldX + half;
-    const maxY = worldY + half;
-    return !(maxX < minX || maxY < minY || minX > viewBoundsBuf[tierO + 2] || maxX < viewBoundsBuf[tierO] || minY > viewBoundsBuf[tierO + 3] || maxY < viewBoundsBuf[tierO + 1]);
-}
-// --- Physics capacity / open-address hash caps ---
-export const MAX_PHYS_BODIES = MAX_ENTITIES;
-export const MAX_CONTACTS = MAX_ENTITIES;
-export const MAX_KINETIC_PAIRS = MAX_ENTITIES;
-export const MAX_KINETIC_CONSTRAINTS = 2048;
-export const MAX_ISLAND_GROUPS = 256;
-export const WARM_START_CACHE_SIZE = 16384;
-export const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1; // power-of-two probe mask
-export const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2; // open-address pair presence table
-export const MAX_KINETIC_DEBRIS = 4096 * 4;
-export const MAX_PENDING_WALL_BREAKS = 256;
-export const PENDING_BREAK_HASH_CAPACITY = MAX_PENDING_WALL_BREAKS * 2;
-export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1; // power-of-two probe mask
-export const MAX_DEFERRED_FRACTURES = 256;
-export const MAX_STATIC_WALL_SEGMENTS = 4096;
-export const STATIC_WALL_SEG_INTERN_CAPACITY = MAX_STATIC_WALL_SEGMENTS * 2;
-export const STATIC_WALL_SEG_INTERN_MASK = STATIC_WALL_SEG_INTERN_CAPACITY - 1;
 // --- Grow helpers (resizable typed lists / slab column grow) ---
 export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     const cur = obj[key];
@@ -259,12 +175,6 @@ export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     if (n > 0) next.set(cur.subarray(0, Math.min(n, cur.length)));
     obj[key] = next;
     return next;
-}
-export function resetEntityNeighborEidArena() {
-    entityNeighborEidStore.used = 0;
-}
-export function ensureEntityNeighborEidArena(needed) {
-    ensureGrowI32(entityNeighborEidStore, "eids", needed, entityNeighborEidStore.used);
 }
 export function ensureGrowF32(obj, key, minCap, copyLen = -1) {
     const cur = obj[key];
@@ -342,6 +252,85 @@ export class GrowF32 {
     }
 }
 export const pickWorldPoly = new GrowF32(64);
+// --- Entity SoA (eid === physId) ---
+// Pose / motion (aliased by kineticDynamicSlab.x/y/vx/vy/w)
+export const entityX = new Float32Array(MAX_ENTITIES);
+export const entityY = new Float32Array(MAX_ENTITIES);
+export const entityVx = new Float32Array(MAX_ENTITIES);
+export const entityVy = new Float32Array(MAX_ENTITIES);
+export const entityW = new Float32Array(MAX_ENTITIES);
+// Facing + roll orientation
+export const entityFacing = new Float32Array(MAX_ENTITIES);
+export const entityRollQw = new Float32Array(MAX_ENTITIES);
+export const entityRollQx = new Float32Array(MAX_ENTITIES);
+export const entityRollQy = new Float32Array(MAX_ENTITIES);
+export const entityRollQz = new Float32Array(MAX_ENTITIES);
+entityRollQw.fill(1);
+// Collision span + lifecycle meta
+export const entityR = new Float32Array(MAX_ENTITIES);
+export const entityAgeMs = new Float32Array(MAX_ENTITIES);
+export const entityKind = new Uint8Array(MAX_ENTITIES);
+export const entityFlags = new Uint32Array(MAX_ENTITIES);
+export const entityAlive = new Uint8Array(MAX_ENTITIES);
+export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
+export const entityRenderKeyId = new Uint16Array(MAX_ENTITIES);
+// JS ref slot (shape / strategy / editor identity) — not pose
+export const entityRefs = new Array(MAX_ENTITIES);
+// EntityGrid membership
+export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
+export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);
+export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
+// --- Camera view bounds (session SoA; not ENGINE_F32 scratch) ---
+export const VIEW_TIER_CLIP = 0;
+export const VIEW_TIER_PROPS = 4;
+export const VIEW_TIER_STRUCTURE = 8;
+export const VIEW_TIER_CHUNKS = 12;
+export const VIEW_TIER_COUNT = 4;
+export const VIEW_BOUNDS_PROPS_PAD_PX = 20;
+export const viewBoundsBuf = new Float32Array(VIEW_TIER_COUNT * 4);
+export const viewBoundsPad = new Float32Array(VIEW_TIER_COUNT);
+viewBoundsPad[1] = VIEW_BOUNDS_PROPS_PAD_PX;
+export function configureViewBoundsPads(viewQueryPadPx, viewPaddingPx) {
+    if (viewBoundsPad[2] === viewQueryPadPx && viewBoundsPad[3] === viewPaddingPx) return false;
+    viewBoundsPad[2] = viewQueryPadPx;
+    viewBoundsPad[3] = viewPaddingPx;
+    return true;
+}
+export function recomputeViewBounds(centerX, centerY, halfW, halfH) {
+    for (let i = 0; i < VIEW_TIER_COUNT; i++) {
+        const o = i * 4;
+        const pad = viewBoundsPad[i];
+        viewBoundsBuf[o] = centerX - halfW - pad;
+        viewBoundsBuf[o + 1] = centerY - halfH - pad;
+        viewBoundsBuf[o + 2] = centerX + halfW + pad;
+        viewBoundsBuf[o + 3] = centerY + halfH + pad;
+    }
+}
+export function circleInViewBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER_PROPS) {
+    const half = radius / 2;
+    const minX = worldX - half;
+    const minY = worldY - half;
+    const maxX = worldX + half;
+    const maxY = worldY + half;
+    return !(maxX < minX || maxY < minY || minX > viewBoundsBuf[tierO + 2] || maxX < viewBoundsBuf[tierO] || minY > viewBoundsBuf[tierO + 3] || maxY < viewBoundsBuf[tierO + 1]);
+}
+// --- Physics capacity / open-address hash caps ---
+export const MAX_PHYS_BODIES = MAX_ENTITIES;
+export const MAX_CONTACTS = MAX_ENTITIES;
+export const MAX_KINETIC_PAIRS = MAX_ENTITIES;
+export const MAX_KINETIC_CONSTRAINTS = 2048;
+export const MAX_ISLAND_GROUPS = 256;
+export const WARM_START_CACHE_SIZE = 16384;
+export const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1; // power-of-two probe mask
+export const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2; // open-address pair presence table
+export const MAX_KINETIC_DEBRIS = 4096 * 4;
+export const MAX_PENDING_WALL_BREAKS = 256;
+export const PENDING_BREAK_HASH_CAPACITY = MAX_PENDING_WALL_BREAKS * 2;
+export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1; // power-of-two probe mask
+export const MAX_DEFERRED_FRACTURES = 256;
+export const MAX_STATIC_WALL_SEGMENTS = 4096;
+export const STATIC_WALL_SEG_INTERN_CAPACITY = MAX_STATIC_WALL_SEGMENTS * 2;
+export const STATIC_WALL_SEG_INTERN_MASK = STATIC_WALL_SEG_INTERN_CAPACITY - 1;
 // --- Kinetic slabs (dynamic aliases entity XYVW; static / constraints / contacts / pairs) ---
 const SHAPE_POOL_FLOATS_INIT = MAX_PHYS_BODIES * 16;
 const PART_TABLE_INIT = MAX_PHYS_BODIES * 2;

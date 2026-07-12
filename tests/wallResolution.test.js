@@ -82,7 +82,6 @@ describe("polygon wall resolution", () => {
             kineticEids: Int32Array.of(bar._physId),
             kineticEidCount: 1,
             getWallCandidates: () => segs,
-            ensureNeighborEids: () => 0,
             flushScheduledKineticActivations() {},
             syncActiveKineticBodies() {},
         };
