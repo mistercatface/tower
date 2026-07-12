@@ -48,11 +48,6 @@ export function setupPropForFracture(prop, hx, hy, physId = 0) {
     return prop;
 }
 
-function releaseDebrisGeom(stores, start, count) {
-    const debris = stores.debris;
-    for (let i = start; i < start + count; i++) if (debris.vertHandle[i]) stores.geom.release(debris.vertHandle[i]);
-}
-
 export function materializeDebrisGeometries(stores, debrisStart, debrisCount) {
     const geometries = [];
     const debris = stores.debris;
@@ -82,8 +77,11 @@ export function shatterPolygon(flatVerts, hitX, hitY, impactForce = 10, stores =
         stores.debris.reset();
         return [];
     }
-    const geometries = materializeDebrisGeometries(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
-    releaseDebrisGeom(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
+    const debrisStart = ENGINE_F32[F_OUT_DEBRIS_START];
+    const debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+    const geometries = materializeDebrisGeometries(stores, debrisStart, debrisCount);
+    const debris = stores.debris;
+    for (let i = debrisStart; i < debrisStart + debrisCount; i++) if (debris.vertHandle[i]) stores.geom.release(debris.vertHandle[i]);
     stores.debris.reset();
     return geometries;
 }

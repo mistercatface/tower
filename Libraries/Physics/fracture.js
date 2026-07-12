@@ -34,9 +34,6 @@ let sWallKind = -1;
 let sWallIdx = 0;
 let sWallSide = 0;
 const railFlushBatch = new RailWallBatch(MAX_PENDING_WALL_BREAKS);
-function strategyForDebrisType(type) {
-    return sharedWorldPropStrategy(type);
-}
 function copyDebrisPolygonGeometry(dst, src) {
     const verts = src.shape.vertices;
     const n = verts.length;
@@ -255,7 +252,7 @@ function admitKineticPropsBatch(spatialFrame, props, world) {
     if (!spatialFrame?.admitKineticProps) throw new Error("Kinetic shard admission requires spatial frame admitKineticProps");
     spatialFrame.admitKineticProps(props, world);
 }
-function releaseDebrisGeomHandles(stores, start, count) {
+function releaseDebrisGeomRange(stores, start, count) {
     const debris = stores.debris;
     for (let i = start; i < start + count; i++) if (debris.vertHandle[i]) stores.geom.release(debris.vertHandle[i]);
 }
@@ -424,7 +421,7 @@ class KineticDebrisStore {
         body._store = this;
         body.id = kineticDebrisNextId++;
         body.type = type;
-        body.strategy = strategyForDebrisType(type);
+        body.strategy = sharedWorldPropStrategy(type);
         const asset = propCatalog[type];
         body.height = asset?.visuals?.world?.height ?? 12;
         body.visualOverride = undefined;
@@ -482,7 +479,7 @@ class KineticDebrisStore {
         const propType = spawn.kind[row] === WALL_KIND_VOXEL ? "wall_voxel_chunk" : "wall_rail_chunk";
         const parent = this._breakSource;
         parent.type = propType;
-        parent.strategy = strategyForDebrisType(propType);
+        parent.strategy = sharedWorldPropStrategy(propType);
         parent.x = spawn.x[row];
         parent.y = spawn.y[row];
         parent.vx = 0;
@@ -529,7 +526,7 @@ class KineticDebrisStore {
         const debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
         const spawned = this.spawnShardsFromFracture(parent, stores, debrisStart, debrisCount, ENGINE_F32[F_OUT_ORIGIN_X], ENGINE_F32[F_OUT_ORIGIN_Y], ENGINE_F32[F_OUT_FACING], ENGINE_F32[F_OUT_IMPACT_LOCAL_X], ENGINE_F32[F_OUT_IMPACT_LOCAL_Y], ENGINE_F32[F_OUT_IMPACT_FORCE]);
         if (!spawned.length) {
-            releaseDebrisGeomHandles(stores, debrisStart, debrisCount);
+            releaseDebrisGeomRange(stores, debrisStart, debrisCount);
             stores.debris.reset();
             const body = this.acquireBody(parent.type, parent.x, parent.y, parent.facing);
             body.vx = parent.vx;
@@ -551,7 +548,7 @@ class KineticDebrisStore {
             return spawnedScratch;
         }
         admitKineticPropsBatch(spatialFrame, spawned, this.world);
-        releaseDebrisGeomHandles(stores, debrisStart, debrisCount);
+        releaseDebrisGeomRange(stores, debrisStart, debrisCount);
         stores.debris.reset();
         return spawned;
     }
@@ -663,9 +660,6 @@ export function packWallDamageKey(kind, idx, side, grid) {
         }
     }
     return WALL_KEY_RAIL_BIT | ((s & 3) << WALL_KEY_SIDE_SHIFT) | (i & WALL_KEY_IDX_MASK);
-}
-export function packWallDamageKeyFromPending(pending, row, grid) {
-    return packWallDamageKey(pending.kind[row], pending.idx[row], pending.side[row], grid);
 }
 export function classifyWallDamageSegment(grid, gridIdx, flags, gridSide) {
     sWallKind = -1;
@@ -878,7 +872,7 @@ export class FractureEngine {
                     else removeWorldPropFromState(world, prop, spatialFrame);
                 const shards = this.debris.spawnShardsFromFracture(prop, stores, deferred.debrisStart[i], deferred.debrisCount[i], deferred.originX[i], deferred.originY[i], deferred.facing[i], deferred.impactLocalX[i], deferred.impactLocalY[i], deferred.impactForce[i]);
                 for (let j = 0; j < shards.length; j++) admitScratch.push(shards[j]);
-                releaseDebrisGeomHandles(stores, deferred.debrisStart[i], deferred.debrisCount[i]);
+                this.releaseDeferredFractureGeom(i);
             }
             admitKineticPropsBatch(spatialFrame, admitScratch, world);
         } finally {
@@ -887,6 +881,10 @@ export class FractureEngine {
             resetDeferredFractureSlab();
             admitScratch.length = 0;
         }
+    }
+    releaseDeferredFractureGeom(deferredRow) {
+        const d = deferredFractureSlab;
+        releaseDebrisGeomRange(this.stores, d.debrisStart[deferredRow], d.debrisCount[deferredRow]);
     }
     queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
         for (let i = 0; i < 2; i++) {
@@ -934,7 +932,7 @@ export class FractureEngine {
         const debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
         const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, stores, debrisStart, debrisCount, ENGINE_F32[F_OUT_ORIGIN_X], ENGINE_F32[F_OUT_ORIGIN_Y], ENGINE_F32[F_OUT_FACING], ENGINE_F32[F_OUT_IMPACT_LOCAL_X], ENGINE_F32[F_OUT_IMPACT_LOCAL_Y], ENGINE_F32[F_OUT_IMPACT_FORCE]);
         admitKineticPropsBatch(spatialFrame, shards, world);
-        releaseDebrisGeomHandles(stores, debrisStart, debrisCount);
+        releaseDebrisGeomRange(stores, debrisStart, debrisCount);
         stores.debris.reset();
         return shards;
     }
@@ -1072,7 +1070,7 @@ export class FractureEngine {
                 ENGINE_F32[F_OUT_DEBRIS_COUNT] = stores.debris.write - debrisStart;
                 return;
             }
-            releaseDebrisGeomHandles(stores, debrisStart, stores.debris.write - debrisStart);
+            releaseDebrisGeomRange(stores, debrisStart, stores.debris.write - debrisStart);
             stores.debris.write = debrisStart;
             seedCount = dropShatterSeed(SHATTER_SEEDS, dropIndex, seedCount);
             attempts++;
