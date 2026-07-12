@@ -199,9 +199,10 @@ export function createDragLaunchBehaviors(state) {
 }
 function resolveGrabDragAnchor(prop, world) {
     const asset = propCatalog[prop.type];
-    if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && prop.shape?.vertices?.length >= 6) {
+    const verts = prop.drawOutline?.length >= 6 ? prop.drawOutline : prop.shape?.vertices;
+    if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && verts?.length >= 6) {
         const facing = readEntityFacing(prop);
-        findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.shape.vertices, prop.x, prop.y, facing, world.x, world.y);
+        findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, verts, prop.x, prop.y, facing, world.x, world.y);
         GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
         GRAB_ANCHOR_SCRATCH[G_OY] = GRAB_ANCHOR_SCRATCH[G_WY] - world.y;
         return;

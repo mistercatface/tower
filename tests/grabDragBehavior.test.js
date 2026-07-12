@@ -9,6 +9,7 @@ import { createDefaultSandboxBehaviors, spawnLinkedBallChain } from "../Librarie
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
+import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY } from "../Core/engineMemory.js";
 
 describe("grabDrag behavior", () => {
     it("getDragLaunchConfig uses dragLaunch for grab", () => {
@@ -109,6 +110,29 @@ describe("grabDrag behavior", () => {
         findClosestPolygonBoundaryGrabPointInto(out, 0, box, 0, 0, 0, 0, 8);
         assert.ok(Math.abs(out[2]) < 0.01);
         assert.ok(Math.abs(out[3] - 8) < 0.01);
+    });
+
+    it("compound polygon grab uses drawOutline not first collision part", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state);
+        const prop = registerGrabDragTestProp(state, new WorldProp(0, 0, "cross_pinwheel", 0));
+        assert.ok(prop.drawOutline?.length >= 6);
+        assert.ok(prop.collisionParts?.length > 1);
+        const tipX = 16;
+        const tipY = 0;
+        const partOnly = new Float32Array(4);
+        const outline = new Float32Array(4);
+        findClosestPolygonBoundaryGrabPointInto(partOnly, 0, prop.shape.vertices, 0, 0, 0, tipX, tipY);
+        findClosestPolygonBoundaryGrabPointInto(outline, 0, prop.drawOutline, 0, 0, 0, tipX, tipY);
+        const distPart = Math.hypot(partOnly[0] - tipX, partOnly[1] - tipY);
+        const distOutline = Math.hypot(outline[0] - tipX, outline[1] - tipY);
+        assert.ok(distOutline < 0.5, "outline snap should land on right arm tip");
+        assert.ok(distPart > distOutline + 2, "first collision part alone should miss the outer tip");
+        assert.ok(behavior.onPointerDown(prop, { x: tipX, y: tipY }));
+        assert.ok(Math.abs(ENGINE_F32[G_WX] - tipX) < 1);
+        assert.ok(Math.abs(ENGINE_F32[G_WY] - tipY) < 1);
+        assert.ok(Math.abs(ENGINE_F32[G_LX] - tipX) < 1);
+        assert.ok(Math.abs(ENGINE_F32[G_LY] - tipY) < 1);
     });
 
     it("polygon grab uses off-center anchor and applies grab torque", () => {
