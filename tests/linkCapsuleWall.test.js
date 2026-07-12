@@ -8,7 +8,7 @@ import { P_OUT_PEN_OVERLAP } from "../Core/engineMemory.js";
 import { kineticDynamicSlab, GrowI32, ENGINE_F32 } from "../Core/engineMemory.js";
 import { mockWallSegment, wallSegIds } from "./harness/wallSegmentHarness.js";
 
-const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy, { needsWallCollision: true });
+const wallCircle = (x, y, radius, vx = 0, vy = 0) => mockKineticCircle(x, y, radius, vx, vy);
 const EMPTY_WALLS = new GrowI32(0);
 
 function resolveLinkConstraints(tick) {

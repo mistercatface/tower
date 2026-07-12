@@ -239,12 +239,9 @@ export function mockCircleProp(x, y, radius) {
     return body;
 }
 export const noop = () => {};
-export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop, updatePropFrame: noop, updatePropSubstep: noop };
+export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop, updatePropFrame: noop };
 export function kineticPhysicsHooks(overrides = {}) {
     return { ...kineticPipelineStubs, ...overrides };
-}
-export function kineticIntegrateHooks(integrateFn) {
-    return kineticPhysicsHooks({ updatePropSubstep: (prop, subDt, frame) => integrateFn(prop, subDt, frame) });
 }
 let nextMockKineticCircleId = 1;
 let nextMockBallId = 1;
@@ -303,7 +300,6 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
     if (options.facing != null) body.facing = options.facing;
     if (options.isDead) body.isDead = true;
     body.currentState = options.currentState === true || options.currentState == null ? {} : options.currentState;
-    body.needsWallCollision = () => (typeof options.needsWallCollision === "function" ? options.needsWallCollision() : (options.needsWallCollision ?? false));
     if (options.dampedMotion)
         body.update = function update(dt) {
             this.x += (this.vx ?? 0) * (dt / 1000);

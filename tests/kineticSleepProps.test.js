@@ -6,7 +6,7 @@ import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Physics/physics.js";
-import { isRotatingEntity, pairBroadphaseOverlapSlab, shouldResolveKineticPair, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { isKinematicallyActiveSlab, pairBroadphaseOverlapSlab, allowsKineticCollisionPairSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { entityRefs } from "../Core/engineMemory.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
@@ -87,8 +87,9 @@ describe("kinetic sleep on proof props", () => {
         wedge.vx = 0;
         wedge.vy = 0;
         wedge.angularVelocity = 0.12;
-        assert.ok(wedge.needsWallCollision());
-        assert.ok(isRotatingEntity(wedge));
+        assignPhysIdWithPose(wedge, 0);
+        snapshotKineticBodySlab([wedge._physId], 1);
+        assert.ok(isKinematicallyActiveSlab(wedge._physId));
     });
     it("motion resets sleep counter on proof props", () => {
         const hex = new WorldProp(0, 0, "hex_block", 0);
@@ -106,9 +107,9 @@ describe("kinetic sleep on proof props", () => {
         assignPhysIdWithPose(a, 0);
         assignPhysIdWithPose(b, 1);
         snapshotKineticBodySlab([a._physId, b._physId], 2);
-        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlapSlab(a._physId, b._physId)) === false);
+        assert.ok(allowsKineticCollisionPairSlab(a._physId, b._physId, pairBroadphaseOverlapSlab(a._physId, b._physId)) === false);
         a.vx = 10;
         snapshotKineticBodySlab([a._physId, b._physId], 2);
-        assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlapSlab(a._physId, b._physId)));
+        assert.ok(allowsKineticCollisionPairSlab(a._physId, b._physId, pairBroadphaseOverlapSlab(a._physId, b._physId)));
     });
 });

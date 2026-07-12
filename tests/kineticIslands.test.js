@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { addDistanceConstraint, bakeKineticIslandPlan, shareKineticIsland, advanceKineticSleep, evaluateKineticIslandSleepEligible, wakeKineticBody, LIBRARY_COLLISION_DEFAULTS, snapshotKineticBodySlab, gatherKineticCandidatePairs, runKineticPhysics, createKineticSession } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, kineticPairBuffer } from "../Core/engineMemory.js";
-import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticIntegrateHooks, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
+import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticPhysicsHooks, kineticPipelineStubs } from "./harness/kineticTickHarness.js";
 
 const pairBuffer = kineticPairBuffer;
 
@@ -184,13 +184,8 @@ describe("kinetic islands", () => {
         const c = mockKineticCircle(0, 36, 10, 0, 0);
         const bodies = [a, b, c];
         const tick = createKineticTestTick(bodies);
-        
-        const integrate = (prop, subDt) => {
-            prop.x += (prop.vx || 0) * (subDt / 1000);
-            prop.y += (prop.vy || 0) * (subDt / 1000);
-        };
         for (let frame = 0; frame < SLEEP_FRAMES; frame++) {
-            runKineticPhysics(tick, 16.667, kineticIntegrateHooks(integrate));
+            runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
         }
         
         assert.equal(a.isSleeping, true);
@@ -214,10 +209,7 @@ describe("kinetic islands", () => {
         assert.equal(b.isSleeping, false);
         
         // Run one frame of physics
-        runKineticPhysics(tick, 16.667, kineticIntegrateHooks((prop, subDt) => {
-            prop.x += (prop.vx || 0) * (subDt / 1000);
-            prop.y += (prop.vy || 0) * (subDt / 1000);
-        }));
+        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
         
         // A should be woken up because B was active and overlapped
         assert.equal(a.isSleeping, false);

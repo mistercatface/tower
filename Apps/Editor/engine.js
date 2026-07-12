@@ -35,13 +35,8 @@ function simulationKineticHooks(state) {
         updatePropFrame(prop, dt, frame) {
             prop.tickPropFrame(dt, state, frame);
         },
-        updatePropSubstep(prop, subDt) {
-            prop.tickPropSubstep(subDt);
-        },
         resolveWalls(eid, frame) {
-            const session = state.appLaunch?.session;
-            if (session?.resolveWalls) return session.resolveWalls(eid, frame);
-            return resolveKineticWallDamage(state, eid, frame, state.wallResolver);
+            return resolveKineticWallDamage(state, eid, frame);
         },
         applyContactSideEffects(tick, contacts) {
             tick.world.fractureEngine.processKineticContactFractures(tick, contacts);

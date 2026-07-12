@@ -18,9 +18,6 @@ function getIntersection(ax, ay, bx, by, cx, cy, dx, dy) {
 function obstacleGridWithSegments(segIds) {
     return {
         cellSize: 16,
-        appendStaticWallSegmentsNear(_entity, out) {
-            for (let i = 0; i < segIds.length; i++) out.push(segIds[i]);
-        },
         appendStaticWallSegmentsNearWorld(_x, _y, _queryRadius, out) {
             for (let i = 0; i < segIds.length; i++) out.push(segIds[i]);
         },

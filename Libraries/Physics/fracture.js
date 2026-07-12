@@ -377,9 +377,6 @@ class KineticDebrisBody {
     getRender3DKey() {
         return this.strategy.render3DKey;
     }
-    needsWallCollision() {
-        return !this.isSleeping;
-    }
     tickPropFrame(dt, _state, spatialFrame) {
         this.ageMs += dt;
         if (this.strategy.fadeOutMs !== undefined) {
@@ -714,7 +711,8 @@ export function createGridWallDamage(state, config) {
     clearPendingWallBreaks(pendingWallBreaks);
     return { config, pending: pendingWallBreaks, commit: createDeferredGridWallCommit(state), spatialFrame: null, lastCommitBounds: null, lastSpawned: [], lastSpawnedCount: 0 };
 }
-export function resolveKineticWallDamage(state, eid, spatialFrame, wallResolver) {
+export function resolveKineticWallDamage(state, eid, spatialFrame) {
+    const wallResolver = state.wallResolver;
     const wallDamage = state.gridWallDamage;
     const preSpeed = Math.hypot(entityVx[eid], entityVy[eid]);
     const shouldBreakWallHit = preSpeed > 0 ? (approachDot) => computeWallBreakStrength(preSpeed, approachDot, wallDamage.config) >= wallDamage.config.minBreakStrength : null;

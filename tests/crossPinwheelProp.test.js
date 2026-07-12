@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
-import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, kineticPhysicsHooks, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint, gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, kineticStaticSlab, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
@@ -40,7 +40,7 @@ describe("cross pinwheel prop", () => {
         assert.equal(pinwheel.angularVelocity, 0);
         const originalFacing = pinwheel.facing;
 
-        for (let i = 0; i < 12; i++) runKineticPhysics(tick, 16, kineticIntegrateHooks((prop, subDt) => prop.update(subDt)));
+        for (let i = 0; i < 12; i++) runKineticPhysics(tick, 16, kineticPhysicsHooks());
 
         assert.ok(Math.abs(pinwheel.angularVelocity) > 0.01, `Should have non-zero angular velocity, got ${pinwheel.angularVelocity}`);
         assert.notEqual(pinwheel.facing, originalFacing);
@@ -98,6 +98,7 @@ describe("cross pinwheel prop", () => {
 
     it("angular velocity decays after spin", () => {
         const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
+        assignPhysIdWithPose(pinwheel, 0);
         pinwheel.angularVelocity = 5;
         for (let i = 0; i < 120; i++) pinwheel.tickPropSubstep(16);
         assert.ok(Math.abs(pinwheel.angularVelocity) < 0.1, `spin should decay, got ${pinwheel.angularVelocity}`);

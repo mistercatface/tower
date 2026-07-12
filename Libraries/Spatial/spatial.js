@@ -49,9 +49,13 @@ export class SpatialFrameCore {
         resetStaticWallSegmentSlab();
         this._wallBucketRevision = revision;
     }
-    _wallCandidatesNearWorld(worldX, worldY, queryRadius) {
+    getWallCandidates(eid) {
+        if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
         const grid = this._obstacleGrid;
         this._ensureWallBucketCacheRevision(grid);
+        const worldX = kineticDynamicSlab.x[eid];
+        const worldY = kineticDynamicSlab.y[eid];
+        const queryRadius = slabCollisionSpan(eid);
         wallBucketKeyPartsInto(sWallBucketKey, 0, grid, worldX, worldY, queryRadius);
         const keyLo = sWallBucketKey[0];
         const keyHi = sWallBucketKey[1];
@@ -62,21 +66,11 @@ export class SpatialFrameCore {
         commitWallCandidateBucket(this._wallBuckets, sWallBucketHitSlot[1], keyLo, keyHi, this.frameId, revision, segIds);
         return segIds;
     }
-    /**
-     * @param {{ x: number, y: number, _physId?: number, _gridTileIdx?: number }} entity — mutated
-     * @param {number} physId
-     */
     insertEntity(entity, physId) {
         entity._physId = physId;
         noteEntityEidHighWater(physId);
         this.entityGrid.insert(entity);
     }
-    /**
-     * Re-insert bodies after mid-tick motion (physics substep).
-     * Bumps frameId so neighbor queries see new poses; wall buckets restamp on next gather.
-     *
-     * @param {object[]} bodies
-     */
     reindexKineticBodies(bodies) {
         if (!bodies?.length) return;
         for (let i = 0; i < bodies.length; i++) {
@@ -88,10 +82,6 @@ export class SpatialFrameCore {
         }
         this.frameId = (this.frameId + 1) | 0;
         invalidateWallCandidateBucketFrame(this._wallBuckets);
-    }
-    getWallCandidates(eid) {
-        if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
-        return this._wallCandidatesNearWorld(kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], slabCollisionSpan(eid));
     }
     ensureNeighborEids(entity) {
         if (entity._neighborsFrameId === this.frameId) return entity._neighborEidCount;
@@ -1212,9 +1202,6 @@ export class WorldObstacleGrid {
             }
         });
         return outIds;
-    }
-    appendStaticWallSegmentsNear(entity, outIds) {
-        return this.appendStaticWallSegmentsNearWorld(entity.x, entity.y, entityCollisionSpan(entity), outIds);
     }
     rebuildFixed(centerX, centerY, width, height) {
         const halfW = width * 0.5;
@@ -3260,10 +3247,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             this.populatedMembershipGen = world.entityRegistry.membershipGen;
             bumpKineticTopologyGeneration(world.kinetic);
         }
-    }
-    getWallCandidates(eid) {
-        if (!this._obstacleGrid) return EMPTY_WALL_CANDIDATES;
-        return this._wallCandidatesNearWorld(kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], slabCollisionSpan(eid));
     }
     syncActiveKineticBodies() {
         clearActiveKineticBodySlab();

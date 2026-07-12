@@ -9,7 +9,7 @@ import { kineticStaticSlab, primitivePhysics } from "../Core/engineMemory.js";
 describe("kinetic substep early-out", () => {
     it("skips remaining substeps once bodies fall below velocity epsilon", () => {
         withCollisionSettings({ motionSubsteps: { maxStepPx: 4, maxSubsteps: 8 }, kineticEarlyOut: { velocityEpsilonSq: 0.04 } }, () => {
-            const body = mockKineticCircle(0, 0, 10, 120, 0, { currentState: true, needsWallCollision: false });
+            const body = mockKineticCircle(0, 0, 10, 120, 0, { currentState: true });
             const dt = 100;
             const tick = createKineticTestTick([body]);
             const planned = countMotionSubsteps(dt, { maxStepPx: 4, maxSubsteps: 8 });

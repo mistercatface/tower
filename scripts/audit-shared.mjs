@@ -152,6 +152,13 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "buildDragLaunchAimLineContext",
     "buildHpaGroundNavPathSettings",
     "dragLaunchAimLineContextForState",
+    "worldAnchorFromBodyIntoF32",
+    "appendStaticWallSegmentsNear",
+    "shouldResolveKineticPair",
+    "isMovingEntity",
+    "isRotatingEntity",
+    "isKinematicallyActive",
+    "kineticIntegrateHooks",
 ];
 
 export const LEGACY_SCALAR_SYMBOLS = [
@@ -195,6 +202,10 @@ export const LEGACY_SCALAR_SYMBOLS = [
     { pattern: /function applyKineticContactWake[\s\S]{0,400}?entityRefs\s*\[/, label: "entityRefs in applyKineticContactWake", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /\bconstraintBodyAt\b/, label: "constraintBodyAt", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /getWallCandidates\s*\(\s*(?!eid\b)[a-zA-Z_]/, label: "bag getWallCandidates", onlyUnder: "Libraries/" },
+    { pattern: /\b_wallCandidatesNearWorld\b/, label: "_wallCandidatesNearWorld", onlyUnder: "Libraries/" },
+    { pattern: /\bneedsWallCollision\b/, label: "needsWallCollision", onlyUnder: "Libraries/" },
+    { pattern: /\bupdatePropSubstep\b/, label: "updatePropSubstep", onlyUnder: "Libraries/" },
+    { pattern: /\bupdatePropSubstep\b/, label: "updatePropSubstep", onlyFile: "Apps/Editor/engine.js" },
     { pattern: /function snapshotKineticBodySlab[\s\S]{0,500}?\w+\[\w+\]\._physId/, label: "bag ._physId in snapshotKineticBodySlab", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /function refreshActiveKineticBodySlabPose\s*\(\s*[^)\s]/, label: "bag-arg refreshActiveKineticBodySlabPose", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /\bgetLive\s*\(/, label: "getLive in dragBehaviors", onlyFile: "Libraries/Sandbox/dragBehaviors.js" },

@@ -8,7 +8,7 @@ import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
-import { createKineticTestTick, kineticIntegrateHooks, noop, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, kineticPhysicsHooks, noop, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { collisionSettingsForIterations, withCollisionSettings } from "./harness/collisionSettingsHarness.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
@@ -21,8 +21,8 @@ function slabPairCollision(a, b) {
 describe("kinetic pair persistence", () => {
     it("reuses gathered pair list across outer iterations", () => {
         withCollisionSettings(collisionSettingsForIterations(3), () => {
-            const a = mockKineticCircle(0, 0, 10, 50, 0, { currentState: true, needsWallCollision: false });
-            const b = mockKineticCircle(14, 0, 10, -40, 0, { currentState: true, needsWallCollision: false });
+            const a = mockKineticCircle(0, 0, 10, 50, 0, { currentState: true });
+            const b = mockKineticCircle(14, 0, 10, -40, 0, { currentState: true });
             const tick = createKineticTestTick([a, b]);
             const ax0 = a.x;
             runCollisionPipeline(tick, noop, noop);
@@ -35,8 +35,8 @@ describe("kinetic pair persistence", () => {
 
     it("syncs body slab before early-out when props moved after constraints", () => {
         withCollisionSettings({ kineticIterations: 4, kineticEarlyOut: { velocityEpsilonSq: 0.04, constraintErrorEpsilon: 1e-3, contactImpulseEpsilon: 1e-4 } }, () => {
-            const bodyA = mockKineticCircle(0, 0, 10, 0, 0, { needsWallCollision: false });
-            const bodyB = mockKineticCircle(20, 0, 10, 0, 0, { needsWallCollision: false });
+            const bodyA = mockKineticCircle(0, 0, 10, 0, 0);
+            const bodyB = mockKineticCircle(20, 0, 10, 0, 0);
             const tick = createKineticTestTick([bodyA, bodyB]);
             addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 20 });
             runCollisionPipeline(tick, noop, noop);
@@ -66,8 +66,8 @@ describe("kinetic pair persistence", () => {
             motionSubsteps: { maxStepPx: 4, maxSubsteps: 4 },
             ...collisionSettingsForIterations(2),
         }, () => {
-            const a = mockKineticCircle(0, 0, 10, 80, 0, { currentState: true, needsWallCollision: false });
-            const b = mockKineticCircle(14, 0, 10, -60, 0, { currentState: true, needsWallCollision: false });
+            const a = mockKineticCircle(0, 0, 10, 80, 0, { currentState: true });
+            const b = mockKineticCircle(14, 0, 10, -60, 0, { currentState: true });
             a.update = (dt) => {
                 a.x += a.vx * (dt / 1000);
             };
@@ -75,7 +75,7 @@ describe("kinetic pair persistence", () => {
                 b.x += b.vx * (dt / 1000);
             };
             const tick = createKineticTestTick([a, b]);
-            runKineticPhysics(tick, 100, kineticIntegrateHooks((prop, subDt) => prop.update?.(subDt)));
+            runKineticPhysics(tick, 100, kineticPhysicsHooks());
             const stats = tick.world.kinetic.kineticPairGatherStats;
             const substeps = tick.world.kinetic.motionSubstepStats.substepsRun;
             assert.equal(stats.full, 1);

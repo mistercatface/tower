@@ -119,8 +119,10 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - Grab/launch drag: closed-over scalars only (`grabEid` + target/offset/anchor; launch aim floats). Grab `tickWorld` resolves via `getRef(grabEid)` — never `getLive`. No `createDragLaunchAim` bag, no grab `propRuns`/`targetWorld`, no `createDragLaunchBehaviors` array wrapper — `createDragLaunchBehavior` returns one behavior.
 - Roll-drive intent: `kineticDynamicSlab.rollDrive*` by eid only (`steerRollToward` / `decelerateRoll` / `clearGroundRollDrive` / `applyGroundRollDrive` take eid). No `prop._rollDrive*` fields.
 - Kinetic/rolls/orient gates: `entityFlags` (`ENTITY_FLAG_KINETIC` / `ENTITY_FLAG_ROLLS` / `ENTITY_FLAG_ORIENT_TO_MOTION`) stamped once at bind via `worldPropBindFlags`; `wakeKineticBody(eid)` / sleep APIs take eid. No hot `strategy?.isKinetic` / `strategy.rolls` on wake/sleep/pair paths.
-- Wall resolve on kinetic tick: `getWallCandidates(eid)`, `shouldResolveKineticBodyAgainstWalls(eid)`, `WallCollisionResolver.resolve(eid)`, part CSR SAT (`partGeomOffset` / pools) — no bag shape/`entityRefs` on that path.
-- Prop integrate on kinetic tick: `integratePropMotion(eid)` / `applyVelocityDamping(eid)` inline in `runKineticPhysics` substeps — no `entityRefs` / `updatePropSubstep` bag loop.
+- Wall resolve on kinetic tick: `getWallCandidates(eid)` only (slab XY + `slabCollisionSpan`); `shouldResolveKineticBodyAgainstWalls(eid)`, `WallCollisionResolver.resolve(eid)`, part CSR SAT — no bag shape/`entityRefs` / `_wallCandidatesNearWorld` twin.
+- Wall damage: `resolveKineticWallDamage(state, eid, frame)` uses `state.wallResolver` — no 4th resolver arg.
+- Prop integrate on kinetic tick: `integratePropMotion(eid)` / `applyVelocityDamping(eid)` inline in `runKineticPhysics` substeps — no `entityRefs` / `updatePropSubstep` hook.
+- Kinetic activity on tick: `isKinematicallyActiveSlab(eid)` / `allowsKineticCollisionPairSlab` only — no bag `isKinematicallyActive` / `needsWallCollision` / `shouldResolveKineticPair`.
 - EntityRegistry: `getLive(gameId)` is editor/selection edge; prefer `getRef(eid)` for physics-adjacent code.
 - Drag aim line: `getDragLaunchAimLine(aim, prop, obstacleGrid)` — no aim-line context bag / `createDragLaunchInteraction` injection.
 

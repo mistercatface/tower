@@ -1677,19 +1677,6 @@ export function entityContainedInAabbF32(entity, buf, o) {
     entityWorldAabbF32(ENGINE_F32, P_AABB_A, entity);
     return buf[o] <= ENGINE_F32[P_AABB_A] && buf[o + 1] <= ENGINE_F32[P_AABB_A + 1] && buf[o + 2] >= ENGINE_F32[P_AABB_A + 2] && buf[o + 3] >= ENGINE_F32[P_AABB_A + 3];
 }
-export function isMovingEntity(entity) {
-    const vx = entity.vx || 0;
-    const vy = entity.vy || 0;
-    return speedSqXY(vx, vy) > collisionSettings.kineticActivity.movingSpeedSq;
-}
-export function isRotatingEntity(entity) {
-    const w = entity.angularVelocity ?? 0;
-    const rotatingSpeedRad = collisionSettings.kineticActivity.rotatingSpeedRad;
-    return w * w > rotatingSpeedRad * rotatingSpeedRad;
-}
-export function isKinematicallyActive(entity) {
-    return isMovingEntity(entity) || isRotatingEntity(entity);
-}
 export function isKinematicallyActiveSlab(physId) {
     const slab = kineticDynamicSlab;
     const vx = slab.vx[physId];
@@ -1766,9 +1753,6 @@ export function refreshActiveKineticBodySlabPose() {
             slab.sin[physId] = Math.sin(angle);
         }
     }
-}
-export function shouldResolveKineticPair(a, b, overlaps) {
-    return overlaps && (isKinematicallyActive(a) || isKinematicallyActive(b));
 }
 export function allowsKineticCollisionPairOrderSlab(physIdA, physIdB) {
     if (physIdA === physIdB) return false;
@@ -2849,13 +2833,6 @@ export function kineticPairTopologyStale(spatialFrame) {
     const session = spatialFrame._kineticTopologySession;
     if (!session) return false;
     return gatherGen !== getKineticTopologyGeneration(session);
-}
-export function worldAnchorFromBodyIntoF32(body, localX, localY, destOffset) {
-    const angle = readEntityFacing(body);
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    ENGINE_F32[destOffset] = body.x + localX * cos - localY * sin;
-    ENGINE_F32[destOffset + 1] = body.y + localX * sin + localY * cos;
 }
 export function worldAnchorFromSlab(physId, localX, localY, slab, destOffset) {
     const cos = slab.cos[physId];
