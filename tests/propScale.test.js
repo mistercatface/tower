@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getCirclePropRadius, setCirclePropRadius, getPolygonPropBoundingRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
 import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
-import { CircleShape } from "../Libraries/Physics/physics.js";
+import { CircleShape, kineticMass } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 
@@ -20,8 +20,8 @@ describe("propScale", () => {
         assert.equal(getCirclePropRadius(prop), 2);
         assert.ok(prop.shape instanceof CircleShape);
         assert.equal(prop.shape.radius, 2);
-        assert.ok(prop.mass > 0);
-        assert.ok(prop.mass < spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha").mass);
+        assert.ok(kineticMass(prop) > 0);
+        assert.ok(kineticMass(prop) < kineticMass(spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha")));
     });
 
     it("setPropRadius rescales polygon props", () => {

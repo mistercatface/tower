@@ -6,7 +6,7 @@ import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { allowsKineticCollisionPair, pairBroadphaseOverlapSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, entityRefs, kineticPairBuffer } from "../Core/engineMemory.js";
-import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose, kineticMass } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 
 const pairBuffer = kineticPairBuffer;
@@ -19,7 +19,7 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
         const ny = SAT_RESULT[2];
         const coincident = SAT_RESULT[5] !== 0;
         if (coincident) return;
-        separateAlongNormal(a, b, nx, ny, overlap, a.mass, b.mass);
+        separateAlongNormal(a, b, nx, ny, overlap, kineticMass(a), kineticMass(b));
     }
 }
 function pairKeys(pairs, spatialFrame) {

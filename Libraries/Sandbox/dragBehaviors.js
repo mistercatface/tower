@@ -3,7 +3,7 @@ import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRim
 import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, kineticMassFromFootprint, resolveBodyRadius, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
+import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, resolveBodyRadius, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON } from "../../Core/engineEnums.js";
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
@@ -15,7 +15,6 @@ const GRAB_DRAG_TORQUE_GAIN = 0.004;
 const GRAB_DRAG_ANGULAR_DAMP = 4;
 const REFERENCE_GRAB_INERTIA = (() => {
     const body = { shape: new CircleShape(4), radius: 4, strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE) };
-    body.mass = kineticMassFromFootprint(body);
     return kineticInertiaFromBody(body);
 })();
 const GRAB_ANCHOR_SCRATCH = ENGINE_F32;
@@ -25,13 +24,7 @@ function hueFromPullRatio(ratio) {
 export function resolveDragLaunchConfigFromSize(radius) {
     const R = Math.max(2, radius);
     const maxPower = Math.min(700, Math.max(200, 70 * R + 220));
-    return {
-        minDrag: 10,
-        maxPull: Math.min(200, Math.max(90, 90 + 5 * R)),
-        pullScale: 1.25,
-        minPower: Math.max(12, maxPower * 0.08),
-        maxPower,
-    };
+    return { minDrag: 10, maxPull: Math.min(200, Math.max(90, 90 + 5 * R)), pullScale: 1.25, minPower: Math.max(12, maxPower * 0.08), maxPower };
 }
 export function resolveDragLaunchConfig(prop) {
     return resolveDragLaunchConfigFromSize(resolveBodyRadius(prop));

@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList, markHitCompoundParts, primitiveDragFriction } from "./physics.js";
+import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList, markHitCompoundParts, primitiveDragFriction, kineticMass, kineticInertiaFromBody } from "./physics.js";
 import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
@@ -275,7 +275,6 @@ class KineticDebrisBody {
         this.chunks = undefined;
         this.footprintArea = undefined;
         this.radius = 0;
-        this.mass = 1;
         this.height = undefined;
         this.wallChunkProfileId = undefined;
         this.wallChunkHeightPx = undefined;
@@ -355,7 +354,7 @@ class KineticDebrisBody {
         kineticDebrisSlab.alpha[this._row] = v;
     }
     get momentOfInertia() {
-        return this.mass * this.radius * this.radius * 0.5;
+        return kineticInertiaFromBody(this);
     }
     getRender3DKey() {
         return this.strategy.render3DKey;
@@ -390,7 +389,7 @@ class KineticDebrisStore {
         this.world = world;
         this._bodies = [];
         this._integratedScratch = [];
-        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, mass: 1, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined, _footprintKey: undefined };
+        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined, _footprintKey: undefined };
     }
     list() {
         return this._bodies;
@@ -436,7 +435,6 @@ class KineticDebrisStore {
         body.chunks = undefined;
         body.footprintArea = undefined;
         body.radius = 0;
-        body.mass = 1;
         body._fractureCooldown = 0;
         body._neighborEidCount = 0;
         body._neighborsFrameId = -1;
@@ -484,13 +482,14 @@ class KineticDebrisStore {
         parent.wallChunkProfileId = spawn.profileId[row];
         parent.wallChunkHeightPx = spawn.wallHeight[row];
         const sourceMass = spawn.sourceMass[row];
-        const massFactor = sourceMass / (sourceMass + parent.mass);
+        const parentMass = kineticMass(parent);
+        const massFactor = sourceMass / (sourceMass + parentMass);
         const speed = Math.max(20, spawn.sourceSpeed[row] * 0.6 * (massFactor * 2));
         parent.vx = -spawn.normalX[row] * speed;
         parent.vy = -spawn.normalY[row] * speed;
         parent.angularVelocity = (deterministicUnitRandom(Math.imul(spawn.idx[row] | 0, 1597334677)) - 0.5) * 2.0;
         FractureEngine._currentPropMotion(parent);
-        const force = FractureEngine.impactForceFromContact(spawn.sourceSpeed[row], sourceMass, parent.mass) + FRACTURE_TUNING.wallSpawn.forceBias;
+        const force = FractureEngine.impactForceFromContact(spawn.sourceSpeed[row], sourceMass, parentMass) + FRACTURE_TUNING.wallSpawn.forceBias;
         const ok = FractureEngine.fracturePropOnImpact(parent, spawn.contactX[row], spawn.contactY[row], force, this.engine);
         if (!ok) {
             const body = this.acquireBody(parent.type, parent.x, parent.y, parent.facing);
@@ -500,7 +499,6 @@ class KineticDebrisStore {
             body.wallChunkProfileId = parent.wallChunkProfileId;
             body.wallChunkHeightPx = parent.wallChunkHeightPx;
             body.height = parent.height;
-            body.mass = parent.mass;
             copyDebrisPolygonGeometry(body, parent);
             this._pushBody(body);
             wakeKineticBody(body);
@@ -524,7 +522,6 @@ class KineticDebrisStore {
             body.wallChunkProfileId = parent.wallChunkProfileId;
             body.wallChunkHeightPx = parent.wallChunkHeightPx;
             body.height = parent.height;
-            body.mass = parent.mass;
             copyDebrisPolygonGeometry(body, parent);
             this._pushBody(body);
             wakeKineticBody(body);
@@ -734,7 +731,7 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, entity) {
         pending.normalX[row] = hits.normalX[i];
         pending.normalY[row] = hits.normalY[i];
         pending.sourceSpeed[row] = preSpeed;
-        pending.sourceMass[row] = entity.mass;
+        pending.sourceMass[row] = kineticMass(entity);
     }
 }
 export function applyPendingWallDamage(state) {
@@ -855,7 +852,7 @@ export class FractureEngine {
                 hitY = slab.y[physIdA] + contacts.dynamic.ray[i];
             }
             const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-            const force = FractureEngine.impactForceFromContact(relSpeed, bodyA.mass, bodyB.mass);
+            const force = FractureEngine.impactForceFromContact(relSpeed, kineticMass(bodyA), kineticMass(bodyB));
             this.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx, ny);
         }
         this.flushDeferredFractures(tick.world, tick.frame);
@@ -1001,7 +998,6 @@ export class FractureEngine {
         prop.radius = geometry.boundingRadius;
         invalidatePropFootprintKey(prop);
         markBroadphaseDirty(prop);
-        prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
     }
     static applyPropFractureGeometryFromDebris(prop, stores, debrisIndex) {
@@ -1017,7 +1013,6 @@ export class FractureEngine {
         prop.radius = debris.boundingRadius[debrisIndex];
         invalidatePropFootprintKey(prop);
         markBroadphaseDirty(prop);
-        prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
     }
     static propFractureSpan(prop) {

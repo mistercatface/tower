@@ -184,7 +184,6 @@ describe("grabDrag behavior", () => {
         const behavior = createGrabDragBehavior(state);
         const light = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
         const heavy = registerGrabDragTestProp(state, new WorldProp(100, 0, "tri_wedge", 0));
-        heavy.mass = light.mass * 100;
         light.angularVelocity = 0;
         heavy.angularVelocity = 0;
         behavior.onPointerDown(light, { x: -9, y: -5 });

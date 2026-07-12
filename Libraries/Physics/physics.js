@@ -275,8 +275,25 @@ export function kineticMassFromFootprint(body) {
     const minMass = collisionSettings.material.minMass;
     return Math.max(minMass, kineticDensity(body) * kineticFootprintArea(body));
 }
+export function kineticMass(body) {
+    const physId = body._physId;
+    if (physId !== undefined && physId !== -1) {
+        const m = kineticStaticSlab.mass[physId];
+        if (m > 0) return m;
+    }
+    return kineticMassFromFootprint(body);
+}
+export function stampKineticMass(body, mass) {
+    const physId = body._physId;
+    if (physId === undefined || physId === -1) throw new Error("stampKineticMass requires _physId");
+    kineticStaticSlab.mass[physId] = mass;
+    kineticStaticSlab.invMass[physId] = mass > 0 ? 1 / mass : 0;
+}
+export function stampKineticMassFromFootprint(body) {
+    stampKineticMass(body, kineticMassFromFootprint(body));
+}
 export function kineticInertiaFromBody(body) {
-    const m = massFromBody(body);
+    const m = kineticMass(body);
     const parts = collisionPartsList(body);
     if (parts) return m * compoundInertiaFactor(parts);
     const shape = body.shape;
@@ -288,26 +305,22 @@ export function kineticInertiaFromBody(body) {
     const r = shape.radius;
     return (m * r * r) / 2;
 }
-function massFromBody(body) {
-    if (body.mass == null) throw new Error("Kinetic body missing mass");
-    return body.mass;
-}
 export function normalizeKineticBody(body) {
     const strategy = body.strategy;
     if (!strategy || strategy.isKinetic !== true) throw new Error("normalizeKineticBody requires a kinetic body");
     if (body.vx === undefined) body.vx = 0;
     if (body.vy === undefined) body.vy = 0;
     if (body.angularVelocity === undefined) body.angularVelocity = 0;
-    if (body.mass == null) body.mass = kineticMassFromFootprint(body);
     const physId = body._physId;
     if (physId === undefined || physId === -1) return body;
-    const moment = body.momentOfInertia;
     const slab = kineticStaticSlab;
     const row = strategy.physicsRow;
     const table = primitivePhysics;
-    slab.mass[physId] = body.mass;
-    slab.invMass[physId] = 1 / body.mass;
-    slab.invI[physId] = moment ? 1 / moment : 0;
+    const mass = kineticMassFromFootprint(body);
+    slab.mass[physId] = mass;
+    slab.invMass[physId] = 1 / mass;
+    const moment = kineticInertiaFromBody(body);
+    slab.invI[physId] = moment > 0 ? 1 / moment : 0;
     slab.entityId[physId] = body.id ?? -1;
     slab.restitution[physId] = table.wallRestitution[row];
     slab.friction[physId] = table.wallFriction[row];

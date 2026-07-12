@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { CircleShape, PolygonShape, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, stampPrimitivePhysics } from "../Libraries/Physics/physics.js";
+import { CircleShape, PolygonShape, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, kineticMass, stampPrimitivePhysics } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, primitivePhysics } from "../Core/engineMemory.js";
 describe("bodyMass", () => {
@@ -41,8 +41,7 @@ describe("bodyMass", () => {
     it("derives circle mass from table density and radius", () => {
         const density = primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_CIRCLE];
         const body = { strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE), radius: 10, shape: new CircleShape(10) };
-        body.mass = kineticMassFromFootprint(body);
-        assert.ok(Math.abs(body.mass - density * Math.PI * 100) < 1e-6);
+        assert.ok(Math.abs(kineticMassFromFootprint(body) - density * Math.PI * 100) < 1e-6);
     });
     it("kineticFootprintArea uses polygon vertices when present", () => {
         const boxVerts = new Float32Array([
@@ -66,9 +65,13 @@ describe("bodyMass", () => {
         ]);
         const area = Math.abs(polygonSignedArea2D(verts));
         const inertiaFactor = polygonSecondMomentAboutCentroid2D(verts) / area;
-        const body = { mass: 2, shape: new PolygonShape(verts) };
+        const body = {
+            shape: new PolygonShape(verts),
+            strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_POLYGON),
+        };
         assert.ok(Math.abs(inertiaFactor - (w * w + h * h) / 12) < 1e-6);
-        assert.ok(Math.abs(kineticInertiaFromBody(body) - (2 * (w * w + h * h)) / 12) < 1e-6);
+        const mass = kineticMassFromFootprint(body);
+        assert.ok(Math.abs(kineticInertiaFromBody(body) - (mass * (w * w + h * h)) / 12) < 1e-6);
     });
     it("tri wedge mass uses triangle area not bounding box", () => {
         const prop = new WorldProp(0, 0, "tri_wedge", 0);
@@ -77,14 +80,13 @@ describe("bodyMass", () => {
         assert.equal(triangleArea, 135);
         assert.ok(triangleArea < aabbArea);
         assert.equal(kineticFootprintArea(prop), triangleArea);
-        prop.mass = kineticMassFromFootprint(prop);
-        assert.ok(Math.abs(prop.mass - kineticMassFromFootprint(prop)) < 1e-6);
-        assert.ok(Math.abs(kineticInertiaFromBody(prop) - prop.mass * (polygonSecondMomentAboutCentroid2D(prop.shape.vertices) / triangleArea)) < 1e-6);
+        const mass = kineticMass(prop);
+        assert.ok(Math.abs(mass - kineticMassFromFootprint(prop)) < 1e-6);
+        assert.ok(Math.abs(kineticInertiaFromBody(prop) - mass * (polygonSecondMomentAboutCentroid2D(prop.shape.vertices) / triangleArea)) < 1e-6);
     });
     it("ball default density matches canonical asset", () => {
         const prop = new WorldProp(0, 0, "ball", 0);
         assert.ok(Math.abs(kineticDensity(prop) - 0.007958) < 1e-6);
-        prop.mass = kineticMassFromFootprint(prop);
-        assert.ok(prop.mass > 0);
+        assert.ok(kineticMass(prop) > 0);
     });
 });

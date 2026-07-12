@@ -7,7 +7,7 @@ import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle, kineticMass } from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function pairStillOverlaps(a, b) {
@@ -30,7 +30,7 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
             featureB: SAT_RESULT[7]
         };
         if (last.coincident) break;
-        separateAlongNormal(a, b, last.nx, last.ny, last.overlap, a.mass, b.mass);
+        separateAlongNormal(a, b, last.nx, last.ny, last.overlap, kineticMass(a), kineticMass(b));
     }
     return last;
 }

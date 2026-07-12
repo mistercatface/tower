@@ -1,8 +1,9 @@
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics } from "../../Libraries/Physics/physics.js";
+import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, kineticMass } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticStaticSlab, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
+export { kineticMass };
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
@@ -157,14 +158,13 @@ export function mockKineticBody(isSleeping = false) {
         isDead: false,
         strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE),
         _sleepFrames: 0,
-        mass: radius,
         get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
+            return kineticInertiaFromBody(this);
         },
         shape: new CircleShape(radius),
     };
-    normalizeKineticBody(body);
     assignPhysIdWithPose(body, nextMockPhysId++);
+    normalizeKineticBody(body);
     return body;
 }
 export function mockCircleProp(x, y, radius) {
@@ -176,12 +176,11 @@ export function mockCircleProp(x, y, radius) {
         vy: 0,
         angularVelocity: 0,
         radius,
-        mass: radius,
         isSleeping: false,
         isDead: false,
         strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE),
         get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
+            return kineticInertiaFromBody(this);
         },
         shape: new CircleShape(radius),
     };
@@ -206,20 +205,19 @@ export function resetMockBallIds(next = 1) {
 }
 export function mockBall(x, y, overrides = {}) {
     const shape = overrides.shape ?? new CircleShape(4);
-    const body = { id: overrides.id ?? nextMockBallId++, x, y, vx: 0, vy: 0, angularVelocity: 0, radius: shape.radius, mass: shape.radius, type: "ball", shape, ...overrides };
+    const body = { id: overrides.id ?? nextMockBallId++, x, y, vx: 0, vy: 0, angularVelocity: 0, radius: shape.radius, type: "ball", shape, ...overrides };
     body.strategy = stampPrimitivePhysics({ isKinetic: true, ...body.strategy }, PRIMITIVE_PHYSICS_ROW_CIRCLE);
     normalizeKineticBody(body);
     return body;
 }
 export function mockRollingProp(overrides = {}) {
-    const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
+    const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
     body.strategy = stampPrimitivePhysics({ rolls: true, isKinetic: true, ...(overrides.strategy || {}) }, PRIMITIVE_PHYSICS_ROW_CIRCLE);
     body._spawnRollQw = body._spawnRollQw ?? 1;
     body._spawnRollQx = body._spawnRollQx ?? 0;
     body._spawnRollQy = body._spawnRollQy ?? 0;
     body._spawnRollQz = body._spawnRollQz ?? 0;
     attachRollAccessors(body);
-    normalizeKineticBody(body);
     if (body._physId === undefined) assignPhysIdWithPose(body, nextMockPhysId++);
     else {
         entityRollQw[body._physId] = body._spawnRollQw ?? 1;
@@ -227,6 +225,7 @@ export function mockRollingProp(overrides = {}) {
         entityRollQy[body._physId] = body._spawnRollQy ?? 0;
         entityRollQz[body._physId] = body._spawnRollQz ?? 0;
     }
+    normalizeKineticBody(body);
     return body;
 }
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
@@ -243,9 +242,8 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
         isSleeping: false,
         _sleepFrames: 0,
         strategy,
-        mass: radius,
         get momentOfInertia() {
-            return this.mass * this.radius * this.radius * 0.5;
+            return kineticInertiaFromBody(this);
         },
         shape: shape ?? new CircleShape(radius),
         _overridePairFriction: options.pairFriction,

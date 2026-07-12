@@ -1,4 +1,4 @@
-import { pruneKineticConstraintsForBody, resolveBodyRadius, readEntityFacing } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, resolveBodyRadius, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, ensureGrowI32, pickWorldPoly } from "../Core/engineMemory.js";
@@ -168,6 +168,7 @@ export class EntityArena {
             bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, resolveBodyRadius(ref), flags);
             ref._physId = eid;
             clearWorldPropSpawnPose(ref);
+            if (flags & ENTITY_FLAG_KINETIC) normalizeKineticBody(ref);
             this._bumpMembership();
             return;
         }
@@ -179,6 +180,7 @@ export class EntityArena {
         bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, resolveBodyRadius(ref), flags);
         ref._physId = eid;
         clearWorldPropSpawnPose(ref);
+        if (flags & ENTITY_FLAG_KINETIC) normalizeKineticBody(ref);
         this._gameIdToEid.set(ref.id, eid);
         this._addLiveEid(eid);
         this._bumpMembership();

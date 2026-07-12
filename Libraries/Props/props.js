@@ -1,5 +1,5 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { writeLivePolygon, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, kineticMassFromFootprint, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
+import { writeLivePolygon, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
@@ -78,7 +78,6 @@ export function scalePolygonPropFootprint(prop, scale) {
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
     invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
-    prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
     wakeKineticBody(prop);
 }
@@ -101,7 +100,6 @@ export function setCirclePropRadius(prop, radius) {
     invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
     if (prop._physId !== undefined) stampKineticBodyFromEntity(prop._physId, prop);
-    prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
     wakeKineticBody(prop);
 }
@@ -132,7 +130,6 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     writeLivePolygon(prop, fp, n);
     invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
-    prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
 }
 export function initWorldPropShape(prop) {
@@ -367,7 +364,6 @@ export class WorldProp {
         stampSurfaceProfileFields(this, asset);
         this._footprintKey = undefined;
         initWorldPropShape(this);
-        this.mass = kineticMassFromFootprint(this);
         normalizeKineticBody(this);
         this._neighborEidCount = 0;
         this._neighborsFrameId = -1;
