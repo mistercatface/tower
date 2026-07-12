@@ -1,4 +1,5 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
+import { GRID_NAV_EPOCH_COUNT } from "./engineEnums.js";
 // --- Shared scratch buffers ---
 /** Shared Float32 scratch.
  * Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575, Compound 576–831.
@@ -591,3 +592,76 @@ export function clearWallFaceDrawMemoSlab(slab) {
     slab.hashTable.fill(-1);
 }
 export const wallFaceDrawMemoSlab = createWallFaceDrawMemoSlab(WALL_FACE_DRAW_MEMO_INIT);
+// --- Ground-nav run SoA (per behavior instance; slot-indexed) ---
+const GROUND_NAV_RUN_INIT = 16;
+export function createGroundNavRunSlab(capacity = GROUND_NAV_RUN_INIT) {
+    const cap = Math.max(1, capacity | 0);
+    const freeSlots = new Int32Array(cap);
+    const sessions = new Array(cap);
+    const propId = new Int32Array(cap);
+    const targetCellIdx = new Int32Array(cap);
+    const lastEpoch = new Int32Array(cap * GRID_NAV_EPOCH_COUNT);
+    for (let i = 0; i < cap; i++) {
+        freeSlots[i] = cap - 1 - i;
+        sessions[i] = null;
+        propId[i] = -1;
+        targetCellIdx[i] = -1;
+    }
+    lastEpoch.fill(-1);
+    return { capacity: cap, used: 0, freeSlots, freeCount: cap, propId, targetX: new Float32Array(cap), targetY: new Float32Array(cap), flags: new Uint8Array(cap), targetCellIdx, lastEpoch, sessions };
+}
+export function ensureGroundNavRunCapacity(slab, minCap) {
+    if (slab.capacity >= minCap) return;
+    const cap = Math.max(minCap, slab.capacity * 2);
+    const prevCap = slab.capacity;
+    ensureGrowI32(slab, "propId", cap, slab.used);
+    ensureGrowF32(slab, "targetX", cap, slab.used);
+    ensureGrowF32(slab, "targetY", cap, slab.used);
+    ensureGrowU8(slab, "flags", cap, slab.used);
+    ensureGrowI32(slab, "targetCellIdx", cap, slab.used);
+    ensureGrowI32(slab, "lastEpoch", cap * GRID_NAV_EPOCH_COUNT, slab.used * GRID_NAV_EPOCH_COUNT);
+    ensureGrowI32(slab, "freeSlots", slab.freeCount + (cap - prevCap), slab.freeCount);
+    while (slab.sessions.length < cap) slab.sessions.push(null);
+    for (let i = prevCap; i < cap; i++) {
+        slab.propId[i] = -1;
+        slab.targetCellIdx[i] = -1;
+        slab.flags[i] = 0;
+        slab.freeSlots[slab.freeCount++] = i;
+    }
+    const epochBase = prevCap * GRID_NAV_EPOCH_COUNT;
+    slab.lastEpoch.fill(-1, epochBase, cap * GRID_NAV_EPOCH_COUNT);
+    slab.capacity = cap;
+}
+export function allocGroundNavRunSlot(slab, propId) {
+    if (slab.freeCount === 0) ensureGroundNavRunCapacity(slab, slab.capacity + 1);
+    const slot = slab.freeSlots[--slab.freeCount];
+    slab.propId[slot] = propId;
+    slab.targetX[slot] = 0;
+    slab.targetY[slot] = 0;
+    slab.flags[slot] = 0;
+    slab.targetCellIdx[slot] = -1;
+    const epochBase = slot * GRID_NAV_EPOCH_COUNT;
+    for (let c = 0; c < GRID_NAV_EPOCH_COUNT; c++) slab.lastEpoch[epochBase + c] = -1;
+    slab.sessions[slot] = null;
+    if (slot >= slab.used) slab.used = slot + 1;
+    return slot;
+}
+export function freeGroundNavRunSlot(slab, slot) {
+    slab.propId[slot] = -1;
+    slab.flags[slot] = 0;
+    slab.targetCellIdx[slot] = -1;
+    slab.sessions[slot] = null;
+    slab.freeSlots[slab.freeCount++] = slot;
+}
+export function clearGroundNavRunSlab(slab) {
+    for (let i = 0; i < slab.capacity; i++) {
+        slab.propId[i] = -1;
+        slab.flags[i] = 0;
+        slab.targetCellIdx[i] = -1;
+        slab.sessions[i] = null;
+    }
+    slab.lastEpoch.fill(-1);
+    slab.used = 0;
+    slab.freeCount = 0;
+    for (let i = 0; i < slab.capacity; i++) slab.freeSlots[slab.freeCount++] = i;
+}

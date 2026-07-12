@@ -8,7 +8,7 @@ import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEdit
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isLabPathDebugActive, getLabPathDebugMode, setLabPathDebugMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { dragInteractionModeLabel, toggleDragInteractionMode } from "../../../Libraries/Sandbox/dragBehaviors.js";
-import { EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA } from "../../../Core/engineEnums.js";
+import { EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA } from "../../../Core/engineEnums.js";
 import { ENGINE_F32, N_OUT_XY } from "../../../Core/engineMemory.js";
 function syncDragInteractionModeUi(state) {
     const btn = document.getElementById("dragInteractionModeBtn");
@@ -259,8 +259,8 @@ export function setEditorNavMode(state, mode) {
     if (!boid) return;
     const entityMeta = state.sandbox.entityMeta;
     const currentBehaviorId = entityMeta.getActiveBehaviorId(boid.id);
-    if (currentBehaviorId === "rollToCursorHpa" || currentBehaviorId === "rollToCursorFlow") {
-        const nextBehaviorId = mode === EDITOR_NAV_MODE_FLOW ? "rollToCursorFlow" : "rollToCursorHpa";
+    if (currentBehaviorId === SANDBOX_BEHAVIOR_GROUND_HPA || currentBehaviorId === SANDBOX_BEHAVIOR_GROUND_FLOW) {
+        const nextBehaviorId = mode === EDITOR_NAV_MODE_FLOW ? SANDBOX_BEHAVIOR_GROUND_FLOW : SANDBOX_BEHAVIOR_GROUND_HPA;
         if (currentBehaviorId !== nextBehaviorId) {
             const behaviorById = state.sandbox.behaviorById;
             const oldBehavior = behaviorById?.get(currentBehaviorId);

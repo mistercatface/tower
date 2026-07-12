@@ -105,6 +105,17 @@ export const SANDBOX_PATH_VISUAL_NORMAL = 1;
 export const SANDBOX_PATH_VISUAL_DEBUG = 2;
 export const SANDBOX_PATH_VISUAL_COUNT = 3;
 //
+// Sandbox pointer / ground-nav behavior ids (behavior.id + behaviorById keys)
+export const SANDBOX_BEHAVIOR_DRAG_LAUNCH = 1;
+export const SANDBOX_BEHAVIOR_GRAB_DRAG = 2;
+export const SANDBOX_BEHAVIOR_GROUND_DIRECT = 3;
+export const SANDBOX_BEHAVIOR_GROUND_FLOW = 4;
+export const SANDBOX_BEHAVIOR_GROUND_HPA = 5;
+// Ground-nav run flags (packed in createGroundNavRunSlab().flags[slot])
+export const GROUND_NAV_RUN_HAS_TARGET = 1;
+export const GROUND_NAV_RUN_DRAGGING = 2;
+export const GROUND_NAV_RUN_MOVE_ACTIVE = 4;
+//
 export const NAV_PATH_DEBUG_OFF = 0;
 export const NAV_PATH_DEBUG_ALL = 1;
 export const NAV_PATH_DEBUG_REACHABLE = 2;

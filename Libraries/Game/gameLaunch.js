@@ -2,12 +2,11 @@ import { generateLabRailMaze, centerMapGenBoundsOnViewport, refreshAllStampedReg
 import { PortalLink } from "../Spatial/portals.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
-import { GRAB_DRAG_BEHAVIOR_ID } from "../Sandbox/dragBehaviors.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 import { getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
-import { EDITOR_NAV_MODE_OFF, NAV_PATH_DEBUG_OFF, NAV_PATH_DEBUG_REACHABLE } from "../../Core/engineEnums.js";
+import { EDITOR_NAV_MODE_OFF, NAV_PATH_DEBUG_OFF, NAV_PATH_DEBUG_REACHABLE, SANDBOX_BEHAVIOR_GRAB_DRAG } from "../../Core/engineEnums.js";
 export const GAME_LAUNCHERS = {
     snake: {
         title: "Snake",
@@ -193,5 +192,5 @@ async function runFractureLaunch(state, ctx) {
     state.viewport.setZoom(2.0);
     state.editor.lockSelection = false;
     state.editor.navMode = EDITOR_NAV_MODE_OFF;
-    state.sandbox.dragInteractionMode = GRAB_DRAG_BEHAVIOR_ID;
+    state.sandbox.dragInteractionMode = SANDBOX_BEHAVIOR_GRAB_DRAG;
 }

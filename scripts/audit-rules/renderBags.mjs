@@ -11,6 +11,9 @@ const overlayDashLiteralRe = /setLineDash\(\[/;
 const rollConfigOverrideBagRe = /getKineticRollConfig\s*\([^)]*,\s*\{/;
 const sandboxEnsureTargetWorldRe = /\bensureTargetWorld\b/;
 const sandboxHpaSettingsAssignRe = /Object\.assign\s*\(\s*hpaPathSettingsScratch/;
+const sandboxStringBehaviorIdRe = /\brollToCursor(?:Direct|Flow|Hpa)\b|"grabDrag"|"dragLaunch"/;
+const sandboxLastTopologyKeyRe = /\blastTopologyKey\b/;
+const sandboxGetOrCreatePropRunRe = /\bgetOrCreatePropRun\b/;
 export const id = "render-bags";
 export const description = "Render/Canvas/Spatial typed diet — no face bags, pending fills, string overlay/stamp keys, bag overlay cmds, or wall-bucket bags";
 export const severity = "fail";
@@ -25,7 +28,8 @@ export function run(ctx) {
         const inSandbox = relPath.startsWith("Libraries/Sandbox/");
         const inNav = relPath.startsWith("Libraries/Navigation/");
         const inPhysics = relPath.startsWith("Libraries/Physics/");
-        if (!inRender && !inCanvas && !inSpatial && !inSandbox && !inNav && !inPhysics) continue;
+        const inEditorUi = relPath.startsWith("Apps/Editor/");
+        if (!inRender && !inCanvas && !inSpatial && !inSandbox && !inNav && !inPhysics && !inEditorUi) continue;
         const src = fs.readFileSync(file, "utf8");
         const lines = src.split("\n");
         for (let i = 0; i < lines.length; i++) {
@@ -54,10 +58,19 @@ export function run(ctx) {
             if ((inSandbox || inPhysics) && rollConfigOverrideBagRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
+            if ((inSandbox || inEditorUi) && sandboxStringBehaviorIdRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
             if (inSandbox && sandboxEnsureTargetWorldRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inSandbox && sandboxHpaSettingsAssignRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inSandbox && sandboxLastTopologyKeyRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inSandbox && sandboxGetOrCreatePropRunRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inSpatial && beltStripStringRe.test(line)) {

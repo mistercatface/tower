@@ -3,13 +3,13 @@ import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, cellEdgeEndpointsIdx, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
-import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE } from "../../Core/engineEnums.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
@@ -20,7 +20,7 @@ import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import propCatalog from "../../Assets/props/index.js";
-import { GRAB_DRAG_BEHAVIOR_ID, DRAG_LAUNCH_BEHAVIOR_ID, createDragLaunchBehaviors, createGrabDragBehavior, assetSupportsDragInteraction, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
+import { createDragLaunchBehaviors, createGrabDragBehavior, assetSupportsDragInteraction, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
     constructor() {
         this.byEntityId = new Map();
@@ -123,11 +123,8 @@ function applyPropSurfaceProfile(prop, profileId) {
 function assetDefaultSurfaceProfileId(asset) {
     return asset?.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
 }
-export const DIRECT_GROUND_NAV_BEHAVIOR_ID = "rollToCursorDirect";
-export const FLOW_GROUND_NAV_BEHAVIOR_ID = "rollToCursorFlow";
-export const HPA_GROUND_NAV_BEHAVIOR_ID = "rollToCursorHpa";
-export const GROUND_NAV_BEHAVIOR_IDS = new Set([DIRECT_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID, HPA_GROUND_NAV_BEHAVIOR_ID]);
-export const SANDBOX_BEHAVIOR_LABELS = { dragLaunch: "Drag launch", [GRAB_DRAG_BEHAVIOR_ID]: "Grab drag", [DIRECT_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (direct)", [HPA_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (HPA)", [FLOW_GROUND_NAV_BEHAVIOR_ID]: "Ground nav (flow)" };
+export const GROUND_NAV_BEHAVIOR_IDS = new Set([SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA]);
+export const SANDBOX_BEHAVIOR_LABELS = { [SANDBOX_BEHAVIOR_DRAG_LAUNCH]: "Drag launch", [SANDBOX_BEHAVIOR_GRAB_DRAG]: "Grab drag", [SANDBOX_BEHAVIOR_GROUND_DIRECT]: "Ground nav (direct)", [SANDBOX_BEHAVIOR_GROUND_HPA]: "Ground nav (HPA)", [SANDBOX_BEHAVIOR_GROUND_FLOW]: "Ground nav (flow)" };
 export function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
@@ -1667,27 +1664,26 @@ function computeFlowFieldSteering(prop, targetX, targetY, flowFieldGrid) {
     if (!flowField) return false;
     return sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, prop.x, prop.y, flowField, flowFieldGrid.frame);
 }
-function writeMoveTargetFromRunInto(buf, o, run) {
-    if (!run?.hasTarget) return false;
-    buf[o] = run.targetX;
-    buf[o + 1] = run.targetY;
+function writeMoveTargetFromSlotInto(buf, o, slab, slot) {
+    if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return false;
+    buf[o] = slab.targetX[slot];
+    buf[o + 1] = slab.targetY[slot];
     return true;
 }
-function setPropRunTargetXY(run, x, y) {
-    run.targetX = x;
-    run.targetY = y;
-    run.hasTarget = true;
+function setRunTargetXY(slab, slot, x, y) {
+    slab.targetX[slot] = x;
+    slab.targetY[slot] = y;
+    slab.flags[slot] |= GROUND_NAV_RUN_HAS_TARGET;
 }
-function clearPropRunTarget(run) {
-    run.hasTarget = false;
+function clearRunTargetFlags(slab, slot) {
+    slab.flags[slot] &= ~GROUND_NAV_RUN_HAS_TARGET;
 }
-function getOrCreatePropRun(propRuns, propId, initRun) {
-    let run = propRuns.get(propId);
-    if (!run) {
-        run = initRun();
-        propRuns.set(propId, run);
-    }
-    return run;
+function ensurePropRunSlot(slab, propIdToSlot, propId) {
+    let slot = propIdToSlot.get(propId);
+    if (slot != null) return slot;
+    slot = allocGroundNavRunSlot(slab, propId);
+    propIdToSlot.set(propId, slot);
+    return slot;
 }
 function markPropRunActive(activeRunIds, propId) {
     if (activeRunIds.indexOf(propId) === -1) activeRunIds.push(propId);
@@ -1696,23 +1692,39 @@ function markPropRunInactive(activeRunIds, propId) {
     const index = activeRunIds.indexOf(propId);
     if (index >= 0) activeRunIds.splice(index, 1);
 }
-function forEachActivePropRun(state, propRuns, activeRunIds, tickFn, dt) {
+function forEachActivePropRunSlot(state, slab, propIdToSlot, activeRunIds, tickFn, dt) {
     for (let i = activeRunIds.length - 1; i >= 0; i--) {
         const propId = activeRunIds[i];
         const prop = state.entityRegistry.getLive(propId);
         if (!prop) {
-            propRuns.delete(propId);
+            const slot = propIdToSlot.get(propId);
+            if (slot != null) {
+                const session = slab.sessions[slot];
+                if (session) session.reset(state);
+                freeGroundNavRunSlot(slab, slot);
+                propIdToSlot.delete(propId);
+            }
             activeRunIds.splice(i, 1);
             continue;
         }
-        const run = propRuns.get(propId);
-        if (!run?.hasTarget) {
+        const slot = propIdToSlot.get(propId);
+        if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) {
             activeRunIds.splice(i, 1);
             continue;
         }
-        tickFn(prop, run, dt);
-        if (!run.hasTarget) activeRunIds.splice(i, 1);
+        tickFn(prop, slot, dt);
+        if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) activeRunIds.splice(i, 1);
     }
+}
+function flowTopologyChanged(slab, slot, grid) {
+    const o = slot * GRID_NAV_EPOCH_COUNT;
+    return slab.lastEpoch[o + GRID_NAV_EPOCH_WALL] !== grid.wallGridRevision || slab.lastEpoch[o + GRID_NAV_EPOCH_FLOOR] !== grid.floorNavEpoch || slab.lastEpoch[o + GRID_NAV_EPOCH_TOPOLOGY] !== grid.gridTopologyEpoch;
+}
+function stampFlowTopology(slab, slot, grid) {
+    const o = slot * GRID_NAV_EPOCH_COUNT;
+    slab.lastEpoch[o + GRID_NAV_EPOCH_WALL] = grid.wallGridRevision;
+    slab.lastEpoch[o + GRID_NAV_EPOCH_FLOOR] = grid.floorNavEpoch;
+    slab.lastEpoch[o + GRID_NAV_EPOCH_TOPOLOGY] = grid.gridTopologyEpoch;
 }
 let flowPathVisited = new Uint8Array(0);
 let flowPathVisitEpoch = 1;
@@ -1765,24 +1777,26 @@ export function writeFlowFieldPathInto(slab, startX, startY, targetX, targetY, f
     return (slab.poly.used - used0) >> 1;
 }
 export function createDirectGroundNavBehavior(state) {
-    const propRuns = new Map();
+    const slab = createGroundNavRunSlab();
+    const propIdToSlot = new Map();
     const activeRunIds = [];
-    const getRun = (prop) => getOrCreatePropRun(propRuns, prop.id, () => ({ hasTarget: false, targetX: 0, targetY: 0, dragging: false, moveTargetActive: false }));
-    const clearRunTarget = (run) => {
-        clearPropRunTarget(run);
-        run.dragging = false;
-        run.moveTargetActive = false;
+    const getSlot = (prop) => ensurePropRunSlot(slab, propIdToSlot, prop.id);
+    const clearSlotTarget = (slot) => {
+        clearRunTargetFlags(slab, slot);
+        slab.flags[slot] &= ~(GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_MOVE_ACTIVE);
     };
-    const tickSteering = (prop, run) => {
-        if (!run.hasTarget || (!run.dragging && !run.moveTargetActive)) return;
+    const tickSteering = (prop, slot) => {
+        const flags = slab.flags[slot];
+        if ((flags & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+        if ((flags & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_MOVE_ACTIVE)) === 0) return;
         const config = getKineticRollConfig(prop);
-        const dx = run.targetX - prop.x;
-        const dy = run.targetY - prop.y;
+        const dx = slab.targetX[slot] - prop.x;
+        const dy = slab.targetY[slot] - prop.y;
         const dist = Math.hypot(dx, dy);
         if (dist < config.stopRadius) {
-            if (run.moveTargetActive) {
+            if ((flags & GROUND_NAV_RUN_MOVE_ACTIVE) !== 0) {
                 clearGroundRollDrive(prop);
-                clearRunTarget(run);
+                clearSlotTarget(slot);
                 return;
             }
             decelerateRoll(prop, config);
@@ -1791,273 +1805,304 @@ export function createDirectGroundNavBehavior(state) {
         steerRollToward(prop, dx / dist, dy / dist, config);
     };
     return {
-        id: DIRECT_GROUND_NAV_BEHAVIOR_ID,
+        id: SANDBOX_BEHAVIOR_GROUND_DIRECT,
         onPointerDown(prop, world) {
-            const run = getRun(prop);
-            run.dragging = true;
-            run.moveTargetActive = false;
-            setPropRunTargetXY(run, world.x, world.y);
+            const slot = getSlot(prop);
+            slab.flags[slot] = (slab.flags[slot] | GROUND_NAV_RUN_DRAGGING) & ~GROUND_NAV_RUN_MOVE_ACTIVE;
+            setRunTargetXY(slab, slot, world.x, world.y);
             markPropRunActive(activeRunIds, prop.id);
             return true;
         },
         onPointerMove(prop, world) {
-            const run = getRun(prop);
-            if (!run.dragging || !run.hasTarget) return;
-            setPropRunTargetXY(run, world.x, world.y);
+            const slot = getSlot(prop);
+            if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
+            setRunTargetXY(slab, slot, world.x, world.y);
         },
         onPointerUp(prop) {
-            const run = getRun(prop);
-            run.dragging = false;
-            if (!run.moveTargetActive) {
+            const slot = getSlot(prop);
+            slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
+            if ((slab.flags[slot] & GROUND_NAV_RUN_MOVE_ACTIVE) === 0) {
                 clearGroundRollDrive(prop);
-                clearRunTarget(run);
+                clearSlotTarget(slot);
                 markPropRunInactive(activeRunIds, prop.id);
             }
         },
         setMoveTarget(prop, x, y) {
-            const run = getRun(prop);
-            run.dragging = false;
-            run.moveTargetActive = true;
-            setPropRunTargetXY(run, x, y);
+            const slot = getSlot(prop);
+            slab.flags[slot] = (slab.flags[slot] & ~GROUND_NAV_RUN_DRAGGING) | GROUND_NAV_RUN_MOVE_ACTIVE;
+            setRunTargetXY(slab, slot, x, y);
             markPropRunActive(activeRunIds, prop.id);
         },
         updateMoveTarget(prop, x, y) {
-            const run = getRun(prop);
-            if (!run.moveTargetActive || !run.hasTarget) return;
-            setPropRunTargetXY(run, x, y);
+            const slot = getSlot(prop);
+            if ((slab.flags[slot] & (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET)) return;
+            setRunTargetXY(slab, slot, x, y);
         },
         hasMoveTarget(prop) {
-            const run = getRun(prop);
-            return run.moveTargetActive && run.hasTarget;
+            const slot = propIdToSlot.get(prop.id);
+            if (slot == null) return false;
+            return (slab.flags[slot] & (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET)) === (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET);
         },
         clearMoveTarget(prop) {
             clearGroundRollDrive(prop);
-            clearRunTarget(getRun(prop));
+            const slot = propIdToSlot.get(prop.id);
+            if (slot != null) clearSlotTarget(slot);
             markPropRunInactive(activeRunIds, prop.id);
         },
         writeMoveTargetWorldInto(buf, o, prop) {
-            return writeMoveTargetFromRunInto(buf, o, propRuns.get(prop.id));
+            return writeMoveTargetFromSlotInto(buf, o, slab, propIdToSlot.get(prop.id));
         },
         tick(prop, dt) {
-            tickSteering(prop, getRun(prop));
+            const slot = propIdToSlot.get(prop.id);
+            if (slot != null) tickSteering(prop, slot);
         },
         tickWorld(dt) {
-            forEachActivePropRun(state, propRuns, activeRunIds, tickSteering, dt);
+            forEachActivePropRunSlot(state, slab, propIdToSlot, activeRunIds, tickSteering, dt);
         },
-        appendPathOverlay(slab, prop, visual) {
-            const run = propRuns.get(prop.id);
-            if (!run?.hasTarget || (!run.dragging && !run.moveTargetActive)) return;
-            stampPathDirect(slab, prop.x, prop.y, run.targetX, run.targetY, visual);
+        appendPathOverlay(overlaySlab, prop, visual) {
+            const slot = propIdToSlot.get(prop.id);
+            if (slot == null) return;
+            const flags = slab.flags[slot];
+            if ((flags & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+            if ((flags & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_MOVE_ACTIVE)) === 0) return;
+            stampPathDirect(overlaySlab, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot], visual);
         },
         reset() {
-            propRuns.clear();
+            clearGroundNavRunSlab(slab);
+            propIdToSlot.clear();
             activeRunIds.length = 0;
         },
     };
 }
 export function createFlowGroundNavBehavior(state) {
-    const propRuns = new Map();
+    const slab = createGroundNavRunSlab();
+    const propIdToSlot = new Map();
     const activeRunIds = [];
-    const getRun = (prop) => getOrCreatePropRun(propRuns, prop.id, () => ({ hasTarget: false, targetX: 0, targetY: 0, dragging: false, lastTopologyKey: "" }));
-    const clearRunTarget = (run) => {
-        clearPropRunTarget(run);
-        run.dragging = false;
-        run.lastTopologyKey = "";
+    const getSlot = (prop) => ensurePropRunSlot(slab, propIdToSlot, prop.id);
+    const clearSlotTarget = (slot) => {
+        clearRunTargetFlags(slab, slot);
+        slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
+        const o = slot * GRID_NAV_EPOCH_COUNT;
+        for (let c = 0; c < GRID_NAV_EPOCH_COUNT; c++) slab.lastEpoch[o + c] = -1;
     };
-    const applyMoveTargetXY = (run, x, y, prop) => {
+    const applyMoveTargetXY = (slot, x, y, prop) => {
         snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, state.obstacleGrid, x, y);
-        setPropRunTargetXY(run, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1]);
-        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetX, run.targetY);
+        setRunTargetXY(slab, slot, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1]);
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot]);
         state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
     };
-    const tickSteering = (prop, run) => {
-        if (!run.hasTarget) return;
+    const tickSteering = (prop, slot) => {
+        if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
         const config = getKineticRollConfig(prop);
         const stopRadius = physicsSettings.groundNavHpa.stopRadius;
-        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetX, run.targetY);
+        const grid = state.obstacleGrid;
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot]);
         const steerX = ENGINE_F32[N_OUT_XY];
         const steerY = ENGINE_F32[N_OUT_XY + 1];
         const flowFieldGrid = state.flowFieldGrid;
-        const topologyKey = state.nav.topologyKey();
-        if (topologyKey !== run.lastTopologyKey) {
-            run.lastTopologyKey = topologyKey;
+        if (flowTopologyChanged(slab, slot, grid)) {
+            stampFlowTopology(slab, slot, grid);
             flowFieldGrid.refresh();
         }
         flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerX, steerY, state.nav.settings.recenterThreshold);
         const distToTarget = Math.hypot(steerX - prop.x, steerY - prop.y);
         if (distToTarget <= stopRadius) {
             clearGroundRollDrive(prop);
-            clearRunTarget(run);
+            clearSlotTarget(slot);
             return;
         }
         if (!computeFlowFieldSteering(prop, steerX, steerY, flowFieldGrid)) return;
         steerRollToward(prop, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
     };
     return {
-        id: FLOW_GROUND_NAV_BEHAVIOR_ID,
+        id: SANDBOX_BEHAVIOR_GROUND_FLOW,
         onPointerDown(prop, world) {
-            const run = getRun(prop);
-            run.dragging = true;
-            applyMoveTargetXY(run, world.x, world.y, prop);
+            const slot = getSlot(prop);
+            slab.flags[slot] |= GROUND_NAV_RUN_DRAGGING;
+            applyMoveTargetXY(slot, world.x, world.y, prop);
             markPropRunActive(activeRunIds, prop.id);
             return true;
         },
         onPointerMove(prop, world) {
-            const run = getRun(prop);
-            if (!run.dragging || !run.hasTarget) return;
-            applyMoveTargetXY(run, world.x, world.y, prop);
+            const slot = getSlot(prop);
+            if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
+            applyMoveTargetXY(slot, world.x, world.y, prop);
         },
         onPointerUp(prop) {
-            getRun(prop).dragging = false;
+            const slot = getSlot(prop);
+            slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
         },
         setMoveTarget(prop, x, y) {
-            const run = getRun(prop);
-            run.dragging = false;
-            applyMoveTargetXY(run, x, y, prop);
+            const slot = getSlot(prop);
+            slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
+            applyMoveTargetXY(slot, x, y, prop);
             markPropRunActive(activeRunIds, prop.id);
         },
         updateMoveTarget(prop, x, y) {
-            const run = getRun(prop);
-            if (!run.hasTarget) return;
-            applyMoveTargetXY(run, x, y, prop);
+            const slot = getSlot(prop);
+            if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+            applyMoveTargetXY(slot, x, y, prop);
         },
         hasMoveTarget(prop) {
-            return getRun(prop).hasTarget;
+            const slot = propIdToSlot.get(prop.id);
+            return slot != null && (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) !== 0;
         },
         clearMoveTarget(prop) {
             clearGroundRollDrive(prop);
-            clearRunTarget(getRun(prop));
+            const slot = propIdToSlot.get(prop.id);
+            if (slot != null) clearSlotTarget(slot);
             markPropRunInactive(activeRunIds, prop.id);
         },
         writeMoveTargetWorldInto(buf, o, prop) {
-            return writeMoveTargetFromRunInto(buf, o, propRuns.get(prop.id));
+            return writeMoveTargetFromSlotInto(buf, o, slab, propIdToSlot.get(prop.id));
         },
         tick(prop, dt) {
-            tickSteering(prop, getRun(prop));
+            const slot = propIdToSlot.get(prop.id);
+            if (slot != null) tickSteering(prop, slot);
         },
         tickWorld(dt) {
-            forEachActivePropRun(state, propRuns, activeRunIds, tickSteering, dt);
+            forEachActivePropRunSlot(state, slab, propIdToSlot, activeRunIds, tickSteering, dt);
         },
-        appendPathOverlay(slab, prop, visual) {
-            const run = propRuns.get(prop.id);
-            if (!run?.hasTarget) return;
-            snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetX, run.targetY);
-            const polyBase = beginOverlayPoly(slab);
-            const pathLen = writeFlowFieldPathInto(slab, prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.flowFieldGrid, state.obstacleGrid);
-            stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_FLOW, visual);
+        appendPathOverlay(overlaySlab, prop, visual) {
+            const slot = propIdToSlot.get(prop.id);
+            if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+            snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot]);
+            const polyBase = beginOverlayPoly(overlaySlab);
+            const pathLen = writeFlowFieldPathInto(overlaySlab, prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.flowFieldGrid, state.obstacleGrid);
+            stampPathPolyline(overlaySlab, polyBase, pathLen, PATH_OVERLAY_MODE_FLOW, visual);
         },
         reset() {
-            propRuns.clear();
+            clearGroundNavRunSlab(slab);
+            propIdToSlot.clear();
             activeRunIds.length = 0;
         },
     };
 }
 export function createHpaGroundNavBehavior(state) {
-    const propRuns = new Map();
+    const slab = createGroundNavRunSlab();
+    const propIdToSlot = new Map();
     const activeRunIds = [];
-    const getRun = (prop) => getOrCreatePropRun(propRuns, prop.id, () => ({ hasTarget: false, targetX: 0, targetY: 0, targetCellIdx: null, dragging: false, hpaNav: new HpaNavSession() }));
-    const clearRunTarget = (run) => {
-        clearPropRunTarget(run);
-        run.targetCellIdx = null;
-        run.dragging = false;
-        run.hpaNav.reset(state);
+    const getSlot = (prop) => {
+        let slot = propIdToSlot.get(prop.id);
+        if (slot != null) return slot;
+        slot = allocGroundNavRunSlot(slab, prop.id);
+        slab.sessions[slot] = new HpaNavSession();
+        propIdToSlot.set(prop.id, slot);
+        return slot;
     };
-    const applyMoveTargetXY = (run, x, y, prop, forceReset) => {
+    const clearSlotTarget = (slot) => {
+        clearRunTargetFlags(slab, slot);
+        slab.targetCellIdx[slot] = -1;
+        slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
+        slab.sessions[slot]?.reset(state);
+    };
+    const applyMoveTargetXY = (slot, x, y, prop, forceReset) => {
         const nextIdx = snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, state.obstacleGrid, x, y);
-        const cellChanged = nextIdx !== run.targetCellIdx;
-        setPropRunTargetXY(run, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1]);
-        run.targetCellIdx = nextIdx === -1 ? null : nextIdx;
-        if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
+        const cellChanged = nextIdx !== slab.targetCellIdx[slot];
+        setRunTargetXY(slab, slot, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1]);
+        slab.targetCellIdx[slot] = nextIdx === -1 ? -1 : nextIdx;
+        if (forceReset || cellChanged) slab.sessions[slot].markTargetChanged();
     };
-    const tickSteering = (prop, run, dtMs) => {
-        if (!run.hasTarget) return;
+    const tickSteering = (prop, slot, dtMs) => {
+        if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
         const grid = state.obstacleGrid;
         const config = getKineticRollConfig(prop);
         const stopRadius = physicsSettings.groundNavHpa.stopRadius;
-        if (groundNavArrivedAtTarget(prop, run.targetX, run.targetY, run.targetCellIdx, grid, stopRadius)) {
+        const targetX = slab.targetX[slot];
+        const targetY = slab.targetY[slot];
+        if (groundNavArrivedAtTarget(prop, targetX, targetY, slab.targetCellIdx[slot] < 0 ? null : slab.targetCellIdx[slot], grid, stopRadius)) {
             clearGroundRollDrive(prop);
-            clearRunTarget(run);
+            clearSlotTarget(slot);
             return;
         }
-        if (!driveGroundNav(prop, run.targetX, run.targetY, run.hpaNav, state, dtMs, prepareHpaGroundNavPathSettings(state, prop, stopRadius))) return;
+        if (!driveGroundNav(prop, targetX, targetY, slab.sessions[slot], state, dtMs, prepareHpaGroundNavPathSettings(state, prop, stopRadius))) return;
         if (ENGINE_F32[N_OUT_STEER] === 0 && ENGINE_F32[N_OUT_STEER + 1] === 0) return;
         steerRollToward(prop, ENGINE_F32[N_OUT_STEER], ENGINE_F32[N_OUT_STEER + 1], config, ENGINE_F32[N_OUT_STEER + 2]);
     };
     return {
-        id: HPA_GROUND_NAV_BEHAVIOR_ID,
+        id: SANDBOX_BEHAVIOR_GROUND_HPA,
         onPointerDown(prop, world) {
-            const run = getRun(prop);
-            run.dragging = true;
-            applyMoveTargetXY(run, world.x, world.y, prop, true);
+            const slot = getSlot(prop);
+            slab.flags[slot] |= GROUND_NAV_RUN_DRAGGING;
+            applyMoveTargetXY(slot, world.x, world.y, prop, true);
             markPropRunActive(activeRunIds, prop.id);
             return true;
         },
         onPointerMove(prop, world) {
-            const run = getRun(prop);
-            if (!run.dragging || !run.hasTarget) return;
-            applyMoveTargetXY(run, world.x, world.y, prop, false);
+            const slot = getSlot(prop);
+            if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
+            applyMoveTargetXY(slot, world.x, world.y, prop, false);
         },
         onPointerUp(prop) {
-            getRun(prop).dragging = false;
+            const slot = getSlot(prop);
+            slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
         },
         setMoveTarget(prop, x, y) {
-            const run = getRun(prop);
-            run.dragging = false;
-            applyMoveTargetXY(run, x, y, prop, true);
+            const slot = getSlot(prop);
+            slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
+            applyMoveTargetXY(slot, x, y, prop, true);
             markPropRunActive(activeRunIds, prop.id);
         },
         updateMoveTarget(prop, x, y) {
-            const run = getRun(prop);
-            if (!run.hasTarget) return;
-            applyMoveTargetXY(run, x, y, prop, false);
+            const slot = getSlot(prop);
+            if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+            applyMoveTargetXY(slot, x, y, prop, false);
         },
         hasMoveTarget(prop) {
-            return getRun(prop).hasTarget;
+            const slot = propIdToSlot.get(prop.id);
+            return slot != null && (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) !== 0;
         },
         clearMoveTarget(prop) {
             clearGroundRollDrive(prop);
-            clearRunTarget(getRun(prop));
+            const slot = propIdToSlot.get(prop.id);
+            if (slot != null) clearSlotTarget(slot);
             markPropRunInactive(activeRunIds, prop.id);
         },
         getTargetCellIdx(prop) {
-            return getRun(prop).targetCellIdx;
+            const slot = propIdToSlot.get(prop.id);
+            if (slot == null) return null;
+            const idx = slab.targetCellIdx[slot];
+            return idx < 0 ? null : idx;
         },
         needsNavRetry(prop) {
-            const run = getRun(prop);
-            if (!run.hasTarget) return true;
-            if (run.hpaNav.isRoutePending()) return false;
-            return !navHasPath(run.hpaNav.navState);
+            const slot = propIdToSlot.get(prop.id);
+            if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return true;
+            const session = slab.sessions[slot];
+            if (session.isRoutePending()) return false;
+            return !navHasPath(session.navState);
         },
         replanMoveTarget(prop) {
-            const run = getRun(prop);
-            if (!run.hasTarget) return;
-            run.hpaNav.replan(prop, run.targetX, run.targetY, state, REPLAN_PRIORITY_TARGET);
+            const slot = propIdToSlot.get(prop.id);
+            if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+            slab.sessions[slot].replan(prop, slab.targetX[slot], slab.targetY[slot], state, REPLAN_PRIORITY_TARGET);
         },
         writeMoveTargetWorldInto(buf, o, prop) {
-            return writeMoveTargetFromRunInto(buf, o, propRuns.get(prop.id));
+            return writeMoveTargetFromSlotInto(buf, o, slab, propIdToSlot.get(prop.id));
         },
         tick(prop, dt) {
-            tickSteering(prop, getRun(prop), dt);
+            const slot = propIdToSlot.get(prop.id);
+            if (slot != null) tickSteering(prop, slot, dt);
         },
         tickWorld(dt) {
-            forEachActivePropRun(state, propRuns, activeRunIds, tickSteering, dt);
+            forEachActivePropRunSlot(state, slab, propIdToSlot, activeRunIds, tickSteering, dt);
         },
-        appendPathOverlay(slab, prop, visual) {
-            const run = propRuns.get(prop.id);
-            if (!run?.hasTarget) return;
-            const nav = run.hpaNav.navState;
-            const polyBase = beginOverlayPoly(slab);
-            const pathLen = nav.pathLen > 0 && nav.pathSlot >= 0 ? writeSabPathOverlayInto(slab.poly, prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, nav.pathProgressIdx, state.obstacleGrid) : 0;
-            stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_HPA, visual);
+        appendPathOverlay(overlaySlab, prop, visual) {
+            const slot = propIdToSlot.get(prop.id);
+            if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+            const nav = slab.sessions[slot].navState;
+            const polyBase = beginOverlayPoly(overlaySlab);
+            const pathLen = nav.pathLen > 0 && nav.pathSlot >= 0 ? writeSabPathOverlayInto(overlaySlab.poly, prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, nav.pathProgressIdx, state.obstacleGrid) : 0;
+            stampPathPolyline(overlaySlab, polyBase, pathLen, PATH_OVERLAY_MODE_HPA, visual);
         },
         reset() {
-            propRuns.forEach((run) => run.hpaNav.reset(state));
-            propRuns.clear();
+            for (let i = 0; i < slab.capacity; i++) if (slab.sessions[i]) slab.sessions[i].reset(state);
+            clearGroundNavRunSlab(slab);
+            propIdToSlot.clear();
             activeRunIds.length = 0;
         },
     };
 }
-export const GROUND_NAV_SELECTION_MOVE_IDS = [HPA_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID];
+export const GROUND_NAV_SELECTION_MOVE_IDS = [SANDBOX_BEHAVIOR_GROUND_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW];
 export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     let count = 0;
     for (let i = 0; i < propIds.length; i++) {
@@ -2363,7 +2408,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
             const canNav = targetNavId && isTargetNavCapable() && (state.editor.lockSelection || targetNavId === cameraTargetId || now - lastSelectedBoidTime < 500);
             if (isDoubleTap && canNav) {
                 session.select({ kind: "prop", ids: [targetNavId] });
-                const behaviorId = state.editor.navMode === EDITOR_NAV_MODE_FLOW ? "rollToCursorFlow" : "rollToCursorHpa";
+                const behaviorId = state.editor.navMode === EDITOR_NAV_MODE_FLOW ? SANDBOX_BEHAVIOR_GROUND_FLOW : SANDBOX_BEHAVIOR_GROUND_HPA;
                 if (issueGroundNavToSelected(behaviorId, world)) {
                     lastClickTime = now;
                     lastClickX = world.x;

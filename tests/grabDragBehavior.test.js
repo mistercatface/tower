@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive, CircleShape } from "../Libraries/Physics/physics.js";
-import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
+import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, SANDBOX_BEHAVIOR_GRAB_DRAG } from "../Core/engineEnums.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
-import { createGrabDragBehavior, resolveDragLaunchConfigFromSize, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
+import { createGrabDragBehavior, resolveDragLaunchConfigFromSize } from "../Libraries/Sandbox/dragBehaviors.js";
 import { createDefaultSandboxBehaviors } from "../Libraries/Sandbox/sandbox.js";
 import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
@@ -14,15 +14,15 @@ import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY } from "../Core/engineMemory.js";
 
 describe("grabDrag behavior", () => {
     it("resolveDragLaunchConfigFromSize scales maxPower with prop radius", () => {
-        const small = resolveDragLaunchConfigFromSize(4);
-        const large = resolveDragLaunchConfigFromSize(14);
-        assert.ok(small.maxPower > 400);
-        assert.ok(small.maxPower < 600);
-        assert.ok(large.maxPower > small.maxPower);
-        assert.equal(large.maxPower, 700);
+        const smallPower = resolveDragLaunchConfigFromSize(4).maxPower;
+        const largePower = resolveDragLaunchConfigFromSize(14).maxPower;
+        assert.ok(smallPower > 400);
+        assert.ok(smallPower < 600);
+        assert.ok(largePower > smallPower);
+        assert.equal(largePower, 700);
         const state = createGrabDragTestState();
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", radius: 4, shape: new CircleShape(4) }));
-        assert.equal(resolveDragLaunchConfigFromSize(prop.radius).maxPower, small.maxPower);
+        assert.equal(resolveDragLaunchConfigFromSize(prop.radius).maxPower, smallPower);
     });
 
     it("onPointerDown returns true for kinetic props and false otherwise", () => {
@@ -97,7 +97,7 @@ describe("grabDrag behavior", () => {
     it("is registered in createDefaultSandboxBehaviors", () => {
         const state = createGrabDragTestState();
         const ids = createDefaultSandboxBehaviors(state).map((behavior) => behavior.id);
-        assert.ok(ids.includes(GRAB_DRAG_BEHAVIOR_ID));
+        assert.ok(ids.includes(SANDBOX_BEHAVIOR_GRAB_DRAG));
     });
 
     it("findCircleRimGrabPointInto places grab on rim toward cursor", () => {

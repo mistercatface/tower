@@ -10,7 +10,7 @@ import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { getMapGenBoundsCenterWorldF32, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
 import { ENGINE_F32, M_VEC_A, N_OUT_XY, recomputeViewBounds } from "../Core/engineMemory.js";
-import { EDITOR_NAV_MODE_HPA, EDITOR_NAV_MODE_FLOW } from "../Core/engineEnums.js";
+import { EDITOR_NAV_MODE_HPA, EDITOR_NAV_MODE_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW } from "../Core/engineEnums.js";
 
 const CELLS_PER_CHUNK = 16;
 
@@ -177,24 +177,24 @@ describe("snake game launch actions", () => {
         state.editor.navMode = EDITOR_NAV_MODE_HPA;
         
         // Simulate setting active behavior on the boid
-        state.sandbox.entityMeta.setActiveBehaviorId(boid.id, "rollToCursorHpa");
+        state.sandbox.entityMeta.setActiveBehaviorId(boid.id, SANDBOX_BEHAVIOR_GROUND_HPA);
 
         // Set a target on the old behavior
-        const hpaBehavior = state.sandbox.behaviorById.get("rollToCursorHpa");
+        const hpaBehavior = state.sandbox.behaviorById.get(SANDBOX_BEHAVIOR_GROUND_HPA);
         hpaBehavior.setMoveTarget(boid, 100, 120);
         
         // Verify current state
-        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorHpa");
+        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), SANDBOX_BEHAVIOR_GROUND_HPA);
         
         // Toggle mode to flow using setEditorNavMode
         const { setEditorNavMode } = await import("../Apps/Editor/ui/editorUi.js");
         setEditorNavMode(state, EDITOR_NAV_MODE_FLOW);
         
-        // Verify state is updated to rollToCursorFlow and target is preserved
+        // Verify state is updated to flow and target is preserved
         assert.equal(state.editor.navMode, EDITOR_NAV_MODE_FLOW);
-        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorFlow");
+        assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), SANDBOX_BEHAVIOR_GROUND_FLOW);
         
-        const flowBehavior = state.sandbox.behaviorById.get("rollToCursorFlow");
+        const flowBehavior = state.sandbox.behaviorById.get(SANDBOX_BEHAVIOR_GROUND_FLOW);
         assert.ok(flowBehavior.writeMoveTargetWorldInto(ENGINE_F32, N_OUT_XY, boid));
         assert.equal(ENGINE_F32[N_OUT_XY], 104);
         assert.equal(ENGINE_F32[N_OUT_XY + 1], 120);
