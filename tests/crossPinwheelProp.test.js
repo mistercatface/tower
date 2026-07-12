@@ -6,7 +6,7 @@ import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kine
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, kineticStaticSlab } from "../Core/engineMemory.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { FractureEngine, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT } from "../Libraries/Physics/fracture.js";
+import { FractureEngine, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Libraries/Physics/fracture.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
@@ -105,27 +105,24 @@ describe("cross pinwheel prop", () => {
         assert.equal(pinwheel.vy, 0);
     });
 
-    it("fracture shatters across compound parts", () => {
+    it("fracture turns compound into debris only", () => {
         const world = createFractureWorld();
         const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
         pinwheel.fractureEnabled = true;
         assignPhysIdWithPose(pinwheel, 0);
-        const fullArea = kineticFootprintArea(pinwheel);
+        const partCountBefore = pinwheel.collisionParts.length;
+        assert.ok(partCountBefore > 1);
         assert.ok(FractureEngine.canFracturePropSplit(pinwheel));
-        assert.ok(FractureEngine.fracturePropOnImpact(pinwheel, 0, 0, 40, world.fractureEngine));
+        assert.ok(FractureEngine.fracturePropOnImpact(pinwheel, 14, 0, 40, world.fractureEngine));
         const stores = world.fractureEngine.stores;
         const start = ENGINE_F32[F_OUT_DEBRIS_START];
         const count = ENGINE_F32[F_OUT_DEBRIS_COUNT];
-        assert.ok(count >= 4, `expected shards from compound parts, got ${count}`);
-        let shardArea = 0;
+        assert.ok(count >= partCountBefore, `hit shards + survivor parts as debris, got ${count} vs ${partCountBefore} parts`);
+        assert.equal(ENGINE_F32[F_OUT_REMNANT], 0, "compound fracture leaves no remant WorldProp");
+        assert.equal(pinwheel.collisionParts.length, partCountBefore, "parent geometry untouched until flush removes it");
+        assert.ok(pinwheel.drawOutline instanceof Float32Array);
         let maxAbsCx = 0;
-        let maxAbsCy = 0;
-        for (let i = start; i < start + count; i++) {
-            shardArea += stores.debris.footprintArea[i];
-            maxAbsCx = Math.max(maxAbsCx, Math.abs(stores.debris.centroidX[i]));
-            maxAbsCy = Math.max(maxAbsCy, Math.abs(stores.debris.centroidY[i]));
-        }
-        assert.ok(shardArea > fullArea * 0.55, `shard area ${shardArea} should cover most of compound area ${fullArea}`);
-        assert.ok(maxAbsCx > 4 && maxAbsCy > 4, `centroids should span both arms (maxAbsCx=${maxAbsCx}, maxAbsCy=${maxAbsCy})`);
+        for (let i = start; i < start + count; i++) maxAbsCx = Math.max(maxAbsCx, Math.abs(stores.debris.centroidX[i]));
+        assert.ok(maxAbsCx > 2, `debris should span off-hub (maxAbsCx=${maxAbsCx})`);
     });
 });

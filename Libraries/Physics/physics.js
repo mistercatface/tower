@@ -230,8 +230,8 @@ function compoundInertiaFactor(parts) {
 }
 export function kineticFootprintArea(body) {
     if (body.footprintArea != null) return body.footprintArea;
-    const parts = body.collisionParts;
-    if (parts?.length > 1) {
+    const parts = collisionPartsList(body);
+    if (parts) {
         let area = 0;
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i];
@@ -254,8 +254,8 @@ export function kineticMassFromFootprint(body) {
 }
 export function kineticInertiaFromBody(body) {
     const m = massFromBody(body);
-    const parts = body.collisionParts;
-    if (parts?.length > 1) return m * compoundInertiaFactor(parts);
+    const parts = collisionPartsList(body);
+    if (parts) return m * compoundInertiaFactor(parts);
     const shape = body.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         const inertiaFactor = polygonShapeInertiaFactor(shape);
@@ -1168,18 +1168,13 @@ export function readEntityFacing(entity) {
     if (entity == null) return 0;
     return entity.facing ?? entity.angle ?? 0;
 }
-const sContactPartsA = [null];
-const sContactPartsB = [null];
+export function collisionPartsList(entity) {
+    const parts = entity.collisionParts;
+    if (parts?.length > 1) return parts;
+    return null;
+}
 const sSatPartA = { shapeTypeId: 0, radius: 0, vertices: null, normals: null, _vertOffset: 0, _floatCount: 0 };
 const sSatPartB = { shapeTypeId: 0, radius: 0, vertices: null, normals: null, _vertOffset: 0, _floatCount: 0 };
-function entityHasCompoundParts(entity) {
-    return (entity.collisionParts?.length ?? 0) > 1;
-}
-function contactPartsRef(entity, compound, scratch) {
-    if (compound) return entity.collisionParts;
-    scratch[0] = entity.shape;
-    return scratch;
-}
 function bindSatPartProxy(proxy, partRow) {
     const slab = kineticDynamicSlab;
     proxy.shapeTypeId = slab.partShapeKind[partRow];
@@ -1207,9 +1202,6 @@ export function checkPairCollisionAtSlabPose(physIdA, physIdB, xA, yA, xB, yB) {
     const countB = slab.partCount[physIdB];
     for (let i = 0; i < countA; i++) for (let j = 0; j < countB; j++) if (satCheckPartRowsAtPose(geomA + i, geomB + j, xA, yA, cosA, sinA, xB, yB, cosB, sinB)) return true;
     return false;
-}
-export function checkEntityPairCollisionAtSlabPose(bodyA, bodyB, physIdA, physIdB, xA, yA, xB, yB) {
-    return checkPairCollisionAtSlabPose(physIdA, physIdB, xA, yA, xB, yB);
 }
 export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
     const dx = xB - xA;
@@ -1283,12 +1275,18 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
     const sinA = Math.sin(facingA);
     const cosB = Math.cos(facingB);
     const sinB = Math.sin(facingB);
-    const compoundA = entityHasCompoundParts(bodyA);
-    const compoundB = entityHasCompoundParts(bodyB);
-    if (!compoundA && !compoundB) return satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, bodyB.shape);
-    const partsA = contactPartsRef(bodyA, compoundA, sContactPartsA);
-    const partsB = contactPartsRef(bodyB, compoundB, sContactPartsB);
-    for (let i = 0; i < partsA.length; i++) for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, partsA[i], xB, yB, cosB, sinB, partsB[j])) return true;
+    const partsA = collisionPartsList(bodyA);
+    const partsB = collisionPartsList(bodyB);
+    if (!partsA && !partsB) return satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, bodyB.shape);
+    if (partsA && partsB) {
+        for (let i = 0; i < partsA.length; i++) for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, partsA[i], xB, yB, cosB, sinB, partsB[j])) return true;
+        return false;
+    }
+    if (partsA) {
+        for (let i = 0; i < partsA.length; i++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, partsA[i], xB, yB, cosB, sinB, bodyB.shape)) return true;
+        return false;
+    }
+    for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, partsB[j])) return true;
     return false;
 }
 export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
@@ -1562,7 +1560,7 @@ function entityWorldAabbFromShapeF32(buf, o, entity) {
     const x = entity.x;
     const y = entity.y;
     const angle = readEntityFacing(entity);
-    if (entityHasCompoundParts(entity)) {
+    if (collisionPartsList(entity)) {
         computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, entity.collisionParts);
         const hx = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
         const hy = (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5;
@@ -1623,7 +1621,7 @@ export function neighborQueryPadForExtent(extent) {
     return Math.min(pad.maxPad, Math.max(pad.minPad, extent * pad.padScale));
 }
 export function entityCollisionSpan(entity) {
-    if (entityHasCompoundParts(entity)) {
+    if (collisionPartsList(entity)) {
         computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, entity.collisionParts);
         return lengthXY((ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5, (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5);
     }
@@ -1742,19 +1740,31 @@ function kineticOverlapsWallCandidates(px, py, body, candidates) {
     const bodyFacing = readEntityFacing(body);
     const bodyCos = Math.cos(bodyFacing);
     const bodySin = Math.sin(bodyFacing);
-    const compound = entityHasCompoundParts(body);
-    const partCount = compound ? body.collisionParts.length : 1;
-    for (let p = 0; p < partCount; p++) {
-        const shape = compound ? body.collisionParts[p] : body.shape;
-        if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-            const radiusSq = shape.radius * shape.radius;
-            for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
-            continue;
+    const parts = collisionPartsList(body);
+    if (parts) {
+        for (let p = 0; p < parts.length; p++) {
+            const shape = parts[p];
+            if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
+                const radiusSq = shape.radius * shape.radius;
+                for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
+                continue;
+            }
+            for (let i = 0; i < candidates.used; i++) {
+                const segId = candidates.buf[i];
+                if (satPolygonVsWallSegmentF32(px, py, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) return true;
+            }
         }
-        for (let i = 0; i < candidates.used; i++) {
-            const segId = candidates.buf[i];
-            if (satPolygonVsWallSegmentF32(px, py, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) return true;
-        }
+        return false;
+    }
+    const shape = body.shape;
+    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
+        const radiusSq = shape.radius * shape.radius;
+        for (let i = 0; i < candidates.used; i++) if (distanceSqToSegment(candidates.buf[i], px, py) <= radiusSq) return true;
+        return false;
+    }
+    for (let i = 0; i < candidates.used; i++) {
+        const segId = candidates.buf[i];
+        if (satPolygonVsWallSegmentF32(px, py, bodyCos, bodySin, shape.vertices, shape.normals, 0, shape.vertices.length, segId)) return true;
     }
     return false;
 }
@@ -1931,7 +1941,7 @@ export class WallCollisionResolver {
         let collided = false;
         const wantHits = shouldBreakWallHit != null;
         const outHits = wantHits ? hits : null;
-        if (entityHasCompoundParts(entity)) {
+        if (collisionPartsList(entity)) {
             const parts = entity.collisionParts;
             for (let i = 0; i < parts.length; i++) if (resolveAgainstWallSegmentsSlab(physId, entity, parts[i], candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
         } else if (entity.shape) if (resolveAgainstWallSegmentsSlab(physId, entity, entity.shape, candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
@@ -2039,8 +2049,8 @@ function orderIslandConstraintItems(startIdx, count) {
     for (let i = 0; i < count; i++) orderOrderedIdxs[i] = orderOrdered[i];
 }
 function circleRadiusFromBody(body) {
-    if (entityHasCompoundParts(body)) {
-        const parts = body.collisionParts;
+    const parts = collisionPartsList(body);
+    if (parts) {
         for (let i = 0; i < parts.length; i++) if (parts[i].shapeTypeId === SHAPE_TYPE_CIRCLE) return parts[i].radius;
     } else if (body.shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return body.shape.radius;
     return body.radius;
@@ -3256,7 +3266,7 @@ export function classifyKineticPairTier(bodyA, bodyB) {
     const physIdA = bodyA._physId;
     const physIdB = bodyB._physId;
     if (physIdA !== undefined && physIdA !== -1 && physIdB !== undefined && physIdB !== -1 && kineticDynamicSlab.partCount[physIdA] > 0 && kineticDynamicSlab.partCount[physIdB] > 0) return classifyKineticPairTierSlab(physIdA, physIdB);
-    if (bodyA.collisionParts?.length > 1 || bodyB.collisionParts?.length > 1) return KINETIC_PAIR_COMPOUND;
+    if (collisionPartsList(bodyA) || collisionPartsList(bodyB)) return KINETIC_PAIR_COMPOUND;
     const shapeA = bodyA.collisionParts?.[0] ?? bodyA.shape;
     const shapeB = bodyB.collisionParts?.[0] ?? bodyB.shape;
     if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_CIRCLE;

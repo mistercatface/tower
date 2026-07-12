@@ -175,14 +175,25 @@ export function propShapeFootprintId(prop) {
     let id;
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
         let hash = 2166136261;
-        const verts = shape.vertices;
-        const count = verts.length;
-        hash ^= count >>> 0;
-        hash = Math.imul(hash, 16777619);
-        for (let i = 0; i < count; i++) {
-            const q = Math.round(verts[i] * 8);
-            hash ^= q;
+        function mixVerts(verts) {
+            const count = verts.length;
+            hash ^= count >>> 0;
             hash = Math.imul(hash, 16777619);
+            for (let i = 0; i < count; i++) {
+                const q = Math.round(verts[i] * 8);
+                hash ^= q;
+                hash = Math.imul(hash, 16777619);
+            }
+        }
+        const outline = prop.drawOutline;
+        if (outline?.length >= 6) mixVerts(outline);
+        else {
+            const parts = prop.collisionParts;
+            if (parts?.length > 1) {
+                hash ^= parts.length >>> 0;
+                hash = Math.imul(hash, 16777619);
+                for (let p = 0; p < parts.length; p++) mixVerts(parts[p].vertices);
+            } else mixVerts(shape.vertices);
         }
         id = hash >>> 0;
         if (prop.chunks?.length) id = (id ^ Math.imul(prop.chunks.length, 16777619)) >>> 0;

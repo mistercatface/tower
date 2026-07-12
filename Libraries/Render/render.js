@@ -957,53 +957,68 @@ const sWallBackFaceColors = { shadow: null, mid: null, highlight: null };
 const sWallTopColors = { light: null, mid: null, dark: null };
 const sWallDrawOpts = { height: 0, facing: 0, faceColors: sWallFaceColors, backFaceColors: sWallBackFaceColors, topColors: sWallTopColors, localVerts: null, topHx: null, topHy: null };
 const sWallFlatVerts = new Float32Array(1024);
+function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts, colors, world) {
+    if (!localVerts || localVerts.length < 6) return;
+    if (flatPresentation) {
+        if (prop._wallChunkTextures?.ready && prop._wallChunkTextures.capCanvas && drawFlatWallChunkCap(ctx, prop, localVerts)) return;
+        const tinted = resolveVisualOverrideColorTree(prop, colors);
+        const facing = readEntityFacing(prop);
+        const cos = Math.cos(facing);
+        const sin = Math.sin(facing);
+        const count = localVerts.length / 2;
+        if (count * 2 > sWallFlatVerts.length) throw new Error("flat wall chunk exceeds scratch capacity");
+        const px = prop.x;
+        const py = prop.y;
+        for (let i = 0; i < count; i++) {
+            const lx = localVerts[i * 2];
+            const ly = localVerts[i * 2 + 1];
+            sWallFlatVerts[i * 2] = px + lx * cos - ly * sin;
+            sWallFlatVerts[i * 2 + 1] = py + lx * sin + ly * cos;
+        }
+        ctx.beginPath();
+        traceClosedFlatPolygon(ctx, sWallFlatVerts, count);
+        ctx.fillStyle = tinted.top ?? tinted.side;
+        ctx.fill();
+        return;
+    }
+    if (drawWallChunkTextured(ctx, prop, viewport, localVerts)) return;
+    const tinted = resolveVisualOverrideColorTree(prop, colors);
+    const height = prop.height ?? world?.height ?? 12;
+    const side = tinted.side;
+    const sideShadow = tinted.sideShadow ?? side;
+    sWallFaceColors.shadow = sideShadow;
+    sWallFaceColors.mid = side;
+    sWallFaceColors.highlight = shadeHex(side, -0.12);
+    sWallBackFaceColors.shadow = sideShadow;
+    sWallBackFaceColors.mid = sideShadow;
+    sWallBackFaceColors.highlight = side;
+    sWallTopColors.light = tinted.top;
+    sWallTopColors.mid = tinted.top;
+    sWallTopColors.dark = tinted.top;
+    sWallDrawOpts.height = height;
+    sWallDrawOpts.facing = readEntityFacing(prop);
+    sWallDrawOpts.localVerts = localVerts;
+    sWallDrawOpts.topHx = null;
+    sWallDrawOpts.topHy = null;
+    drawExtrudedConvexPolygon(ctx, prop, viewport, sWallDrawOpts);
+}
 export function createWallChunkDraw(visuals) {
     const { colors, world } = visuals;
     return (ctx, prop, viewport, flatPresentation) => {
-        const localVerts = prop.drawOutline ?? prop.shape?.vertices;
-        if (!localVerts || localVerts.length < 6) return;
-        if (flatPresentation) {
-            if (prop._wallChunkTextures?.ready && prop._wallChunkTextures.capCanvas && drawFlatWallChunkCap(ctx, prop, localVerts)) return;
-            const tinted = resolveVisualOverrideColorTree(prop, colors);
-            const facing = readEntityFacing(prop);
-            const cos = Math.cos(facing);
-            const sin = Math.sin(facing);
-            const count = localVerts.length / 2;
-            if (count * 2 > sWallFlatVerts.length) throw new Error("flat wall chunk exceeds scratch capacity");
-            const px = prop.x;
-            const py = prop.y;
-            for (let i = 0; i < count; i++) {
-                const lx = localVerts[i * 2];
-                const ly = localVerts[i * 2 + 1];
-                sWallFlatVerts[i * 2] = px + lx * cos - ly * sin;
-                sWallFlatVerts[i * 2 + 1] = py + lx * sin + ly * cos;
-            }
-            ctx.beginPath();
-            traceClosedFlatPolygon(ctx, sWallFlatVerts, count);
-            ctx.fillStyle = tinted.top ?? tinted.side;
-            ctx.fill();
+        const outline = prop.drawOutline;
+        if (outline) {
+            drawWallChunkContour(ctx, prop, viewport, flatPresentation, outline, colors, world);
             return;
         }
-        if (drawWallChunkTextured(ctx, prop, viewport, localVerts)) return;
-        const tinted = resolveVisualOverrideColorTree(prop, colors);
-        const height = prop.height ?? world?.height ?? 12;
-        const side = tinted.side;
-        const sideShadow = tinted.sideShadow ?? side;
-        sWallFaceColors.shadow = sideShadow;
-        sWallFaceColors.mid = side;
-        sWallFaceColors.highlight = shadeHex(side, -0.12);
-        sWallBackFaceColors.shadow = sideShadow;
-        sWallBackFaceColors.mid = sideShadow;
-        sWallBackFaceColors.highlight = side;
-        sWallTopColors.light = tinted.top;
-        sWallTopColors.mid = tinted.top;
-        sWallTopColors.dark = tinted.top;
-        sWallDrawOpts.height = height;
-        sWallDrawOpts.facing = readEntityFacing(prop);
-        sWallDrawOpts.localVerts = localVerts;
-        sWallDrawOpts.topHx = null;
-        sWallDrawOpts.topHy = null;
-        drawExtrudedConvexPolygon(ctx, prop, viewport, sWallDrawOpts);
+        const parts = prop.collisionParts;
+        if (parts?.length > 1) {
+            for (let i = 0; i < parts.length; i++) {
+                const verts = parts[i].vertices;
+                if (verts?.length >= 6) drawWallChunkContour(ctx, prop, viewport, flatPresentation, verts, colors, world);
+            }
+            return;
+        }
+        drawWallChunkContour(ctx, prop, viewport, flatPresentation, prop.shape?.vertices, colors, world);
     };
 }
 function parallelInsertionSort(kinds, baseIndices, depths, refs, start, end) {

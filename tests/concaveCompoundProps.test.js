@@ -3,9 +3,13 @@ import { describe, it } from "node:test";
 import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
 import { polygonIsConvex, earClipConvexPartsInto, regularStarFootprint, polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { classifyKineticPairTier, gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticFootprintArea } from "../Libraries/Physics/physics.js";
+import { FractureEngine, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Libraries/Physics/fracture.js";
 import { KINETIC_PAIR_COMPOUND } from "../Core/engineEnums.js";
-import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { ENGINE_F32 } from "../Core/engineMemory.js";
+import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
+import { createFractureWorld } from "./harness/fractureHarness.js";
+import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 
 describe("concave footprint compounds", () => {
     it("ear-clips a star outline into convex triangles", () => {
@@ -57,5 +61,23 @@ describe("concave footprint compounds", () => {
         }
         assert.ok(maxContacts >= 1);
         assert.equal(checkPairAtSlabPose(star, ball), false);
+    });
+
+    it("star tip fracture removes parent and spawns only debris", () => {
+        const world = createFractureWorld();
+        const star = new WorldProp(0, 0, "star_block", 0);
+        star.fractureEnabled = true;
+        assignPhysIdWithPose(star, 0);
+        addWorldPropsToState(world, [star]);
+        const partsBefore = star.collisionParts.length;
+        assert.ok(FractureEngine.fracturePropOnImpact(star, 12, 0, 40, world.fractureEngine));
+        assert.equal(ENGINE_F32[F_OUT_REMNANT], 0);
+        assert.ok(ENGINE_F32[F_OUT_DEBRIS_COUNT] >= partsBefore);
+        const spatialFrame = world.spatialFrame;
+        const shards = FractureEngine.commitFractureResult(world, star, spatialFrame);
+        assert.ok(shards.length >= partsBefore);
+        assert.ok(shards.every((s) => s.isKineticDebris));
+        assert.equal(world.worldProps.includes(star), false);
+        assert.ok(!world.worldProps.some((p) => p === star));
     });
 });
