@@ -231,6 +231,8 @@ export const PENDING_BREAK_HASH_CAPACITY = MAX_PENDING_WALL_BREAKS * 2;
 export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1; // power-of-two probe mask
 export const MAX_DEFERRED_FRACTURES = 256;
 export const MAX_STATIC_WALL_SEGMENTS = 4096;
+export const STATIC_WALL_SEG_INTERN_CAPACITY = MAX_STATIC_WALL_SEGMENTS * 2;
+export const STATIC_WALL_SEG_INTERN_MASK = STATIC_WALL_SEG_INTERN_CAPACITY - 1;
 // --- Grow helpers (resizable typed lists / slab column grow) ---
 export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     const cur = obj[key];
@@ -524,14 +526,54 @@ export function insertPendingBreakKey(key, row) {
 export const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 // --- Static wall segments (broadphase SAT sources) ---
 export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS) };
+const staticWallSegInternKeys = new Int32Array(STATIC_WALL_SEG_INTERN_CAPACITY);
+const staticWallSegInternIds = new Int32Array(STATIC_WALL_SEG_INTERN_CAPACITY);
+const staticWallSegInternGen = new Int32Array(STATIC_WALL_SEG_INTERN_CAPACITY);
+let staticWallSegInternGeneration = 1;
+export function packStaticWallSegKey(gridIdx, side, flags) {
+    return ((flags & 0x3) << 30) | ((side & 0x3) << 28) | (gridIdx & 0x0fffffff);
+}
 export function resetStaticWallSegmentSlab() {
     staticWallSegmentSlab.count = 0;
+    staticWallSegInternGeneration++;
+    if (staticWallSegInternGeneration > 0x7fffffff) {
+        staticWallSegInternGen.fill(0);
+        staticWallSegInternGeneration = 1;
+    }
 }
 export function allocStaticWallSegment() {
     const id = staticWallSegmentSlab.count;
     if (id >= MAX_STATIC_WALL_SEGMENTS) throw new Error("static wall segment slab capacity exceeded");
     staticWallSegmentSlab.count = id + 1;
     return id;
+}
+export function lookupStaticWallSegIntern(key) {
+    const generation = staticWallSegInternGeneration;
+    let idx = (key >>> 0) & STATIC_WALL_SEG_INTERN_MASK;
+    for (let n = 0; n < STATIC_WALL_SEG_INTERN_CAPACITY; n++) {
+        if (staticWallSegInternGen[idx] !== generation) return -1;
+        if (staticWallSegInternKeys[idx] === key) return staticWallSegInternIds[idx];
+        idx = (idx + 1) & STATIC_WALL_SEG_INTERN_MASK;
+    }
+    return -1;
+}
+export function insertStaticWallSegIntern(key, id) {
+    const generation = staticWallSegInternGeneration;
+    let idx = (key >>> 0) & STATIC_WALL_SEG_INTERN_MASK;
+    for (let n = 0; n < STATIC_WALL_SEG_INTERN_CAPACITY; n++) {
+        if (staticWallSegInternGen[idx] !== generation) {
+            staticWallSegInternKeys[idx] = key;
+            staticWallSegInternIds[idx] = id;
+            staticWallSegInternGen[idx] = generation;
+            return;
+        }
+        if (staticWallSegInternKeys[idx] === key) {
+            staticWallSegInternIds[idx] = id;
+            return;
+        }
+        idx = (idx + 1) & STATIC_WALL_SEG_INTERN_MASK;
+    }
+    throw new Error("static wall segment intern capacity exceeded");
 }
 // --- Sprite cache slabs ---
 const SPRITE_CACHE_PROP_INIT = 2560;

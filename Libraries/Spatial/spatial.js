@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
@@ -1149,6 +1149,10 @@ export class WorldObstacleGrid {
         return this._fillZLevels;
     }
     _borrowStaticWallVoxel(x, y, idx) {
+        const flags = WALL_SEG_VOXEL;
+        const key = packStaticWallSegKey(idx, 0, flags);
+        const existing = lookupStaticWallSegIntern(key);
+        if (existing >= 0) return existing;
         const size = this.cellSize;
         const id = allocStaticWallSegment();
         const slab = staticWallSegmentSlab;
@@ -1160,7 +1164,8 @@ export class WorldObstacleGrid {
         slab.size[id] = size;
         slab.gridIdx[id] = idx;
         slab.gridSide[id] = 0;
-        slab.flags[id] = WALL_SEG_VOXEL;
+        slab.flags[id] = flags;
+        insertStaticWallSegIntern(key, id);
         return id;
     }
     appendStaticWallSegmentsNearWorld(worldX, worldY, queryRadius, outIds) {
@@ -1176,6 +1181,13 @@ export class WorldObstacleGrid {
             if (this.grid[idx] !== 0) outIds.push(this._borrowStaticWallVoxel(this.gridCenterXByIdx(idx), this.gridCenterYByIdx(idx), idx));
             for (let side = 0; side < 4; side++) {
                 if (!railWallEdgeShouldEmit(this, idx, side)) continue;
+                const flags = WALL_SEG_EDGE_RAIL | WALL_SEG_STATIC_FACE;
+                const key = packStaticWallSegKey(idx, side, flags);
+                const existing = lookupStaticWallSegIntern(key);
+                if (existing >= 0) {
+                    outIds.push(existing);
+                    continue;
+                }
                 const thickness = edgeRailCollisionThicknessPx(this, idx, side);
                 cellEdgeEndpointsIdx(this, idx, side, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
                 const p1x = ENGINE_F32[S_EDGE_P1X];
@@ -1194,7 +1206,8 @@ export class WorldObstacleGrid {
                 slab.size[id] = Math.max(len, thickness);
                 slab.gridIdx[id] = idx;
                 slab.gridSide[id] = side;
-                slab.flags[id] = WALL_SEG_EDGE_RAIL | WALL_SEG_STATIC_FACE;
+                slab.flags[id] = flags;
+                insertStaticWallSegIntern(key, id);
                 outIds.push(id);
             }
         });
@@ -1782,24 +1795,29 @@ export function resolveWallSegmentQueryRadius(obstacleGrid, ...clearanceRadii) {
     const clearance = Math.max(...clearanceRadii, 0);
     return Math.max(clearance, obstacleGrid.cellSize + clearance);
 }
+const alongLineSeenGen = new Uint8Array(MAX_STATIC_WALL_SEGMENTS);
+let alongLineSeenStamp = 1;
 export function collectWallSegmentsAlongLine(obstacleGrid, x1, y1, x2, y2, queryRadius) {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const len = Math.hypot(dx, dy);
     const steps = Math.max(2, Math.ceil(len / 8));
-    const seen = new Set();
+    alongLineSeenStamp++;
+    if (alongLineSeenStamp > 255) {
+        alongLineSeenGen.fill(0);
+        alongLineSeenStamp = 1;
+    }
+    const stamp = alongLineSeenStamp;
     const result = new GrowI32(32);
     const batch = new GrowI32(32);
-    const slab = staticWallSegmentSlab;
     for (let step = 0; step <= steps; step++) {
         const t = step / steps;
         batch.clear();
         obstacleGrid.appendStaticWallSegmentsNearWorld(x1 + dx * t, y1 + dy * t, queryRadius, batch);
         for (let i = 0; i < batch.used; i++) {
             const id = batch.buf[i];
-            const key = (slab.flags[id] << 30) | (slab.gridSide[id] << 28) | (slab.gridIdx[id] & 0x0fffffff);
-            if (seen.has(key)) continue;
-            seen.add(key);
+            if (alongLineSeenGen[id] === stamp) continue;
+            alongLineSeenGen[id] = stamp;
             result.push(id);
         }
     }
