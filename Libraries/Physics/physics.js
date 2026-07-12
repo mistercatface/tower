@@ -256,7 +256,8 @@ export function kineticFootprintArea(body) {
     throw new Error(`kineticFootprintArea: unknown shapeTypeId ${shape?.shapeTypeId}`);
 }
 export function kineticDensity(body) {
-    return body.strategy?.density ?? collisionSettings.material.densityDefault;
+    const row = body.strategy.physicsRow;
+    return primitivePhysics.density[row];
 }
 export function primitivePhysicsRow(assetOrStrategy) {
     if (assetOrStrategy?.primitive === PROP_PRIMITIVE_SPHERE) return PRIMITIVE_PHYSICS_ROW_CIRCLE;
@@ -264,13 +265,11 @@ export function primitivePhysicsRow(assetOrStrategy) {
     return PRIMITIVE_PHYSICS_ROW_POLYGON;
 }
 export function stampPrimitivePhysics(strategy, row = primitivePhysicsRow(strategy)) {
-    const table = primitivePhysics;
-    strategy.density = table.density[row];
-    strategy.friction = table.dragFriction[row];
-    strategy.wallRestitution = table.wallRestitution[row];
-    strategy.wallFriction = table.wallFriction[row];
-    delete strategy.wallPhysics;
+    strategy.physicsRow = row;
     return strategy;
+}
+export function primitiveDragFriction(strategy) {
+    return primitivePhysics.dragFriction[strategy.physicsRow];
 }
 export function kineticMassFromFootprint(body) {
     const minMass = collisionSettings.material.minMass;
@@ -304,12 +303,14 @@ export function normalizeKineticBody(body) {
     if (physId === undefined || physId === -1) return body;
     const moment = body.momentOfInertia;
     const slab = kineticStaticSlab;
+    const row = strategy.physicsRow;
+    const table = primitivePhysics;
     slab.mass[physId] = body.mass;
     slab.invMass[physId] = 1 / body.mass;
     slab.invI[physId] = moment ? 1 / moment : 0;
     slab.entityId[physId] = body.id ?? -1;
-    slab.restitution[physId] = strategy.wallRestitution ?? strategy.pairRestitution ?? -1;
-    slab.friction[physId] = strategy.wallFriction ?? strategy.pairFriction ?? -1;
+    slab.restitution[physId] = table.wallRestitution[row];
+    slab.friction[physId] = table.wallFriction[row];
     return body;
 }
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
@@ -1994,8 +1995,8 @@ export class WallCollisionResolver {
         }
         const physId = entity._physId;
         if (physId === undefined || physId === -1) throw new Error("WallCollisionResolver requires _physId");
-        const restitution = entity.strategy.wallRestitution;
-        const friction = entity.strategy.wallFriction;
+        const restitution = kineticStaticSlab.restitution[physId];
+        const friction = kineticStaticSlab.friction[physId];
         let collided = false;
         const wantHits = shouldBreakWallHit != null;
         const outHits = wantHits ? hits : null;
@@ -4047,12 +4048,7 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], sleepNeighborEids.buf, n)) return false;
     return true;
 }
-/**
- * @param {DampedBody} body — mutated in place
- * @param {number} dtMs
- * @param {{ friction?: number, integrateFacing?: boolean, snapSpeed?: number }} [options]
- */
-export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFacing = true, snapSpeed = 1 } = {}) {
+export function applyVelocityDamping(body, dtMs, friction = 8.0, integrateFacing = true, snapSpeed = 1) {
     const physId = body._physId;
     if (physId !== undefined) {
         const dyn = kineticDynamicSlab;
@@ -4681,7 +4677,7 @@ export function packRollOrientId(body, steps = 16) {
     return 0x10000 | (angleBucket & 0xff) | ((axisBucket & 0xff) << 8);
 }
 function resolveRollingFriction(strategy, body) {
-    const base = strategy.friction ?? 8;
+    const base = primitiveDragFriction(strategy);
     const threshold = strategy.lowSpeedFrictionThreshold;
     const boosted = strategy.lowSpeedFriction;
     if (threshold == null || boosted == null) return base;
@@ -4697,7 +4693,7 @@ export function integratePropMotion(body, dtMs) {
     absorbCollisionRollImpulse(body, dtMs);
     integrateGroundRoll(body, dtMs);
     body.angularVelocity = 0;
-    applyVelocityDamping(body, dtMs, { friction, integrateFacing: false, snapSpeed });
+    applyVelocityDamping(body, dtMs, friction, false, snapSpeed);
 }
 // --- MOVED FROM kineticRollActuator.js ---
 export function applyGroundRollDrive(prop, dtSec) {

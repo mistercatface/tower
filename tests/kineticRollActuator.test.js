@@ -33,7 +33,7 @@ describe("kineticRollActuator", () => {
     });
 
     it("heading change retains lateral velocity until friction removes it", () => {
-        const prop = mockRollingProp({ vx: 180, vy: 0, strategy: { rolls: true, friction: 0 } });
+        const prop = mockRollingProp({ vx: 180, vy: 0, strategy: { rolls: true } });
         steerRollToward(prop, 0, 1, { accel: 600, maxSpeed: 180 });
         applyGroundRollDrive(prop, 1 / 60);
         assert.ok(prop.vx > 0);
@@ -65,7 +65,7 @@ describe("kineticRollActuator", () => {
     });
 
     it("integratePropMotion runs after drive in physics pass order", () => {
-        const prop = mockRollingProp({ vx: 50, vy: 0, strategy: { rolls: true, friction: 8 } });
+        const prop = mockRollingProp({ vx: 50, vy: 0, strategy: { rolls: true } });
         steerRollToward(prop, 1, 0, { accel: 600, maxSpeed: 180 });
         applyGroundRollDrive(prop, 1 / 60);
         const vxAfterDrive = prop.vx;

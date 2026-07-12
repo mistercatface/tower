@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { WorldProp, buildWorldPropStrategyFromAsset, applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { primitivePhysics, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../Core/engineMemory.js";
-import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
+import { kineticMassFromFootprint, kineticDensity, primitiveDragFriction } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -20,30 +20,37 @@ function walkAssetFiles(dir, out = []) {
 }
 
 describe("primitive physics SoA", () => {
-    it("stamps circle and polygon rows from the typed table", () => {
+    it("strategies carry physicsRow only; coats come from the typed table", () => {
         const ball = buildWorldPropStrategyFromAsset(propCatalog.ball);
         const box = buildWorldPropStrategyFromAsset(propCatalog.box);
         const boid = buildWorldPropStrategyFromAsset(propCatalog.boid_triangle);
         const pinwheel = buildWorldPropStrategyFromAsset(propCatalog.cross_pinwheel);
-        assert.equal(ball.density, primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
-        assert.equal(ball.friction, primitivePhysics.dragFriction[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
-        assert.equal(ball.wallRestitution, primitivePhysics.wallRestitution[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
-        assert.equal(ball.wallFriction, primitivePhysics.wallFriction[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
-        assert.equal(box.density, primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_POLYGON]);
-        assert.equal(box.wallFriction, primitivePhysics.wallFriction[PRIMITIVE_PHYSICS_ROW_POLYGON]);
-        assert.equal(boid.wallFriction, ball.wallFriction);
-        assert.equal(pinwheel.density, box.density);
+        assert.equal(ball.physicsRow, PRIMITIVE_PHYSICS_ROW_CIRCLE);
+        assert.equal(box.physicsRow, PRIMITIVE_PHYSICS_ROW_POLYGON);
+        assert.equal(boid.physicsRow, PRIMITIVE_PHYSICS_ROW_CIRCLE);
+        assert.equal(pinwheel.physicsRow, PRIMITIVE_PHYSICS_ROW_POLYGON);
+        assert.equal(ball.density, undefined);
+        assert.equal(ball.friction, undefined);
+        assert.equal(ball.wallRestitution, undefined);
+        assert.equal(ball.wallFriction, undefined);
+        assert.equal(box.wallFriction, undefined);
         assert.equal(ball.wallPhysics, undefined);
         assert.equal(box.wallPhysics, undefined);
+        assert.equal(kineticDensity({ strategy: ball }), primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
+        assert.equal(kineticDensity({ strategy: box }), primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_POLYGON]);
+        assert.equal(primitiveDragFriction(ball), primitivePhysics.dragFriction[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
+        assert.equal(primitiveDragFriction(box), primitivePhysics.dragFriction[PRIMITIVE_PHYSICS_ROW_POLYGON]);
+        assert.equal(primitivePhysics.wallFriction[boid.physicsRow], primitivePhysics.wallFriction[ball.physicsRow]);
+        assert.equal(primitivePhysics.density[pinwheel.physicsRow], primitivePhysics.density[box.physicsRow]);
     });
 
-    it("resized box changes mass but keeps polygon wall friction", () => {
+    it("resized box changes mass but keeps polygon physicsRow", () => {
         const prop = new WorldProp(0, 0, "box", 0);
-        const friction = prop.strategy.wallFriction;
+        assert.equal(prop.strategy.physicsRow, PRIMITIVE_PHYSICS_ROW_POLYGON);
         const smallMass = kineticMassFromFootprint(prop);
         applyPropBoxFootprint(prop, 24, 24);
         assert.ok(kineticMassFromFootprint(prop) > smallMass);
-        assert.equal(prop.strategy.wallFriction, friction);
+        assert.equal(prop.strategy.physicsRow, PRIMITIVE_PHYSICS_ROW_POLYGON);
     });
 
     it("catalog assets have no wallPhysics density friction spawn or floorBeltKind", () => {

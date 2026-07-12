@@ -1,8 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { CircleShape, PolygonShape, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
+import { CircleShape, PolygonShape, kineticDensity, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, stampPrimitivePhysics } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
+import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, primitivePhysics } from "../Core/engineMemory.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {
         const smallVerts = new Float32Array([
@@ -17,15 +18,15 @@ describe("bodyMass", () => {
             16, 16,
             -16, 16,
         ]);
-        const small = { shape: new PolygonShape(smallVerts), strategy: { isKinetic: true } };
-        const large = { shape: new PolygonShape(largeVerts), strategy: { isKinetic: true } };
+        const small = { shape: new PolygonShape(smallVerts), strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_POLYGON) };
+        const large = { shape: new PolygonShape(largeVerts), strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_POLYGON) };
         assert.equal(kineticFootprintArea(small), 256);
         assert.equal(kineticFootprintArea(large), 1024);
         assert.ok(kineticMassFromFootprint(large) > kineticMassFromFootprint(small));
     });
     it("kineticFootprintArea uses stored material area when collision hull is larger", () => {
         const body = {
-            strategy: {},
+            strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_POLYGON),
             footprintArea: 100,
             shape: new PolygonShape(new Float32Array([
                 -10, -10,
@@ -37,10 +38,11 @@ describe("bodyMass", () => {
         assert.equal(kineticFootprintArea(body), 100);
     });
 
-    it("derives circle mass from density and radius", () => {
-        const body = { strategy: { density: 0.01 }, radius: 10, shape: new CircleShape(10) };
+    it("derives circle mass from table density and radius", () => {
+        const density = primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_CIRCLE];
+        const body = { strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE), radius: 10, shape: new CircleShape(10) };
         body.mass = kineticMassFromFootprint(body);
-        assert.ok(Math.abs(body.mass - 0.01 * Math.PI * 100) < 1e-6);
+        assert.ok(Math.abs(body.mass - density * Math.PI * 100) < 1e-6);
     });
     it("kineticFootprintArea uses polygon vertices when present", () => {
         const boxVerts = new Float32Array([
@@ -49,7 +51,7 @@ describe("bodyMass", () => {
             16, 8,
             -16, 8,
         ]);
-        const body = { shape: new PolygonShape(boxVerts) };
+        const body = { shape: new PolygonShape(boxVerts), strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_POLYGON) };
         assert.equal(kineticFootprintArea(body), 512);
         assert.equal(kineticMassFromFootprint(body), 3);
     });

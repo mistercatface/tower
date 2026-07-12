@@ -1,8 +1,8 @@
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession } from "../../Libraries/Physics/physics.js";
+import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticStaticSlab, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;
@@ -155,7 +155,7 @@ export function mockKineticBody(isSleeping = false) {
         radius,
         isSleeping,
         isDead: false,
-        strategy: { isKinetic: true },
+        strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE),
         _sleepFrames: 0,
         mass: radius,
         get momentOfInertia() {
@@ -179,7 +179,7 @@ export function mockCircleProp(x, y, radius) {
         mass: radius,
         isSleeping: false,
         isDead: false,
-        strategy: { isKinetic: true },
+        strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE),
         get momentOfInertia() {
             return this.mass * this.radius * this.radius * 0.5;
         },
@@ -206,13 +206,14 @@ export function resetMockBallIds(next = 1) {
 }
 export function mockBall(x, y, overrides = {}) {
     const shape = overrides.shape ?? new CircleShape(4);
-    const body = { id: overrides.id ?? nextMockBallId++, x, y, vx: 0, vy: 0, angularVelocity: 0, radius: shape.radius, mass: shape.radius, type: "ball", strategy: { isKinetic: true }, shape, ...overrides };
+    const body = { id: overrides.id ?? nextMockBallId++, x, y, vx: 0, vy: 0, angularVelocity: 0, radius: shape.radius, mass: shape.radius, type: "ball", shape, ...overrides };
+    body.strategy = stampPrimitivePhysics({ isKinetic: true, ...body.strategy }, PRIMITIVE_PHYSICS_ROW_CIRCLE);
     normalizeKineticBody(body);
     return body;
 }
 export function mockRollingProp(overrides = {}) {
     const body = { id: 1, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, radius: 8, mass: 8, isSleeping: false, shape: new CircleShape(8), ...overrides };
-    body.strategy = { rolls: true, friction: 0, isKinetic: true, ...(overrides.strategy || {}) };
+    body.strategy = stampPrimitivePhysics({ rolls: true, isKinetic: true, ...(overrides.strategy || {}) }, PRIMITIVE_PHYSICS_ROW_CIRCLE);
     body._spawnRollQw = body._spawnRollQw ?? 1;
     body._spawnRollQx = body._spawnRollQx ?? 0;
     body._spawnRollQy = body._spawnRollQy ?? 0;
@@ -229,9 +230,7 @@ export function mockRollingProp(overrides = {}) {
     return body;
 }
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
-    const strategy = { isKinetic: true, ...options.strategy };
-    if (options.pairFriction != null) strategy.wallFriction = options.pairFriction;
-    if (options.pairRestitution != null) strategy.wallRestitution = options.pairRestitution;
+    const strategy = stampPrimitivePhysics({ isKinetic: true, ...options.strategy }, PRIMITIVE_PHYSICS_ROW_CIRCLE);
     const shape = options.sharedShape ? new CircleShape(radius) : null;
     const body = {
         id: options.id ?? nextMockKineticCircleId++,
@@ -249,6 +248,8 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
             return this.mass * this.radius * this.radius * 0.5;
         },
         shape: shape ?? new CircleShape(radius),
+        _overridePairFriction: options.pairFriction,
+        _overridePairRestitution: options.pairRestitution,
     };
     if (options.facing != null) body.facing = options.facing;
     if (options.isDead) body.isDead = true;
@@ -264,6 +265,15 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
     else if (options.update) body.update = options.update;
     normalizeKineticBody(body);
     return body;
+}
+function applyHarnessPairOverrides(bodies) {
+    for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
+        const physId = body._physId;
+        if (physId === undefined || physId === -1) continue;
+        if (body._overridePairFriction != null) kineticStaticSlab.friction[physId] = body._overridePairFriction;
+        if (body._overridePairRestitution != null) kineticStaticSlab.restitution[physId] = body._overridePairRestitution;
+    }
 }
 export function createKineticTestRegistry(liveProps) {
     return {
@@ -302,6 +312,7 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
     frame._kineticBodies = bodies.slice();
     frame._nextPhysId = bodies.length;
     snapshotKineticBodySlab(frame._kineticBodies);
+    applyHarnessPairOverrides(frame._kineticBodies);
     frame.syncActiveKineticBodies();
     return frame;
 }
@@ -320,6 +331,7 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     frame._kineticBodies = props.slice();
     frame._nextPhysId = props.length;
     snapshotKineticBodySlab(frame._kineticBodies);
+    applyHarnessPairOverrides(frame._kineticBodies);
     frame.syncActiveKineticBodies();
     return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
 }
