@@ -188,7 +188,7 @@ function collisionPartMassProperties(shape) {
         ENGINE_F32[P_OUT_MASS_INERTIA] = 0;
         return;
     }
-    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, verts);
+    polygonCentroid2DInto(M_OUT_CX, verts);
     ENGINE_F32[P_OUT_MASS_AREA] = area;
     ENGINE_F32[P_OUT_MASS_CX] = ENGINE_F32[M_OUT_CX];
     ENGINE_F32[P_OUT_MASS_CY] = ENGINE_F32[M_OUT_CY];
@@ -1202,7 +1202,7 @@ export function markHitCompoundParts(parts, lx, ly) {
     for (let i = 0; i < n; i++) {
         const part = parts[i];
         if (part.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
-        polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, part.vertices);
+        polygonCentroid2DInto(M_OUT_CX, part.vertices);
         const dx = ENGINE_F32[M_OUT_CX] - lx;
         const dy = ENGINE_F32[M_OUT_CY] - ly;
         const d = dx * dx + dy * dy;
@@ -4419,7 +4419,7 @@ function circleSegmentPenetration(cx, cy, radius, segId, approachX = 0, approach
     const wy = slab.y[segId];
     const localX = (cx - wx) * cos - (cy - wy) * sin;
     const localY = (cx - wx) * sin + (cy - wy) * cos;
-    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_D, approachX, approachY, angle);
+    worldVectorToSegmentLocal(P_VEC_D, approachX, approachY, angle);
     const localApproachX = ENGINE_F32[P_VEC_D];
     const localApproachY = ENGINE_F32[P_VEC_D + 1];
     const hasApproach = Math.hypot(localApproachX, localApproachY) > 1e-6;
@@ -4468,10 +4468,10 @@ function circleSegmentPenetration(cx, cy, radius, segId, approachX = 0, approach
  * @property {number} ny
  * @property {object} segment
  */
-function worldVectorToSegmentLocal(buf, o, vx, vy, angle) {
+function worldVectorToSegmentLocal(o, vx, vy, angle) {
     const cos = Math.cos(-angle);
     const sin = Math.sin(-angle);
-    rotateXYIntoF32(buf, o, vx, vy, cos, sin);
+    rotateXYIntoF32(o, vx, vy, cos, sin);
 }
 /**
  * Ray vs AABB expanded by circle radius (segment-local space).
@@ -4535,7 +4535,7 @@ export function sweepCircleAgainstSegment(ox, oy, dx, dy, radius, segId, maxDist
     toSegmentLocal(segId, ox, oy);
     const localX = ENGINE_F32[P_VEC_B];
     const localY = ENGINE_F32[P_VEC_B + 1];
-    worldVectorToSegmentLocal(ENGINE_F32, P_VEC_C, dx, dy, slab.angle[segId]);
+    worldVectorToSegmentLocal(P_VEC_C, dx, dy, slab.angle[segId]);
     const localDirX = ENGINE_F32[P_VEC_C];
     const localDirY = ENGINE_F32[P_VEC_C + 1];
     const t = rayExpandedLocalAabbHit(localX, localY, localDirX, localDirY, half, radius);
@@ -4560,10 +4560,10 @@ export function circleLeadingPoint(cx, cy, radius, dirX, dirY, destOffset = P_VE
 }
 /** Push-out wall normal (away from solid into free space). */
 /** Point on circle A that faces circle B at first center–center contact. */
-/** Writes lx, ly, z at buf[o..o+2]. */
-export function transformRollVertexInto(buf, o, lx, ly, lz, radius, qw, qx, qy, qz) {
-    rotateVecByQuatInto(buf, o, lx, ly, lz - radius, qw, qx, qy, qz);
-    buf[o + 2] += radius;
+/** Writes lx, ly, z at M_OUT_VX…VZ. */
+export function transformRollVertexInto(lx, ly, lz, radius, qw, qx, qy, qz) {
+    rotateVecByQuatInto(lx, ly, lz - radius, qw, qx, qy, qz);
+    ENGINE_F32[M_OUT_VZ] += radius;
 }
 export function getRollRadius(body) {
     return Math.max(1, resolveBodyRadius(body));
@@ -4592,12 +4592,12 @@ function integrateGroundRoll(body, dtMs) {
     const angle = -(speed / r) * (dtMs / 1000);
     const ax = -vy / speed;
     const ay = vx / speed;
-    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, ax, ay, 0, angle);
+    axisAngleQuatInto(ax, ay, 0, angle);
     const dw = ENGINE_F32[M_OUT_QW];
     const dx = ENGINE_F32[M_OUT_QX];
     const dy = ENGINE_F32[M_OUT_QY];
     const dz = ENGINE_F32[M_OUT_QZ];
-    multiplyQuatInto(ENGINE_F32, M_OUT_QW, dw, dx, dy, dz, entityRollQw[physId], entityRollQx[physId], entityRollQy[physId], entityRollQz[physId]);
+    multiplyQuatInto(dw, dx, dy, dz, entityRollQw[physId], entityRollQx[physId], entityRollQy[physId], entityRollQz[physId]);
     entityRollQw[physId] = ENGINE_F32[M_OUT_QW];
     entityRollQx[physId] = ENGINE_F32[M_OUT_QX];
     entityRollQy[physId] = ENGINE_F32[M_OUT_QY];
@@ -4610,12 +4610,12 @@ export function absorbCollisionRollImpulse(body, dtMs) {
     if (Math.abs(angW) < 0.02) return;
     const physId = body._physId;
     const angle = -angW * (dtMs / 1000);
-    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, 0, 0, 1, angle);
+    axisAngleQuatInto(0, 0, 1, angle);
     const dw = ENGINE_F32[M_OUT_QW];
     const dx = ENGINE_F32[M_OUT_QX];
     const dy = ENGINE_F32[M_OUT_QY];
     const dz = ENGINE_F32[M_OUT_QZ];
-    multiplyQuatInto(ENGINE_F32, M_OUT_QW, dw, dx, dy, dz, entityRollQw[physId], entityRollQx[physId], entityRollQy[physId], entityRollQz[physId]);
+    multiplyQuatInto(dw, dx, dy, dz, entityRollQw[physId], entityRollQx[physId], entityRollQy[physId], entityRollQz[physId]);
     entityRollQw[physId] = ENGINE_F32[M_OUT_QW];
     entityRollQx[physId] = ENGINE_F32[M_OUT_QX];
     entityRollQy[physId] = ENGINE_F32[M_OUT_QY];
@@ -4644,7 +4644,7 @@ function quantizeRollQuatF32(qw, qx, qy, qz, steps = 16) {
     const heading = Math.atan2(ay, ax);
     const qAngle = quantizeAngle(angle, steps);
     const qHeading = quantizeAngle(heading, steps);
-    axisAngleQuatInto(ENGINE_F32, M_OUT_QW, Math.cos(qHeading), Math.sin(qHeading), 0, qAngle);
+    axisAngleQuatInto(Math.cos(qHeading), Math.sin(qHeading), 0, qAngle);
 }
 export function quantizeBodyRollQuatF32(body, steps = 16) {
     readBodyRollComponents(body);

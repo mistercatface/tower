@@ -32,7 +32,7 @@ function resolveDragAimPhysics(aim, config) {
     const startY = aim.startY ?? aim.anchorY;
     const dx = aim.pullX - startX;
     const dy = aim.pullY - startY;
-    normalizeXYInto(ENGINE_F32, M_OUT_NX, dx, dy);
+    normalizeXYInto(dx, dy);
     const nx = ENGINE_F32[M_OUT_NX];
     const ny = ENGINE_F32[M_OUT_NY];
     const drag = ENGINE_F32[M_OUT_LEN];

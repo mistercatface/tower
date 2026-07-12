@@ -192,7 +192,7 @@ class FractureGeomPool {
     }
     centerVertsInPlace(handle, vertCount) {
         const buf = this.buffer(handle);
-        polygonCentroid2DInto(ENGINE_F32, F_OUT_CENTROID_X, buf, 0, vertCount * 2);
+        polygonCentroid2DInto(F_OUT_CENTROID_X, buf, 0, vertCount * 2);
         const cx = ENGINE_F32[F_OUT_CENTROID_X];
         const cy = ENGINE_F32[F_OUT_CENTROID_Y];
         const signedArea = ENGINE_F32[F_OUT_AREA];
@@ -1086,7 +1086,7 @@ export class FractureEngine {
         ENGINE_F32[F_OUT_DEBRIS_COUNT] = stores.debris.write - debrisStart;
     }
     static _buildShatterSeeds(flatVerts, hitX, hitY, seedCount, outSeeds) {
-        polygonCentroid2DInto(ENGINE_F32, F_VEC_A, flatVerts);
+        polygonCentroid2DInto(F_VEC_A, flatVerts);
         const cx = ENGINE_F32[F_VEC_A];
         const cy = ENGINE_F32[F_VEC_A + 1];
         let ox = hitX;

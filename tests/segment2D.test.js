@@ -4,7 +4,7 @@ import { closestPointOnLineSegmentInto, distanceSegmentToSegment, distanceSqToLi
 import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T } from "../Core/engineMemory.js";
 import { assertNear, assertPointNear, seg } from "./mathHarness.js";
 function closestFromInto(px, py, vx, vy, wx, wy) {
-    closestPointOnLineSegmentInto(ENGINE_F32, M_OUT_CLOSEST_X, px, py, vx, vy, wx, wy);
+    closestPointOnLineSegmentInto(px, py, vx, vy, wx, wy);
     return { x: ENGINE_F32[M_OUT_CLOSEST_X], y: ENGINE_F32[M_OUT_CLOSEST_Y], t: ENGINE_F32[M_OUT_CLOSEST_T] };
 }
 const sIntersectionResult = new Float32Array(4);

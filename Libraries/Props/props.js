@@ -622,7 +622,7 @@ function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const offsetScale = resolveAttachmentOffsetScale(parentProp, cfg);
     const localX = (offset.x ?? 0) * offsetScale;
     const localY = (offset.y ?? 0) * offsetScale;
-    rotateXYIntoF32(ENGINE_F32, M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
+    rotateXYIntoF32(M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
     const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: childAsset.visuals?.world?.height ?? 12, visualOverride: undefined, _visualAttachmentId: cfg.id, _footprintKey: undefined };
     stampSurfaceProfileFields(prop, childAsset);
     if (parentProp.wallChunkProfileId) prop.wallChunkProfileId = parentProp.wallChunkProfileId;

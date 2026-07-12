@@ -24,7 +24,7 @@ export const circuitLatticeMotif = {
         const angle = config.angle ?? 0;
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
-        rotateXYIntoF32(ENGINE_F32, M_VEC_A, x, y, cos, sin);
+        rotateXYIntoF32(M_VEC_A, x, y, cos, sin);
         const ax = ENGINE_F32[M_VEC_A];
         const ay = ENGINE_F32[M_VEC_A + 1];
         const r1 = sampleRidged2D(sample.noise, (ax + offsetX) * freq, (ay + offsetY) * freq, octaves);

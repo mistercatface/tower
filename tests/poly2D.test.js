@@ -5,7 +5,7 @@ import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { assertNear, assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
     it("rotates with precomputed trig", () => {
-        rotateXYIntoF32(ENGINE_F32, M_VEC_A, 1, 0, 0, 1);
+        rotateXYIntoF32(M_VEC_A, 1, 0, 0, 1);
         assertPointNear({ x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] }, 0, 1);
     });
 });

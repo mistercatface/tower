@@ -302,7 +302,7 @@ const HPA_STROKE_WIDTH = 2.5;
 function appendPathEndArrow(out, pathNodes, targetX, targetY, color) {
     if (targetX != null && targetY != null && pathNodes.length >= 1) {
         const from = pathNodes[pathNodes.length - 1];
-        normalizeXYInto(ENGINE_F32, M_OUT_NX, targetX - from.x, targetY - from.y);
+        normalizeXYInto(targetX - from.x, targetY - from.y);
         if (ENGINE_F32[M_OUT_LEN] > 0) {
             out.push(overlayCachedArrowHead(targetX, targetY, ENGINE_F32[M_OUT_NX], ENGINE_F32[M_OUT_NY], { fill: color }));
             return;
@@ -311,7 +311,7 @@ function appendPathEndArrow(out, pathNodes, targetX, targetY, color) {
     if (pathNodes.length >= 2) {
         const n = pathNodes.length;
         const tip = pathNodes[n - 1];
-        normalizeXYInto(ENGINE_F32, M_OUT_NX, tip.x - pathNodes[n - 2].x, tip.y - pathNodes[n - 2].y);
+        normalizeXYInto(tip.x - pathNodes[n - 2].x, tip.y - pathNodes[n - 2].y);
         if (ENGINE_F32[M_OUT_LEN] > 0) out.push(overlayCachedArrowHead(tip.x, tip.y, ENGINE_F32[M_OUT_NX], ENGINE_F32[M_OUT_NY], { fill: color }));
     }
 }
@@ -380,7 +380,7 @@ function drawAimSegmentCommand(ctx, cmd) {
     ctx.lineCap = "round";
     strokeSegment(ctx, x1, y1, x2, y2);
     if (arrowhead) {
-        normalizeXYInto(ENGINE_F32, M_OUT_NX, dx, dy);
+        normalizeXYInto(dx, dy);
         drawArrowHeadAt(ctx, x2, y2, ENGINE_F32[M_OUT_NX], ENGINE_F32[M_OUT_NY], color, 8, 5);
     }
     ctx.restore();
@@ -669,7 +669,7 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
             const lx = radius * sinPhi;
             const ly = 0;
             const z = radius * (1 + cosPhi);
-            transformRollVertexInto(ENGINE_F32, M_OUT_VX, lx, ly, z, radius, qw, qx, qy, qz);
+            transformRollVertexInto(lx, ly, z, radius, qw, qx, qy, qz);
             pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ], 0.5, v);
         } else
             for (let lon = 0; lon < lonBands; lon++) {
@@ -679,7 +679,7 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
                 const lx = radius * sinPhi * Math.cos(theta);
                 const ly = radius * sinPhi * Math.sin(theta);
                 const z = radius * (1 + cosPhi);
-                transformRollVertexInto(ENGINE_F32, M_OUT_VX, lx, ly, z, radius, qw, qx, qy, qz);
+                transformRollVertexInto(lx, ly, z, radius, qw, qx, qy, qz);
                 pushSphereVert(ENGINE_F32[M_OUT_VX], ENGINE_F32[M_OUT_VY], ENGINE_F32[M_OUT_VZ], lon / lonBands, v);
             }
         sSphereRowStart[lat] = rowStart;

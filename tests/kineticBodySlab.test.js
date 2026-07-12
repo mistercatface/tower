@@ -12,7 +12,7 @@ import { circleCircleContact, SAT_RESULT } from "../Libraries/Physics/physics.js
 describe("kinetic body slab", () => {
     it("broadphase slot uses body x/y as circle center", () => {
         const body = mockKineticCircle(12, -4, 9);
-        body._physId = 3;
+        assignPhysIdWithPose(body, 3);
         snapshotKineticBodySlab([body]);
         assert.equal(kineticDynamicSlab.x[3], 12);
         assert.equal(kineticDynamicSlab.y[3], -4);
@@ -22,8 +22,8 @@ describe("kinetic body slab", () => {
     it("slab overlap detects overlapping circles after snapshot", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
-        a._physId = 0;
-        b._physId = 1;
+        assignPhysIdWithPose(a, 0);
+        assignPhysIdWithPose(b, 1);
         snapshotKineticBodySlab([a, b]);
         assert.ok(pairCircleCircleOverlapSlab(0, 1));
         assert.ok(pairBroadphaseOverlapSlab(0, 1));
@@ -32,17 +32,15 @@ describe("kinetic body slab", () => {
     it("slab overlap detects circle against crate OBB", () => {
         const ball = mockKineticCircle(0, 0, 10);
         const crate = new WorldProp(18, 0, "box", 0);
-        ball._physId = 0;
+        assignPhysIdWithPose(ball, 0);
         assignPhysIdWithPose(crate, 1);
         snapshotKineticBodySlab([ball, crate]);
         assert.ok(pairBroadphaseOverlapSlab(0, 1));
     });
 
     it("snapshotKineticBodySlab fills kinematic and broadphase columns", () => {
-        const a = mockKineticCircle(1, 2, 5,);
-        a._physId = 4;
-        a.vx = 3;
-        a.vy = -1;
+        const a = mockKineticCircle(1, 2, 5, 3, -1);
+        assignPhysIdWithPose(a, 4);
         snapshotKineticBodySlab([a]);
         assert.equal(kineticDynamicSlab.vx[4], 3);
         assert.equal(kineticDynamicSlab.vy[4], -1);
@@ -52,8 +50,8 @@ describe("kinetic body slab", () => {
     it("slab circle contact matches SAT circle contact", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
-        a._physId = 0;
-        b._physId = 1;
+        assignPhysIdWithPose(a, 0);
+        assignPhysIdWithPose(b, 1);
         snapshotKineticBodySlab([a, b]);
         const slabCollided = circleCircleContactSlab(0, 1);
         assert.ok(slabCollided);
@@ -67,12 +65,13 @@ describe("kinetic body slab", () => {
 
     it("activeBodiesMatchKineticSlab detects pose drift after unsynced move", () => {
         const a = mockKineticCircle(0, 0, 10);
-        a._physId = 0;
+        a.isKineticDebris = true;
+        assignPhysIdWithPose(a, 0);
         snapshotKineticBodySlab([a]);
         assert.ok(bodiesMatchKineticSlab([a]));
         a.x = 5;
         assert.equal(bodiesMatchKineticSlab([a]), false);
-        snapshotKineticBodySlab([a]);
+        kineticDynamicSlab.x[0] = 5;
         assert.ok(bodiesMatchKineticSlab([a]));
     });
 });

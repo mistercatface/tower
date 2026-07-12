@@ -30,7 +30,7 @@ export const circuitTracesMotif = {
             const rad = (angle * Math.PI) / 180;
             const cosA = Math.cos(rad);
             const sinA = Math.sin(rad);
-            rotateXYIntoF32(ENGINE_F32, M_VEC_A, coords.x, coords.y, cosA, sinA);
+            rotateXYIntoF32(M_VEC_A, coords.x, coords.y, cosA, sinA);
             x = ENGINE_F32[M_VEC_A];
             y = ENGINE_F32[M_VEC_A + 1];
         }
