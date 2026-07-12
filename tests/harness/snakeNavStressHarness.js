@@ -10,7 +10,7 @@ import {
     replanCellIndicesFromWorldCoords,
     REPLAN_PRIORITY_TARGET,
 } from "../../Libraries/Navigation/navigation.js";
-import { ENGINE_F32, N_OUT_XY } from "../../Core/engineMemory.js";
+import { ENGINE_F32, N_OUT_XY, recomputeViewBounds } from "../../Core/engineMemory.js";
 import { snapMoveTargetToCellCenter, createKineticSession } from "../../Libraries/Physics/physics.js";
 import { FloorBelt } from "../../Libraries/Spatial/belts.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
@@ -44,6 +44,7 @@ export function mulberry32(seed) {
 function createSnakeEditorState(seed) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
+    recomputeViewBounds(128, 128, 1e6, 1e6);
     const session = { select() {}, sync() {} };
     return {
         obstacleGrid: grid,
@@ -64,9 +65,6 @@ function createSnakeEditorState(seed) {
             },
             setZoom(z) {
                 this.zoom = z;
-            },
-            circleInBounds() {
-                return true;
             },
         },
         worldSurfaces: {

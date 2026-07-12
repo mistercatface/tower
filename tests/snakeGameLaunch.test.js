@@ -9,7 +9,7 @@ import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { getMapGenBoundsCenterWorldF32, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
-import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
+import { ENGINE_F32, M_VEC_A, recomputeViewBounds } from "../Core/engineMemory.js";
 import { EDITOR_NAV_MODE_HPA, EDITOR_NAV_MODE_FLOW } from "../Core/engineEnums.js";
 
 const CELLS_PER_CHUNK = 16;
@@ -22,6 +22,7 @@ function chunkProfileAtCell(grid, col, row) {
 function createEditorTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
+    recomputeViewBounds(128, 128, 1e6, 1e6);
     
     const selectedIds = [];
     const session = {
@@ -52,7 +53,6 @@ function createEditorTestState() {
             setZoom(z) {
                 this.zoom = z;
             },
-            circleInBounds() { return true; } 
         },
         worldSurfaces: { 
             settings: { maxWallHeightLevel: 8, cellsPerChunk: CELLS_PER_CHUNK },

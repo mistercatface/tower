@@ -5,11 +5,13 @@ import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { createDefaultSandboxBehaviors, createSandboxController } from "../../Libraries/Sandbox/sandbox.js";
 import { EDITOR_NAV_MODE_HPA } from "../../Core/engineEnums.js";
+import { recomputeViewBounds } from "../../Core/engineMemory.js";
 
 export function createSandboxDragTestState() {
     globalThis.window = { addEventListener() {}, removeEventListener() {} };
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 512, 512);
+    recomputeViewBounds(128, 128, 1e6, 1e6);
     const world = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
@@ -20,9 +22,6 @@ export function createSandboxDragTestState() {
             x: 128,
             y: 128,
             snapTo() {},
-            circleInBounds() {
-                return true;
-            },
         },
         worldSurfaces: { settings: { maxWallHeightLevel: 8 } },
         editor: { showSelectionRings: true, navMode: EDITOR_NAV_MODE_HPA },

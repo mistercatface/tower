@@ -1,14 +1,13 @@
 import { IdxMinHeap } from "../DataStructures/MinHeap.js";
 import { PathfindingWorkerClient } from "./PathfindingWorkerClient.js";
 import { CARDINAL_DCOL, CARDINAL_DR, OCTILE_DCOL, OCTILE_DR, OCTILE_STEP_COST, OCTILE_DIR_COUNT } from "../Math/math.js";
-import { ENGINE_F32, N_OUT_XY, N_OUT_STEER, GrowI32, staticWallSegmentSlab } from "../../Core/engineMemory.js";
+import { ENGINE_F32, N_OUT_XY, N_OUT_STEER, GrowI32, staticWallSegmentSlab, circleInViewBounds, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
 import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBlocksStepFrom, recomputeNavCardinalOpenInto, recomputeVertexPassabilityInto, isNavTopologyReady, CELL_EDGE_SLOT_BYTES, cellEdgeSlotOffset, cellInRect, diagonalStepOpen, getCardinalBit, edgeNeighborIdx, hasLineOfSight, worldColAtOrigin, worldRowAtOrigin, cellBoundsForGrid, forEachDenseCellInBounds, padCellIdxToGrid, padCellBoundsInPlace, forEachDenseCellInRect, gridNavCacheKey, centeredGridFrameKey, createCenteredGridFrame, getCellBoundsInCenteredFrame, gridCenterXInCenteredFrame, gridCenterYInCenteredFrame, setCenteredGridFrameCenter, worldColInCenteredFrame, worldRowInCenteredFrame, isEmptyCellBounds, unionCellBounds, isIdxInMapGenBounds, stampLayoutFromConfig, forEachStampGlobalIdx, gridCellLayout, corridorPathHitsOccupied } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
 import { resolveBodyRadius, physicsSettings, getKineticRollConfig, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 import { FlowFieldGrid } from "./NavFlowField.js";
-import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 // --- NavMath.js ---
 export function buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, seedIdx, activePortalPairs = null, activePortalCount = null) {
     const size = cols * rows;
@@ -1611,7 +1610,7 @@ export class PathReplanManager {
         const settings = nav.settings;
         const stuckFrames = this.navState.stuckFrames;
         const stuckReplanFrames = settings.stuckReplanFrames;
-        const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, VIEW_TIER.PROPS);
+        const isVisible = circleInViewBounds(prop.x, prop.y, prop.radius, VIEW_TIER_PROPS);
         const canReplan = isVisible || stuckFrames > stuckReplanFrames;
         if (!inFlight && this.navState.topologyKey !== nav.topologyKey()) if (canReplan) return { shouldReplan: true, reason: "epoch", priority: PathReplanManager.getPriority("epoch", isVisible) };
         if (!inFlight) {
@@ -1626,7 +1625,7 @@ export class PathReplanManager {
         if (offPath && this.replanClockMs - (this.navState.lastOffPathReplan || 0) >= REPLAN_OFF_PATH_COOLDOWN_MS) {
             const stuckFrames = this.navState.stuckFrames;
             const stuckReplanFrames = state.nav.settings.stuckReplanFrames;
-            const isVisible = state.viewport.circleInBounds(prop.x, prop.y, prop.radius, VIEW_TIER.PROPS);
+            const isVisible = circleInViewBounds(prop.x, prop.y, prop.radius, VIEW_TIER_PROPS);
             const canReplan = isVisible || stuckFrames > stuckReplanFrames;
             const softReplanAllowed = stuckFrames > Math.max(1, Math.floor(stuckReplanFrames * 0.5));
             if (softReplanAllowed && canReplan) {
@@ -2307,7 +2306,7 @@ export class HpaNavSession {
         const replanDecision = this.replanManager.evaluate(prop, state, inFlight);
         if (replanDecision.shouldReplan) return this.requestReplan(prop, targetX, targetY, state, replanDecision.priority, replanDecision.reason);
         if (sandboxReplan) {
-            const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible: state.viewport.circleInBounds(prop.x, prop.y, prop.radius, VIEW_TIER.PROPS), stuckFrames: this.navState.stuckFrames, stuckReplanFrames: nav.settings.stuckReplanFrames });
+            const sandboxResult = sandboxReplan(this, prop, targetX, targetY, state, { inFlight, isVisible: circleInViewBounds(prop.x, prop.y, prop.radius, VIEW_TIER_PROPS), stuckFrames: this.navState.stuckFrames, stuckReplanFrames: nav.settings.stuckReplanFrames });
             if (sandboxResult) return sandboxResult;
         }
         if (!navHasPath(this.navState)) return { hasSteering: false, replanReason: routePending ? "pending" : "noPath" };

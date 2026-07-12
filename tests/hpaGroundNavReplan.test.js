@@ -5,15 +5,17 @@ import { describe, it } from "node:test";
 
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
+import { recomputeViewBounds } from "../Core/engineMemory.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
 
 describe("hpa ground nav replan policy", () => {
     it("evaluates epoch replan due when path topology lags grid", () => {
+        recomputeViewBounds(0, 0, 1e6, 1e6);
         const nav = createNavState();
         nav.pathLen = 10; // give it a path so it doesn't trigger noPath
         nav.pathSlot = 1;
         const manager = new PathReplanManager(nav);
-        const state = { nav: { settings: navSettings, topologyKey: () => "key-b" }, viewport: { circleInBounds: () => true } };
+        const state = { nav: { settings: navSettings, topologyKey: () => "key-b" }, viewport: {} };
         nav.topologyKey = "key-a";
         assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "epoch");
         
@@ -22,9 +24,10 @@ describe("hpa ground nav replan policy", () => {
     });
 
     it("evaluates idlePathReplanReason correctly", () => {
+        recomputeViewBounds(0, 0, 1e6, 1e6);
         const nav = createNavState();
         const manager = new PathReplanManager(nav);
-        const state = { nav: { settings: navSettings, topologyKey: () => nav.topologyKey }, viewport: { circleInBounds: () => true } };
+        const state = { nav: { settings: navSettings, topologyKey: () => nav.topologyKey }, viewport: {} };
         
         assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "noPath");
         assert.equal(manager.evaluate({x:0,y:0}, state, true).shouldReplan, false);
@@ -40,12 +43,13 @@ describe("hpa ground nav replan policy", () => {
     });
 
     it("evaluates offPath correctly", () => {
+        recomputeViewBounds(0, 0, 1e6, 1e6);
         const nav = createNavState();
         nav.pathLen = 3;
         nav.pathSlot = 0;
         nav.lastOffPathReplan = 0;
         const manager = new PathReplanManager(nav);
-        const state = { nav: { settings: navSettings }, viewport: { circleInBounds: () => true } };
+        const state = { nav: { settings: navSettings }, viewport: {} };
         
         manager.updateClock(250);
         manager.trackStuck({x:10,y:10}, false, false, 0); // stuck frames = 1. softReplan requires > 10
@@ -77,6 +81,7 @@ describe("hpa ground nav replan policy", () => {
         assert.equal(PathReplanManager.getPriority("epoch", false), REPLAN_PRIORITY_STUCK_OFFSCREEN);
     });
     it("keeps committed off-path routes while the agent is still making progress", () => {
+        recomputeViewBounds(0, 0, 1e6, 1e6);
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
         let replans = 0;
@@ -88,7 +93,7 @@ describe("hpa ground nav replan policy", () => {
         };
         const state = {
             obstacleGrid: grid,
-            viewport: { circleInBounds: () => true },
+            viewport: {},
             nav: {
                 settings: { stuckMoveThreshold: 0.5, stuckReplanFrames: 6, pathOffPathDistance: 4 },
                 topologyKey: () => "",

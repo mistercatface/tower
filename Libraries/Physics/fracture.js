@@ -1,13 +1,12 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList, markHitCompoundParts, primitiveDragFriction, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
-import { kineticDynamicSlab, kineticStaticSlab, kineticDebrisSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticStaticSlab, kineticDebrisSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, viewBoundsBuf, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey, resolveAssetPropHeight } from "../Props/props.js";
 import { stampPropVisualOverride } from "../Color/visualOverride.js";
-import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8, refSpan: 40, sizeForceExp: 1.25 }, default: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const DEFAULT_FRACTURE_CONFIG = Object.freeze({ impactThreshold: FRACTURE_TUNING.default.impactThreshold, minShardArea: FRACTURE_TUNING.default.minShardArea, maxShardsPerShatter: FRACTURE_TUNING.default.maxShardsPerShatter });
 const FRACTURE_IMPACT_THRESHOLD = DEFAULT_FRACTURE_CONFIG.impactThreshold;
@@ -628,8 +627,8 @@ class KineticDebrisStore {
         for (let i = this._bodies.length - 1; i >= 0; i--) this._bodies[i].tickPropFrame(dt, this.world, spatialFrame);
     }
     appendVisibleProps(drawQueue, viewport, drawKindProp) {
-        const buf = viewport.boundsBuf;
-        const o = VIEW_TIER.PROPS;
+        const buf = viewBoundsBuf;
+        const o = VIEW_TIER_PROPS;
         const minX = buf[o];
         const minY = buf[o + 1];
         const maxX = buf[o + 2];

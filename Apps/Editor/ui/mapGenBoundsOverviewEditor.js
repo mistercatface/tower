@@ -1,8 +1,7 @@
 import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorldF32, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Spatial/spatial.js";
-import { VIEW_TIER } from "../../../Libraries/Viewport/ViewBounds.js";
-import { activeMapGenKind } from "./mapOverview.js";
 import { drawWorldCircle, hitTestRectAabbF32, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
-import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
+import { ENGINE_F32, M_VEC_A, viewBoundsBuf, VIEW_TIER_CLIP } from "../../../Core/engineMemory.js";
+import { activeMapGenKind } from "./mapOverview.js";
 const EDGE_HIT_PX = 8;
 /** @typedef {"move" | "resize-outer" | "resize-inner" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw"} MapGenBoundsDragMode */
 /** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Spatial/spatial.js").WorldObstacleGrid} grid @param {import("../../../Libraries/Sandbox/mapGenBounds.js").MapGenBoundsConfig} config @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} [color] */
@@ -143,7 +142,7 @@ export function createViewportOverviewEditor(state) {
     return {
         isEnabled: () => state.editor.showMapOverview,
         hitTest: (sx, sy, frame) => {
-            return hitTestRectAabbF32(sx, sy, state.viewport.boundsBuf, VIEW_TIER.CLIP, frame.cache, frame.displayW, frame.displayH, { moveOnly: true });
+            return hitTestRectAabbF32(sx, sy, viewBoundsBuf, VIEW_TIER_CLIP, frame.cache, frame.displayW, frame.displayH, { moveOnly: true });
         },
         applyDrag: (mode, dxWorld, dyWorld) => {
             if (mode === "move") state.viewport.snapTo(state.viewport.x + dxWorld, state.viewport.y + dyWorld);

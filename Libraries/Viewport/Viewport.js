@@ -1,4 +1,4 @@
-import { ViewBounds, VIEW_TIER } from "./ViewBounds.js";
+import { configureViewBoundsPads, recomputeViewBounds } from "../../Core/engineMemory.js";
 const MIN_WORLD_SPAN = 10;
 /** 2D world camera: pan, zoom, screen/world mapping, elevation projection knobs. */
 export class Viewport {
@@ -13,11 +13,7 @@ export class Viewport {
         this.halfW = 0;
         this.halfH = 0;
         this.invZoom = 1;
-        this.viewBounds = new ViewBounds();
         this._recompute();
-    }
-    get boundsBuf() {
-        return this.viewBounds.buf;
     }
     applyPerspectiveConfig(config) {
         this.cameraHeight = config.cameraHeight;
@@ -25,7 +21,7 @@ export class Viewport {
         this._recompute();
     }
     configureDrawBounds(viewQueryPadPx, viewPaddingPx) {
-        if (this.viewBounds.configurePads(viewQueryPadPx, viewPaddingPx)) this._recompute();
+        if (configureViewBoundsPads(viewQueryPadPx, viewPaddingPx)) this._recompute();
     }
     setZoom(zoom) {
         this.zoom = zoom;
@@ -42,13 +38,10 @@ export class Viewport {
         this.halfW = w / (2 * this.zoom);
         this.halfH = h / (2 * this.zoom);
         this.invZoom = 1 / this.zoom;
-        this.viewBounds.recompute(this.x, this.y, this.halfW, this.halfH);
+        recomputeViewBounds(this.x, this.y, this.halfW, this.halfH);
         const worldSpan = Math.max(MIN_WORLD_SPAN, Math.min(this.halfW, this.halfH) * 2);
         const referenceSpan = Math.max(MIN_WORLD_SPAN, this.getVisualRadius() * 2);
         this.perspectiveStrength = (this._perspectiveStrengthBase * referenceSpan) / worldSpan;
-    }
-    circleInBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER.PROPS) {
-        return this.viewBounds.circleInBounds(worldX, worldY, radius, tierO);
     }
     apply(ctx) {
         ctx.translate(this.cx, this.cy);
@@ -80,4 +73,3 @@ export class Viewport {
         return Math.max(1, Math.min(this.cx, this.cy) - 4);
     }
 }
-export { VIEW_TIER };

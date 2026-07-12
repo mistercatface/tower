@@ -16,7 +16,7 @@ export const ENGINE_NAV_BASE = 320;
 export const ENGINE_BOUNDS_BASE = 400;
 export const ENGINE_RENDER_BASE = 420;
 export const ENGINE_COMPOUND_BASE = 576;
-// --- Math / spatial / nav / bounds / render scratch slots (indices into ENGINE_F32 or ViewBounds) ---
+// --- Math / spatial / nav / bounds / render scratch slots (indices into ENGINE_F32) ---
 export const M_VEC_A = ENGINE_MATH_BASE;
 export const M_OUT_NX = ENGINE_MATH_BASE + 8;
 export const M_OUT_NY = ENGINE_MATH_BASE + 9;
@@ -45,7 +45,7 @@ export const S_EDGE_P2Y = ENGINE_SPATIAL_BASE + 19;
 export const N_OUT_XY = ENGINE_NAV_BASE;
 export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
 export const N_OUT_STEER = ENGINE_NAV_BASE + 4;
-export const B_QUERY = 0; // ViewBounds tier offsets (not ENGINE_F32)
+export const B_QUERY = 0; // ephemeral AABB slot offsets (not camera)
 export const B_CELL = 4;
 export const B_FOOTPRINT = 8;
 export const B_PAD = 12;
@@ -83,6 +83,40 @@ export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
 export const entityRefs = new Array(MAX_ENTITIES); // JS body / prop object per slot
 export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
 export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);
+// --- Camera view bounds (session SoA; not ENGINE_F32 scratch) ---
+export const VIEW_TIER_CLIP = 0;
+export const VIEW_TIER_PROPS = 4;
+export const VIEW_TIER_STRUCTURE = 8;
+export const VIEW_TIER_CHUNKS = 12;
+export const VIEW_TIER_COUNT = 4;
+export const VIEW_BOUNDS_PROPS_PAD_PX = 20;
+export const viewBoundsBuf = new Float32Array(VIEW_TIER_COUNT * 4);
+export const viewBoundsPad = new Float32Array(VIEW_TIER_COUNT);
+viewBoundsPad[1] = VIEW_BOUNDS_PROPS_PAD_PX;
+export function configureViewBoundsPads(viewQueryPadPx, viewPaddingPx) {
+    if (viewBoundsPad[2] === viewQueryPadPx && viewBoundsPad[3] === viewPaddingPx) return false;
+    viewBoundsPad[2] = viewQueryPadPx;
+    viewBoundsPad[3] = viewPaddingPx;
+    return true;
+}
+export function recomputeViewBounds(centerX, centerY, halfW, halfH) {
+    for (let i = 0; i < VIEW_TIER_COUNT; i++) {
+        const o = i * 4;
+        const pad = viewBoundsPad[i];
+        viewBoundsBuf[o] = centerX - halfW - pad;
+        viewBoundsBuf[o + 1] = centerY - halfH - pad;
+        viewBoundsBuf[o + 2] = centerX + halfW + pad;
+        viewBoundsBuf[o + 3] = centerY + halfH + pad;
+    }
+}
+export function circleInViewBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER_PROPS) {
+    const half = radius / 2;
+    const minX = worldX - half;
+    const minY = worldY - half;
+    const maxX = worldX + half;
+    const maxY = worldY + half;
+    return !(maxX < minX || maxY < minY || minX > viewBoundsBuf[tierO + 2] || maxX < viewBoundsBuf[tierO] || minY > viewBoundsBuf[tierO + 3] || maxY < viewBoundsBuf[tierO + 1]);
+}
 // --- Physics capacity / open-address hash caps ---
 export const MAX_PHYS_BODIES = MAX_ENTITIES;
 export const MAX_CONTACTS = MAX_ENTITIES;

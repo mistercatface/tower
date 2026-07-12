@@ -48,12 +48,13 @@ Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch
 
 ## 6. Viewport / view bounds dialect
 
-- ViewBounds storage is an instance `Float32Array` SoA (4 tiers × stride 4). Never put camera tiers in `ENGINE_F32` scratch.
-- Callers use `viewport.boundsBuf` + `VIEW_TIER.*` offsets — **no** `{ buf, o }` handles, **no** `boundsF32`.
+- Camera AABB: `viewBoundsBuf` + `VIEW_TIER_CLIP` / `VIEW_TIER_PROPS` / `VIEW_TIER_STRUCTURE` / `VIEW_TIER_CHUNKS` number consts in `Core/engineMemory.js` (session SoA, 4 tiers × stride 4). No `VIEW_TIER` object bag.
+- Viewport zoom/position APIs call `recomputeViewBounds`; never store tiers on Viewport. Use `circleInViewBounds` for visibility (not `viewport.circleInBounds`).
+- Never put camera tiers in `ENGINE_F32` Bounds bank (`B_*` are ephemeral scratch only).
 - Viewport screen/world mapping is `(buf, o, …)` only (`screenToWorldF32` / `worldToScreenF32`) — **no** `return { x, y }`.
-- View → registry queries use `queryViewF32` / F32 spatial collect; do not reintroduce `BRIDGE_AABB` on that path.
+- View → registry queries use `queryViewIds` / F32 spatial collect; do not reintroduce `BRIDGE_AABB` on that path.
 - Zoom/position changes go through `setZoom` / `setPosition` / `snapTo` / `follow` so bounds recompute.
-- Tests/harnesses mock `circleInBounds` / F32 mapping — no production branches for Node.
+- Tests/harnesses that mock a viewport without a real `Viewport` must call `recomputeViewBounds` when visibility matters — no production branches for Node.
 
 ## 7. engineMemory bar + object diet
 
@@ -62,7 +63,7 @@ Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch
 | Layer | Put here | Do not put here |
 |-------|----------|-----------------|
 | `ENGINE_F32` named slots | Ephemeral outs (snap XY, steer, closest, AABB scratch) | Growable paths, topology, session clocks, camera tiers |
-| Dedicated slabs / SoA | Persistent columns (`entityX`, kinetic slabs, wall segments) | One-off `{x,y}` helpers, dual bag+F32 twins |
+| Dedicated slabs / SoA | Persistent columns (`entityX`, kinetic slabs, wall segments), `viewBoundsBuf` | One-off `{x,y}` helpers, dual bag+F32 twins |
 | Session / SAB / local | Worker paths, HPA graphs, editor caches | Parking more object bags in Core “for convenience” |
 
 Illegal diet patterns (audits should catch; do not introduce):
@@ -73,7 +74,7 @@ Illegal diet patterns (audits should catch; do not introduce):
 - New `export const *_SCRATCH = { x, y }` or AABB bag factories in hot libs / `engineMemory`
 - Hot-path `.push({ … })` in Spatial/Physics/Navigation/Math/Sandbox
 
-Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `GrowI32`/`GrowF32`; viewport instance `boundsBuf` (not `ENGINE_F32`).
+Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `GrowI32`/`GrowF32`; `viewBoundsBuf` camera SoA (not `ENGINE_F32`).
 
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:
 `npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.

@@ -1,6 +1,6 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { minCornerAabbF32, intersectAabbOptionalF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, B_TMP } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, B_TMP, viewBoundsBuf, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
 import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
@@ -10,7 +10,6 @@ import { MinHeap } from "../DataStructures/MinHeap.js";
 import { composeSurfaceImage } from "../Procedural/SurfaceTextureComposer.js";
 import { railWallFootprintAabbF32, railWallAtZLevel, chunkHasStaticRoofAtLevel, chunkHasStaticStructureAtLevel, defaultWallCapPx, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 /** Runtime profile revision counters — bumped when TileLab/game registers edited profiles. */
 const revisions = new Map();
 export function getSurfaceProfileRevision(profileId) {
@@ -1111,12 +1110,12 @@ export class WorldSurfaceEngine {
         const d = this._chunkDraw;
         const { ctx, obstacleGrid, viewport, zLevel, beforeDraw } = d;
         const chunkSizePx = this.surfaceSpace.chunkSizePx(obstacleGrid);
-        const viewportBounds = viewport.boundsBuf;
+        const viewportBounds = viewBoundsBuf;
         let buf = viewportBounds;
-        let o = VIEW_TIER.CHUNKS;
+        let o = VIEW_TIER_CHUNKS;
         if (obstacleGrid?.cols) {
             minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cols * obstacleGrid.cellSize, obstacleGrid.rows * obstacleGrid.cellSize);
-            if (!intersectAabbOptionalF32(this._engineBounds, this.chunkDrawBoundsO, viewportBounds, VIEW_TIER.CHUNKS, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP)) return null;
+            if (!intersectAabbOptionalF32(this._engineBounds, this.chunkDrawBoundsO, viewportBounds, VIEW_TIER_CHUNKS, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP)) return null;
             buf = this._engineBounds;
             o = this.chunkDrawBoundsO;
         }
