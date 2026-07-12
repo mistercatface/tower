@@ -174,6 +174,7 @@ export const LEGACY_SCALAR_SYMBOLS = [
     { pattern: /broadphaseBounds/, label: "broadphaseBounds" },
     { pattern: /getCircleSegmentPenetration/, label: "getCircleSegmentPenetration" },
     { pattern: /manifoldPoints/, label: "manifoldPoints" },
+    { pattern: /\b_rollDrive/, label: "_rollDrive*" },
     { pattern: /\bboundsF32\b/, label: "boundsF32" },
     { pattern: /\bcircleInBoundsF32\b/, label: "circleInBoundsF32" },
     { pattern: /return \{ buf:/, label: "return { buf:", onlyUnder: "Libraries/Viewport/" },

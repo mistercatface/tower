@@ -3563,7 +3563,7 @@ function portalTeleportHandler(body) {
     body.vx = 0;
     body.vy = 0;
     body.angularVelocity = 0;
-    clearGroundRollDrive(body);
+    clearGroundRollDrive(body._physId);
     if (body._physId !== undefined) snapshotKineticBodySlab([body]);
     const eg = t.spatialFrame.entityGrid;
     if (eg) {
@@ -3616,9 +3616,11 @@ export function runKineticPhysics(tick, dt, hooks) {
     session.substepPairPatchBodies.length = 0;
     session.kineticPairGatherStats = { full: 0, refresh: 0, patch: 0 };
     const kineticBodies = spatialFrame._kineticBodies;
+    const rollKind = kineticDynamicSlab.rollDriveKind;
     for (let i = 0; i < kineticBodies.length; i++) {
-        const kind = kineticBodies[i]._rollDriveKind;
-        if (kind != null && kind !== ROLL_DRIVE_NONE) wakeKineticBody(kineticBodies[i]);
+        const body = kineticBodies[i];
+        const eid = body._physId;
+        if (rollKind[eid] !== ROLL_DRIVE_NONE) wakeKineticBody(body);
     }
     spatialFrame.syncActiveKineticBodies();
     const activeBodies = spatialFrame._activeKineticBodies;
@@ -3632,7 +3634,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updatePropFrame(world.worldProps[i], dt, spatialFrame);
     world.fractureEngine.debris.tickFrames(dt, spatialFrame);
     for (let s = 0; s < steps; s++) {
-        for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i], subDtSec, world);
+        for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i]._physId, subDtSec);
         for (let i = 0; i < activeBodies.length; i++) hooks.updatePropSubstep(activeBodies[i], subDt, spatialFrame);
         spatialFrame.reindexKineticBodies(activeBodies);
         runCollisionPipeline(tick, resolveWalls, hooks.applyContactSideEffects);
@@ -4669,11 +4671,13 @@ export function integratePropMotion(body, dtMs) {
     applyVelocityDamping(body, dtMs, friction, false, snapSpeed);
 }
 // --- MOVED FROM kineticRollActuator.js ---
-export function applyGroundRollDrive(prop, dtSec) {
-    const kind = prop._rollDriveKind;
-    if (kind == null || kind === ROLL_DRIVE_NONE) return false;
-    if (kind === ROLL_DRIVE_BRAKE) return applyRollBrake(prop, dtSec, prop._rollDriveAccel);
-    applyRollThrust(prop, dtSec, prop._rollDriveDirX, prop._rollDriveDirY, prop._rollDriveAccel, prop._rollDriveMaxSpeed);
+export function applyGroundRollDrive(eid, dtSec) {
+    const slab = kineticDynamicSlab;
+    const kind = slab.rollDriveKind[eid];
+    if (kind === ROLL_DRIVE_NONE) return false;
+    const prop = entityRefs[eid];
+    if (kind === ROLL_DRIVE_BRAKE) return applyRollBrake(prop, dtSec, slab.rollDriveAccel[eid]);
+    applyRollThrust(prop, dtSec, slab.rollDriveDirX[eid], slab.rollDriveDirY[eid], slab.rollDriveAccel[eid], slab.rollDriveMaxSpeed[eid]);
     return true;
 }
 function applyRollBrake(prop, dtSec, accel) {
@@ -4732,20 +4736,22 @@ export function getKineticRollConfig(prop) {
     }
     return base;
 }
-export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null, accelOverride = null, maxSpeedOverride = null) {
-    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(prop, config);
-    prop._rollDriveKind = ROLL_DRIVE_THRUST;
-    prop._rollDriveDirX = dirX;
-    prop._rollDriveDirY = dirY;
-    prop._rollDriveAccel = accelOverride ?? config.accel;
-    prop._rollDriveMaxSpeed = targetSpeed !== null ? Math.min(maxSpeedOverride ?? config.maxSpeed, targetSpeed) : (maxSpeedOverride ?? config.maxSpeed);
-    wakeKineticBody(prop);
+export function steerRollToward(eid, dirX, dirY, config, targetSpeed = null, accelOverride = null, maxSpeedOverride = null) {
+    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(eid, config);
+    const slab = kineticDynamicSlab;
+    slab.rollDriveKind[eid] = ROLL_DRIVE_THRUST;
+    slab.rollDriveDirX[eid] = dirX;
+    slab.rollDriveDirY[eid] = dirY;
+    slab.rollDriveAccel[eid] = accelOverride ?? config.accel;
+    slab.rollDriveMaxSpeed[eid] = targetSpeed !== null ? Math.min(maxSpeedOverride ?? config.maxSpeed, targetSpeed) : (maxSpeedOverride ?? config.maxSpeed);
+    wakeKineticBody(entityRefs[eid]);
 }
-export function decelerateRoll(prop, config) {
-    prop._rollDriveKind = ROLL_DRIVE_BRAKE;
-    prop._rollDriveAccel = config.accel;
-    wakeKineticBody(prop);
+export function decelerateRoll(eid, config) {
+    const slab = kineticDynamicSlab;
+    slab.rollDriveKind[eid] = ROLL_DRIVE_BRAKE;
+    slab.rollDriveAccel[eid] = config.accel;
+    wakeKineticBody(entityRefs[eid]);
 }
-export function clearGroundRollDrive(prop) {
-    prop._rollDriveKind = ROLL_DRIVE_NONE;
+export function clearGroundRollDrive(eid) {
+    kineticDynamicSlab.rollDriveKind[eid] = ROLL_DRIVE_NONE;
 }

@@ -23,8 +23,8 @@ test("sphereGroundRoll - 90 degree turn", () => {
     const config = getKineticRollConfig(prop);
 
     for (let i = 0; i < 60; i++) {
-        steerRollToward(prop, 0, 1, config, 50);
-        applyGroundRollDrive(prop, 16 / 1000);
+        steerRollToward(prop._physId, 0, 1, config, 50);
+        applyGroundRollDrive(prop._physId, 16 / 1000);
         integratePropMotion(prop, 16);
     }
 
@@ -40,12 +40,12 @@ test("sphereGroundRoll - large radius vs small radius twist", () => {
     const configLarge = getKineticRollConfig(large);
 
     for (let i = 0; i < 30; i++) {
-        steerRollToward(small, 0, 1, configSmall, 50);
-        applyGroundRollDrive(small, 16 / 1000);
+        steerRollToward(small._physId, 0, 1, configSmall, 50);
+        applyGroundRollDrive(small._physId, 16 / 1000);
         integratePropMotion(small, 16);
 
-        steerRollToward(large, 0, 1, configLarge, 50);
-        applyGroundRollDrive(large, 16 / 1000);
+        steerRollToward(large._physId, 0, 1, configLarge, 50);
+        applyGroundRollDrive(large._physId, 16 / 1000);
         integratePropMotion(large, 16);
     }
 

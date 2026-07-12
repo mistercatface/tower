@@ -10,7 +10,7 @@ import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY } from "../Core/engineMemory.js";
+import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY, kineticDynamicSlab } from "../Core/engineMemory.js";
 
 describe("grabDrag behavior", () => {
     it("resolveDragLaunchConfigFromSize scales maxPower with prop radius", () => {
@@ -41,8 +41,8 @@ describe("grabDrag behavior", () => {
         assert.ok(behavior.onPointerDown(prop, { x: 0, y: 0 }));
         behavior.onPointerMove(prop, { x: 120, y: 0 });
         behavior.tickWorld(16);
-        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
-        assert.ok(prop._rollDriveDirX > 0.9);
+        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
+        assert.ok(kineticDynamicSlab.rollDriveDirX[prop._physId] > 0.9);
         assert.ok(Math.abs(prop.x) < 20);
     });
 
@@ -53,7 +53,7 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: 0, y: 0 });
         behavior.onPointerMove(prop, { x: 200, y: 0 });
         for (let i = 0; i < 5; i++) behavior.tickWorld(16);
-        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
         assert.ok(prop.x < 100);
     });
 
@@ -64,10 +64,10 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: 0, y: 0 });
         behavior.onPointerMove(prop, { x: 80, y: 0 });
         behavior.tickWorld(16);
-        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
         behavior.onPointerUp(prop);
-        assert.equal(prop._rollDriveKind, ROLL_DRIVE_NONE);
-        applyGroundRollDrive(prop, 0.016, state);
+        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_NONE);
+        applyGroundRollDrive(prop._physId, 0.016);
         assert.ok(Math.hypot(prop.vx, prop.vy) > 0);
     });
 
@@ -88,8 +88,8 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(middle, { x: middle.x, y: middle.y });
         behavior.onPointerMove(middle, { x: middle.x + 80, y: middle.y });
         behavior.tickWorld(16);
-        assert.equal(middle._rollDriveKind, ROLL_DRIVE_THRUST);
-        assert.ok(chain.head._rollDriveKind == null || chain.head._rollDriveKind === ROLL_DRIVE_NONE);
+        assert.equal(kineticDynamicSlab.rollDriveKind[middle._physId], ROLL_DRIVE_THRUST);
+        assert.equal(kineticDynamicSlab.rollDriveKind[chain.head._physId], ROLL_DRIVE_NONE);
         assert.notEqual(chain.head.x, middle.x);
         assert.ok(Math.abs(chain.head.x - headX) < 40);
     });
@@ -152,8 +152,8 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: -9, y: -5 });
         behavior.onPointerMove(prop, { x: -9, y: 80 });
         behavior.tickWorld(16);
-        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
-        assert.ok(prop._rollDriveDirY > 0.5);
+        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
+        assert.ok(kineticDynamicSlab.rollDriveDirY[prop._physId] > 0.5);
         assert.notEqual(prop.angularVelocity, 0);
     });
 
@@ -176,8 +176,8 @@ describe("grabDrag behavior", () => {
         behavior.onPointerDown(prop, { x: 10, y: 0 });
         behavior.onPointerMove(prop, { x: 10, y: 100 });
         behavior.tickWorld(16);
-        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
-        assert.ok(prop._rollDriveDirY > 0.5);
+        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
+        assert.ok(kineticDynamicSlab.rollDriveDirY[prop._physId] > 0.5);
     });
 
     it("reference grab inertia matches spin for light and heavy polygons", () => {

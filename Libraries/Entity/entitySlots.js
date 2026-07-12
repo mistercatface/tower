@@ -31,6 +31,7 @@ export function releaseEntityEid(eid) {
     entityAgeMs[eid] = 0;
     entityRefs[eid] = null;
     entityGridTileIdx[eid] = -1;
+    kineticDynamicSlab.rollDriveKind[eid] = -1;
     eidFreeList.push(eid);
 }
 export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
@@ -56,6 +57,7 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityRefs[eid] = ref;
     kineticDynamicSlab.sleeping[eid] = sleeping;
     kineticDynamicSlab.sleepFrames[eid] = sleepFrames;
+    kineticDynamicSlab.rollDriveKind[eid] = -1;
 }
 export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnX;

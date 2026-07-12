@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import propCatalog from "../Assets/props/index.js";
 import { BeltPacked } from "../Libraries/Spatial/belts.js";
 import { EDITOR_NAV_MODE_HPA, ROLL_DRIVE_THRUST, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GROUND_HPA } from "../Core/engineEnums.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { resolveDragInteractionBehaviorId, assetSupportsDragInteraction } from "../Libraries/Sandbox/dragBehaviors.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import {
@@ -90,7 +91,7 @@ describe("drag interaction mode", () => {
         pointerEvent("pointerdown", 64, 64);
         pointerEvent("pointermove", 200, 64);
         for (let i = 0; i < 5; i++) controller.tick(16);
-        assert.equal(prop._rollDriveKind, ROLL_DRIVE_THRUST);
+        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), null);
 
         controller.destroy();

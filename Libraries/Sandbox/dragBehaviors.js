@@ -269,16 +269,16 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         }
         const dist = Math.hypot(dx, dy);
         if (dist < rollConfig.stopRadius) {
-            decelerateRoll(prop, rollConfig);
+            decelerateRoll(prop._physId, rollConfig);
             return;
         }
         const power = computeLaunchPower(dist, grabConfig);
         if (power <= 0) {
-            decelerateRoll(prop, rollConfig);
+            decelerateRoll(prop._physId, rollConfig);
             return;
         }
         const ratio = power / grabConfig.maxPower;
-        steerRollToward(prop, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
+        steerRollToward(prop._physId, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
         if (prop.strategy.rolls) return;
         grabAnchorWorld(prop);
         const rx = ENGINE_F32[G_WX] - prop.x;
@@ -317,7 +317,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         },
         onPointerUp(prop) {
             if (grabPropId !== prop.id) return;
-            clearGroundRollDrive(prop);
+            clearGroundRollDrive(prop._physId);
             clearGrab();
         },
         tickWorld(dtMs = 16) {
@@ -328,7 +328,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
                 return;
             }
             if (FloorBelt.isEntityOnBelt(state.obstacleGrid, prop.x, prop.y)) {
-                clearGroundRollDrive(prop);
+                clearGroundRollDrive(prop._physId);
                 clearGrab();
                 return;
             }

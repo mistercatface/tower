@@ -354,6 +354,11 @@ export const kineticDynamicSlab = {
     partGeomOffset: new Int32Array(MAX_PHYS_BODIES),
     sleeping: new Uint8Array(MAX_PHYS_BODIES),
     sleepFrames: new Uint16Array(MAX_PHYS_BODIES),
+    rollDriveKind: new Int8Array(MAX_PHYS_BODIES),
+    rollDriveDirX: new Float32Array(MAX_PHYS_BODIES),
+    rollDriveDirY: new Float32Array(MAX_PHYS_BODIES),
+    rollDriveAccel: new Float32Array(MAX_PHYS_BODIES),
+    rollDriveMaxSpeed: new Float32Array(MAX_PHYS_BODIES),
     partShapeKind: new Uint8Array(PART_TABLE_INIT),
     partRadius: new Float32Array(PART_TABLE_INIT),
     partVertOffset: new Int32Array(PART_TABLE_INIT),
@@ -378,6 +383,11 @@ kineticDynamicSlab.spatialNeighborCount.fill(0);
 kineticDynamicSlab.partGeomOffset.fill(-1);
 kineticDynamicSlab.sleeping.fill(0);
 kineticDynamicSlab.sleepFrames.fill(0);
+kineticDynamicSlab.rollDriveKind.fill(-1); // ROLL_DRIVE_NONE
+kineticDynamicSlab.rollDriveDirX.fill(0);
+kineticDynamicSlab.rollDriveDirY.fill(0);
+kineticDynamicSlab.rollDriveAccel.fill(0);
+kineticDynamicSlab.rollDriveMaxSpeed.fill(0);
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
 export const primitivePhysics = { density: new Float32Array([0.007958, 1.5 / 256]), dragFriction: new Float32Array([4, 8]), wallRestitution: new Float32Array([0.35, 0.15]), wallFriction: new Float32Array([0.4, 0.8]) };
 export const kineticConstraintStore = { count: 0, id: new Int32Array(MAX_KINETIC_CONSTRAINTS), type: new Uint8Array(MAX_KINETIC_CONSTRAINTS), bodyAId: new Int32Array(MAX_KINETIC_CONSTRAINTS), bodyBId: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS), anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS) }; // persistent constraint rows

@@ -1795,14 +1795,14 @@ export function createDirectGroundNavBehavior(state) {
         const dist = Math.hypot(dx, dy);
         if (dist < config.stopRadius) {
             if ((flags & GROUND_NAV_RUN_MOVE_ACTIVE) !== 0) {
-                clearGroundRollDrive(prop);
+                clearGroundRollDrive(prop._physId);
                 clearSlotTarget(slot);
                 return;
             }
-            decelerateRoll(prop, config);
+            decelerateRoll(prop._physId, config);
             return;
         }
-        steerRollToward(prop, dx / dist, dy / dist, config);
+        steerRollToward(prop._physId, dx / dist, dy / dist, config);
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_DIRECT,
@@ -1822,7 +1822,7 @@ export function createDirectGroundNavBehavior(state) {
             const slot = getSlot(prop);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
             if ((slab.flags[slot] & GROUND_NAV_RUN_MOVE_ACTIVE) === 0) {
-                clearGroundRollDrive(prop);
+                clearGroundRollDrive(prop._physId);
                 clearSlotTarget(slot);
                 markPropRunInactive(activeRunIds, prop.id);
             }
@@ -1844,7 +1844,7 @@ export function createDirectGroundNavBehavior(state) {
             return (slab.flags[slot] & (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET)) === (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET);
         },
         clearMoveTarget(prop) {
-            clearGroundRollDrive(prop);
+            clearGroundRollDrive(prop._physId);
             const slot = propIdToSlot.get(prop.id);
             if (slot != null) clearSlotTarget(slot);
             markPropRunInactive(activeRunIds, prop.id);
@@ -1907,12 +1907,12 @@ export function createFlowGroundNavBehavior(state) {
         flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerX, steerY, state.nav.settings.recenterThreshold);
         const distToTarget = Math.hypot(steerX - prop.x, steerY - prop.y);
         if (distToTarget <= stopRadius) {
-            clearGroundRollDrive(prop);
+            clearGroundRollDrive(prop._physId);
             clearSlotTarget(slot);
             return;
         }
         if (!computeFlowFieldSteering(prop, steerX, steerY, flowFieldGrid)) return;
-        steerRollToward(prop, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
+        steerRollToward(prop._physId, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_FLOW,
@@ -1948,7 +1948,7 @@ export function createFlowGroundNavBehavior(state) {
             return slot != null && (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) !== 0;
         },
         clearMoveTarget(prop) {
-            clearGroundRollDrive(prop);
+            clearGroundRollDrive(prop._physId);
             const slot = propIdToSlot.get(prop.id);
             if (slot != null) clearSlotTarget(slot);
             markPropRunInactive(activeRunIds, prop.id);
@@ -2011,13 +2011,13 @@ export function createHpaGroundNavBehavior(state) {
         const targetX = slab.targetX[slot];
         const targetY = slab.targetY[slot];
         if (groundNavArrivedAtTarget(prop, targetX, targetY, slab.targetCellIdx[slot] < 0 ? null : slab.targetCellIdx[slot], grid, stopRadius)) {
-            clearGroundRollDrive(prop);
+            clearGroundRollDrive(prop._physId);
             clearSlotTarget(slot);
             return;
         }
         if (!driveGroundNav(prop, targetX, targetY, slab.sessions[slot], state, dtMs, prepareHpaGroundNavPathSettings(state, prop, stopRadius))) return;
         if (ENGINE_F32[N_OUT_STEER] === 0 && ENGINE_F32[N_OUT_STEER + 1] === 0) return;
-        steerRollToward(prop, ENGINE_F32[N_OUT_STEER], ENGINE_F32[N_OUT_STEER + 1], config, ENGINE_F32[N_OUT_STEER + 2]);
+        steerRollToward(prop._physId, ENGINE_F32[N_OUT_STEER], ENGINE_F32[N_OUT_STEER + 1], config, ENGINE_F32[N_OUT_STEER + 2]);
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_HPA,
@@ -2053,7 +2053,7 @@ export function createHpaGroundNavBehavior(state) {
             return slot != null && (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) !== 0;
         },
         clearMoveTarget(prop) {
-            clearGroundRollDrive(prop);
+            clearGroundRollDrive(prop._physId);
             const slot = propIdToSlot.get(prop.id);
             if (slot != null) clearSlotTarget(slot);
             markPropRunInactive(activeRunIds, prop.id);
