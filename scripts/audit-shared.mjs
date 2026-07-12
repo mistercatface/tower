@@ -51,6 +51,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "getKineticConstraintGraph",
     "getMoveTargetWorld",
     "getPropRadius",
+    "getKineticRollConfigForStopRadius",
     "getOrEnsureWallAtlasScalars",
     "hueToPickerHex",
     "HPA_GROUND_NAV_CONFIG",

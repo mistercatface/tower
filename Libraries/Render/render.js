@@ -147,6 +147,8 @@ const OVERLAY_F_ANCHOR_Y = 9;
 const OVERLAY_F_HUE = 10;
 const OVERLAY_F_EXTRA1 = 11;
 const OVERLAY_INIT_CAP = 128;
+const OVERLAY_DASH_EMPTY = Object.freeze([]);
+const OVERLAY_DASH_PAIR = [0, 0];
 function packOverlayRgba(r, g, b, a01) {
     const a = a01 <= 0 ? 0 : a01 >= 1 ? 255 : (a01 * 255 + 0.5) | 0;
     return ((a << 24) | (r << 16) | (g << 8) | b) >>> 0;
@@ -203,30 +205,29 @@ for (let si = 0; si < OVERLAY_STYLE_COUNT; si++) {
 }
 const OVERLAY_HUE_STEP = 5;
 const OVERLAY_HUE_COUNT = 72;
-const OVERLAY_DRAG_HUE_RECIPE = [
-    { sS: 90, sL: 55, sA: 0.35, fA: 0 },
-    { sS: 90, sL: 55, sA: 0.85, fS: 90, fL: 55, fA: 0.45 },
-    { sS: 90, sL: 55, sA: 0.85, fS: 90, fL: 55, fA: 0.35 },
-    { sS: 90, sL: 55, sA: 0.15, fA: 0 },
-    { sS: 90, sL: 55, sA: 0.12, fA: 0 },
-    { sS: 90, sL: 55, sA: 0.85, fS: 90, fL: 55, fA: 0.35 },
-    { sS: 90, sL: 55, sA: 0.4, fA: 0 },
-    { sS: 90, sL: 55, sA: 0.65, fS: 90, fL: 55, fA: 0.65 },
-    { sS: 90, sL: 55, sA: 0.4, fA: 0 },
-    { sS: 100, sL: 60, sA: 0.85, fA: 0 },
-    { sS: 100, sL: 50, sA: 1, fA: 0 },
-];
-const OVERLAY_DRAG_STROKE_CSS = new Array(OVERLAY_DRAG_HUE_RECIPE.length);
-const OVERLAY_DRAG_FILL_CSS = new Array(OVERLAY_DRAG_HUE_RECIPE.length);
+const OVERLAY_DRAG_RECIPE_COUNT = 11;
+const OVERLAY_DRAG_RECIPE_SS = new Float32Array([90, 90, 90, 90, 90, 90, 90, 90, 90, 100, 100]);
+const OVERLAY_DRAG_RECIPE_SL = new Float32Array([55, 55, 55, 55, 55, 55, 55, 55, 55, 60, 50]);
+const OVERLAY_DRAG_RECIPE_SA = new Float32Array([0.35, 0.85, 0.85, 0.15, 0.12, 0.85, 0.4, 0.65, 0.4, 0.85, 1]);
+const OVERLAY_DRAG_RECIPE_FS = new Float32Array([0, 90, 90, 0, 0, 90, 0, 90, 0, 0, 0]);
+const OVERLAY_DRAG_RECIPE_FL = new Float32Array([0, 55, 55, 0, 0, 55, 0, 55, 0, 0, 0]);
+const OVERLAY_DRAG_RECIPE_FA = new Float32Array([0, 0.45, 0.35, 0, 0, 0.35, 0, 0.65, 0, 0, 0]);
+const OVERLAY_DRAG_STROKE_CSS = new Array(OVERLAY_DRAG_RECIPE_COUNT);
+const OVERLAY_DRAG_FILL_CSS = new Array(OVERLAY_DRAG_RECIPE_COUNT);
 const OVERLAY_DRAG_GLOW_CSS = new Array(OVERLAY_HUE_COUNT);
-for (let ri = 0; ri < OVERLAY_DRAG_HUE_RECIPE.length; ri++) {
-    const recipe = OVERLAY_DRAG_HUE_RECIPE[ri];
+for (let ri = 0; ri < OVERLAY_DRAG_RECIPE_COUNT; ri++) {
+    const sS = OVERLAY_DRAG_RECIPE_SS[ri];
+    const sL = OVERLAY_DRAG_RECIPE_SL[ri];
+    const sA = OVERLAY_DRAG_RECIPE_SA[ri];
+    const fS = OVERLAY_DRAG_RECIPE_FS[ri];
+    const fL = OVERLAY_DRAG_RECIPE_FL[ri];
+    const fA = OVERLAY_DRAG_RECIPE_FA[ri];
     const strokes = new Array(OVERLAY_HUE_COUNT);
     const fills = new Array(OVERLAY_HUE_COUNT);
     for (let hi = 0; hi < OVERLAY_HUE_COUNT; hi++) {
         const h = hi * OVERLAY_HUE_STEP;
-        strokes[hi] = recipe.sA >= 1 ? "hsl(" + h + ", " + recipe.sS + "%, " + recipe.sL + "%)" : "hsla(" + h + ", " + recipe.sS + "%, " + recipe.sL + "%, " + recipe.sA + ")";
-        fills[hi] = recipe.fA > 0 ? "hsla(" + h + ", " + recipe.fS + "%, " + recipe.fL + "%, " + recipe.fA + ")" : null;
+        strokes[hi] = sA >= 1 ? "hsl(" + h + ", " + sS + "%, " + sL + "%)" : "hsla(" + h + ", " + sS + "%, " + sL + "%, " + sA + ")";
+        fills[hi] = fA > 0 ? "hsla(" + h + ", " + fS + "%, " + fL + "%, " + fA + ")" : null;
     }
     OVERLAY_DRAG_STROKE_CSS[ri] = strokes;
     OVERLAY_DRAG_FILL_CSS[ri] = fills;
@@ -482,16 +483,22 @@ function drawAabbStyle(ctx, minX, minY, maxX, maxY, fill, stroke, lineWidth = 1,
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
     const hasDash = Number.isFinite(dashA);
-    if (hasDash) ctx.setLineDash([dashA, Number.isFinite(dashB) ? dashB : 0]);
+    if (hasDash) {
+        OVERLAY_DASH_PAIR[0] = dashA;
+        OVERLAY_DASH_PAIR[1] = Number.isFinite(dashB) ? dashB : 0;
+        ctx.setLineDash(OVERLAY_DASH_PAIR);
+    }
     ctx.beginPath();
     traceAabbRect(ctx, minX, minY, maxX, maxY);
     ctx.stroke();
-    if (hasDash) ctx.setLineDash([]);
+    if (hasDash) ctx.setLineDash(OVERLAY_DASH_EMPTY);
 }
 function applyOverlayDash(ctx, slab, i) {
     if (!(slab.flags[i] & OVERLAY_FLAG_DASH)) return false;
     const b = i * OVERLAY_F_STRIDE;
-    ctx.setLineDash([slab.f[b + OVERLAY_F_DASH_A], slab.f[b + OVERLAY_F_DASH_B]]);
+    OVERLAY_DASH_PAIR[0] = slab.f[b + OVERLAY_F_DASH_A];
+    OVERLAY_DASH_PAIR[1] = slab.f[b + OVERLAY_F_DASH_B];
+    ctx.setLineDash(OVERLAY_DASH_PAIR);
     return true;
 }
 function bakeOverlayCommandAt(ctx, anchorX, anchorY, slab, i) {
@@ -504,7 +511,7 @@ function bakeOverlayCommandAt(ctx, anchorX, anchorY, slab, i) {
         ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
         const dashed = applyOverlayDash(ctx, slab, i);
         strokeCircle(ctx, anchorX, anchorY, slab.f[b + OVERLAY_F_G2]);
-        if (dashed) ctx.setLineDash([]);
+        if (dashed) ctx.setLineDash(OVERLAY_DASH_EMPTY);
         return;
     }
     if (kind === OVERLAY_CMD_CIRCLE_FILL_STROKE) {
@@ -574,7 +581,7 @@ export function drawOverlayCommands(ctx, slab, viewport) {
             ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
             const dashed = applyOverlayDash(ctx, slab, i);
             strokeCircle(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab.f[b + OVERLAY_F_G2]);
-            if (dashed) ctx.setLineDash([]);
+            if (dashed) ctx.setLineDash(OVERLAY_DASH_EMPTY);
             continue;
         }
         if (kind === OVERLAY_CMD_CIRCLE_FILL_STROKE) {
@@ -590,7 +597,7 @@ export function drawOverlayCommands(ctx, slab, viewport) {
             if (slab.flags[i] & OVERLAY_FLAG_LINECAP_ROUND) ctx.lineCap = "round";
             const dashed = applyOverlayDash(ctx, slab, i);
             strokeSegment(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab.f[b + OVERLAY_F_G2], slab.f[b + OVERLAY_F_G3]);
-            if (dashed) ctx.setLineDash([]);
+            if (dashed) ctx.setLineDash(OVERLAY_DASH_EMPTY);
             if (slab.flags[i] & OVERLAY_FLAG_LINECAP_ROUND) ctx.lineCap = "butt";
             continue;
         }
@@ -599,7 +606,7 @@ export function drawOverlayCommands(ctx, slab, viewport) {
             ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
             const dashed = applyOverlayDash(ctx, slab, i);
             strokeOpenPolylineF32(ctx, slab.poly.buf, slab.polyBase[i], slab.polyCount[i]);
-            if (dashed) ctx.setLineDash([]);
+            if (dashed) ctx.setLineDash(OVERLAY_DASH_EMPTY);
             continue;
         }
         if (kind === OVERLAY_CMD_AIM_SEGMENT) drawAimSegmentAt(ctx, slab, i);

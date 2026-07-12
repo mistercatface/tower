@@ -7,6 +7,8 @@ const beltStripStringRe = /`p\$\{/;
 const overlayBagApiRe = /\boverlayPolyline\s*\(|\boverlayAabb\s*\(|\boverlaySegment\s*\(|\boverlayAimSegment\s*\(|\boverlayCircleStroke\s*\(|\boverlayCircleFillStroke\s*\(|\boverlayCachedSelectionRing\s*\(|\boverlayGridCellHighlight\s*\(|\bpathNodes\b|\bstrokeOpenPolyline\s*\(|\bgetPathOverlay\b|\bbuildSabPathOverlayFromProgress\b|\bappendPathOverlayCommands\s*\(|\bgetDragLaunchPreview\b|\bappendOverlayAabb\s*\(|\bappendOverlaySegment\s*\(|\bappendSelectionOverlayCommands\s*\(\s*\w+\s*,\s*\{|\bpathF32\s*:|\bstampMarqueeAabb\b|\bstampRailEdgeSegment\b|\bappendGridEdgeOverlayCommand\b|\bappendMarqueeOverlayCommands\b|\bbuildDragLaunchAimLineContext\b|\bdragLaunchAimLineContextForState\b|\bgetMoveTargetWorld\b|\bcreateGroundNavBehavior\b|\bDIRECT_GROUND_NAV_CONFIG\b|\bFLOW_GROUND_NAV_CONFIG\b|\bHPA_GROUND_NAV_CONFIG\b|\bbuildHpaGroundNavPathSettings\b|\bselectionRingRadius\b|\bcreateDragLaunchInteraction\b|\bstampOverlaySegmentStroke\b|\bstampOverlayCircleStrokeColor\b|\bstampOverlayCircleFillStrokeColor\b/;
 const overlayHslaTemplateRe = /`hsla\(\$\{|`hsl\(\$\{/;
 const overlayStrokeFillColumnRe = /\bstroke:\s*new Array\(|\bfill:\s*new Array\(/;
+const overlayDashLiteralRe = /setLineDash\(\[/;
+const rollConfigOverrideBagRe = /getKineticRollConfig\s*\([^)]*,\s*\{/;
 export const id = "render-bags";
 export const description = "Render/Canvas/Spatial typed diet — no face bags, pending fills, string overlay/stamp keys, bag overlay cmds, or wall-bucket bags";
 export const severity = "fail";
@@ -20,7 +22,8 @@ export function run(ctx) {
         const inSpatial = relPath.startsWith("Libraries/Spatial/");
         const inSandbox = relPath.startsWith("Libraries/Sandbox/");
         const inNav = relPath.startsWith("Libraries/Navigation/");
-        if (!inRender && !inCanvas && !inSpatial && !inSandbox && !inNav) continue;
+        const inPhysics = relPath.startsWith("Libraries/Physics/");
+        if (!inRender && !inCanvas && !inSpatial && !inSandbox && !inNav && !inPhysics) continue;
         const src = fs.readFileSync(file, "utf8");
         const lines = src.split("\n");
         for (let i = 0; i < lines.length; i++) {
@@ -41,6 +44,12 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inRender && overlayStrokeFillColumnRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inRender && overlayDashLiteralRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if ((inSandbox || inPhysics) && rollConfigOverrideBagRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inSpatial && beltStripStringRe.test(line)) {

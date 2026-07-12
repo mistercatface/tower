@@ -4724,13 +4724,12 @@ export function snapMoveTargetToCellCenter(buf, o, grid, worldX, worldY) {
     buf[o + 1] = grid.gridCenterYByIdx(idx);
     return idx;
 }
-export function getKineticRollConfig(prop, overrides = null) {
+export function getKineticRollConfig(prop) {
     let base = prop._cachedRollBaseConfig;
     if (!base) {
         base = { ...physicsSettings.groundNavRoll, ...prop.strategy?.groundNav };
         prop._cachedRollBaseConfig = base;
     }
-    if (overrides && Object.keys(overrides).length > 0) return { ...base, ...overrides };
     return base;
 }
 export function steerRollToward(prop, dirX, dirY, config, targetSpeed = null, accelOverride = null, maxSpeedOverride = null) {
