@@ -4,8 +4,8 @@
  *
  * Usage:
  *   node scripts/audit-codebase.mjs [--warn] [--json] [path-filter...]
- *
- * Related: audit-test-leaks.mjs, audit-scalar-dialect.mjs, tests/passthroughGuard.test.js
+ *   npm run audit
+ *   npm run audit:all
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +24,8 @@ if (showHelp) {
 
 Usage:
   node scripts/audit-codebase.mjs [--warn] [--json] [path-filter...]
+  npm run audit              failures only
+  npm run audit:all          failures + warnings
 
 Options:
   --warn       Include warning-severity findings (default: failures only)
@@ -31,8 +33,7 @@ Options:
   --help, -h   This help
 
 Related:
-  npm run audit:all          test-leaks + scalar-dialect + codebase
-  tests/passthroughGuard.test.js
+  tests/passthroughGuard.test.js   same DELETED_PASSTHROUGH_EXPORTS list
 
 Rules (${rules.length}):
 ${rules.map((r) => `  ${r.id} (${r.severity}) — ${r.description}`).join("\n")}

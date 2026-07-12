@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { DELETED_PASSTHROUGH_EXPORTS } from "../scripts/audit-shared.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -12,65 +13,6 @@ const scanRoots = [
     "Libraries/Physics/physics.js",
     "Libraries/Spatial/spatial.js",
     "Libraries/Navigation/navigation.js",
-];
-
-const deletedPassthroughExports = [
-    "getChainMemberIds",
-    "isSpawnerWorldProp",
-    "isSpawnerProp",
-    "fireSpawner",
-    "listSpawnerSpawnPropIds",
-    "SPAWNER_BEHAVIOR_ID",
-    "createSpawnerBehavior",
-    "getDragLaunchConfig",
-    "sandboxAssetDragInteract",
-    "assetSupportsDragLaunch",
-    "DRAG_LAUNCH_BASELINE",
-    "wallPhysics",
-    "applyFractureGeometryToProp",
-    "applyChunkGeometryToProp",
-    "localBoxOutline",
-    "momentOfInertiaFromBody",
-    "createDragLaunchWaitBehavior",
-    "createDragLaunchFacingBehavior",
-    "createCueStrikeBehavior",
-    "createDirectGroundNavBehavior",
-    "createFlowGroundNavBehavior",
-    "createHpaGroundNavBehavior",
-    "expandNavTopologyBakeBounds",
-    "isNavWalkableCellAtIndex",
-    "kineticTickFromState",
-    "worldSimFromState",
-    "createKineticTick",
-    "isEntityAtRest",
-    "isEntityAsleep",
-    "removeSandboxWorldProp",
-    "isShapeFamilyAsset",
-    "getPropRadius",
-    "setPropRadius",
-    "inverseMassFromBody",
-    "integrateRollOrientation",
-    "isKinetic",
-    "radiusAtT",
-    "scaleAtHeight",
-    "snapshotWorldCol",
-    "snapshotWorldRow",
-    "mapGenerationCellBounds",
-    "agentPose",
-    "SCRATCH_PATH_STEERING",
-    "SCRATCH_AGENT_POSE",
-    "writeStaticKineticSlabSlot",
-    "syncEntitySlotPoseFromRef",
-    "kineticSleepScratch",
-    "writebackActiveKineticBodySlab",
-    "writebackEntitySlotPoseToRef",
-    "sleepContactBuffer",
-    "buildAdjacency",
-    "addAdjacencyEdge",
-    "getKineticConstraintGraph",
-    "LivePolygonShape",
-    "allocLiveGeomSpan",
-    "releaseLiveGeomSpan",
 ];
 
 function walkGameStateJs(dir, out = []) {
@@ -84,7 +26,7 @@ function walkGameStateJs(dir, out = []) {
 
 function scanDeletedPassthroughs(source, relPath) {
     const offenders = [];
-    for (const name of deletedPassthroughExports) {
+    for (const name of DELETED_PASSTHROUGH_EXPORTS) {
         if (new RegExp(`\\bexport\\s+(?:function|const|class|let|var)\\s+${name}\\b|\\bexport\\s*\\{[^}]*\\b${name}\\b`).test(source)) {
             offenders.push(`${relPath}: deleted passthrough ${name} reintroduced`);
         }

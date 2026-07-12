@@ -20,15 +20,14 @@ These rules are project-scoped behavior constraints for all AI agents editing th
 Before adding exports under `Libraries/` or finishing a feature that touches `Libraries/`:
 
 ```powershell
-node scripts/audit-test-leaks.mjs
-node scripts/audit-scalar-dialect.mjs
 node scripts/audit-codebase.mjs Libraries/<area>   # path filter on changed dirs
-npm run audit:all                                   # full gate before merge
+npm run audit                                       # fail-only gate
+npm run audit:all                                   # failures + warnings
 ```
 
-`node scripts/audit-codebase.mjs --help` lists rules. Fail on: non-index re-export barrels, deleted passthrough symbols in monoliths, legacy sandbox drag APIs, test-only library exports, inline `mock*` factories in test files (use harness), new XY/AABB bag exports from `Core/engineMemory.js`.
+`node scripts/audit-codebase.mjs --help` lists rules. Fail on: non-index re-export barrels, deleted passthrough symbols in monoliths, legacy sandbox drag APIs, test-only library exports, inline `mock*` factories in test files (use harness), `*_SCRATCH` exports from hot-path libs, new XY/AABB bag exports from `Core/engineMemory.js`, legacy viewport/scalar symbols.
 
-Warnings (`--warn`) are baseline debt — do not introduce new failures. Also warn on: F32→object rebox, object-bag `*Into*`, dual bag+F32 APIs, hot-path `.push({`.
+Warnings (`--warn`) are baseline debt — do not introduce new failures. Also warn on: F32→object rebox, module `*_SCRATCH`, pair-return bags, object-bag `*Into*`, dual bag+F32 APIs, hot-path `.push({`.
 
 ## 4. Style Guards (do not reintroduce)
 

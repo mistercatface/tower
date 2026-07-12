@@ -15,7 +15,7 @@ Test helpers belong in `tests/harness/`, not `Libraries/`.
 Before adding any new export under `Libraries/`, run:
 
 ```powershell
-node scripts/audit-test-leaks.mjs
+npm run audit
 ```
 
 ## No production branches for tests

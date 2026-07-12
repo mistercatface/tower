@@ -1,7 +1,14 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Sandbox"];
+const hotDirs = [
+    "Libraries/Spatial",
+    "Libraries/Physics",
+    "Libraries/Navigation",
+    "Libraries/Math",
+    "Libraries/Viewport",
+    "Libraries/Sandbox",
+];
 
 export const id = "hot-path-object-push";
 export const description = ".push({ inline object allocation in hot-path libraries";
