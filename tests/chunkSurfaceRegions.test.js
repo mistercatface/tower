@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
-import { resolveChunkSurfaceProfileIdAtKey, packChunkKey, cellIdxToChunkKey } from "../Libraries/Spatial/spatial.js";
+import { resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, packChunkKey, cellIdxToChunkKey } from "../Libraries/Spatial/spatial.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
 import { setChunkSurfaceProfileEdit } from "../Libraries/Spatial/spatial.js";
 
@@ -15,8 +15,8 @@ describe("chunk surface regions", () => {
         grid.rebuildFixed(0, 0, 128, 128);
         grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "north");
         grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 1), "south");
-        const northProfile = resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), engine.activeSurfaceProfileId);
-        const southProfile = resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 1), engine.activeSurfaceProfileId);
+        const northProfile = resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, engine.activeSurfaceProfileId, 0, packChunkKey(0, 0));
+        const southProfile = resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, engine.activeSurfaceProfileId, 0, packChunkKey(0, 1));
         assert.equal(northProfile, "north");
         assert.equal(southProfile, "south");
         const northGroundKey = engine.cacheKeys.groundChunkKey(packChunkKey(0, 0), northProfile, 0);
@@ -78,7 +78,7 @@ describe("chunk surface regions", () => {
         assert.deepEqual(bounds, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 });
         assert.equal(invalidated.idx, null);
         assert.equal(invalidated.stateArg, grid);
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 1), "base"), "east");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(1, 1)), "east");
     });
 
     it("invalidateGridBounds accepts null, cell index, and CellBounds; rejects bad shapes", () => {

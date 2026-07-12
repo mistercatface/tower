@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { satCheckCollision, checkEntityPairCollision, circleCircleContact, readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { checkEntityPairCollision, circleCircleContact, readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { classifyKineticPairTier } from "../Libraries/Physics/physics.js";
@@ -40,7 +41,7 @@ describe("kinetic narrow phase tiers", () => {
     it("circle-circle fast contact matches SAT dispatch", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(15, 0, 10);
-        const fastCollided = circleCircleContact(a.x, a.y, a.shape, b.x, b.y, b.shape);
+        const fastCollided = circleCircleContact(a.x, a.y, a.shape.radius, b.x, b.y, b.shape.radius);
         const fastRes = new Float32Array(SAT_RESULT);
         const satCollided = satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
         assert.equal(fastCollided, satCollided);

@@ -1,21 +1,17 @@
 // Color Math & Manipulation Utilities
-
 export function clampByte(value) {
     return Math.max(0, Math.min(255, value));
 }
-
 export function hexToRgb(hex) {
     const n = parseInt(hex.slice(1), 16);
     return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff };
 }
-
 export function rgbToHex(r, g, b) {
     const rr = clampByte(Math.round(r)).toString(16).padStart(2, "0");
     const gg = clampByte(Math.round(g)).toString(16).padStart(2, "0");
     const bb = clampByte(Math.round(b)).toString(16).padStart(2, "0");
     return `#${rr}${gg}${bb}`;
 }
-
 export function rgbToHsl(r, g, b) {
     r /= 255;
     g /= 255;
@@ -32,7 +28,6 @@ export function rgbToHsl(r, g, b) {
     else h = ((r - g) / d + 4) / 6;
     return { h: h * 360, s: s * 100, l: l * 100 };
 }
-
 export function hslToHex(h, s, l) {
     s /= 100;
     l /= 100;
@@ -63,28 +58,20 @@ export function hslToHex(h, s, l) {
     }
     return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
 }
-
 export function hexToHue(hex) {
     const { r, g, b } = hexToRgb(hex);
     return normalizeHue(rgbToHsl(r, g, b).h);
 }
-
 export function normalizeHue(h) {
     let hue = h % 360;
     if (hue < 0) hue += 360;
     return hue;
 }
-
-export function hueToPickerHex(hue, saturation = 70, lightness = 50) {
-    return hslToHex(normalizeHue(hue), saturation, lightness);
-}
-
 export function shadeHex(hex, amount) {
     const { r, g, b } = hexToRgb(hex);
     const scale = 1 - amount;
     return rgbToHex(r * scale, g * scale, b * scale);
 }
-
 export function normalizePickerHex(hex) {
     if (typeof hex !== "string") return null;
     const trimmed = hex.trim();
@@ -97,14 +84,12 @@ export function normalizePickerHex(hex) {
     }
     return null;
 }
-
 function shortestHueShift(fromHue, toHue) {
     let shift = toHue - fromHue;
     while (shift > 180) shift -= 360;
     while (shift < -180) shift += 360;
     return shift;
 }
-
 export function collectHexColors(value, out) {
     if (typeof value === "string" && value.startsWith("#")) {
         out.push(value);
@@ -117,7 +102,6 @@ export function collectHexColors(value, out) {
     }
     for (const key of Object.keys(value)) collectHexColors(value[key], out);
 }
-
 export function remapHexColors(value, shifted) {
     let index = 0;
     function walk(node) {
@@ -138,7 +122,6 @@ export function remapHexColors(value, shifted) {
     }
     return walk(value);
 }
-
 export function shiftPaletteToHue(basePanels, targetHue) {
     let sumH = 0;
     const hsls = [];
@@ -157,9 +140,7 @@ export function shiftPaletteToHue(basePanels, targetHue) {
     }
     return out;
 }
-
 const ACHROMATIC_SAT_THRESHOLD = 8;
-
 export function shiftPaletteToTintHex(basePanels, tintHex) {
     const { r, g, b } = hexToRgb(tintHex);
     const tintHsl = rgbToHsl(r, g, b);
@@ -181,20 +162,17 @@ export function shiftPaletteToTintHex(basePanels, tintHex) {
     }
     return shiftPaletteToHue(basePanels, targetHue);
 }
-
 export function shiftColorTreeToTintHex(colorTree, tintHex) {
     const hexes = [];
     collectHexColors(colorTree, hexes);
     if (!hexes.length) return colorTree;
     return remapHexColors(colorTree, shiftPaletteToTintHex(hexes, tintHex));
 }
-
 export function scaleHexBrightness(hex, factor) {
     if (factor === 1) return hex;
     const { r, g, b } = hexToRgb(hex);
     return rgbToHex(clampByte(r * factor), clampByte(g * factor), clampByte(b * factor));
 }
-
 export function scaleColorTreeBrightness(colorTree, factor) {
     if (factor === 1 || colorTree == null) return colorTree;
     const hexes = [];

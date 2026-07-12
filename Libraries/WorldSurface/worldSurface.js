@@ -1,7 +1,7 @@
 import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
 import { minCornerAabbF32, intersectAabbOptionalF32 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, B_TMP, viewBoundsBuf, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
-import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveChunkSurfaceProfileIdAtKey, packChunkKey, worldToChunkKey, chunkKeyBounds, wrapChunkKey, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
+import { projectWorldAabbCorners, boundsToCellRect, resolveCellWallHeightAtIdx, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, packChunkKey, chunkKeyAxis0, chunkKeyAxis1, chunkKeyBounds, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
 import { releaseOffscreenCanvas, drawImageQuadScalars, copyRgbTripletsToRgba, createOffscreenCanvas, traceAabbRect, clipToPath, composeDestinationIn } from "../Canvas/canvas.js";
 import { registerRuntimeSurfaceProfile, resolveSurfaceProfile, shippedSurfaceProfileIds, surfaceProfileKnown } from "../../Config/procedural/profiles.js";
@@ -193,7 +193,8 @@ export class SurfaceSpatialMap {
         return this.settings.surfaceTilePeriodCells / cellsPerChunk;
     }
     wrappedChunkKey(chunkKey, cellsPerChunk = this.settings.cellsPerChunk) {
-        return wrapChunkKey(chunkKey, this.surfaceTileChunks(cellsPerChunk));
+        const period = this.surfaceTileChunks(cellsPerChunk);
+        return packChunkKey(((chunkKeyAxis0(chunkKey) % period) + period) % period, ((chunkKeyAxis1(chunkKey) % period) + period) % period);
     }
     tileChunkBoundsF32(buf, o, obstacleGrid, chunkKey, cellsPerChunk = this.settings.cellsPerChunk) {
         this.chunkBoundsF32(buf, o, obstacleGrid, this.wrappedChunkKey(chunkKey, cellsPerChunk), cellsPerChunk);
@@ -202,7 +203,7 @@ export class SurfaceSpatialMap {
         return this.boundsToChunkKeyRangeF32(buf, o, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
     boundsToChunkKeyRangeF32(buf, o, gridMinX, gridMinY, chunkSizePx) {
-        return { startKey: worldToChunkKey(buf[o], buf[o + 1], gridMinX, gridMinY, chunkSizePx), endKey: worldToChunkKey(buf[o + 2] - 1, buf[o + 3] - 1, gridMinX, gridMinY, chunkSizePx) };
+        return { startKey: packChunkKey(Math.floor((buf[o] - gridMinX) / chunkSizePx), Math.floor((buf[o + 1] - gridMinY) / chunkSizePx)), endKey: packChunkKey(Math.floor((buf[o + 2] - 1 - gridMinX) / chunkSizePx), Math.floor((buf[o + 3] - 1 - gridMinY) / chunkSizePx)) };
     }
     wallAtlasScalars(x1, y1, x2, y2) {
         const surfaceTilePeriodPx = this.settings.surfaceTilePeriodPx;
@@ -231,7 +232,7 @@ export class SurfaceSpatialMap {
             if (py < minY) minY = py;
             if (py > maxY) maxY = py;
         }
-        const chunkKey = worldToChunkKey(minX, minY, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+        const chunkKey = packChunkKey(Math.floor((minX - obstacleGrid.minX) / chunkSizePx), Math.floor((minY - obstacleGrid.minY) / chunkSizePx));
         this.chunkBoundsF32(this._boundsBank, this._chunkBoundsO, obstacleGrid, chunkKey);
         const b = this._boundsBank;
         const o = this._chunkBoundsO;
@@ -949,7 +950,7 @@ export class WorldSurfaceEngine {
     invalidateGridBounds(region, obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
         const zLevels = obstacleGrid.collectStaticStructureZLevels();
         const clearChunk = (chunkKey) => {
-            const profileId = resolveChunkSurfaceProfileIdAtKey(obstacleGrid, chunkKey, this.activeSurfaceProfileId);
+            const profileId = resolveSurfaceProfileId(obstacleGrid, SURFACE_MATERIAL_OWNER.Chunk, this.activeSurfaceProfileId, 0, chunkKey);
             for (const zLevel of zLevels) {
                 this.surfaceCache.delete(this.cacheKeys.staticRoofMaskKey(chunkKey, zLevel));
                 this.surfaceCache.delete(this.cacheKeys.staticRoofDrawKey(chunkKey, profileId, zLevel));
@@ -1075,7 +1076,7 @@ export class WorldSurfaceEngine {
         const surfaceBakeScale = this.settings.surfaceBakeScale;
         const obstacleGrid = state.obstacleGrid;
         const sample = this.surfaceSpace.flatHorizontalSample(worldCorners8, obstacleGrid);
-        const profileId = resolveChunkSurfaceProfileIdAtKey(obstacleGrid, sample.chunkKey, this.activeSurfaceProfileId);
+        const profileId = resolveSurfaceProfileId(obstacleGrid, SURFACE_MATERIAL_OWNER.Chunk, this.activeSurfaceProfileId, 0, sample.chunkKey);
         const canvases = this.getGroundChunkCanvas(sample.chunkKey, state, zLevel, null, profileId);
         const canvas = canvases ? canvases[0] : null;
         for (let i = 0; i < 4; i++) {
@@ -1132,7 +1133,7 @@ export class WorldSurfaceEngine {
     }
     _fillDrawableGroundChunkCanvas(chunkKey, zLevel) {
         const state = this._chunkDraw.state;
-        const profileId = resolveChunkSurfaceProfileIdAtKey(state.obstacleGrid, chunkKey, this.activeSurfaceProfileId);
+        const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.Chunk, this.activeSurfaceProfileId, 0, chunkKey);
         const canvases = this.getGroundChunkCanvas(chunkKey, state, zLevel, null, profileId);
         const canvas = canvases ? canvases[0] : null;
         if (!canvas || canvas.isPlaceholder) return false;
@@ -1208,7 +1209,7 @@ export class WorldSurfaceEngine {
             if (!this._fillDrawableGroundChunkCanvas(chunkKey, zLevel)) return;
             ctx.save();
             if (mode === ELEVATED_CHUNK_ROOF) {
-                const profileId = resolveChunkSurfaceProfileIdAtKey(obstacleGrid, chunkKey, this.activeSurfaceProfileId);
+                const profileId = resolveSurfaceProfileId(obstacleGrid, SURFACE_MATERIAL_OWNER.Chunk, this.activeSurfaceProfileId, 0, chunkKey);
                 const drawCanvas = this.getStaticRoofDrawCanvas(chunkKey, zLevel, obstacleGrid, b, o, this._resolvedChunkCanvas, profileId);
                 if (!drawCanvas || drawCanvas.isPlaceholder) {
                     ctx.restore();

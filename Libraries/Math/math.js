@@ -663,9 +663,6 @@ export function distanceSqToAabbF32(px, py, buf, o) {
 export function distanceToAabbF32(px, py, buf, o) {
     return Math.sqrt(distanceSqToAabbF32(px, py, buf, o));
 }
-export function entityIntersectsAabbEidF32(eid, buf, o) {
-    return circleIntersectsAabbF32(entityX[eid], entityY[eid], entityR[eid], buf, o);
-}
 const AABB_HASH_F64 = new Float64Array(4);
 const AABB_HASH_U32 = new Uint32Array(AABB_HASH_F64.buffer);
 export function aabbHashF32(buf, o) {
@@ -721,14 +718,6 @@ export function quantizeAngle(angle, steps) {
 }
 /** Cardinal belt / grid-facing props — 4 steps (E, S, W, N by increasing angle). */
 export const CARDINAL_FACING_STEPS = 4;
-/** @param {number} angle */
-export function quantizeCardinalAngle(angle) {
-    return quantizeAngle(angle, CARDINAL_FACING_STEPS);
-}
-/** @param {number} angle @param {number} [steps] quarter-turns to add */
-export function stepCardinalFacing(angle, steps = 1) {
-    return quantizeCardinalAngle(angle + steps * ((Math.PI * 2) / CARDINAL_FACING_STEPS));
-}
 export function rotateAngleTowards(from, to, maxStep) {
     const diff = angleDelta(from, to);
     if (Math.abs(diff) <= maxStep) return normalizeAngle(to);
@@ -807,9 +796,6 @@ export function mirrorEasingForReversedStage(type) {
 }
 export function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
-}
-export function scaleAtHeight(baseSize, alpha, t) {
-    return baseSize * (1 + alpha * t);
 }
 /** @param {number} seed */
 export function createSeededRng(seed) {

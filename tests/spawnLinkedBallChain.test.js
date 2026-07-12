@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, spawnLinkedBallChain, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
+import { isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
+import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1, faction: "alpha" };
 

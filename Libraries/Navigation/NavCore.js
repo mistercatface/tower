@@ -158,7 +158,7 @@ export class FlatGridSearch {
         }
         const neighbors = this.neighbors;
         if (!neighbors || !blocked) return 0;
-        const { visited, runId, cameFrom } = preparedSearchState(this.searchState);
+        const { visited, runId, cameFrom } = this.searchState.prepare();
         const q = [startIdx];
         visited[startIdx] = runId;
         cameFrom[startIdx] = -1;
@@ -180,7 +180,7 @@ export class FlatGridSearch {
             return 1;
         }
         globalOpenSet.reset();
-        const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
+        const { gScore, cameFrom, visited, runId } = this.searchState.prepare();
         const cols = this.cols;
         const heuristic = maxDirs === 4 ? manhattanDistanceIdx : octileDistanceIdx;
         gScore[startIdx] = 0;
@@ -238,7 +238,7 @@ export class FlatGridSearch {
             return 1;
         }
         globalOpenSet.reset();
-        const { gScore, cameFrom, visited, runId } = preparedSearchState(this.searchState);
+        const { gScore, cameFrom, visited, runId } = this.searchState.prepare();
         const cols = this.cols;
         const neighbors = this.neighbors;
         if (!neighbors || !blocked) return 0;
@@ -417,9 +417,6 @@ export function createNavGraphView(grid, baked = null, navTopology = null) {
         },
     };
 }
-export function createNavGraphViewFromTopology(navTopology) {
-    return createNavGraphView(navTopology.grid, { cardinalOpen: navTopology.navCardinalOpen, vertexPassability: navTopology.vertexPassability }, navTopology);
-}
 export function createNavGraphViewWithLocalBake(grid, damageBounds = null) {
     const baked = bakeNavTopologyLocal(grid, damageBounds);
     return createNavGraphView(grid, { cardinalOpen: baked.cardinalOpen, vertexPassability: baked.vertexPassability }, baked.navTopology);
@@ -471,9 +468,6 @@ export function _removeCellByIdx(cells, idx) {
     for (let i = cells.length - 1; i >= 0; i--) if (cells[i] === idx) cells.splice(i, 1);
 }
 export const STALE_F_EPSILON = 1e-4;
-export function preparedSearchState(searchState) {
-    return searchState.prepare();
-}
 export function reconstructIndexPathInto(cameFrom, targetIdx, outPath) {
     let count = 0;
     let node = targetIdx;
@@ -540,7 +534,7 @@ export function patchNavWalkableCellIndexRegion(state, cache, idx) {
     const patchBounds = typeof idx === "object" && idx !== null ? padCellBoundsInPlace({ startCol: idx.startCol, endCol: idx.endCol, startRow: idx.startRow, endRow: idx.endRow }, grid, 2) : padCellIdxToGrid(idx, grid, 2);
     ensureNavWalkableBuffers(cache, grid);
     updateNavWalkableCandidatesInPatch(state, cache, patchBounds);
-    let seedCells = cache.floodSeedBounds ? filterWalkableCellsInBounds(cache.candidates, grid, cache.floodSeedBounds) : cache.candidates;
+    let seedCells = cache.floodSeedBounds ? cache.candidates.filter((idx) => isIdxInMapGenBounds(cache.floodSeedBounds, grid, idx)) : cache.candidates;
     if (!seedCells.length) seedCells = cache.candidates;
     const reachedMask = createNavWalkableReachedMask(grid, cache.reachedMask);
     const connected = cache.candidates.length ? floodConnectedNavWalkableCells(grid, navTopology, cache.candidates, cache.candidateMask, seedCells, reachedMask) : [];
@@ -574,7 +568,7 @@ export function bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds = 
     }
     let seedCells = candidates;
     if (floodSeedBounds) {
-        const seeded = filterWalkableCellsInBounds(candidates, grid, floodSeedBounds);
+        const seeded = candidates.filter((idx) => isIdxInMapGenBounds(floodSeedBounds, grid, idx));
         if (seeded.length) seedCells = seeded;
     }
     const prior = state.editor.navWalkableCellsCache;
@@ -1705,9 +1699,6 @@ export function floodConnectedNavWalkableCells(grid, navTopology, candidates, ca
     }
     return connected;
 }
-export function filterWalkableCellsInBounds(cells, grid, boundsConfig) {
-    return cells.filter((idx) => isIdxInMapGenBounds(boundsConfig, grid, idx));
-}
 export function getNavWalkableCellIndex(state, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
     const navCacheKey = navWalkableCacheKey(state);
     const cache = state.editor.navWalkableCellsCache;
@@ -1731,7 +1722,7 @@ export function pickWalkableCell(openCells, excludeIndices = null, rng = Math.ra
 }
 export function pickNavWalkableCell(state, rng = Math.random, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeIndices = null, filterBoundsConfig = null) {
     let cells = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds).cells;
-    if (filterBoundsConfig) cells = filterWalkableCellsInBounds(cells, state.obstacleGrid, filterBoundsConfig);
+    if (filterBoundsConfig) cells = cells.filter((idx) => isIdxInMapGenBounds(filterBoundsConfig, state.obstacleGrid, idx));
     return pickWalkableCell(cells, excludeIndices, rng);
 }
 export function findNearestOpenCellIdx(blocked, grid, idx) {

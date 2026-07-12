@@ -4,7 +4,7 @@ import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
 import { drawProjectedWallFaceScalars } from "../Libraries/Render/render.js";
-import {  resolveCellSurfaceProfileId, resolveChunkSurfaceProfileIdAtKey, resolveEdgeSurfaceProfileId, packChunkKey  } from "../Libraries/Spatial/spatial.js";
+import { resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { minCornerAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP } from "../Core/engineMemory.js";
 
@@ -32,11 +32,11 @@ describe("surface material stores", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
         const idx = worldIdxAtCell(grid,1, 1);
-        assert.equal(resolveCellSurfaceProfileId(grid, idx, "base"), "base");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, "base", 0, idx), "base");
         assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 1), 2, "base"), "base");
         grid.setCellSurfaceProfileAtIdx(idx, "cell-profile");
         grid.setEdgeSurfaceProfile(idx, 2, "edge-profile");
-        assert.equal(resolveCellSurfaceProfileId(grid, idx, "base"), "cell-profile");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, "base", 0, idx), "cell-profile");
         assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 1), 2, "base"), "edge-profile");
         assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 2), 0, "base"), "edge-profile");
     });
@@ -58,7 +58,7 @@ describe("surface material stores", () => {
         grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 2, "edge-profile");
         minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, -32, -16, 48, 32);
         grid.expandToCoverAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP);
-        assert.equal(resolveCellSurfaceProfileId(grid, worldIdxAtCell(grid,1, 0), "base"), "cell-profile");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, "base", 0, worldIdxAtCell(grid,1, 0)), "cell-profile");
         assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,2, 1), 2, "base"), "edge-profile");
     });
 
@@ -163,14 +163,14 @@ describe("surface material stores", () => {
     it("resolves chunk profiles and supports range assignment", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 128, 128);
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "base");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(0, 0)), "base");
         grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "north");
         grid.setChunkSurfaceProfileForCellBounds({ startCol: 0, endCol: 31, startRow: 16, endRow: 31 }, "south", 8);
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "north");
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 2), "base"), "south");
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 1), "base"), "base");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(0, 0)), "north");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(1, 2)), "south");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(0, 1)), "base");
         grid.clearChunkSurfaceProfileAtKey(packChunkKey(0, 0));
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "base");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(0, 0)), "base");
     });
 
     it("remaps chunk profiles when grid bounds expand", () => {
@@ -179,8 +179,8 @@ describe("surface material stores", () => {
         grid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", 8);
         minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, -192, -192, 256, 256);
         grid.expandToCoverAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP);
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(0, 0), "base"), "base");
-        assert.equal(resolveChunkSurfaceProfileIdAtKey(grid, packChunkKey(1, 1), "base"), "chunk-profile");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(0, 0)), "base");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(1, 1)), "chunk-profile");
     });
 
     it("bumps material revision when chunk profiles change", () => {

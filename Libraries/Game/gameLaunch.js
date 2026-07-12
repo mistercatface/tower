@@ -4,7 +4,7 @@ import { FloorBelt } from "../Spatial/belts.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { GRAB_DRAG_BEHAVIOR_ID } from "../Sandbox/dragBehaviors.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
-import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
+import { getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
 import { EDITOR_NAV_MODE_OFF, NAV_PATH_DEBUG_OFF, NAV_PATH_DEBUG_REACHABLE } from "../../Core/engineEnums.js";
@@ -58,7 +58,7 @@ function mazeFloodSeedBounds(grid, config) {
 }
 function collectMazeWalkableCells(state, config) {
     const index = getNavWalkableCellIndex(state, config, mazeFloodSeedBounds(state.obstacleGrid, config));
-    return filterWalkableCellsInBounds(index.cells, state.obstacleGrid, config);
+    return index.cells.filter((idx) => isIdxInMapGenBounds(config, state.obstacleGrid, idx));
 }
 function pickWalkableCellIdxByDistance(state, config, worldX, worldY, pickFarthest) {
     const grid = state.obstacleGrid;

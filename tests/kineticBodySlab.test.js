@@ -56,7 +56,7 @@ describe("kinetic body slab", () => {
         const slabCollided = circleCircleContactSlab(0, 1);
         assert.ok(slabCollided);
         const slabRes = new Float32Array(SAT_RESULT);
-        const satCollided = circleCircleContact(a.x, a.y, a.shape, b.x, b.y, b.shape);
+        const satCollided = circleCircleContact(a.x, a.y, a.shape.radius, b.x, b.y, b.shape.radius);
         assert.ok(satCollided);
         assert.ok(Math.abs(slabRes[0] - SAT_RESULT[0]) < 1e-5);
         assert.ok(Math.abs(slabRes[1] - SAT_RESULT[1]) < 1e-5);

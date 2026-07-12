@@ -4,15 +4,16 @@ import { applyGroundRollDrive, CircleShape } from "../Libraries/Physics/physics.
 import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
-import { createGrabDragBehavior, resolveDragLaunchConfig, resolveDragLaunchConfigFromSize, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
-import { createDefaultSandboxBehaviors, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
+import { createGrabDragBehavior, resolveDragLaunchConfigFromSize, GRAB_DRAG_BEHAVIOR_ID } from "../Libraries/Sandbox/dragBehaviors.js";
+import { createDefaultSandboxBehaviors } from "../Libraries/Sandbox/sandbox.js";
+import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY } from "../Core/engineMemory.js";
 
 describe("grabDrag behavior", () => {
-    it("resolveDragLaunchConfig scales maxPower with prop radius", () => {
+    it("resolveDragLaunchConfigFromSize scales maxPower with prop radius", () => {
         const small = resolveDragLaunchConfigFromSize(4);
         const large = resolveDragLaunchConfigFromSize(14);
         assert.ok(small.maxPower > 400);
@@ -21,7 +22,7 @@ describe("grabDrag behavior", () => {
         assert.equal(large.maxPower, 700);
         const state = createGrabDragTestState();
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", radius: 4, shape: new CircleShape(4) }));
-        assert.equal(resolveDragLaunchConfig(prop).maxPower, small.maxPower);
+        assert.equal(resolveDragLaunchConfigFromSize(prop.radius).maxPower, small.maxPower);
     });
 
     it("onPointerDown returns true for kinetic props and false otherwise", () => {

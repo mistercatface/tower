@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
-import { clearGridWallsBatch, clearGridWallsQuiet, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit, RailWallBatch } from "../Libraries/Spatial/spatial.js";
+import { clearGridWallsBatch, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit, RailWallBatch, unionCellBounds } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
@@ -46,14 +46,13 @@ function stampVoxelQuiet(state, col, row, heightLevel = 1) {
     grid.gridTopologyEpoch++;
 }
 describe("wall delete batching (4a)", () => {
-    it("clearGridWallsQuiet removes voxel and rail walls without notifying", async () => {
+    it("quiet voxel+rail clear removes walls without notifying", async () => {
         const state = await createWallDeleteTestState();
         stampVoxelQuiet(state, 2, 2);
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 3, 3), 1));
-        const bounds = clearGridWallsQuiet(state, {
-            voxels: [worldIdxAtCell(state.obstacleGrid,2, 2)],
-            rails: RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 3, 3), 1),
-        });
+        const voxels = [worldIdxAtCell(state.obstacleGrid,2, 2)];
+        const rails = RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 3, 3), 1);
+        const bounds = unionCellBounds(clearVoxelWallsQuiet(state, voxels), clearRailWallsQuiet(state, rails));
         assert.ok(bounds);
         assert.equal(state.notifyCount, 0);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,2, 2)));

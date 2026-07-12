@@ -25,9 +25,6 @@ export function resolveDragLaunchConfigFromSize(radius) {
     const maxPower = Math.min(700, Math.max(200, 70 * R + 220));
     return { minDrag: 10, maxPull: Math.min(200, Math.max(90, 90 + 5 * R)), pullScale: 1.25, minPower: Math.max(12, maxPower * 0.08), maxPower };
 }
-export function resolveDragLaunchConfig(prop) {
-    return resolveDragLaunchConfigFromSize(prop.radius);
-}
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
     return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
 }
@@ -125,7 +122,7 @@ export function createDragLaunchInteraction(spec) {
             if (spec.canStart && !spec.canStart(prop, world)) return false;
             wakeKineticBody(prop);
             aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
-            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfig(prop));
+            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfigFromSize(prop.radius));
             return true;
         },
         onPointerMove(prop, world, _e) {
@@ -134,18 +131,18 @@ export function createDragLaunchInteraction(spec) {
                 aim = null;
                 return;
             }
-            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfig(prop));
+            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfigFromSize(prop.radius));
         },
         onPointerUp(prop, _e) {
             if (!aim?.active) return;
-            const shot = releaseDragLaunch(aim, resolveDragLaunchConfig(prop));
+            const shot = releaseDragLaunch(aim, resolveDragLaunchConfigFromSize(prop.radius));
             aim = null;
             if (!shot) return;
             applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
         },
         appendOverlayCommands(commands, prop) {
             if (!aim?.active) return;
-            appendDragLaunchOverlayCommands(commands, aim, resolveDragLaunchConfig(prop), buildCtx(prop), resolveLine);
+            appendDragLaunchOverlayCommands(commands, aim, resolveDragLaunchConfigFromSize(prop.radius), buildCtx(prop), resolveLine);
         },
         reset() {
             aim = null;
@@ -236,7 +233,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
     const propRuns = new Map();
     const activeRunIds = [];
     const tickPull = (prop, run, dtMs) => {
-        const grabConfig = resolveDragLaunchConfig(prop);
+        const grabConfig = resolveDragLaunchConfigFromSize(prop.radius);
         const rollConfig = getKineticRollConfig(prop);
         const tx = run.targetWorld.x + run.offsetX;
         const ty = run.targetWorld.y + run.offsetY;
@@ -329,7 +326,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         appendOverlayCommands(commands, prop) {
             const run = propRuns.get(prop.id);
             if (!run?.dragging) return;
-            const grabConfig = resolveDragLaunchConfig(prop);
+            const grabConfig = resolveDragLaunchConfigFromSize(prop.radius);
             grabDragAnchorWorld(prop, run);
             const ax = ENGINE_F32[G_WX];
             const ay = ENGINE_F32[G_WY];

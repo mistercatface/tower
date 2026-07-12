@@ -1220,7 +1220,7 @@ function satCheckPartRowsAtPose(partRowA, partRowB, xA, yA, cosA, sinA, xB, yB, 
     const slab = kineticDynamicSlab;
     const kindA = slab.partShapeKind[partRowA];
     const kindB = slab.partShapeKind[partRowB];
-    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return circleCircleContactR(xA, yA, slab.partRadius[partRowA], xB, yB, slab.partRadius[partRowB]);
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return circleCircleContact(xA, yA, slab.partRadius[partRowA], xB, yB, slab.partRadius[partRowB]);
     if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_POLYGON) return satPolygonPolygonF32(xA, yA, cosA, sinA, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[partRowA], slab.partVertFloatCount[partRowA], xB, yB, cosB, sinB, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[partRowB], slab.partVertFloatCount[partRowB]);
     if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_POLYGON) return satCirclePolygonF32(xA, yA, slab.partRadius[partRowA], xB, yB, cosB, sinB, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[partRowB], slab.partVertFloatCount[partRowB]);
     if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_CIRCLE) {
@@ -1244,10 +1244,7 @@ export function checkPairCollisionAtSlabPose(physIdA, physIdB, xA, yA, xB, yB) {
     for (let i = 0; i < countA; i++) for (let j = 0; j < countB; j++) if (satCheckPartRowsAtPose(geomA + i, geomB + j, xA, yA, cosA, sinA, xB, yB, cosB, sinB)) return true;
     return false;
 }
-export function circleCircleContact(xA, yA, shapeA, xB, yB, shapeB) {
-    return circleCircleContactR(xA, yA, shapeA.radius, xB, yB, shapeB.radius);
-}
-function circleCircleContactR(xA, yA, rA, xB, yB, rB) {
+export function circleCircleContact(xA, yA, rA, xB, yB, rB) {
     const dx = xB - xA;
     const dy = yB - yA;
     const distSq = dx * dx + dy * dy;
@@ -1300,11 +1297,11 @@ function satSwapCirclePolyContactFeatures() {
         SAT_RESULT[offset + 3] = fA;
     }
 }
-function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
+export function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
     if (!shapeA || !shapeB) return false;
     const kindA = shapeA.shapeTypeId;
     const kindB = shapeB.shapeTypeId;
-    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return circleCircleContactR(xA, yA, shapeA.radius, xB, yB, shapeB.radius);
+    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return circleCircleContact(xA, yA, shapeA.radius, xB, yB, shapeB.radius);
     if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_POLYGON) {
         const voA = shapeA._vertOffset || 0;
         const nA = shapeA._floatCount != null ? shapeA._floatCount : shapeA.vertices.length;
@@ -1346,9 +1343,6 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
     }
     for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, partsB[j])) return true;
     return false;
-}
-export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
-    return satCheckShapesAtPose(xA, yA, Math.cos(angleA), Math.sin(angleA), shapeA, xB, yB, Math.cos(angleB), Math.sin(angleB), shapeB);
 }
 const sWallVerts = ENGINE_F32.subarray(P_WALL_VERTS, P_WALL_VERTS + 8);
 const sWallNorms = ENGINE_F32.subarray(P_WALL_NORMS, P_WALL_NORMS + 8);
@@ -1775,9 +1769,6 @@ export function allowsKineticCollisionPairOrderSlab(physIdA, physIdB) {
 export function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
     if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) return false;
     return overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
-}
-export function allowsKineticCollisionPair(primary, other, overlaps) {
-    return allowsKineticCollisionPairSlab(primary._physId, other._physId, overlaps);
 }
 function kineticPairPassesBroadphase(physIdA, physIdB) {
     if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) return false;

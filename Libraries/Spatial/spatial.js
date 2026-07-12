@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
-import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
+import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
+import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, P_VEC_A, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction } from "../Physics/physics.js";
@@ -11,9 +11,6 @@ import { overlaySegment, rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
 import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, bindEntitySlot, clearWorldPropSpawnPose, ENTITY_FLAG_KINETIC } from "../Entity/entitySlots.js";
-export function railWallEdgeFromStamp(capHeightLevel, thicknessLevel, neighborFillLevel) {
-    return createRailWallEdge(capHeightLevel - neighborFillLevel, thicknessLevel);
-}
 export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     const dc = nc - c;
     const dr = nr - r;
@@ -282,11 +279,13 @@ function unzigzagChunk(u) {
 export function packChunkKey(axis0, axis1) {
     return zigzagChunk(axis0) * CHUNK_KEY_STRIDE + zigzagChunk(axis1);
 }
-function chunkKeyAxis0(key) {
-    return unzigzagChunk(Math.floor(key / CHUNK_KEY_STRIDE));
+export function chunkKeyAxis0(key) {
+    const packed = Math.floor(key / CHUNK_KEY_STRIDE);
+    return unzigzagChunk(packed);
 }
-function chunkKeyAxis1(key) {
-    return unzigzagChunk(key % CHUNK_KEY_STRIDE);
+export function chunkKeyAxis1(key) {
+    const packed = key % CHUNK_KEY_STRIDE;
+    return unzigzagChunk(packed);
 }
 export function cellIdxToChunkKey(idx, grid, cellsPerChunk) {
     const cols = grid.cols;
@@ -314,20 +313,8 @@ export function cellBoundsFromStampScalars(originIdx, gridCols, gridRows, stride
     const rows = cellCount / strideCols;
     return { startCol: Math.max(0, baseCol), endCol: Math.min(gridCols - 1, baseCol + cols - 1), startRow: Math.max(0, baseRow), endRow: Math.min(gridRows - 1, baseRow + rows - 1) };
 }
-export function cellBoundsFromStampLayout(layout) {
-    return cellBoundsFromStampScalars(layout.originIdx, layout.cols, layout.rows, layout.strideCols, layout.cellCount);
-}
-export function wrapChunkKey(chunkKey, period) {
-    return packChunkKey(((chunkKeyAxis0(chunkKey) % period) + period) % period, ((chunkKeyAxis1(chunkKey) % period) + period) % period);
-}
 export function chunkKeyBounds(buf, o, gridMinX, gridMinY, chunkKey, chunkSizePx) {
     minCornerAabbF32(buf, o, gridMinX + chunkKeyAxis0(chunkKey) * chunkSizePx, gridMinY + chunkKeyAxis1(chunkKey) * chunkSizePx, chunkSizePx, chunkSizePx);
-}
-export function worldToChunkKey(worldX, worldY, gridMinX, gridMinY, chunkSizePx) {
-    return packChunkKey(Math.floor((worldX - gridMinX) / chunkSizePx), Math.floor((worldY - gridMinY) / chunkSizePx));
-}
-export function remapChunkCoord(chunkCoord, cellOffset, cellsPerChunk) {
-    return cellToChunkCoord(chunkCoord * cellsPerChunk + cellOffset, cellsPerChunk);
 }
 export function createCenteredGridFrame(cellSize, width, height, centerX = 0, centerY = 0) {
     const cols = Math.ceil(width / cellSize);
@@ -414,8 +401,8 @@ export function extrudeLocalVertsInto(baseOut, topOut, localVerts, cx, cy, topX,
     for (let i = 0; i < count; i++) {
         const lx = localVerts[i * 2];
         const ly = localVerts[i * 2 + 1];
-        const topLx = scaleAtHeight(lx, alpha, 1);
-        const topLy = scaleAtHeight(ly, alpha, 1);
+        const topLx = lx * (1 + alpha);
+        const topLy = ly * (1 + alpha);
         baseOut[i * 2] = cx + lx * cos - ly * sin;
         baseOut[i * 2 + 1] = cy + lx * sin + ly * cos;
         topOut[i * 2] = topX + topLx * cos - topLy * sin;
@@ -427,9 +414,6 @@ export function isOutwardFaceTowardViewer(midX, midY, outwardX, outwardY, viewer
     const viewX = midX - viewerX;
     const viewY = midY - viewerY;
     return outwardX * viewX + outwardY * viewY < 0;
-}
-export function isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewerX, viewerY) {
-    return isOutwardFaceTowardViewer(edgeMidX, edgeMidY, edgeMidX - originX, edgeMidY - originY, viewerX, viewerY);
 }
 export function projectWorldQuad(buf, o, x0, y0, x1, y1, x2, y2, x3, y3, height, viewport) {
     const alpha = resolveElevationAlpha(height, viewport);
@@ -502,7 +486,7 @@ export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
         clearBoundaryPrimary(grid, idx, side, bumpRevision);
         return true;
     }
-    grid.writeMirroredCellEdge(idx, side, railWallEdgeFromStamp(spec.capHeightLevel, spec.thicknessLevel ?? 1, neighborFillLevel(grid, idx, side)));
+    grid.writeMirroredCellEdge(idx, side, createRailWallEdge(spec.capHeightLevel - neighborFillLevel(grid, idx, side), spec.thicknessLevel ?? 1));
     if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return true;
 }
@@ -521,9 +505,6 @@ export function clearAllBoundariesAtCell(grid, idx, bumpRevision = false) {
     if (changed && bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return changed;
 }
-export function boundaryBlocksStep(grid, idx, side) {
-    return isRailWallEdge(grid.getCellEdge(idx, side));
-}
 /** Directional step blocking: belt entry rules + rail-wall edges. */
 export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability, fromIdx, toIdx) {
     if (grid.grid[toIdx] !== 0) return true;
@@ -531,10 +512,10 @@ export function boundaryBlocksStepFrom(grid, navCardinalOpen, vertexPassability,
     if (PortalLink.blocksStep(grid, fromIdx, toIdx)) return true;
     const cols = grid.cols;
     const diff = toIdx - fromIdx;
-    if (diff === 1) return boundaryBlocksStep(grid, fromIdx, 1);
-    if (diff === -1) return boundaryBlocksStep(grid, fromIdx, 3);
-    if (diff === cols) return boundaryBlocksStep(grid, fromIdx, 2);
-    if (diff === -cols) return boundaryBlocksStep(grid, fromIdx, 0);
+    if (diff === 1) return isRailWallEdge(grid.getCellEdge(fromIdx, 1));
+    if (diff === -1) return isRailWallEdge(grid.getCellEdge(fromIdx, 3));
+    if (diff === cols) return isRailWallEdge(grid.getCellEdge(fromIdx, 2));
+    if (diff === -cols) return isRailWallEdge(grid.getCellEdge(fromIdx, 0));
     if (diff === cols + 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid, fromIdx, 1, 1);
     if (diff === cols - 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid, fromIdx, -1, 1);
     if (diff === -cols + 1) return !diagonalStepOpen(navCardinalOpen, vertexPassability, grid, fromIdx, 1, -1);
@@ -568,7 +549,7 @@ export function recomputeVertexPassabilityInto(grid, vertexPassability, bounds =
             for (let i = 0; i < HALF_EDGE_SPECS.length; i++) {
                 const spec = HALF_EDGE_SPECS[i];
                 const ownerIdx = (vy + spec.ownerRow) * cols + (vx + spec.ownerCol);
-                if (!boundaryBlocksStep(grid, ownerIdx, spec.ownerSide)) mask |= spec.bit;
+                if (!isRailWallEdge(grid.getCellEdge(ownerIdx, spec.ownerSide))) mask |= spec.bit;
             }
             vertexPassability[packVertexKey(vx, vy, cols)] = mask;
         }
@@ -957,8 +938,8 @@ export class SurfaceMaterialStore {
         for (const [key, profileId] of snapshot.chunkProfileIds) {
             const axis0 = chunkKeyAxis0(key);
             const axis1 = chunkKeyAxis1(key);
-            const newAxis0 = remapChunkCoord(axis0, colOffset, cellsPerChunk);
-            const newAxis1 = remapChunkCoord(axis1, rowOffset, cellsPerChunk);
+            const newAxis0 = cellToChunkCoord(axis0 * cellsPerChunk + colOffset, cellsPerChunk);
+            const newAxis1 = cellToChunkCoord(axis1 * cellsPerChunk + rowOffset, cellsPerChunk);
             this.chunkProfileIds.set(packChunkKey(newAxis0, newAxis1), profileId);
         }
     }
@@ -1010,34 +991,22 @@ export class SurfaceMaterialStore {
         return this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 0)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 1)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 2)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 3));
     }
 }
-export function resolveChunkBaseProfileIdAtIdx(grid, idx, cellsPerChunk, baseProfileId) {
-    return resolveChunkSurfaceProfileIdAtKey(grid, cellIdxToChunkKey(idx, grid, cellsPerChunk), baseProfileId);
-}
 export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0, face = null) {
     if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunkAtKey(a) ?? baseProfileId;
     if (ownerKind === SURFACE_MATERIAL_OWNER.Cell) {
-        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileIdAtIdx(grid, a, cellsPerChunk, baseProfileId) : baseProfileId;
+        const chunkBase = cellsPerChunk > 0 ? resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, cellIdxToChunkKey(a, grid, cellsPerChunk)) : baseProfileId;
         return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
     }
     if (ownerKind === SURFACE_MATERIAL_OWNER.WallFace) {
-        const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileIdAtIdx(grid, face.gridIdx, cellsPerChunk, baseProfileId) : baseProfileId;
+        const chunkBase = cellsPerChunk > 0 ? resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, cellIdxToChunkKey(face.gridIdx, grid, cellsPerChunk)) : baseProfileId;
         if (face.isEdgeRail) return grid.surfaceMaterials.getEdgeByIdx(face.gridIdx, face.gridSide) ?? chunkBase;
         return grid.surfaceMaterials.getCellAtIdx(face.gridIdx) ?? chunkBase;
     }
     throw new Error(`unknown surface material owner kind: ${ownerKind}`);
 }
-export function resolveCellSurfaceProfileId(grid, idx, baseProfileId, cellsPerChunk = 0) {
-    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, baseProfileId, cellsPerChunk, idx);
-}
 export function resolveEdgeSurfaceProfileId(grid, idx, side, baseProfileId, cellsPerChunk = 0) {
-    const chunkBase = cellsPerChunk > 0 ? resolveChunkBaseProfileIdAtIdx(grid, idx, cellsPerChunk, baseProfileId) : baseProfileId;
+    const chunkBase = cellsPerChunk > 0 ? resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, cellIdxToChunkKey(idx, grid, cellsPerChunk)) : baseProfileId;
     return grid.surfaceMaterials.getEdgeByIdx(idx, side) ?? chunkBase;
-}
-export function resolveWallSurfaceProfileId(grid, face, baseProfileId, cellsPerChunk = 0) {
-    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.WallFace, baseProfileId, cellsPerChunk, 0, 0, 0, face);
-}
-export function resolveChunkSurfaceProfileIdAtKey(grid, chunkKey, baseProfileId) {
-    return resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, chunkKey);
 }
 export class WorldObstacleGrid {
     constructor(cellSize) {
@@ -2288,13 +2257,9 @@ export function clearVoxelWallsBatch(state, voxelIndices) {
     commitGridWallBatch(state, bounds);
     return bounds;
 }
-/** Clear voxel and rail walls without nav invalidation — pair with commitGridNavEdit or deferred flush. */
-export function clearGridWallsQuiet(state, { voxels = [], rails = [] } = {}) {
-    return unionCellBounds(clearVoxelWallsQuiet(state, voxels), clearRailWallsQuiet(state, rails));
-}
 /** Clear voxel and rail walls in one nav invalidation. */
 export function clearGridWallsBatch(state, { voxels = [], rails = [] } = {}) {
-    const bounds = clearGridWallsQuiet(state, { voxels, rails });
+    const bounds = unionCellBounds(clearVoxelWallsQuiet(state, voxels), clearRailWallsQuiet(state, rails));
     commitGridWallBatch(state, bounds);
     return bounds;
 }
@@ -2413,7 +2378,7 @@ export function getRailWallInfo(grid, idx, side) {
 }
 export function clearPrimaryBoundaryAt(state, idx, side, bumpRevision = false) {
     const grid = state.obstacleGrid;
-    if (!boundaryBlocksStep(grid, idx, side)) return false;
+    if (!isRailWallEdge(grid.getCellEdge(idx, side))) return false;
     clearBoundaryPrimary(grid, idx, side, bumpRevision);
     return true;
 }
@@ -2548,12 +2513,6 @@ export function generateCellularAutomataGrid(cols, rows, { fillChance, iteration
     let cells = fillRandomGrid(cols, rows, fillChance);
     return runCellularAutomata(cols, rows, cells, { iterations, wallThreshold, scratch: new Uint8Array(cols * rows) });
 }
-export function fillRandomBuffer(strideCols, cellCount, fillChance, out) {
-    return fillRandomGrid(strideCols, cellCount / strideCols, fillChance, out);
-}
-export function runCellularAutomataBuffer(strideCols, cellCount, cells, options) {
-    return runCellularAutomata(strideCols, cellCount / strideCols, cells, options);
-}
 function clearCavernOccupancyBoundaryStrip(cells, cols, rows, side, stripRows) {
     const depth = Math.max(1, Math.round(stripRows));
     if (side === "south") {
@@ -2646,8 +2605,8 @@ export function generateCavernOccupancy(grid, config, { openBoundarySides = null
     const { originIdx, cols: layoutCols, rows: gridRows, strideCols, cellCount } = stampLayoutFromConfig(grid, config);
     const cols = strideCols;
     const rows = cellCount / strideCols;
-    let cells = fillRandomBuffer(strideCols, cellCount, config.fillChance);
-    cells = runCellularAutomataBuffer(strideCols, cellCount, cells, { iterations: config.iterations, scratch: new Uint8Array(cellCount) });
+    let cells = fillRandomGrid(strideCols, cellCount / strideCols, config.fillChance);
+    cells = runCellularAutomata(strideCols, cellCount / strideCols, cells, { iterations: config.iterations, scratch: new Uint8Array(cellCount) });
     applyMapGenShapeMask(grid, cells, originIdx, layoutCols, strideCols, cellCount, config);
     if (openBoundarySides?.south) {
         clearCavernOccupancyBoundaryStrip(cells, cols, rows, "south", openBoundaryRows);
@@ -2960,7 +2919,8 @@ function clearStaticWallsAndEdgesInBounds(grid, bounds) {
     return bounds;
 }
 function stampCellBoundsForConfig(grid, config) {
-    return cellBoundsFromStampLayout(stampLayoutFromConfig(grid, config));
+    const layout = stampLayoutFromConfig(grid, config);
+    return cellBoundsFromStampScalars(layout.originIdx, layout.cols, layout.rows, layout.strideCols, layout.cellCount);
 }
 function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
     const grid = state.obstacleGrid;
@@ -3002,7 +2962,7 @@ function mergeDonutInnerClear(state, config, damageBounds) {
 export function applyMapGenSurfaceProfile(state, config, profileId) {
     const grid = state.obstacleGrid;
     const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampLayout(stampLayoutFromConfig(grid, config)), profileId, cellsPerChunk);
+    grid.setChunkSurfaceProfileForCellBounds(stampCellBoundsForConfig(grid, config), profileId, cellsPerChunk);
     grid.surfaceMaterialRevision++;
 }
 function paintMapGenStampedRegion(state, config, defaultProfile) {
@@ -3026,7 +2986,7 @@ export function refreshAllStampedRegionSurfaces(state) {
         const config = state.editor[spec.editorKey];
         if (!hasMapGenStamp(config)) continue;
         const profileId = config.surfaceProfileId || spec.defaultProfile;
-        grid.setChunkSurfaceProfileForCellBounds(cellBoundsFromStampLayout(stampLayoutFromConfig(grid, stampedPaintConfig(config))), profileId, cellsPerChunk);
+        grid.setChunkSurfaceProfileForCellBounds(stampCellBoundsForConfig(grid, stampedPaintConfig(config)), profileId, cellsPerChunk);
     }
     grid.surfaceMaterialRevision++;
     state.worldSurfaces.clearBakeCache();
@@ -3052,8 +3012,8 @@ function runRailCavernEdgeCA(mapSeed, config, originIdx, layoutCols, strideCols,
     const seedOffset = horizontal ? 0 : 1;
     let cells = null;
     withSeededRandom(mapSeed + seedOffset, () => {
-        cells = fillRandomBuffer(edgeStride, edgeCount, config.fillChance);
-        cells = runCellularAutomataBuffer(edgeStride, edgeCount, cells, { iterations: config.iterations, scratch: new Uint8Array(edgeCount) });
+        cells = fillRandomGrid(edgeStride, edgeCount / edgeStride, config.fillChance);
+        cells = runCellularAutomata(edgeStride, edgeCount / edgeStride, cells, { iterations: config.iterations, scratch: new Uint8Array(edgeCount) });
     });
     for (let edgeIdx = 0; edgeIdx < edgeCount; edgeIdx++) {
         let in1 = false;

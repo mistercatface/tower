@@ -1,5 +1,5 @@
 import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx, floorOccupancyStampDrawCacheKey } from "./spatial.js";
-import { CorridorPathfinder, createNavGraphViewFromTopology } from "../Navigation/navigation.js";
+import { CorridorPathfinder, createNavGraphView } from "../Navigation/navigation.js";
 import { createSeededRng } from "../Math/math.js";
 import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
 import { readEntityFacing } from "../Physics/physics.js";
@@ -508,7 +508,7 @@ export class CorridorBeltSession {
 }
 export function hasOpenBeltMouthSideIdx(grid, navTopology, idx) {
     if (grid.isBlockedIdx(idx)) return false;
-    const navGraph = createNavGraphViewFromTopology(navTopology);
+    const navGraph = createNavGraphView(navTopology.grid, { cardinalOpen: navTopology.navCardinalOpen, vertexPassability: navTopology.vertexPassability }, navTopology);
     let open = false;
     forEachCardinalNeighborIdx(idx, grid, (nIdx) => {
         if (open) return;
@@ -546,7 +546,7 @@ export function validateBeltPathMouthAccess(grid, navTopology, path, occupiedGlo
     if (grid.isBlockedIdx(exitExteriorIdx)) return false;
     if (occupiedGlobalIndices.has(entryExteriorIdx)) return false;
     if (occupiedGlobalIndices.has(exitExteriorIdx)) return false;
-    const navGraph = createNavGraphViewFromTopology(navTopology);
+    const navGraph = createNavGraphView(navTopology.grid, { cardinalOpen: navTopology.navCardinalOpen, vertexPassability: navTopology.vertexPassability }, navTopology);
     if (!navGraph.canStepIdx(entryExteriorIdx, startIdx)) return false;
     if (!navGraph.canStepIdx(endIdx, exitExteriorIdx)) return false;
     return true;

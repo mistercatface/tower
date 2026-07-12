@@ -146,9 +146,6 @@ export function sandboxTagsMatchFilter(filter, tags) {
     if (filter === "all") return true;
     return tags.includes(filter);
 }
-export function sandboxAssetMatchesTagFilter(asset, filter) {
-    return sandboxTagsMatchFilter(filter, sandboxAssetTags(asset));
-}
 export function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
 }
@@ -162,9 +159,6 @@ export function isSingleWorldPropSpawnAsset(asset) {
 }
 function syncSandboxBehaviorById(state, behaviors) {
     state.sandbox.behaviorById = new Map(behaviors.map((behavior) => [behavior.id, behavior]));
-}
-export function isSandboxPointerSelectableProp(asset) {
-    return assetSupportsDragInteraction(asset);
 }
 const BOUNDS_SHAPE_OPTIONS = [
     { value: "rect", label: "Rectangle" },
@@ -734,7 +728,7 @@ const PLACEABLE = {
                 const grid = state.obstacleGrid;
                 const idx = grid.worldToIdx(worldX, worldY);
                 if (idx === -1) return false;
-                const chain = spawnLinkedBallChain(state, idx, { headBallType: "snake", ballType: "ball", segmentCount: ctx.spawnSnakeLength, segmentRadius: ctx.spawnBallRadius, faction: ctx.spawnFaction, spacing: ctx.spawnBallRadius * 2, linkSlack: 1.0 });
+                const chain = spawnAgentChain(state, idx, { leaderIndex: 0, headPropId: "snake", bodyPropId: "ball", segmentCount: ctx.spawnSnakeLength, segmentRadius: ctx.spawnBallRadius, faction: ctx.spawnFaction, spacing: ctx.spawnBallRadius * 2, linkSlack: 1.0, growDirX: -1, growDirY: 0 });
                 if (chain && chain.leader) {
                     for (let i = 0; i < chain.members.length; i++) applyPropSurfaceProfile(chain.members[i], ctx.spawnSurfaceProfileId);
                     ctx.placement.touchPropPlacement(chain.leader.id);
@@ -1084,7 +1078,7 @@ export function createSandboxSession(state) {
     const selectAllPropsWithTagFilter = (filter) => {
         const ids = [];
         visitLiveWorldProps(state.worldProps, (prop) => {
-            if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter)) return;
+            if (!sandboxTagsMatchFilter(filter, sandboxAssetTags(propCatalog[prop.type]))) return;
             ids.push(prop.id);
         });
         pickSelection(ids.length === 0 ? null : { kind: "prop", ids });
@@ -1095,7 +1089,7 @@ export function createSandboxSession(state) {
         const next = new Set();
         for (const id of current.ids) {
             const prop = registry().getLive(id);
-            if (prop && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter)) next.add(id);
+            if (prop && sandboxTagsMatchFilter(filter, sandboxAssetTags(propCatalog[prop.type]))) next.add(id);
         }
         selection.select(next.size === 0 ? null : { kind: "prop", ids: [...next] });
         notifyUi();
@@ -1518,9 +1512,6 @@ export function spawnAgentChain(state, anchorIdx, spec) {
     setChainHead(state, meta, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
 }
-export function spawnLinkedBallChain(state, anchorIdx, options) {
-    return spawnAgentChain(state, anchorIdx, { leaderIndex: 0, headPropId: options.headBallType ?? options.ballType, bodyPropId: options.ballType, segmentCount: options.segmentCount, faction: options.faction, exportType: options.exportType, linkSlack: options.linkSlack, segmentRadius: options.segmentRadius, growDirX: options.growDirX ?? -1, growDirY: options.growDirY ?? 0, spacing: options.spacing, spawnGroupId: options.spawnGroupId });
-}
 export function growChainSegment(state, tailProp, options) {
     const spacing = options.spacing;
     const ballType = options.ballType;
@@ -1558,7 +1549,7 @@ export function tryExportLinkedBallChainSpawnGroup(members) {
 export function isChainLinkBall(prop) {
     if (!prop?.strategy?.isKinetic) return false;
     if (prop.strategy?.canChain) return true;
-    return sandboxAssetMatchesTagFilter(propCatalog[prop.type], "nav");
+    return sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]));
 }
 export function hasChainMembership(state, propId) {
     const store = kineticConstraintStore;
@@ -1978,7 +1969,7 @@ export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
-        if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], "nav")) continue;
+        if (!sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]))) continue;
         if (entityMeta && !isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         count++;
     }
@@ -1991,7 +1982,7 @@ export function issueGroundNavToSelection(state, { propIds, behaviorId, world, b
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
         if (!prop || prop.isDead) continue;
-        if (!sandboxAssetMatchesTagFilter(propCatalog[prop.type], "nav")) continue;
+        if (!sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]))) continue;
         if (!isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         entityMeta.setActiveBehaviorId(prop.id, behaviorId);
         behavior.setMoveTarget(prop, world);
@@ -2344,7 +2335,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
                     }
                 }
                 const asset = propCatalog[hit.type];
-                if (isSandboxPointerSelectableProp(asset)) {
+                if (assetSupportsDragInteraction(asset)) {
                     if (e.ctrlKey || e.metaKey) {
                         session.togglePropInSelection(hit.id);
                         return "consume";
@@ -2928,7 +2919,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         onBoxSelect() {
             const o = ENGINE_BOUNDS_BASE + B_TMP;
             const filter = session.getSelectionTagFilter();
-            const count = state.entityRegistry.queryInAabbF32(null, ENGINE_F32, o, "marquee", (prop) => entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter));
+            const count = state.entityRegistry.queryInAabbF32(null, ENGINE_F32, o, "marquee", (prop) => entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxTagsMatchFilter(filter, sandboxAssetTags(propCatalog[prop.type])));
             const eids = state.entityRegistry.borrowedQueryIds("marquee");
             const ids = [];
             for (let i = 0; i < count; i++) {

@@ -1,6 +1,6 @@
 import { pruneKineticConstraintsForBody, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHashF32, entityIntersectsAabbEidF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
+import { aabbHashF32, circleIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, pickWorldPoly, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
@@ -280,7 +280,7 @@ export class EntityArena {
             const eid = this._candidateEids[i];
             if (!entityAlive[eid]) continue;
             if ((entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0) continue;
-            if (!entityIntersectsAabbEidF32(eid, buf, o)) continue;
+            if (!circleIntersectsAabbF32(entityX[eid], entityY[eid], entityR[eid], buf, o)) continue;
             if (match) {
                 const ref = entitySlotRef(eid);
                 if (!ref || !match(ref)) continue;

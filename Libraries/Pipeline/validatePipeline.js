@@ -74,8 +74,7 @@ export function collectStepValidationErrors(config, registry, options = {}) {
                 }
                 const itemConfig = /** @type {Record<string, unknown>} */ (item);
                 const childId = stepId(itemConfig);
-                if (slot.allowedSteps?.length && childId && !slot.allowedSteps.includes(childId))
-                    errors.push({ path: joinPath(pathPrefix, `${slot.name}[${i}]`), message: `step "${childId}" is not allowed in ${slot.name}` });
+                if (slot.allowedSteps?.length && childId && !slot.allowedSteps.includes(childId)) errors.push({ path: joinPath(pathPrefix, `${slot.name}[${i}]`), message: `step "${childId}" is not allowed in ${slot.name}` });
                 errors.push(...collectStepValidationErrors(itemConfig, registry, { pathPrefix: joinPath(pathPrefix, `${slot.name}[${i}]`) }));
             }
             continue;
@@ -86,8 +85,7 @@ export function collectStepValidationErrors(config, registry, options = {}) {
         }
         const childConfig = /** @type {Record<string, unknown>} */ (child);
         const childId = stepId(childConfig);
-        if (slot.allowedSteps?.length && childId && !slot.allowedSteps.includes(childId))
-            errors.push({ path: joinPath(pathPrefix, slot.name), message: `${slot.name} step "${childId}" is not allowed here` });
+        if (slot.allowedSteps?.length && childId && !slot.allowedSteps.includes(childId)) errors.push({ path: joinPath(pathPrefix, slot.name), message: `${slot.name} step "${childId}" is not allowed here` });
         errors.push(...collectStepValidationErrors(childConfig, registry, { pathPrefix: joinPath(pathPrefix, slot.name) }));
     }
     return errors;
@@ -96,14 +94,6 @@ export function collectStepValidationErrors(config, registry, options = {}) {
  * @param {Record<string, unknown>} config
  * @param {ReturnType<import("./stepRegistry.js").createStepRegistry>} registry
  * @param {{ pathPrefix?: string }} [options]
- * @returns {PipelineValidationResult}
- */
-export function validateStepConfig(config, registry, options = {}) {
-    return fail(collectStepValidationErrors(config, registry, options));
-}
-/**
- * @param {{ config: Record<string, unknown> }[]} rows
- * @param {ReturnType<import("./stepRegistry.js").createStepRegistry>} registry
  * @returns {PipelineValidationResult}
  */
 export function validatePipelineRows(rows, registry) {

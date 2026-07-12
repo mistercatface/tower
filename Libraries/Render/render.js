@@ -1,6 +1,6 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
-import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
-import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
+import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
+import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -773,7 +773,7 @@ function ensurePrismScratch(vertexCount) {
     }
 }
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
-    return isFaceTowardViewer(edgeMidX, edgeMidY, originX, originY, viewport.x, viewport.y);
+    return isOutwardFaceTowardViewer(edgeMidX, edgeMidY, edgeMidX - originX, edgeMidY - originY, viewport.x, viewport.y);
 }
 function drawSideFaceFlat(ctx, edgeIndex, count, shadow, mid, highlight) {
     const ai = edgeIndex * 2;
@@ -897,8 +897,8 @@ function fillPrismOptsFromDraw(opts, prop) {
 function scalePrismTopExtents(viewport) {
     if (sPrismOpts.topHx == null || sPrismOpts.topHy == null) return;
     const alpha = resolveElevationAlpha(sPrismOpts.height, viewport);
-    sPrismOpts.topHx = scaleAtHeight(sPrismOpts.topHx, alpha, 1);
-    sPrismOpts.topHy = scaleAtHeight(sPrismOpts.topHy, alpha, 1);
+    sPrismOpts.topHx = sPrismOpts.topHx * (1 + alpha);
+    sPrismOpts.topHy = sPrismOpts.topHy * (1 + alpha);
 }
 export function drawExtrudedConvexPolygon(ctx, prop, viewport, opts) {
     fillPrismOptsFromDraw(opts, prop);
@@ -1397,7 +1397,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     const worldSurfaces = state.worldSurfaces;
     const { wallHeight, wallBaseZ, wallCapHeight, cacheObj, atlasFaceId } = face;
     const settings = worldSurfaces.settings;
-    const profileId = resolveWallSurfaceProfileId(state.obstacleGrid, face, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk);
+    const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.WallFace, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk, 0, 0, 0, face);
     const seed = worldSurfaces.worldSurfaceSeed;
     const wallHeightKey = resolveWallCapHeightPx(wallCapHeight, settings);
     const canUseSideCache = cacheObj && worldSurfaces.cacheKeys && worldSurfaces.worldSurfaceSeed !== undefined;

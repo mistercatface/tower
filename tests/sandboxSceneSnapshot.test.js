@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { findLiveWorldProp } from "../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
+import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
+import { hslToHex, normalizeHue } from "../Libraries/Color/colorMath.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
+import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 
 function createSnapshotTestState(cols = 32, rows = 32) {
     return createSandboxKineticWorld(cols, rows);
@@ -50,7 +51,7 @@ describe("sandboxSceneSnapshot physics", () => {
     it("round-trips physics fields through collect and apply helpers", () => {
         const state = createSnapshotTestState();
         const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball", "alpha");
-        const tintHex = hueToPickerHex(135);
+        const tintHex = hslToHex(normalizeHue(135), 70, 50);
         setPropVisualTint(tinted, tintHex);
         spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 10, 10), {
             segmentCount: 4,

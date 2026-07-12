@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { satCheckCollision, readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Physics/physics.js";

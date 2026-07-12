@@ -2,7 +2,7 @@ import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
-import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
+import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, getWallChunkSpriteCacheKey, DEFAULT_PROP_HEIGHT, SPHERE_PENDING_FILL } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
@@ -31,9 +31,6 @@ export function formatSandboxSpawnLabel(propId) {
     return asset?.sandbox?.spawnLabel ?? formatPropTypeLabel(propId);
 }
 const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
-export function createPolygonPrimitive() {
-    return createWallChunkDraw();
-}
 export function createSpherePrimitive(visuals) {
     const v = visuals ?? {};
     const pendingFill = v.pendingFill ?? SPHERE_PENDING_FILL;
@@ -58,7 +55,7 @@ function assetUsesWallChunkSurface(asset) {
 }
 export const PROP_PRIMITIVE_BUILDERS = [];
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] = createSpherePrimitive;
-PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON] = createPolygonPrimitive;
+PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON] = createWallChunkDraw;
 if (PROP_PRIMITIVE_BUILDERS.length !== PROP_PRIMITIVE_COUNT || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON]) throw new Error("PROP_PRIMITIVE_BUILDERS incomplete relative to PROP_PRIMITIVE_COUNT");
 export function getPolygonPropBoundingRadius(prop) {
     return prop.radius;
@@ -300,8 +297,8 @@ export function sharedWorldPropStrategy(type) {
 let nextWorldPropId = 1;
 const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
 function resolvePropSpawnFacing(prop, facing) {
-    if (facing != null) return prop.strategy.cardinalFacing ? quantizeCardinalAngle(facing) : facing;
-    if (prop.strategy.cardinalFacing) return quantizeCardinalAngle(0);
+    if (facing != null) return prop.strategy.cardinalFacing ? quantizeAngle(facing, CARDINAL_FACING_STEPS) : facing;
+    if (prop.strategy.cardinalFacing) return quantizeAngle(0, CARDINAL_FACING_STEPS);
     return deterministicUnitRandom(Math.imul(prop.id, 2654435761)) * Math.PI * 2;
 }
 // WorldProp lifecycle: (1) birth - new WorldProp() or sandbox spawn; (2) live - registry/kinetic membership; (3) death - removeWorldPropFromState.

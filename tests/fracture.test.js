@@ -11,7 +11,8 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
 import { FRACTURE_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
 import { transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, kineticStaticSlab } from "../Core/engineMemory.js";
-import { satCheckCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
+import { readEntityFacing } from "../Libraries/Physics/physics.js";
+import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";

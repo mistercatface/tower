@@ -12,7 +12,8 @@ import { removeChainLinkBetween } from "../Libraries/Sandbox/sandbox.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
+import { readEntityFacing } from "../Libraries/Physics/physics.js";
+import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { liveFracturePropCount } from "./harness/fractureHarness.js";
 
