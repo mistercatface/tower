@@ -2,7 +2,6 @@ import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, bumpFloorOccupancySt
 import { CorridorPathfinder, createNavGraphView } from "../Navigation/navigation.js";
 import { createSeededRng } from "../Math/math.js";
 import { BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
-import { readEntityFacing } from "../Physics/physics.js";
 import { GRID_NAV_EPOCH_FLOOR, GRID_STAMP_RENDER_KEY_FLOOR_BELT } from "../../Core/engineEnums.js";
 import { circleInViewBounds, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
@@ -564,19 +563,15 @@ export function collectPathMouthExteriorIndices(paths, grid) {
     }
     return mouths;
 }
-function createFlatConveyorDraw(options = {}) {
-    const { turnDirection = null, chevronColors: chevronColorsOverride } = options;
-    const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };
+function createFlatConveyorDraw(turn) {
+    const chevronFill = "#0EA5E9";
+    const chevronStroke = "#0284C7";
     const beltStroke = "#111111";
     const beltFill = "#1e1e1e";
-    return (ctx, prop) => {
-        const hx = prop.halfX;
-        const hy = prop.halfY;
+    return (ctx, hx, hy, facing, ageMs) => {
         const lineScale = getCanvasLineScale(ctx);
-        const angle = readEntityFacing(prop);
         ctx.save();
-        ctx.translate(prop.x, prop.y);
-        ctx.rotate(angle);
+        ctx.rotate(facing);
         ctx.fillStyle = beltFill;
         ctx.fillRect(-hx, -hy, hx * 2, hy * 2);
         ctx.strokeStyle = beltStroke;
@@ -587,18 +582,18 @@ function createFlatConveyorDraw(options = {}) {
         ctx.clip();
         const speed = 20;
         const spacing = 8;
-        const timeSec = (prop.ageMs ?? 0) / 1000;
+        const timeSec = ageMs / 1000;
         const strokeSlats = (drawSlat) => {
             ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
             ctx.lineWidth = 1.0 * lineScale;
             drawSlat();
         };
         const styleChevrons = () => {
-            ctx.fillStyle = chevronColors.fill;
-            ctx.strokeStyle = chevronColors.stroke;
+            ctx.fillStyle = chevronFill;
+            ctx.strokeStyle = chevronStroke;
             ctx.lineWidth = 0.5 * lineScale;
         };
-        if (!turnDirection) {
+        if (turn === 1) {
             const offset = (timeSec * speed) % spacing;
             strokeSlats(() => {
                 const numSlats = Math.ceil((hx * 2) / 4) + 2;
@@ -628,7 +623,7 @@ function createFlatConveyorDraw(options = {}) {
             ctx.restore();
             return;
         }
-        const isLeft = turnDirection === "left";
+        const isLeft = turn === 0;
         const pivotX = hx;
         const pivotY = isLeft ? hy : -hy;
         const startAngle = Math.PI;
@@ -672,15 +667,14 @@ function createFlatConveyorDraw(options = {}) {
         ctx.restore();
     };
 }
-const beltFilmstripDrawByTurn = { straight: createFlatConveyorDraw(), left: createFlatConveyorDraw({ turnDirection: "left" }), right: createFlatConveyorDraw({ turnDirection: "right" }) };
+const BELT_FILMSTRIP_DRAW_BY_TURN = [createFlatConveyorDraw(0), createFlatConveyorDraw(1), createFlatConveyorDraw(2)];
 const BELT_FILMSTRIP_DRAW = new Array(16);
 let beltFilmstripDrawReady = false;
 function ensureBeltFilmstripDrawTable() {
     if (beltFilmstripDrawReady) return;
     for (let packed = 1; packed < 16; packed++) {
         if (!BeltPacked.isValid(packed)) continue;
-        const turn = BeltPacked.turn(packed);
-        BELT_FILMSTRIP_DRAW[packed] = turn === 0 ? beltFilmstripDrawByTurn.left : turn === 2 ? beltFilmstripDrawByTurn.right : beltFilmstripDrawByTurn.straight;
+        BELT_FILMSTRIP_DRAW[packed] = BELT_FILMSTRIP_DRAW_BY_TURN[BeltPacked.turn(packed)];
     }
     beltFilmstripDrawReady = true;
 }

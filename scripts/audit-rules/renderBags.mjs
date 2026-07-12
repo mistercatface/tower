@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const bannedBagRe = /\bwallFaceScratch\b|\bsWallFaceColors\b|\bsWallBackFaceColors\b|\bsWallTopColors\b|\bsWallDrawOpts\b|\bsPrismOpts\b|\bSPHERE_PENDING_FILL\b|\bWALL_CHUNK_FALLBACK\b|\bpendingFill\b|\bWALL_FACE_ATLAS_SOLID\b|\bsWallBucketLookup\b|\bsGridStampHalfExtents\b/;
+const bannedBagRe = /\bwallFaceScratch\b|\bsWallFaceColors\b|\bsWallBackFaceColors\b|\bsWallTopColors\b|\bsWallDrawOpts\b|\bsPrismOpts\b|\bSPHERE_PENDING_FILL\b|\bWALL_CHUNK_FALLBACK\b|\bpendingFill\b|\bWALL_FACE_ATLAS_SOLID\b|\bsWallBucketLookup\b|\bsGridStampHalfExtents\b|\bsGridStampStage\b/;
 const overlayStringKeyRe = /`(?:r|d|cs|pd|pah|fda|we|gch)\$\{/;
 const beltStripStringRe = /`p\$\{/;
 

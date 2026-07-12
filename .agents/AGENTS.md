@@ -104,7 +104,7 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - CSS color strings stay only at the canvas `fillStyle` / `strokeStyle` edge.
 - Overlay AABB draw: `drawAabbStyle(ctx, minX, minY, maxX, maxY, …)` — no `{ minX, minY, maxX, maxY }` rebox on bake.
 - `VisibleDrawQueue`: typed `kinds` / `baseIndices` / `depths` + eid column — no object `refs` shuffle.
-- Grid stamps: `GRID_STAMP_RENDER_KEY_*` bare ints; filmstrip strip keys are packed/role ints; half extents as scalars.
+- Grid stamps: `GRID_STAMP_RENDER_KEY_*` bare ints; filmstrip strip keys packed/role ints; bake calls `draw(ctx, hx, hy, facing, ageMs)` — no stamp stage prop proxy; blit via SoA slab + scalar frame/alpha/scale.
 - Spatial wall-candidate lookup: typed I32 columns (no `sWallBucketLookup` bag); `setBoundary(grid, idx, side, cap, thickness)`.
 - Aim/ray: `castSteppedCircleRay` writes F32/I32 outs + bare hit enum — no `{ hit, x, y, dist }` / string hit kinds.
 

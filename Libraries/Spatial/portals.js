@@ -106,9 +106,9 @@ export class PortalLink {
 const PORTAL_EXIT_PALETTE = { ring: "#ff7a2f", glow: "rgba(255,122,47,0.35)", core: "#ffd9b0" };
 const PORTAL_ENTRY_PALETTE = { ring: "#3fa9ff", glow: "rgba(63,169,255,0.35)", core: "#bfe4ff" };
 function portalDrawForPalette(palette) {
-    return (ctx, prop) => {
-        const r = prop.radius * 0.82;
-        const twist = ((prop.ageMs ?? 0) / (BELT_FRAME_MS * BELT_FILMSTRIP_FRAMES)) * Math.PI * 2;
+    return (ctx, radius, _hy, _facing, ageMs) => {
+        const r = radius * 0.82;
+        const twist = (ageMs / (BELT_FRAME_MS * BELT_FILMSTRIP_FRAMES)) * Math.PI * 2;
         ctx.save();
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, Math.PI * 2);

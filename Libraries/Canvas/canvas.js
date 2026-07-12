@@ -641,41 +641,27 @@ function packZoomKeyBucket(zoom) {
     return Math.round(quantizePropBakeZoom(zoom) * 8);
 }
 const PROP_SPRITE_KEY_DEPS = { quantizeAngleIndex };
-export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, modifier = null, frameIndex = 0) {
+export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, frameIndex = 0, alpha = 1, scale = 1) {
     const anchorX = slab.anchorX[slot];
     const anchorY = slab.anchorY[slot];
     const canvas = slab.handles[slot];
     const frameCount = slab.frameCount[slot];
     const frameWidthCanvas = slab.frameWidthCanvas[slot];
-    const drawW = slab.drawW[slot];
-    const drawH = slab.drawH[slot];
-    const destX = worldX - anchorX;
-    const destY = worldY - anchorY;
+    const drawW = slab.drawW[slot] * scale;
+    const drawH = slab.drawH[slot] * scale;
+    const destX = worldX - anchorX * scale;
+    const destY = worldY - anchorY * scale;
     const sx = frameCount > 1 ? (frameIndex % frameCount) * frameWidthCanvas : 0;
     const sw = frameCount > 1 ? frameWidthCanvas : canvas.width;
     const sh = canvas.height;
-    if (!modifier) {
+    if (alpha === 1) {
         ctx.drawImage(canvas, sx, 0, sw, sh, destX, destY, drawW, drawH);
         return;
     }
-    const drawX = modifier.drawX ?? worldX;
-    const drawY = modifier.drawY ?? worldY;
-    const scale = modifier.scale ?? 1;
-    if (modifier.clipCircle) {
-        ctx.save();
-        prepModifiedBlit(ctx, modifier);
-        ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
-        ctx.restore();
-        return;
-    }
-    if (modifier.alpha != null) {
-        const prevAlpha = ctx.globalAlpha;
-        ctx.globalAlpha = prevAlpha * modifier.alpha;
-        ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
-        ctx.globalAlpha = prevAlpha;
-        return;
-    }
-    ctx.drawImage(canvas, sx, 0, sw, sh, drawX - anchorX * scale, drawY - anchorY * scale, drawW * scale, drawH * scale);
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = prevAlpha * alpha;
+    ctx.drawImage(canvas, sx, 0, sw, sh, destX, destY, drawW, drawH);
+    ctx.globalAlpha = prevAlpha;
 }
 const PROP_STAGE_PADDING = 40;
 function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) {
@@ -760,10 +746,9 @@ export function clearPropSpriteCache() {
 export const BELT_FILMSTRIP_FRAMES = 8;
 export const BELT_FRAME_MS = 60;
 const GRID_STAMP_STAGE_PADDING = 40;
-const sGridStampStage = { x: 0, y: 0, facing: 0, radius: 0, ageMs: 0, halfX: 0, halfY: 0 };
 function buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize) {
-    let key = BigInt(internSpriteKeyPart(renderKey));
-    key = (key << 20n) | BigInt(internSpriteKeyPart(stripKey));
+    let key = BigInt(renderKey & SPRITE_KEY_PART_MASK);
+    key = (key << 20n) | BigInt(stripKey & SPRITE_KEY_PART_MASK);
     key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
     return key;
@@ -781,17 +766,13 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfX,
         const anchorY = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
         const canvas = acquireOffscreenCanvas(frameSpan * frameCount, frameSpan);
         const bakeCtx = canvas.getContext("2d");
-        sGridStampStage.facing = quantizeAngle(facing ?? 0, 4);
-        sGridStampStage.radius = stageR;
-        sGridStampStage.halfX = halfX;
-        sGridStampStage.halfY = halfX;
+        const bakeFacing = quantizeAngle(facing ?? 0, 4);
         for (let f = 0; f < frameCount; f++) {
-            sGridStampStage.ageMs = f * BELT_FRAME_MS;
             bakeCtx.save();
             bakeCtx.translate(f * frameSpan, 0);
             if (bakeScale !== 1) bakeCtx.scale(bakeScale, bakeScale);
             bakeCtx.translate(anchorX, anchorY);
-            draw(bakeCtx, sGridStampStage, viewport);
+            draw(bakeCtx, halfX, halfX, bakeFacing, f * BELT_FRAME_MS);
             bakeCtx.restore();
         }
         writeSpriteBakeOuts(bakeScale, anchorX, anchorY, frameSpan / bakeScale, frameSpan / bakeScale, frameCount, frameSpan);
@@ -811,7 +792,7 @@ export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey,
 }
 export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfX, viewport, renderKey, stripKey, facing, draw, frameIndex, frameCount) {
     const slot = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfX, facing, draw, frameCount);
-    blitAnchoredSprite(ctx, gridStampSpriteCacheSlab, slot, worldX, worldY, null, frameIndex);
+    blitAnchoredSprite(ctx, gridStampSpriteCacheSlab, slot, worldX, worldY, frameIndex);
 }
 const OVERLAY_STAGE_PADDING = 6;
 export function drawCachedFloatingText(ctx, worldX, worldY, cacheKey, text, style, color, alpha, scale) {
@@ -847,7 +828,7 @@ export function drawCachedFloatingText(ctx, worldX, worldY, cacheKey, text, styl
         writeSpriteBakeOuts(1, cx, cy, W, H, 1, W);
         return canvas;
     });
-    blitAnchoredSprite(ctx, overlaySpriteCacheSlab, slot, worldX, worldY, { alpha, scale });
+    blitAnchoredSprite(ctx, overlaySpriteCacheSlab, slot, worldX, worldY, 0, alpha, scale);
 }
 export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey, customKey, worldSpan, draw) {
     const px = viewport.x;
@@ -875,21 +856,5 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
 }
 export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0, flatPresentation = false) {
     const slot = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame, flatPresentation);
-    const modifier = resolveSpriteDrawModifier(prop, viewport.x, viewport.y);
-    blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, prop.x, prop.y, modifier);
-}
-export function resolveSpriteDrawModifier(entity, px, py) {
-    const fn = entity.currentState?.resolveSpriteDrawModifier;
-    if (!fn) return null;
-    return fn.call(entity.currentState, entity, px, py);
-}
-export function prepModifiedBlit(ctx, modifier) {
-    if (!modifier) return;
-    if (modifier.clipCircle) {
-        const { cx, cy, r } = modifier.clipCircle;
-        clipToPath(ctx, (ctx) => {
-            traceCircle(ctx, cx, cy, r);
-        });
-    }
-    if (modifier.alpha != null) ctx.globalAlpha *= modifier.alpha;
+    blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, prop.x, prop.y);
 }
