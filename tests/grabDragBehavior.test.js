@@ -3,14 +3,14 @@ import { describe, it } from "node:test";
 import { applyGroundRollDrive, CircleShape } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
-import { createGrabDragBehavior, createDragLaunchBehavior, resolveDragLaunchConfigFromSize } from "../Libraries/Sandbox/dragBehaviors.js";
+import { createGrabDragBehavior, createDragLaunchBehavior, resolveDragLaunchConfigFromSize, applyDragLaunchVelocity } from "../Libraries/Sandbox/dragBehaviors.js";
 import { createDefaultSandboxBehaviors, GROUND_NAV_BEHAVIOR_IDS } from "../Libraries/Sandbox/sandbox.js";
 import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, SANDBOX_BEHAVIOR_GRAB_DRAG } from "../Core/engineEnums.js";
 import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY, kineticDynamicSlab, entityX, entityY } from "../Core/engineMemory.js";
+import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY, kineticDynamicSlab, entityX, entityY, entityVx, entityVy, entityW, entityR } from "../Core/engineMemory.js";
 import { BeltPacked } from "../Libraries/Spatial/belts.js";
 import { clearOverlayCommands, overlayCommandSlab, OVERLAY_STYLE_DRAG_ANCHOR } from "../Libraries/Render/render.js";
 
@@ -251,13 +251,49 @@ describe("grabDrag behavior", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
-        prop.angularVelocity = 0;
+        const eid = prop._physId;
+        entityW[eid] = 0;
         behavior.onPointerDown(prop, { x: -9, y: -5 });
         behavior.onPointerMove(prop, { x: -9, y: 80 });
         behavior.tickWorld(16);
-        assert.equal(kineticDynamicSlab.rollDriveKind[prop._physId], ROLL_DRIVE_THRUST);
-        assert.ok(kineticDynamicSlab.rollDriveDirY[prop._physId] > 0.5);
-        assert.notEqual(prop.angularVelocity, 0);
+        assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
+        assert.ok(kineticDynamicSlab.rollDriveDirY[eid] > 0.5);
+        assert.notEqual(entityW[eid], 0);
+    });
+
+    it("grab torque writes entityW not stale object angularVelocity", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
+        const prop = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
+        const eid = prop._physId;
+        entityW[eid] = 0;
+        Object.defineProperty(prop, "angularVelocity", { value: 999, writable: true, configurable: true, enumerable: true });
+        behavior.onPointerDown(prop, { x: -9, y: -5 });
+        behavior.onPointerMove(prop, { x: -9, y: 80 });
+        behavior.tickWorld(16);
+        assert.notEqual(entityW[eid], 0);
+        assert.equal(prop.angularVelocity, 999);
+    });
+
+    it("applyDragLaunchVelocity writes entityVx/entityVy not stale object pose", () => {
+        const state = createGrabDragTestState();
+        const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
+        const eid = prop._physId;
+        entityVx[eid] = 0;
+        entityVy[eid] = 0;
+        entityW[eid] = 0;
+        Object.defineProperties(prop, {
+            vx: { value: 7, writable: true, configurable: true, enumerable: true },
+            vy: { value: 7, writable: true, configurable: true, enumerable: true },
+            angularVelocity: { value: 7, writable: true, configurable: true, enumerable: true },
+        });
+        applyDragLaunchVelocity(prop, 1, 0, 50);
+        assert.equal(entityVx[eid], 50);
+        assert.equal(entityVy[eid], 0);
+        assert.ok(Math.abs(entityW[eid] - (50 / entityR[eid]) * 0.12) < 1e-9);
+        assert.equal(prop.vx, 7);
+        assert.equal(prop.vy, 7);
+        assert.equal(prop.angularVelocity, 7);
     });
 
     it("rolling sphere rim anchor tracks cursor not rollQuat", () => {
@@ -288,16 +324,16 @@ describe("grabDrag behavior", () => {
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const light = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
         const heavy = registerGrabDragTestProp(state, new WorldProp(100, 0, "tri_wedge", 0));
-        light.angularVelocity = 0;
-        heavy.angularVelocity = 0;
+        entityW[light._physId] = 0;
+        entityW[heavy._physId] = 0;
         behavior.onPointerDown(light, { x: -9, y: -5 });
         behavior.onPointerMove(light, { x: -9, y: 80 });
         behavior.tickWorld(16);
-        const lightSpin = light.angularVelocity;
+        const lightSpin = entityW[light._physId];
         behavior.onPointerDown(heavy, { x: 91, y: -5 });
         behavior.onPointerMove(heavy, { x: 91, y: 80 });
         behavior.tickWorld(16);
         assert.ok(Math.abs(lightSpin) > 0);
-        assert.ok(Math.abs(heavy.angularVelocity - lightSpin) < 1e-6);
+        assert.ok(Math.abs(entityW[heavy._physId] - lightSpin) < 1e-6);
     });
 });

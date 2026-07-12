@@ -1,6 +1,6 @@
 import propCatalog from "../../Assets/props/index.js";
 import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
-import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityFlags } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityVx, entityVy, entityW, entityR, entityFlags } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics, physicsSettings } from "../Physics/physics.js";
@@ -42,10 +42,11 @@ function dragLaunchMaxRayDist(obstacleGrid) {
     return Math.hypot(obstacleGrid.maxX - obstacleGrid.minX, obstacleGrid.maxY - obstacleGrid.minY) * 1.25;
 }
 export function applyDragLaunchVelocity(body, nx, ny, power) {
-    body.vx = nx * power;
-    body.vy = ny * power;
-    if ((entityFlags[body._physId] & ENTITY_FLAG_ROLLS) !== 0) body.angularVelocity = (power / body.radius) * 0.12;
-    wakeKineticBody(body._physId);
+    const eid = body._physId;
+    entityVx[eid] = nx * power;
+    entityVy[eid] = ny * power;
+    if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) entityW[eid] = (power / entityR[eid]) * 0.12;
+    wakeKineticBody(eid);
 }
 export const DEFAULT_DRAG_INTERACTION_MODE = SANDBOX_BEHAVIOR_DRAG_LAUNCH;
 export function normalizeDragInteractionMode(mode) {
@@ -193,7 +194,8 @@ export function createDragLaunchBehavior(state) {
         },
         onPointerUp(prop) {
             if (!aimActive) return;
-            const config = resolveDragLaunchConfigFromSize(prop.radius);
+            const eid = prop._physId;
+            const config = resolveDragLaunchConfigFromSize(entityR[eid]);
             const ok = resolveAimPhysics(config) && aimDrag >= config.minDrag && Number.isFinite(aimShotNx) && Number.isFinite(aimShotNy);
             const power = ok ? computeLaunchPower(aimDrag, config) : 0;
             const nx = aimShotNx;
@@ -265,7 +267,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         const eid = prop._physId;
         const px = entityX[eid];
         const py = entityY[eid];
-        const grabConfig = resolveDragLaunchConfigFromSize(prop.radius);
+        const grabConfig = resolveDragLaunchConfigFromSize(entityR[eid]);
         const rollConfig = physicsSettings.groundNavRoll;
         const tx = targetX + offsetX;
         const ty = targetY + offsetY;
@@ -301,9 +303,9 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
             const fy = (dy / dist) * power;
             const torque = rx * fy - ry * fx;
             const dtScale = dtMs / 16;
-            prop.angularVelocity = (prop.angularVelocity ?? 0) + torque * (1 / REFERENCE_GRAB_INERTIA) * GRAB_DRAG_TORQUE_GAIN * dtScale;
-            prop.angularVelocity *= Math.exp(-GRAB_DRAG_ANGULAR_DAMP * (dtMs / 1000));
-            wakeKineticBody(prop._physId);
+            entityW[eid] += torque * (1 / REFERENCE_GRAB_INERTIA) * GRAB_DRAG_TORQUE_GAIN * dtScale;
+            entityW[eid] *= Math.exp(-GRAB_DRAG_ANGULAR_DAMP * (dtMs / 1000));
+            wakeKineticBody(eid);
         }
     };
     return {
