@@ -4,7 +4,7 @@ import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
 import { clearActiveKineticBodySlab, writeKineticLinkNeighbors, resetKineticLinkNeighborArena } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab, entityRefs, entityX } from "../Core/engineMemory.js";
+import { kineticDynamicSlab, entityRefs, entityX, entityAlive } from "../Core/engineMemory.js";
 import { mockKineticBody, mockCircleProp, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { createKineticAdmitTestState } from "./harness/stateFactories.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
@@ -152,7 +152,7 @@ describe("active kinetic bodies", () => {
             assert.ok(found);
         }
     });
-    it("activateKineticBody skips island peers missing _physId", () => {
+    it("activateKineticBody skips island peers that are not alive", () => {
         const frame = new KineticSpatialFrame(50);
         frame.resetFrame(mockGrid);
         const head = mockCircleProp(0, 0, 10);
@@ -163,6 +163,7 @@ describe("active kinetic bodies", () => {
         frame.insertEid(1);
         resetKineticLinkNeighborArena();
         writeKineticLinkNeighbors(head._physId, [1]);
+        entityAlive[1] = 0;
         delete tail._physId;
         frame._pushKineticEid(head._physId);
         frame._pushKineticEid(1);

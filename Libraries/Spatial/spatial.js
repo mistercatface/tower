@@ -3201,15 +3201,13 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const sleeping = kineticDynamicSlab.sleeping;
         for (let i = 0; i < n; i++) {
             const eid = all[i];
-            const prop = entityRefs[eid];
-            if (!prop || prop._physId !== eid) continue;
+            if (!entityAlive[eid] || (entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) continue;
             if (!sleeping[eid]) appendActiveKineticBodySlabPhysId(eid);
         }
     }
     _ensureActive(eid, snapshot = true) {
         if (eid === undefined || eid === -1) return;
-        const prop = entityRefs[eid];
-        if (!prop || prop._physId !== eid) return;
+        if (!entityAlive[eid] || (entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return;
         if (kineticDynamicSlab.activeSlot[eid] >= 0) return;
         appendActiveKineticBodySlabPhysId(eid);
         if (snapshot) snapshotKineticBodySlab([eid], 1);
@@ -3241,7 +3239,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         for (let i = 0; i < count; i++) {
             const peerEid = peerEids[offset + i];
             if (peerEid === eid) continue;
-            if (!entityAlive[peerEid] || entityRefs[peerEid]?._physId !== peerEid) continue;
+            if (!entityAlive[peerEid] || (entityFlags[peerEid] & ENTITY_FLAG_KINETIC) === 0) continue;
             if (kineticDynamicSlab.sleeping[peerEid]) wakeKineticBody(peerEid);
             this._ensureActive(peerEid);
             if (patchOut) patchOut.push(peerEid);
@@ -3268,8 +3266,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (!slab.activePhysCount) return;
         for (let i = 0; i < slab.activePhysCount; i++) {
             const eid = slab.activePhysIds[i];
-            const entity = entityRefs[eid];
-            if (!entity || entity._physId !== eid) continue;
+            if (!entityAlive[eid]) continue;
             this.entityGrid.remove(eid);
             this.entityGrid.insert(eid);
         }
@@ -3280,7 +3277,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (!count) return;
         for (let i = 0; i < count; i++) {
             const eid = eids[i];
-            if (!entityRefs[eid]) continue;
+            if (!entityAlive[eid]) continue;
             this.entityGrid.remove(eid);
             this.entityGrid.insert(eid);
         }
