@@ -86,7 +86,7 @@ describe("world surface retry and cooldown", () => {
             assert.equal(result2, null, "Should return null when on cooldown");
             
             // Fast-forward or force cooldown expiration
-            const key = engine.cacheKeys.groundChunkKey(packChunkKey(0, 0), "test_profile", 0);
+            const key = engine.cacheKeys.groundChunkKey(packChunkKey(0, 0), "test_profile", 0, engine.worldSurfaceSeed);
             engine.bakeCooldowns.set(key, 0); // Expired cooldown
             
             // Try again: should re-attempt bake (callCount increments)

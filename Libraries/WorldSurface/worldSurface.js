@@ -1,5 +1,5 @@
-import { setNoiseProfileEnabled, SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
-import { minCornerAabbF32, intersectAabbOptionalF32 } from "../Math/math.js";
+import { SeededNoise2D } from "../Procedural/Noise/SeededNoise2D.js";
+import { minCornerAabbF32, intersectAabbOptionalF32, hashString } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, B_TMP, viewBoundsBuf, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
 import { projectWorldAabbCorners, boundsToCellRectInto, resolveCellWallHeightAtIdx, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, packChunkKey, chunkKeyAxis0, chunkKeyAxis1, chunkKeyBounds, forEachChunkKeyInRange, forEachChunkKeyInCellBounds, cellIdxToChunkKey } from "../Spatial/spatial.js";
 import { LruMap } from "../DataStructures/LruMap.js";
@@ -21,83 +21,79 @@ export function bumpSurfaceProfileRevision(profileId) {
     revisions.set(profileId, rev);
     return rev;
 }
-export const TILE_WORKER_MESSAGE = { CONFIGURE_BAKE_CONSTANTS: "configureBakeConstants", BAKE_GROUND_CHUNK: "bakeGroundChunk", BAKE_WALL_ATLAS: "bakeWallAtlas", REGISTER_RUNTIME_PROFILE: "registerRuntimeProfile" };
-export const EMPTY_BAKE_TIMING_STATS = { sampleCount: 0, sampleFillMs: 0, composeStaticMs: 0, rgbaCopyMs: 0, transferMs: 0, noiseCallsPerPixel: 0, noiseHitRate: 0, noiseOverflowRate: 0 };
-let tileBakeMetricsEnabled = false;
-export function isTileBakeMetricsEnabled() {
-    return tileBakeMetricsEnabled;
+export const TILE_WORKER_MESSAGE = { CONFIGURE_BAKE_CONSTANTS: 1, BAKE_GROUND_CHUNK: 2, BAKE_WALL_ATLAS: 3, REGISTER_RUNTIME_PROFILE: 4 };
+export const SURFACE_KEY_KIND_GROUND = 1;
+export const SURFACE_KEY_KIND_ROOF_MASK = 2;
+export const SURFACE_KEY_KIND_ROOF_DRAW = 3;
+export const SURFACE_KEY_KIND_WALL = 4;
+const SURFACE_KEY_CHUNK_MASK = (1n << 48n) - 1n;
+function surfaceKeyQ10(v) {
+    return Math.round(v * 10) | 0;
 }
-export function setTileBakeMetricsEnabled(enabled) {
-    tileBakeMetricsEnabled = Boolean(enabled);
-    setNoiseProfileEnabled(enabled);
+export function encodeGroundKey(chunkKey, profileId, rev, z, seed) {
+    let k = BigInt(Math.trunc(chunkKey)) & SURFACE_KEY_CHUNK_MASK;
+    k |= BigInt(seed >>> 0) << 48n;
+    k |= BigInt(hashString(profileId) >>> 0) << 80n;
+    k |= BigInt((rev | 0) & 0xffff) << 112n;
+    k |= BigInt((z | 0) & 0xff) << 128n;
+    k |= BigInt(SURFACE_KEY_KIND_GROUND) << 136n;
+    return k;
 }
-export function createEmptyBakePhases() {
-    return { sampleFillMs: 0, composeStaticMs: 0, rgbaCopyMs: 0, transferMs: 0 };
+export function encodeRoofMaskKey(chunkKey, z) {
+    let k = BigInt(Math.trunc(chunkKey)) & SURFACE_KEY_CHUNK_MASK;
+    k |= BigInt((z | 0) & 0xff) << 128n;
+    k |= BigInt(SURFACE_KEY_KIND_ROOF_MASK) << 136n;
+    return k;
 }
-export function createNoiseProfileSnapshot(profile, numPixels) {
-    const calls = profile.calls;
-    return { calls, hits: profile.hits, overflows: profile.overflows, numPixels, callsPerPixel: numPixels > 0 ? calls / numPixels : 0, hitRate: calls > 0 ? profile.hits / calls : 0, overflowRate: calls > 0 ? profile.overflows / calls : 0 };
+export function encodeRoofDrawKey(chunkKey, profileId, rev, z) {
+    let k = BigInt(Math.trunc(chunkKey)) & SURFACE_KEY_CHUNK_MASK;
+    k |= BigInt(hashString(profileId) >>> 0) << 80n;
+    k |= BigInt((rev | 0) & 0xffff) << 112n;
+    k |= BigInt((z | 0) & 0xff) << 128n;
+    k |= BigInt(SURFACE_KEY_KIND_ROOF_DRAW) << 136n;
+    return k;
 }
-export function createTileBakeMetrics(jobType, numPixels, phases, noiseProfile) {
-    return { jobType, numPixels, phases: { ...phases }, noise: createNoiseProfileSnapshot(noiseProfile, numPixels) };
-}
-export class TileBakeMetricsAccumulator {
-    constructor(windowSize = 32) {
-        this.windowSize = windowSize;
-        this.samples = [];
-    }
-    record(metrics) {
-        if (!metrics) return;
-        this.samples.push(metrics);
-        if (this.samples.length > this.windowSize) this.samples.shift();
-    }
-    averages() {
-        if (this.samples.length === 0) return { ...EMPTY_BAKE_TIMING_STATS };
-        let sampleFillMs = 0;
-        let composeStaticMs = 0;
-        let rgbaCopyMs = 0;
-        let transferMs = 0;
-        let noiseCallsPerPixel = 0;
-        let noiseHitRate = 0;
-        let noiseOverflowRate = 0;
-        const n = this.samples.length;
-        for (let i = 0; i < n; i++) {
-            const sample = this.samples[i];
-            const phases = sample.phases;
-            sampleFillMs += phases.sampleFillMs;
-            composeStaticMs += phases.composeStaticMs;
-            rgbaCopyMs += phases.rgbaCopyMs;
-            transferMs += phases.transferMs ?? 0;
-            noiseCallsPerPixel += sample.noise.callsPerPixel;
-            noiseHitRate += sample.noise.hitRate;
-            noiseOverflowRate += sample.noise.overflowRate;
-        }
-        return { sampleCount: n, sampleFillMs: sampleFillMs / n, composeStaticMs: composeStaticMs / n, rgbaCopyMs: rgbaCopyMs / n, transferMs: transferMs / n, noiseCallsPerPixel: noiseCallsPerPixel / n, noiseHitRate: noiseHitRate / n, noiseOverflowRate: noiseOverflowRate / n };
-    }
-}
-export function formatTileBakeMetricsLog(type, metrics, transferMs = 0) {
-    const phases = metrics.phases;
-    const noise = metrics.noise;
-    return `[TileWorker] ${type} | sampleFill: ${phases.sampleFillMs.toFixed(2)}ms` + ` | composeStatic: ${phases.composeStaticMs.toFixed(2)}ms` + ` | rgbaCopy: ${phases.rgbaCopyMs.toFixed(2)}ms` + ` | transfer: ${transferMs.toFixed(2)}ms` + ` | noise: ${noise.callsPerPixel.toFixed(2)} calls/px` + ` hit ${(noise.hitRate * 100).toFixed(1)}%` + ` overflow ${(noise.overflowRate * 100).toFixed(1)}%` + ` (${metrics.numPixels}px)`;
-}
-export function horizontalZCacheTag(zLevel = 0) {
-    return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
-}
-export function groundChunkCacheKey(chunkKey, profileId, profileRevision, zLevel = 0) {
-    return `chunk:${profileRevision}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkKey}`;
-}
-export function staticRoofMaskCacheKey(chunkKey, zLevel) {
-    return `staticRoofMask:${horizontalZCacheTag(zLevel)}:${chunkKey}`;
-}
-export function staticRoofDrawCacheKey(chunkKey, profileId, profileRevision, zLevel) {
-    return `staticRoofDraw:${profileRevision}:${profileId}:${horizontalZCacheTag(zLevel)}:${chunkKey}`;
+export function encodeWallKey(seed, profileId, rev, atlasHeight, x1, y1, x2, y2) {
+    const qx1 = surfaceKeyQ10(x1);
+    const qy1 = surfaceKeyQ10(y1);
+    const qx2 = surfaceKeyQ10(x2);
+    const qy2 = surfaceKeyQ10(y2);
+    let k = BigInt(qx1 & 0xfffff);
+    k |= BigInt(qy1 & 0xfffff) << 20n;
+    k |= BigInt(qx2 & 0xfffff) << 40n;
+    k |= BigInt(qy2 & 0xfffff) << 60n;
+    k |= BigInt(Math.round(atlasHeight) & 0xffff) << 80n;
+    k |= BigInt(seed >>> 0) << 96n;
+    k |= BigInt(hashString(profileId) >>> 0) << 128n;
+    k |= BigInt(rev & 0xffff) << 160n;
+    k |= BigInt(SURFACE_KEY_KIND_WALL) << 176n;
+    return k;
 }
 export function groundChunkWorkerDedupeKey(payload, profileRevision) {
     const chunkKey = payload.tileChunkKey ?? payload.chunkKey;
-    return `${groundChunkCacheKey(chunkKey, payload.profileId, profileRevision, payload.zLevel ?? 0)}:${payload.seed ?? 0}`;
+    let k = BigInt(Math.trunc(chunkKey)) & SURFACE_KEY_CHUNK_MASK;
+    k |= BigInt((payload.seed ?? 0) >>> 0) << 48n;
+    k |= BigInt(hashString(payload.profileId) >>> 0) << 80n;
+    k |= BigInt((profileRevision | 0) & 0xffff) << 112n;
+    k |= BigInt((payload.zLevel ?? 0) & 0xff) << 128n;
+    k |= BigInt(SURFACE_KEY_KIND_GROUND) << 136n;
+    return k;
 }
 export function wallAtlasWorkerDedupeKey(payload, profileRevision) {
-    return `wall:${profileRevision}:${payload.profileId}:${payload.p1x.toFixed(1)},${payload.p1y.toFixed(1)}-${payload.p2x.toFixed(1)},${payload.p2y.toFixed(1)}:${payload.width}x${payload.height}:${payload.wallHeight ?? 0}:${payload.seed ?? 0}`;
+    const qx1 = surfaceKeyQ10(payload.p1x);
+    const qy1 = surfaceKeyQ10(payload.p1y);
+    const qx2 = surfaceKeyQ10(payload.p2x);
+    const qy2 = surfaceKeyQ10(payload.p2y);
+    let k = BigInt(qx1 & 0xfffff);
+    k |= BigInt(qy1 & 0xfffff) << 20n;
+    k |= BigInt(qx2 & 0xfffff) << 40n;
+    k |= BigInt(qy2 & 0xfffff) << 60n;
+    k |= BigInt(Math.round(payload.wallHeight ?? 0) & 0xffff) << 80n;
+    k |= BigInt((payload.seed ?? 0) >>> 0) << 96n;
+    k |= BigInt(hashString(payload.profileId) >>> 0) << 128n;
+    k |= BigInt((profileRevision | 0) & 0xffff) << 160n;
+    k |= BigInt(SURFACE_KEY_KIND_WALL) << 176n;
+    return k;
 }
 export class SurfaceBakeCacheKeys {
     constructor(surfaceSpace) {
@@ -106,21 +102,19 @@ export class SurfaceBakeCacheKeys {
     wrappedChunkKey(chunkKey) {
         return this.surfaceSpace.wrappedChunkKey(chunkKey);
     }
-    groundChunkKey(chunkKey, profileId, zLevel = 0) {
-        const wrapped = this.wrappedChunkKey(chunkKey);
-        return groundChunkCacheKey(wrapped, profileId, getSurfaceProfileRevision(profileId), zLevel);
+    groundChunkKey(chunkKey, profileId, zLevel = 0, seed = 0) {
+        return encodeGroundKey(this.wrappedChunkKey(chunkKey), profileId, getSurfaceProfileRevision(profileId), zLevel, seed);
     }
     staticRoofMaskKey(chunkKey, zLevel) {
-        return staticRoofMaskCacheKey(chunkKey, zLevel);
+        return encodeRoofMaskKey(chunkKey, zLevel);
     }
     staticRoofDrawKey(chunkKey, profileId, zLevel) {
-        return staticRoofDrawCacheKey(chunkKey, profileId, getSurfaceProfileRevision(profileId), zLevel);
+        return encodeRoofDrawKey(chunkKey, profileId, getSurfaceProfileRevision(profileId), zLevel);
     }
     wallAtlasCacheKey(surfaceSeed, profileId, atlasHeight) {
         const b = this.surfaceSpace._boundsBank;
         const o = SS_POINTS;
-        const rev = getSurfaceProfileRevision(profileId);
-        return `wall:${rev}:${profileId}:${surfaceSeed}:${atlasHeight}:${b[o].toFixed(1)},${b[o + 1].toFixed(1)}-${b[o + 2].toFixed(1)},${b[o + 3].toFixed(1)}`;
+        return encodeWallKey(surfaceSeed, profileId, getSurfaceProfileRevision(profileId), atlasHeight, b[o], b[o + 1], b[o + 2], b[o + 3]);
     }
 }
 const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = 0;
@@ -253,10 +247,6 @@ export class SurfaceBitmapCache {
         }
         this._dropEntry(key);
     }
-    deleteByPrefix(prefix) {
-        for (const key of [...this.cache.keys()]) if (key.startsWith(prefix)) this.delete(key);
-        for (const key of [...this._pending]) if (key.startsWith(prefix)) this._dropEntry(key);
-    }
     clear() {
         for (const value of this.cache.values()) this._closeOrphanedBitmaps(value, null);
         this.cache.clear();
@@ -293,7 +283,7 @@ export class SurfaceBitmapCache {
         this.set(key, bitmaps);
     }
 }
-export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0, bakeTiming: { ...EMPTY_BAKE_TIMING_STATS } };
+export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0 };
 /**
  * Main-thread tile surface bake client — pool, scheduler, profile sync, and request API.
  */
@@ -353,11 +343,6 @@ export class TileSurfaceWorkerClient {
     stats() {
         return this._started ? this.scheduler.stats() : { ...EMPTY_TILE_BAKE_STATS };
     }
-    enableTileBakeMetrics(enabled = true) {
-        setTileBakeMetricsEnabled(enabled);
-        if (!this._started) return Promise.resolve();
-        return this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, { metricsEnabled: enabled });
-    }
     requestGroundChunkBake(payload) {
         return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, payload, TILE_BAKE_TIER_STATIC);
     }
@@ -373,7 +358,7 @@ export class TileSurfaceWorkerClient {
         return this.workerReady;
     }
     syncBakeConstants(settings) {
-        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: settings.surfaceBakeScale, surfaceTilePeriodPx: settings.surfaceTilePeriodPx, metricsEnabled: settings.metricsEnabled };
+        const constants = { cellSize: settings.cellSize, cellsPerChunk: settings.cellsPerChunk, surfaceBakeScale: settings.surfaceBakeScale, surfaceTilePeriodPx: settings.surfaceTilePeriodPx };
         this._ensureStarted();
         this.workerReady = this.workerReady.then(() => this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, constants));
         return this.workerReady;
@@ -402,9 +387,6 @@ export const TileWorkerCoordinator = {
     },
     stats() {
         return client?.stats() ?? EMPTY_TILE_BAKE_STATS;
-    },
-    enableTileBakeMetrics(enabled = true) {
-        return requireClient().enableTileBakeMetrics(enabled);
     },
     requestGroundChunkBake(payload) {
         return requireClient().requestGroundChunkBake(payload);
@@ -452,7 +434,6 @@ export class TileBakeScheduler {
         this.focusY = 0;
         this.sortFocusX = 0;
         this.sortFocusY = 0;
-        this.metricsAccumulator = new TileBakeMetricsAccumulator();
     }
     updateFocus(x, y) {
         this.focusX = x;
@@ -464,7 +445,7 @@ export class TileBakeScheduler {
             this.pool.forEachSlot((_index, slot) => {
                 if (slot.busy) busyWorkers++;
             });
-        return { queueSize: this.queue.size, pendingCount: this.pending.size, inFlightDedupeCount: this.inFlightByKey.size, busyWorkers, bakeTiming: this.metricsAccumulator.averages() };
+        return { queueSize: this.queue.size, pendingCount: this.pending.size, inFlightDedupeCount: this.inFlightByKey.size, busyWorkers };
     }
     enqueue(type, payload, tier) {
         const dedupeKey = dedupeKeyFor(type, payload, tier, this.getProfileRevision);
@@ -482,8 +463,7 @@ export class TileBakeScheduler {
         if (dedupeKey) this.inFlightByKey.set(dedupeKey, promise);
         return promise;
     }
-    finishJob(_workerIndex, { id, bitmaps, error, metrics }) {
-        if (metrics && isTileBakeMetricsEnabled()) this.metricsAccumulator.record(metrics);
+    finishJob(_workerIndex, { id, bitmaps, error }) {
         this._settle(id, bitmaps, error);
         this._dispatch();
     }
@@ -634,7 +614,6 @@ export class BakeSession {
     constructor() {
         this.memoryPool = new TileMemoryPool();
         this.noiseEvaluator = new SeededNoise2D(0);
-        this.lastMetrics = null;
         this._f32 = new Float32Array(BF_COUNT);
         this._i32 = new Int32Array(BI_COUNT);
         this._f32[BF_SPAN_U] = 1;
@@ -773,8 +752,6 @@ function fillPaintRows(bakeSession) {
         }
 }
 export function paintPixelArea(ctx, seed, profileId, bakeSession = globalBakeSession) {
-    const metricsOn = isTileBakeMetricsEnabled();
-    if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
     const profile = resolveSurfaceProfile(profileId);
     const width = bakeSession._i32[BI_WIDTH];
     const height = bakeSession._i32[BI_HEIGHT];
@@ -782,28 +759,11 @@ export function paintPixelArea(ctx, seed, profileId, bakeSession = globalBakeSes
     const data = imgData.data;
     const numPixels = width * height;
     bakeSession.memoryPool.bindSamples(bakeSession, numPixels);
-    if (!metricsOn) {
-        fillPaintRows(bakeSession);
-        const rgbBuffer = composeSurfaceImage(bakeSession, profile, seed);
-        copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
-        ctx.putImageData(imgData, 0, 0);
-        bakeSession.memoryPool.releaseBoundSamples(bakeSession, numPixels);
-        bakeSession.lastMetrics = null;
-        return;
-    }
-    const phases = createEmptyBakePhases();
-    let phaseStart = performance.now();
     fillPaintRows(bakeSession);
-    phases.sampleFillMs = performance.now() - phaseStart;
-    phaseStart = performance.now();
     const rgbBuffer = composeSurfaceImage(bakeSession, profile, seed);
-    phases.composeStaticMs = performance.now() - phaseStart;
-    phaseStart = performance.now();
     copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
     ctx.putImageData(imgData, 0, 0);
-    phases.rgbaCopyMs = performance.now() - phaseStart;
     bakeSession.memoryPool.releaseBoundSamples(bakeSession, numPixels);
-    bakeSession.lastMetrics = createTileBakeMetrics("paintPixelArea", numPixels, phases, bakeSession.noiseEvaluator.profile);
 }
 export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) {
     const { width, height, seed, profileId } = payload;
@@ -930,6 +890,23 @@ const EI_KEY_START = 1;
 const EI_KEY_END = 2;
 const EI_SEED = 3;
 const EI_COUNT = 4;
+const BR_F_MIN_X = 0;
+const BR_F_MIN_Y = 1;
+const BR_F_CENTER_X = 2;
+const BR_F_CENTER_Y = 3;
+const BR_F_P1X = 4;
+const BR_F_P1Y = 5;
+const BR_F_P2X = 6;
+const BR_F_P2Y = 7;
+const BR_F_COUNT = 8;
+const BR_I_CHUNK = 0;
+const BR_I_TILE_CHUNK = 1;
+const BR_I_SEED = 2;
+const BR_I_Z = 3;
+const BR_I_WIDTH = 4;
+const BR_I_HEIGHT = 5;
+const BR_I_WALL_HEIGHT = 6;
+const BR_I_COUNT = 7;
 export class WorldSurfaceEngine {
     constructor(settings) {
         this.settings = settings;
@@ -939,6 +916,9 @@ export class WorldSurfaceEngine {
         this._engineBounds = new Float32Array(8);
         this._f32 = new Float32Array(EF_COUNT);
         this._i32 = new Int32Array(EI_COUNT);
+        this._bakeReqF32 = new Float32Array(BR_F_COUNT);
+        this._bakeReqI32 = new Int32Array(BR_I_COUNT);
+        this._bakeReqProfileId = null;
         this._i32[EI_SEED] = (Math.random() * 0x100000000) >>> 0;
         this._drawCtx = null;
         this._drawGrid = null;
@@ -992,34 +972,39 @@ export class WorldSurfaceEngine {
         }
         throw new Error("invalidateGridBounds region must be null, cell index, or CellBounds");
     }
-    buildGroundChunkPayload(state, chunkKey, profileId, zLevel = 0, useBankChunkSample = false) {
-        let minX, minY, centerX, centerY, tileChunkKey;
+    writeGroundBakeRequest(state, chunkKey, profileId, zLevel = 0, useBankChunkSample = false) {
+        const f = this._bakeReqF32;
+        const i = this._bakeReqI32;
+        this._bakeReqProfileId = profileId;
+        i[BR_I_CHUNK] = chunkKey;
+        i[BR_I_SEED] = this.worldSurfaceSeed;
+        i[BR_I_Z] = zLevel ?? 0;
         if (useBankChunkSample) {
             const b = this.surfaceSpace._boundsBank;
             const o = SS_CHUNK;
-            minX = b[o];
-            minY = b[o + 1];
-            centerX = (b[o] + b[o + 2]) / 2;
-            centerY = (b[o + 1] + b[o + 3]) / 2;
-            tileChunkKey = chunkKey;
+            f[BR_F_MIN_X] = b[o];
+            f[BR_F_MIN_Y] = b[o + 1];
+            f[BR_F_CENTER_X] = (b[o] + b[o + 2]) / 2;
+            f[BR_F_CENTER_Y] = (b[o + 1] + b[o + 3]) / 2;
+            i[BR_I_TILE_CHUNK] = chunkKey;
         } else {
             this.surfaceSpace.chunkBoundsF32(this._engineBounds, ENGINE_CHUNK_O, state.obstacleGrid, chunkKey);
             const b = this._engineBounds;
             const o = ENGINE_CHUNK_O;
-            centerX = (b[o] + b[o + 2]) / 2;
-            centerY = (b[o + 1] + b[o + 3]) / 2;
+            f[BR_F_CENTER_X] = (b[o] + b[o + 2]) / 2;
+            f[BR_F_CENTER_Y] = (b[o + 1] + b[o + 3]) / 2;
             this.surfaceSpace.tileChunkBoundsF32(this._engineBounds, ENGINE_CHUNK_O, state.obstacleGrid, chunkKey);
-            minX = b[o];
-            minY = b[o + 1];
-            tileChunkKey = this.surfaceSpace.wrappedChunkKey(chunkKey);
+            f[BR_F_MIN_X] = b[o];
+            f[BR_F_MIN_Y] = b[o + 1];
+            i[BR_I_TILE_CHUNK] = this.surfaceSpace.wrappedChunkKey(chunkKey);
         }
-        return { chunkKey, tileChunkKey, minX, minY, seed: this.worldSurfaceSeed, profileId, centerX, centerY, zLevel: zLevel ?? 0 };
     }
-    ensureWallAtlas(key, wallHeight, profileId) {
-        let cached = this.surfaceCache.get(key);
-        if (cached) return cached;
-        const cooldown = this.bakeCooldowns.get(key);
-        if (cooldown && performance.now() < cooldown) return null;
+    materializeGroundBakePayload() {
+        const f = this._bakeReqF32;
+        const i = this._bakeReqI32;
+        return { chunkKey: i[BR_I_CHUNK], tileChunkKey: i[BR_I_TILE_CHUNK], minX: f[BR_F_MIN_X], minY: f[BR_F_MIN_Y], seed: i[BR_I_SEED] >>> 0, profileId: this._bakeReqProfileId, centerX: f[BR_F_CENTER_X], centerY: f[BR_F_CENTER_Y], zLevel: i[BR_I_Z] };
+    }
+    writeWallBakeRequest(wallHeight, profileId) {
         const b = this.surfaceSpace._boundsBank;
         const o = SS_POINTS;
         const x1 = b[o];
@@ -1027,13 +1012,37 @@ export class WorldSurfaceEngine {
         const x2 = b[o + 2];
         const y2 = b[o + 3];
         const edgeLen = Math.hypot(x2 - x1, y2 - y1);
-        if (edgeLen < 0.001) return null;
+        if (edgeLen < 0.001) return false;
         const cellSize = this.settings.cellSize;
         const surfaceBakeScale = this.settings.surfaceBakeScale;
-        const canvasWidth = Math.max(1, Math.ceil(edgeLen * surfaceBakeScale));
         const hVal = resolveWallCapHeightPx(wallHeight, this.settings);
-        const canvasHeight = Math.max(1, Math.ceil((hVal + cellSize) * surfaceBakeScale));
-        return this._scheduleBake(key, () => TileWorkerCoordinator.requestWallAtlasBake({ width: canvasWidth, height: canvasHeight, p1x: x1, p1y: y1, p2x: x2, p2y: y2, seed: this.worldSurfaceSeed, profileId, centerX: (x1 + x2) / 2, centerY: (y1 + y2) / 2, wallHeight: hVal }));
+        const f = this._bakeReqF32;
+        const i = this._bakeReqI32;
+        this._bakeReqProfileId = profileId;
+        f[BR_F_P1X] = x1;
+        f[BR_F_P1Y] = y1;
+        f[BR_F_P2X] = x2;
+        f[BR_F_P2Y] = y2;
+        f[BR_F_CENTER_X] = (x1 + x2) / 2;
+        f[BR_F_CENTER_Y] = (y1 + y2) / 2;
+        i[BR_I_WIDTH] = Math.max(1, Math.ceil(edgeLen * surfaceBakeScale));
+        i[BR_I_HEIGHT] = Math.max(1, Math.ceil((hVal + cellSize) * surfaceBakeScale));
+        i[BR_I_WALL_HEIGHT] = hVal;
+        i[BR_I_SEED] = this.worldSurfaceSeed;
+        return true;
+    }
+    materializeWallBakePayload() {
+        const f = this._bakeReqF32;
+        const i = this._bakeReqI32;
+        return { width: i[BR_I_WIDTH], height: i[BR_I_HEIGHT], p1x: f[BR_F_P1X], p1y: f[BR_F_P1Y], p2x: f[BR_F_P2X], p2y: f[BR_F_P2Y], seed: i[BR_I_SEED] >>> 0, profileId: this._bakeReqProfileId, centerX: f[BR_F_CENTER_X], centerY: f[BR_F_CENTER_Y], wallHeight: i[BR_I_WALL_HEIGHT] };
+    }
+    ensureWallAtlas(key, wallHeight, profileId) {
+        let cached = this.surfaceCache.get(key);
+        if (cached) return cached;
+        const cooldown = this.bakeCooldowns.get(key);
+        if (cooldown && performance.now() < cooldown) return null;
+        if (!this.writeWallBakeRequest(wallHeight, profileId)) return null;
+        return this._scheduleBake(key, () => TileWorkerCoordinator.requestWallAtlasBake(this.materializeWallBakePayload()));
     }
     hasPendingSurfaceBakes() {
         return this.surfaceCache.hasPlaceholders();
@@ -1065,13 +1074,13 @@ export class WorldSurfaceEngine {
     }
     getGroundChunkCanvas(chunkKey, state, zLevel = 0, useBankChunkSample = false, profileIdOverride = null) {
         const profileId = profileIdOverride ?? this.activeSurfaceProfileId;
-        const key = this.cacheKeys.groundChunkKey(chunkKey, profileId, zLevel);
+        const key = this.cacheKeys.groundChunkKey(chunkKey, profileId, zLevel, this.worldSurfaceSeed);
         const canvases = this.surfaceCache.get(key);
         if (canvases) return canvases;
         const cooldown = this.bakeCooldowns.get(key);
         if (cooldown && performance.now() < cooldown) return null;
-        const payload = this.buildGroundChunkPayload(state, chunkKey, profileId, zLevel, useBankChunkSample);
-        return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
+        this.writeGroundBakeRequest(state, chunkKey, profileId, zLevel, useBankChunkSample);
+        return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(this.materializeGroundBakePayload()));
     }
     getOrEnsureWallAtlas(profileId, wallHeight) {
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);

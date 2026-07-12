@@ -1,6 +1,6 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
-import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32 } from "../Math/math.js";
+import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
@@ -12,6 +12,11 @@ import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js"
 import propCatalog from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision, SS_POINTS } from "../WorldSurface/worldSurface.js";
 import { propShapeFootprintId } from "../Props/props.js";
+const WALL_ATLAS_FACE_NONE = 0;
+const WALL_ATLAS_FACE_INNER = 1;
+const WALL_ATLAS_FACE_OUTER = 2;
+const WALL_ATLAS_FACE_END0 = 3;
+const WALL_ATLAS_FACE_END1 = 4;
 const WALL_ATLAS_WRAP = new Float32Array(4);
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
@@ -932,11 +937,12 @@ export function drawWallChunkTextured(ctx, prop, viewport, localVerts) {
     return true;
 }
 export function getWallChunkSpriteCacheKey(prop) {
-    if (!prop.wallChunkProfileId) return "";
+    if (!prop.wallChunkProfileId) return 0;
     const profileId = prop.wallChunkProfileId;
     const rev = getSurfaceProfileRevision(profileId);
-    const readyBucket = prop._wallChunkTextureReady ? "ready" : "pending";
-    return `wallchunk:${profileId}:${prop.wallChunkHeightPx}:${rev}:${readyBucket}:${propShapeFootprintId(prop)}`;
+    const readyBit = prop._wallChunkTextureReady ? 1 : 0;
+    const footprint = propShapeFootprintId(prop) | 0;
+    return mixHash4(hashString(profileId), prop.wallChunkHeightPx | 0, rev | 0, (footprint << 1) ^ readyBit);
 }
 export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = readEntityFacing(prop)) {
     if (!wallChunkPipeline?._wallChunkReady) return false;
@@ -1263,11 +1269,11 @@ export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, f
     const inwardX = data[base + RAIL_BOX.inwardX];
     const inwardY = data[base + RAIL_BOX.inwardY];
     if (isOutwardFaceTowardViewer((innerP1x + innerP2x) * 0.5, (innerP1y + innerP2y) * 0.5, inwardX, inwardY, viewerX, viewerY)) {
-        face.atlasFaceId = "inner";
+        face.atlasFaceKind = WALL_ATLAS_FACE_INNER;
         drawProjectedWallFaceScalars(ctx, innerP1x, innerP1y, innerP2x, innerP2y, viewport, state, face);
     }
     if (isOutwardFaceTowardViewer((outerP1x + outerP2x) * 0.5, (outerP1y + outerP2y) * 0.5, -inwardX, -inwardY, viewerX, viewerY)) {
-        face.atlasFaceId = "outer";
+        face.atlasFaceKind = WALL_ATLAS_FACE_OUTER;
         drawProjectedWallFaceScalars(ctx, outerP1x, outerP1y, outerP2x, outerP2y, viewport, state, face);
     }
     const dx = innerP2x - innerP1x;
@@ -1277,15 +1283,15 @@ export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, f
         const tx = dx / len;
         const ty = dy / len;
         if (isOutwardFaceTowardViewer((outerP1x + innerP1x) * 0.5, (outerP1y + innerP1y) * 0.5, -tx, -ty, viewerX, viewerY)) {
-            face.atlasFaceId = "end0";
+            face.atlasFaceKind = WALL_ATLAS_FACE_END0;
             drawProjectedWallFaceScalars(ctx, outerP1x, outerP1y, innerP1x, innerP1y, viewport, state, face);
         }
         if (isOutwardFaceTowardViewer((innerP2x + outerP2x) * 0.5, (innerP2y + outerP2y) * 0.5, tx, ty, viewerX, viewerY)) {
-            face.atlasFaceId = "end1";
+            face.atlasFaceKind = WALL_ATLAS_FACE_END1;
             drawProjectedWallFaceScalars(ctx, innerP2x, innerP2y, outerP2x, outerP2y, viewport, state, face);
         }
     }
-    face.atlasFaceId = undefined;
+    face.atlasFaceKind = WALL_ATLAS_FACE_NONE;
     if (!skipWallCaps) drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, face);
 }
 export function invalidateStaticGridEdgeRailDrawCache() {
@@ -1296,22 +1302,8 @@ export function invalidateStaticGridEdgeRailDrawCache() {
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPoint. Horizontal caps: box top ring + per-corner chunk UV.
  */
-function wallFaceKindIndex(atlasFaceId) {
-    switch (atlasFaceId) {
-        case "inner":
-            return 1;
-        case "outer":
-            return 2;
-        case "end0":
-            return 3;
-        case "end1":
-            return 4;
-        default:
-            return 0;
-    }
-}
 function wallDrawMemoSlot(face) {
-    return (face.gridIdx * 4 + face.gridSide) * 5 + wallFaceKindIndex(face.atlasFaceId);
+    return (face.gridIdx * 4 + face.gridSide) * 5 + (face.atlasFaceKind | 0);
 }
 function syncWallFaceDrawMemoRevision(grid) {
     const slab = wallFaceDrawMemoSlab;
@@ -1399,22 +1391,14 @@ function computeFaceCornerElevatedInto(out8, offset, u, v, botBuf, botO, topBuf,
     out8[offset] = bx + (tx - bx) * v;
     out8[offset + 1] = by + (ty - by) * v;
 }
-function hashSurfaceProfileId(profileId) {
-    let h = 2166136261;
-    for (let i = 0; i < profileId.length; i++) {
-        h ^= profileId.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-    }
-    return h | 0;
-}
 function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     const worldSurfaces = state.worldSurfaces;
-    const { wallHeight, wallBaseZ, wallCapHeight, cacheObj } = face;
+    const { wallHeight, wallBaseZ, wallCapHeight } = face;
     const settings = worldSurfaces.settings;
     const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.WallFace, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk, 0, 0, 0, face);
     const seed = worldSurfaces.worldSurfaceSeed;
     const wallHeightKey = resolveWallCapHeightPx(wallCapHeight, settings);
-    const canUseSideCache = cacheObj && worldSurfaces.cacheKeys && worldSurfaces.surfaceSpace && worldSurfaces.worldSurfaceSeed !== undefined;
+    const canUseSideCache = !!(worldSurfaces.cacheKeys && worldSurfaces.surfaceSpace && worldSurfaces.worldSurfaceSeed !== undefined);
     let row = WALL_FACE_ATLAS_MISS;
     if (canUseSideCache) {
         syncWallFaceDrawMemoRevision(state.obstacleGrid);
@@ -1434,7 +1418,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
         space.writeWallAtlasWrap(WALL_ATLAS_WRAP, 0);
         const key = worldSurfaces.cacheKeys.wallAtlasCacheKey(seed, profileId, wallHeightKey);
         rev = getSurfaceProfileRevision(profileId);
-        profileHash = hashSurfaceProfileId(profileId);
+        profileHash = hashString(profileId) | 0;
         canvases = slab.handles[row];
         if (canvases && slab.atlasRev[row] === rev && slab.atlasSeed[row] === seed && slab.atlasWallHeightKey[row] === wallHeightKey && slab.atlasProfileHash[row] === profileHash && worldSurfaces.surfaceCache.get(key) === canvases) cacheHit = true;
     }
@@ -1470,7 +1454,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
         const b = space._boundsBank;
         const o = SS_POINTS;
         rev = getSurfaceProfileRevision(profileId);
-        profileHash = hashSurfaceProfileId(profileId);
+        profileHash = hashString(profileId) | 0;
         slab.handles[row] = canvases;
         slab.atlasWx1[row] = b[o];
         slab.atlasWy1[row] = b[o + 1];
@@ -1758,14 +1742,13 @@ export function createConveyorDraw(options = {}) {
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 const match3d = (p) => p.strategy?.renderMode === PROP_RENDER_MODE_3D;
 function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
-    scratch.atlasFaceId = undefined;
+    scratch.atlasFaceKind = WALL_ATLAS_FACE_NONE;
     if (kind === DRAW_KIND_RAIL) {
         const d = getRailWallBoxData();
         const b = baseIndex;
         scratch.wallHeight = d[b + RAIL_BOX.wallHeight];
         scratch.wallBaseZ = d[b + RAIL_BOX.wallBaseZ];
         scratch.wallCapHeight = d[b + RAIL_BOX.wallCapHeight];
-        scratch.cacheObj = null;
         scratch.gridSide = d[b + RAIL_BOX.gridSide];
         scratch.gridIdx = d[b + RAIL_BOX.gridIdx];
         scratch.isEdgeRail = true;
@@ -1775,7 +1758,6 @@ function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
         scratch.wallHeight = d[b + VOXEL_FACE.wallHeight];
         scratch.wallBaseZ = d[b + VOXEL_FACE.wallBaseZ];
         scratch.wallCapHeight = d[b + VOXEL_FACE.wallCapHeight];
-        scratch.cacheObj = null;
         scratch.gridSide = d[b + VOXEL_FACE.gridSide];
         scratch.gridIdx = d[b + VOXEL_FACE.gridIdx];
         scratch.isEdgeRail = false;
@@ -1797,7 +1779,7 @@ function prepareWallChunkPropTextures(state, prop) {
 export class WorldSceneRenderer {
     constructor() {
         this.visibleDrawQueue = new VisibleDrawQueue();
-        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridSide: 0, gridIdx: 0, isEdgeRail: false };
+        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, atlasFaceKind: WALL_ATLAS_FACE_NONE, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     _appendVisible3dProps(state, viewport) {
         const count = state.entityRegistry.queryViewTier(state.spatialFrame, VIEW_TIER_PROPS, "3d", match3d);

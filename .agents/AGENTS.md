@@ -84,14 +84,16 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - Engine + `BakeSession` numerics live on `_f32` / `_i32` slabs (no parallel named scalar twin fields); object refs (ctx/canvas/grid/state) stay named.
 - Wall atlas: `writeWallAtlasWrap(buf, o)` then `getOrEnsureWallAtlas(profileId, wallHeight)` reading `SS_POINTS` — no scalar wrap args / `wrappedP1` bags; wall face bake uses `configureWallFaceFromSession` after writing `BF_P1*`.
 - Pending surface bakes: `SurfaceBitmapCache._pending` Set — `getOrStart` returns `null` (no `{ isPlaceholder }` bags); draw paths treat missing canvas as not ready.
-- `TILE_BAKE_TIER_REGISTRATION` / `TILE_BAKE_TIER_STATIC` bare ints (not a nested object).
+- Surface cache / worker dedupe identity: opaque `bigint` via `encodeGroundKey` / `encodeRoofMaskKey` / `encodeRoofDrawKey` / `encodeWallKey` (sprite-cache dialect) — no colon-string keys / `toFixed` in key builders.
+- Miss-path bake requests: write `_bakeReqF32` / `_bakeReqI32` then `materialize*BakePayload()` only at the worker postMessage edge.
+- `TILE_WORKER_MESSAGE` / `TILE_BAKE_TIER_*` bare ints (not string labels / nested objects).
 - Wall-chunk prop textures bind on the engine for the current draw (`_wallChunkSideCanvas` / `_wallChunkCapCanvas` / `_wallChunkReady`); no prop texture bags; scale/chunk size from settings.
 - Bake: `configure*` then `setBakeRect` then `paintPixelArea(ctx, seed, profileId)` — no `paintOptions` bags; `composeSurfaceImage(bakeSession, profile, seed)`.
 - Motif apply: `apply(sf, si, rf, ro, config, noise)` with `SF_*` / `SI_*` / `RF_*` slots; `blendMode` / `coordinateSpace` / translate modes are `BLEND_MODE_*` / `COORD_SPACE_*` / `TRANSLATE_MODE_*` ints — no string compares on the bake path.
 - Warp outs: `warpPointInto(outF32, o, …)` — no `{x,y}` bags.
 - Worker payloads: flat scalars only (`p1x…p2y`); no nested points.
 - Modes (`WALL_FACE_*`, `PRIMITIVE_PHYSICS_ROW_*`, `SURFACE_MASK_*`, `BLEND_MODE_*`, `COORD_SPACE_*`) live in `engineEnums`, not `engineMemory`.
-- Metrics/scheduler Promise records may remain bags (non-hot).
+- Scheduler Promise records / thin queue `stats()` may remain bags (non-hot).
 
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:
 `npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.

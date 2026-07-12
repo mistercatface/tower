@@ -89,7 +89,6 @@ describe("surface material stores", () => {
             wallHeight: 16,
             wallBaseZ: 0,
             wallCapHeight: 16,
-            cacheObj: null,
         };
         drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
         assert.equal(capturedProfileId, "edge-profile");
@@ -124,7 +123,6 @@ describe("surface material stores", () => {
             wallHeight: 16,
             wallBaseZ: 0,
             wallCapHeight: 16,
-            cacheObj: null,
         };
         drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
         assert.equal(capturedProfileId, "cell-profile");
@@ -157,7 +155,6 @@ describe("surface material stores", () => {
             wallHeight: 16,
             wallBaseZ: 0,
             wallCapHeight: 16,
-            cacheObj: null,
         };
         drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
         assert.equal(capturedProfileId, "chunk-profile");

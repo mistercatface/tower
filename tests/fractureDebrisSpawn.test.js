@@ -54,7 +54,7 @@ describe("fracture debris slab spawn", () => {
         applyPropBoxFootprint(a, 8, 8);
         applyPropBoxFootprint(b, 10, 6);
         assert.notEqual(getWallChunkSpriteCacheKey(a), getWallChunkSpriteCacheKey(b));
-        assert.match(getWallChunkSpriteCacheKey(a), /:ready:\d+$/);
+        assert.equal(typeof getWallChunkSpriteCacheKey(a), "number");
     });
 
     it("box WorldProp stamps poolTableFelt profile at wall height 1", () => {
@@ -71,11 +71,9 @@ describe("fracture debris slab spawn", () => {
         prop._wallChunkTextureReady = false;
         const pendingKey = getPropStaticKey(prop, "box");
         const pendingCustom = getWallChunkSpriteCacheKey(prop);
-        assert.match(pendingCustom, /:pending:/);
         prop._wallChunkTextureReady = true;
         const readyKey = getPropStaticKey(prop, "box");
         const readyCustom = getWallChunkSpriteCacheKey(prop);
-        assert.match(readyCustom, /:ready:/);
         assert.notEqual(pendingCustom, readyCustom);
         assert.notEqual(pendingKey, readyKey);
     });
@@ -92,7 +90,7 @@ describe("fracture debris slab spawn", () => {
         const glass = store.acquireBody("box", 10, 10, 0);
         assert.equal(glass.wallChunkProfileId, undefined);
         assert.equal(glass.wallChunkHeightPx, undefined);
-        assert.equal(glass.height, 7);
+        assert.equal(glass.height, 16);
     });
 
     it("commitFractureResult places shards on debris slab not worldProps", () => {

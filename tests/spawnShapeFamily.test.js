@@ -36,7 +36,8 @@ describe("spawn shape family defaults", () => {
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
         assert.ok(prop.wallChunkHeightPx > 0);
         assert.equal(getPropVisualTint(prop), null);
-        assert.match(getWallChunkSpriteCacheKey(prop), /^wallchunk:poolTableFelt:/);
+        assert.equal(typeof getWallChunkSpriteCacheKey(prop), "number");
+        assert.notEqual(getWallChunkSpriteCacheKey(prop), 0);
     });
 
     it("places ball with session surface profile override", () => {
@@ -48,7 +49,9 @@ describe("spawn shape family defaults", () => {
         const prop = state.worldProps[0];
         assert.equal(prop.wallChunkProfileId, "tomatoGarden");
         assert.equal(prop._wallChunkTextureReady, false);
-        assert.match(getWallChunkSpriteCacheKey(prop), /^wallchunk:tomatoGarden:/);
+        const other = Object.assign(Object.create(Object.getPrototypeOf(prop)), prop);
+        other.wallChunkProfileId = "poolTableFelt";
+        assert.notEqual(getWallChunkSpriteCacheKey(prop), getWallChunkSpriteCacheKey(other));
     });
 
     it("serialize keeps non-default wallChunkProfileId and omits default", () => {

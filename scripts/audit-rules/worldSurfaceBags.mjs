@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest|writeWallFaceAxes|boundsToCellRect|getOrEnsureWallAtlasScalars)\b/;
+const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest|writeWallFaceAxes|boundsToCellRect|getOrEnsureWallAtlasScalars|horizontalZCacheTag|deleteByPrefix)\b/;
 const nestedPayloadRe = /payload\.p[12]\b/;
 const paintOptionsBagRe = /\bpaintOptions\b|options\.isWall|options\.roofSurface|options\.p1x|writeWallCellPixel|writeWallFaceAxes|_chunkDraw\s*=\s*\{|_chunkKeyRange\s*=\s*\{|_frameGrid\b|_samplePoolEntry\.width|composeSurfaceImage\s*\(\s*samples\b|paintPixelArea\s*\(\s*ctx\s*,\s*width\s*,\s*height\b|getOrEnsureWallAtlasScalars\b/;
 const deadBankRe = /\bSS_(?:CELL|DRAW|AXES)\b(?!_)/;
 const bakeScalarTwinRe = /this\.(?:p1x|invBakeScale|useWallBase|wallFace|wallCell)\s*=/;
+const stringCacheKeyRe = /`(?:chunk|staticRoofMask|staticRoofDraw|wall):/;
 
 function isHotBagReturn(line) {
     if (!/return\s*\{/.test(line)) return false;
@@ -17,7 +18,7 @@ function isHotBagReturn(line) {
 }
 
 export const id = "world-surface-bags";
-export const description = "WorldSurface typed diet — no hot XY/AABB bags, nested payload points, or deleted bag exports";
+export const description = "WorldSurface typed diet — no hot XY/AABB bags, nested payload points, string cache keys, or deleted bag exports";
 export const severity = "fail";
 
 export function run(ctx) {
@@ -49,6 +50,9 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inWorldSurface && bakeScalarTwinRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inWorldSurface && stringCacheKeyRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if ((inWorldSurface || inTileWorker) && nestedPayloadRe.test(line)) {
