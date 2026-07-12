@@ -79,6 +79,14 @@ export const DRAW_KIND_PROP = 0;
 export const DRAW_KIND_VOXEL = 1;
 export const DRAW_KIND_RAIL = 2;
 //
+// Entity slot kinds / flags (entityKind / entityFlags columns)
+export const ENTITY_KIND_NONE = 0;
+export const ENTITY_KIND_WORLD_PROP = 1;
+export const ENTITY_KIND_DEBRIS = 2;
+export const ENTITY_FLAG_DEAD = 1 << 0;
+export const ENTITY_FLAG_KINETIC = 1 << 1;
+export const ENTITY_FLAG_ROLLS = 1 << 2;
+//
 // Kinetic
 export const KINETIC_PAIR_CIRCLE_CIRCLE = 0;
 export const KINETIC_PAIR_CIRCLE_POLY = 1;

@@ -68,7 +68,7 @@ export function scalePolygonPropFootprint(prop, scale) {
     invalidatePropFootprintKey(prop);
     markBroadphaseDirty(prop);
     normalizeKineticBody(prop);
-    wakeKineticBody(prop);
+    wakeKineticBody(prop._physId);
 }
 export function setPolygonPropBoundingRadius(prop, boundingRadius) {
     const currentRadius = getPolygonPropBoundingRadius(prop);
@@ -88,7 +88,7 @@ export function setCirclePropRadius(prop, radius) {
     markBroadphaseDirty(prop);
     if (prop._physId !== undefined) stampKineticBodyFromEntity(prop._physId, prop);
     normalizeKineticBody(prop);
-    wakeKineticBody(prop);
+    wakeKineticBody(prop._physId);
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: PROP_RENDER_MODE_3D, render3DKey: null, inspectKey: null, rolls: false, orientToMotion: false };
@@ -476,7 +476,7 @@ export class WorldProp {
         return kineticInertiaFromBody(this);
     }
     changeState(stateName, stateDataInit = null) {
-        if (this.strategy?.isKinetic) wakeKineticBody(this);
+        if (this.strategy?.isKinetic) wakeKineticBody(this._physId);
         transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
     }
     get angle() {

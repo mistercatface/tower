@@ -51,6 +51,7 @@ import {
     P_WALL_NORMS,
     P_COMPOUND,
     entityRefs,
+    entityFlags,
     entityFacing,
     entityRollQw,
     entityRollQx,
@@ -110,7 +111,7 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -1804,11 +1805,10 @@ function kineticOverlapsWallCandidates(px, py, body, candidates) {
     return false;
 }
 export function shouldResolveKineticBodyAgainstWalls(body, candidates) {
-    if (!body.strategy?.isKinetic) return false;
+    const eid = body._physId;
+    if (eid === undefined || eid === -1 || (entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return false;
     if (body.needsWallCollision?.()) return true;
-    const physId = body._physId;
-    if (physId !== undefined && physId !== -1) return kineticOverlapsWallCandidates(kineticDynamicSlab.x[physId], kineticDynamicSlab.y[physId], body, candidates);
-    return kineticOverlapsWallCandidates(body.x, body.y, body, candidates);
+    return kineticOverlapsWallCandidates(kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], body, candidates);
 }
 function applyStaticSurfaceImpulseSlab(physId, normalX, normalY, cx, cy, restitution, friction) {
     const dyn = kineticDynamicSlab;
@@ -1979,7 +1979,7 @@ export class WallCollisionResolver {
             const parts = entity.collisionParts;
             for (let i = 0; i < parts.length; i++) if (resolveAgainstWallSegmentsSlab(physId, entity, parts[i], candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
         } else if (entity.shape) if (resolveAgainstWallSegmentsSlab(physId, entity, entity.shape, candidateWalls, restitution, friction, 2, shouldBreakWallHit, outHits)) collided = true;
-        if (collided) wakeKineticBody(entity);
+        if (collided) wakeKineticBody(entity._physId);
         entity._wallResolvedCollided = collided;
         return collided;
     }
@@ -2166,7 +2166,7 @@ export function gatherKineticConstraintSlab(tick) {
         const bodyB = constraintBodyAt(physIdB);
         if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
         if (bodyA.id !== store.bodyAId[i] || bodyB.id !== store.bodyBId[i]) continue;
-        if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
+        if ((entityFlags[bodyA._physId] & ENTITY_FLAG_KINETIC) === 0 || (entityFlags[bodyB._physId] & ENTITY_FLAG_KINETIC) === 0) continue;
         let root = bodyA.id;
         const r = kineticDynamicSlab.islandRoot[physIdA];
         if (r !== -1) root = r;
@@ -2200,7 +2200,7 @@ export function gatherKineticConstraintSlab(tick) {
         const bodyB = constraintBodyAt(physIdB);
         if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
         if (bodyA.id !== store.bodyAId[i] || bodyB.id !== store.bodyBId[i]) continue;
-        if (!bodyA.strategy?.isKinetic || !bodyB.strategy?.isKinetic) continue;
+        if ((entityFlags[bodyA._physId] & ENTITY_FLAG_KINETIC) === 0 || (entityFlags[bodyB._physId] & ENTITY_FLAG_KINETIC) === 0) continue;
         let root = bodyA.id;
         const r = kineticDynamicSlab.islandRoot[physIdA];
         if (r !== -1) root = r;
@@ -2342,8 +2342,8 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
         }
         if (!hasBest) break;
         translateLinkAwayFromSlabWall(physIdA, physIdB, bestNx, bestNy, bestOverlap);
-        wakeKineticBody(bodyA);
-        wakeKineticBody(bodyB);
+        wakeKineticBody(bodyA._physId);
+        wakeKineticBody(bodyB._physId);
         spatialFrame.scheduleKineticActivation(bodyA);
         spatialFrame.scheduleKineticActivation(bodyB);
     }
@@ -3482,7 +3482,7 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
 function applyKineticAcceleration(body, ax, ay, dtSec) {
     body.vx = (body.vx ?? 0) + ax * dtSec;
     body.vy = (body.vy ?? 0) + ay * dtSec;
-    wakeKineticBody(body);
+    wakeKineticBody(body._physId);
 }
 function applyFloorBeltForces(world, spatialFrame, dtMs) {
     const grid = world.obstacleGrid;
@@ -3572,7 +3572,7 @@ function portalTeleportHandler(body) {
         body._neighborsFrameId = -1;
         body._neighborEidCount = 0;
     }
-    wakeKineticBody(body);
+    wakeKineticBody(body._physId);
 }
 function applyFloorPortalTeleports(world, spatialFrame) {
     const grid = world.obstacleGrid;
@@ -3620,7 +3620,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     for (let i = 0; i < kineticBodies.length; i++) {
         const body = kineticBodies[i];
         const eid = body._physId;
-        if (rollKind[eid] !== ROLL_DRIVE_NONE) wakeKineticBody(body);
+        if (rollKind[eid] !== ROLL_DRIVE_NONE) wakeKineticBody(body._physId);
     }
     spatialFrame.syncActiveKineticBodies();
     const activeBodies = spatialFrame._activeKineticBodies;
@@ -3934,7 +3934,7 @@ export function advanceKineticSleepIslands(frame, session) {
         const vy = kineticDynamicSlab.vy[physId] || 0;
         const speedSq = vx * vx + vy * vy;
         if (speedSq > sleepComponentMaxSpeedSq[root]) sleepComponentMaxSpeedSq[root] = speedSq;
-        if (!canSleepKinetic(body)) sleepComponentHasBlocker[root] = 1;
+        if (!canSleepKinetic(physId)) sleepComponentHasBlocker[root] = 1;
         sleepComponentMemberCount[root]++;
     }
     for (let i = 0; i < activeBodies.length; i++) {
@@ -3943,7 +3943,7 @@ export function advanceKineticSleepIslands(frame, session) {
         if (physId === undefined || physId === -1) continue;
         const root = sleepComponentRoot[physId];
         const eligible = sleepComponentHasBlocker[root] === 0;
-        advanceKineticSleep(body, eligible);
+        advanceKineticSleep(physId, eligible);
     }
 }
 function propBlocksSleep(prop) {
@@ -3951,40 +3951,41 @@ function propBlocksSleep(prop) {
     if (fn) return fn.call(prop.currentState);
     return false;
 }
-export function canSleepKinetic(entity) {
-    if (!entity?.strategy?.isKinetic) return false;
+export function canSleepKinetic(eid) {
+    if ((entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return false;
+    const entity = entityRefs[eid];
     if (propBlocksSleep(entity)) return false;
     return !isKinematicallyActive(entity);
 }
-export function wakeKineticBody(entity) {
-    if (!entity?.strategy?.isKinetic) return;
-    if (!entity.isSleeping && entity._sleepFrames === 0) return;
-    entity._sleepFrames = 0;
-    entity.isSleeping = false;
-    const physId = entity._physId;
-    if (physId === undefined || physId === -1) return;
-    const count = kineticDynamicSlab.linkNeighborCount[physId];
-    if (count === 0) return;
-    const offset = kineticDynamicSlab.linkNeighborOffset[physId];
+export function wakeKineticBody(eid) {
+    if ((entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return;
     const sleeping = kineticDynamicSlab.sleeping;
     const sleepFrames = kineticDynamicSlab.sleepFrames;
+    if (sleeping[eid] === 0 && sleepFrames[eid] === 0) return;
+    sleepFrames[eid] = 0;
+    sleeping[eid] = 0;
+    const count = kineticDynamicSlab.linkNeighborCount[eid];
+    if (count === 0) return;
+    const offset = kineticDynamicSlab.linkNeighborOffset[eid];
     for (let i = 0; i < count; i++) {
         const peerPhysId = kineticDynamicSlab.linkNeighborEids[offset + i];
-        const peer = constraintBodyAt(peerPhysId);
-        if (!peer || peer === entity) continue;
+        if (peerPhysId === eid) continue;
+        if ((entityFlags[peerPhysId] & ENTITY_FLAG_KINETIC) === 0) continue;
         sleepFrames[peerPhysId] = 0;
         sleeping[peerPhysId] = 0;
     }
 }
-export function advanceKineticSleep(entity, eligible, requiredFrames = collisionSettings.kineticSleepFrames) {
-    if (!entity?.strategy?.isKinetic) return;
+export function advanceKineticSleep(eid, eligible, requiredFrames = collisionSettings.kineticSleepFrames) {
+    if ((entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return;
+    const sleeping = kineticDynamicSlab.sleeping;
+    const sleepFrames = kineticDynamicSlab.sleepFrames;
     if (!eligible) {
-        entity._sleepFrames = 0;
-        entity.isSleeping = false;
+        sleepFrames[eid] = 0;
+        sleeping[eid] = 0;
         return;
     }
-    entity._sleepFrames++;
-    if (entity._sleepFrames >= requiredFrames) entity.isSleeping = true;
+    sleepFrames[eid]++;
+    if (sleepFrames[eid] >= requiredFrames) sleeping[eid] = 1;
 }
 export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = neighborEids.length) {
     const propEid = prop._physId;
@@ -3992,8 +3993,8 @@ export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = nei
     for (let i = 0; i < neighborCount; i++) {
         const eidB = neighborEids[i];
         if (eidB === propEid) continue;
+        if ((entityFlags[eidB] & ENTITY_FLAG_KINETIC) === 0) continue;
         const other = entityRefs[eidB];
-        if (!other?.strategy?.isKinetic) continue;
         if (shareKineticIsland(prop, other)) continue;
         if (!pairBroadphaseOverlapSlab(propEid, eidB)) continue;
         if (sleeping[eidB]) continue;
@@ -4002,13 +4003,13 @@ export function hasSleepBlockingNeighbor(prop, neighborEids, neighborCount = nei
     return false;
 }
 export function evaluateKineticSleepEligible(prop, neighborEids, neighborCount = neighborEids.length) {
-    return canSleepKinetic(prop) && !hasSleepBlockingNeighbor(prop, neighborEids, neighborCount);
+    return canSleepKinetic(prop._physId) && !hasSleepBlockingNeighbor(prop, neighborEids, neighborCount);
 }
 export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) {
     emptyAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
     for (let i = 0; i < islandMembers.length; i++) {
         const prop = islandMembers[i];
-        if (!canSleepKinetic(prop)) return false;
+        if (!canSleepKinetic(prop._physId)) return false;
         const extent = entityCollisionSpan(prop);
         growAabbFromCenterF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, prop.x, prop.y, extent, extent);
     }
@@ -4592,7 +4593,7 @@ function integrateGroundRoll(body, dtMs) {
     normalizeEntityRollQuat(physId);
 }
 export function absorbCollisionRollImpulse(body, dtMs) {
-    if (body.strategy?.rolls) return;
+    if ((entityFlags[body._physId] & ENTITY_FLAG_ROLLS) !== 0) return;
     const angW = body.angularVelocity ?? 0;
     if (Math.abs(angW) < 0.02) return;
     const physId = body._physId;
@@ -4692,7 +4693,7 @@ function applyRollBrake(prop, dtSec, accel) {
         prop.vx -= (prop.vx / speed) * decel;
         prop.vy -= (prop.vy / speed) * decel;
     }
-    wakeKineticBody(prop);
+    wakeKineticBody(prop._physId);
     return true;
 }
 function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
@@ -4715,7 +4716,7 @@ function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
         prop.vx = (prop.vx / speed) * maxSpeed;
         prop.vy = (prop.vy / speed) * maxSpeed;
     }
-    wakeKineticBody(prop);
+    wakeKineticBody(prop._physId);
 }
 export function snapMoveTargetToCellCenter(buf, o, grid, worldX, worldY) {
     const idx = grid.worldToIdx(worldX, worldY);
@@ -4728,14 +4729,6 @@ export function snapMoveTargetToCellCenter(buf, o, grid, worldX, worldY) {
     buf[o + 1] = grid.gridCenterYByIdx(idx);
     return idx;
 }
-export function getKineticRollConfig(prop) {
-    let base = prop._cachedRollBaseConfig;
-    if (!base) {
-        base = { ...physicsSettings.groundNavRoll, ...prop.strategy?.groundNav };
-        prop._cachedRollBaseConfig = base;
-    }
-    return base;
-}
 export function steerRollToward(eid, dirX, dirY, config, targetSpeed = null, accelOverride = null, maxSpeedOverride = null) {
     if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return decelerateRoll(eid, config);
     const slab = kineticDynamicSlab;
@@ -4744,13 +4737,13 @@ export function steerRollToward(eid, dirX, dirY, config, targetSpeed = null, acc
     slab.rollDriveDirY[eid] = dirY;
     slab.rollDriveAccel[eid] = accelOverride ?? config.accel;
     slab.rollDriveMaxSpeed[eid] = targetSpeed !== null ? Math.min(maxSpeedOverride ?? config.maxSpeed, targetSpeed) : (maxSpeedOverride ?? config.maxSpeed);
-    wakeKineticBody(entityRefs[eid]);
+    wakeKineticBody(eid);
 }
 export function decelerateRoll(eid, config) {
     const slab = kineticDynamicSlab;
     slab.rollDriveKind[eid] = ROLL_DRIVE_BRAKE;
     slab.rollDriveAccel[eid] = config.accel;
-    wakeKineticBody(entityRefs[eid]);
+    wakeKineticBody(eid);
 }
 export function clearGroundRollDrive(eid) {
     kineticDynamicSlab.rollDriveKind[eid] = ROLL_DRIVE_NONE;

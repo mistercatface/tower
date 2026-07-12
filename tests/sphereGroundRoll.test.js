@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
-import { applyGroundRollDrive, integratePropMotion, steerRollToward, getKineticRollConfig } from "../Libraries/Physics/physics.js";
+import { applyGroundRollDrive, integratePropMotion, steerRollToward, physicsSettings } from "../Libraries/Physics/physics.js";
 
 test("sphereGroundRoll - straight roll advances rollQuat without Z twist", () => {
     const prop = mockRollingProp({ vx: 10, vy: 0 });
@@ -20,7 +20,7 @@ test("sphereGroundRoll - straight roll advances rollQuat without Z twist", () =>
 
 test("sphereGroundRoll - 90 degree turn", () => {
     const prop = mockRollingProp({ vx: 50, vy: 0, radius: 8 });
-    const config = getKineticRollConfig(prop);
+    const config = physicsSettings.groundNavRoll;
 
     for (let i = 0; i < 60; i++) {
         steerRollToward(prop._physId, 0, 1, config, 50);
@@ -36,8 +36,8 @@ test("sphereGroundRoll - 90 degree turn", () => {
 test("sphereGroundRoll - large radius vs small radius twist", () => {
     const small = mockRollingProp({ vx: 50, vy: 0, radius: 8 });
     const large = mockRollingProp({ vx: 50, vy: 0, radius: 32 });
-    const configSmall = getKineticRollConfig(small);
-    const configLarge = getKineticRollConfig(large);
+    const configSmall = physicsSettings.groundNavRoll;
+    const configLarge = physicsSettings.groundNavRoll;
 
     for (let i = 0; i < 30; i++) {
         steerRollToward(small._physId, 0, 1, configSmall, 50);

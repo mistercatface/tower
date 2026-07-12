@@ -2,14 +2,14 @@ import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, cellEdgeEndpointsIdx, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
-import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab } from "../../Core/engineMemory.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
+import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab, entityFlags } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE } from "../../Core/engineEnums.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE, ENTITY_FLAG_KINETIC } from "../../Core/engineEnums.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
@@ -1543,7 +1543,7 @@ export function tryExportLinkedBallChainSpawnGroup(members) {
     return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: anchor.faction, segmentCount: members.length };
 }
 export function isChainLinkBall(prop) {
-    if (!prop?.strategy?.isKinetic) return false;
+    if (!prop || (entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) === 0) return false;
     if (prop.strategy?.canChain) return true;
     return sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]));
 }
@@ -1789,7 +1789,7 @@ export function createDirectGroundNavBehavior(state) {
         const flags = slab.flags[slot];
         if ((flags & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
         if ((flags & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_MOVE_ACTIVE)) === 0) return;
-        const config = getKineticRollConfig(prop);
+        const config = physicsSettings.groundNavRoll;
         const dx = slab.targetX[slot] - prop.x;
         const dy = slab.targetY[slot] - prop.y;
         const dist = Math.hypot(dx, dy);
@@ -1893,7 +1893,7 @@ export function createFlowGroundNavBehavior(state) {
     };
     const tickSteering = (prop, slot) => {
         if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
-        const config = getKineticRollConfig(prop);
+        const config = physicsSettings.groundNavRoll;
         const stopRadius = physicsSettings.groundNavHpa.stopRadius;
         const grid = state.obstacleGrid;
         snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot]);
@@ -2006,7 +2006,7 @@ export function createHpaGroundNavBehavior(state) {
     const tickSteering = (prop, slot, dtMs) => {
         if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
         const grid = state.obstacleGrid;
-        const config = getKineticRollConfig(prop);
+        const config = physicsSettings.groundNavRoll;
         const stopRadius = physicsSettings.groundNavHpa.stopRadius;
         const targetX = slab.targetX[slot];
         const targetY = slab.targetY[slot];
@@ -2643,7 +2643,7 @@ function applyWorldPropFacing(prop, degrees) {
 function applyWorldPropPosition(prop, { x, y }) {
     if (x != null) prop.x = x;
     if (y != null) prop.y = y;
-    wakeKineticBody(prop);
+    wakeKineticBody(prop._physId);
 }
 function appendChainLinkInspector(body, chain) {
     appendCheckboxField(body, "Chain head", { name: "chainHead", checked: chain.isChainHead(), onChange: (checked) => chain.setChainHead(checked) });

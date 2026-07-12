@@ -2,8 +2,8 @@ import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody } from "../../Libraries/Physics/physics.js";
-import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE } from "../../Core/engineEnums.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
@@ -185,6 +185,7 @@ export function assignPhysIdWithPose(body, physId) {
     kineticDynamicSlab.sleeping[physId] = sleeping;
     kineticDynamicSlab.sleepFrames[physId] = sleepFrames;
     kineticDynamicSlab.rollDriveKind[physId] = ROLL_DRIVE_NONE;
+    entityFlags[physId] = worldPropBindFlags(body);
     if (!body.isKineticDebris) {
         attachPoseAccessors(body);
         attachSleepAccessors(body);

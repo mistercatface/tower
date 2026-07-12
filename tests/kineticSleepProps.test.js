@@ -39,8 +39,9 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
 describe("kinetic sleep on proof props", () => {
     it("isolated crate sleeps after consecutive still frames", () => {
         const crate = new WorldProp(0, 0, "box", 0);
+        assignPhysIdWithPose(crate, 0);
         assert.ok(evaluateKineticSleepEligible(crate, EMPTY_NEIGHBOR_EIDS, 0));
-        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(crate, true);
+        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(crate._physId, true);
         assert.equal(crate.isSleeping, true);
     });
     it("resting crate stack can sleep together", () => {
@@ -53,8 +54,8 @@ describe("kinetic sleep on proof props", () => {
         assert.ok(evaluateKineticSleepEligible(bottom, bottomN));
         assert.ok(evaluateKineticSleepEligible(top, topN));
         for (let i = 0; i < SLEEP_FRAMES; i++) {
-            advanceKineticSleep(bottom, evaluateKineticSleepEligible(bottom, bottomN));
-            advanceKineticSleep(top, evaluateKineticSleepEligible(top, topN));
+            advanceKineticSleep(bottom._physId, evaluateKineticSleepEligible(bottom, bottomN));
+            advanceKineticSleep(top._physId, evaluateKineticSleepEligible(top, topN));
         }
         assert.equal(bottom.isSleeping, true);
         assert.equal(top.isSleeping, true);
@@ -75,7 +76,7 @@ describe("kinetic sleep on proof props", () => {
         const top = new WorldProp(0, 14, "box", 0);
         separatePairUntilClear(bottom, top);
         bindPair(bottom, top);
-        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(top, true);
+        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(top._physId, true);
         top.isSleeping = true;
         const n = neighborEids(top);
         assert.ok(!hasSleepBlockingNeighbor(bottom, n));
@@ -91,9 +92,10 @@ describe("kinetic sleep on proof props", () => {
     });
     it("motion resets sleep counter on proof props", () => {
         const hex = new WorldProp(0, 0, "hex_block", 0);
-        for (let i = 0; i < SLEEP_FRAMES - 1; i++) advanceKineticSleep(hex, true);
+        assignPhysIdWithPose(hex, 0);
+        for (let i = 0; i < SLEEP_FRAMES - 1; i++) advanceKineticSleep(hex._physId, true);
         hex.vx = 5;
-        advanceKineticSleep(hex, false);
+        advanceKineticSleep(hex._physId, false);
         assert.equal(hex.isSleeping, false);
         assert.equal(hex._sleepFrames, 0);
     });

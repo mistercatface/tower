@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
@@ -10,7 +10,8 @@ import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
-import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, bindEntitySlot, clearWorldPropSpawnPose, ENTITY_FLAG_KINETIC } from "../Entity/entitySlots.js";
+import { ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_KINETIC } from "../../Core/engineEnums.js";
+import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, bindEntitySlot, clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
 export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     const dc = nc - c;
     const dr = nr - r;
@@ -3168,12 +3169,12 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const physId = prop._physId ?? allocateEntityEid();
             prop._physId = physId;
             if (needBind) {
-                const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
+                const flags = worldPropBindFlags(prop);
                 bindEntitySlot(physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
                 clearWorldPropSpawnPose(prop);
             }
             this.insertEntity(prop, physId);
-            if (prop.strategy?.isKinetic) this._kineticBodies.push(prop);
+            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._kineticBodies.push(prop);
         }
         const debrisBodies = state.fractureEngine.debris.list();
         for (let i = 0; i < debrisBodies.length; i++) {
@@ -3185,12 +3186,12 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const physId = body._physId ?? allocateEntityEid();
             body._physId = physId;
             if (needBind) {
-                const flags = body.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
+                const flags = worldPropBindFlags(body);
                 bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, x, y, entityCollisionSpan(body), flags);
                 clearWorldPropSpawnPose(body);
             }
             this.insertEntity(body, physId);
-            if (body.strategy?.isKinetic) this._kineticBodies.push(body);
+            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._kineticBodies.push(body);
         }
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
     }
@@ -3215,7 +3216,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 const x = prop.x;
                 const y = prop.y;
                 prop._physId = allocateEntityEid();
-                const flags = prop.strategy?.isKinetic ? ENTITY_FLAG_KINETIC : 0;
+                const flags = worldPropBindFlags(prop);
                 const kind = prop.isKineticDebris ? ENTITY_KIND_DEBRIS : ENTITY_KIND_WORLD_PROP;
                 bindEntitySlot(prop._physId, kind, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
                 clearWorldPropSpawnPose(prop);
@@ -3224,7 +3225,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             this.entityGrid.insert(prop);
             prop._neighborsFrameId = -1;
             prop._neighborEidCount = 0;
-            if (prop.strategy?.isKinetic) {
+            if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) {
                 this.activateKineticBody(prop, false);
                 kineticAdmitted.push(prop);
             }
@@ -3291,7 +3292,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     scheduleKineticActivation(prop) {
         if (prop._physId === undefined) return;
-        wakeKineticBody(prop);
+        wakeKineticBody(prop._physId);
         this._activationScheduled.add(prop);
     }
     _wakeConstraintLinkedPeers(prop, patchOut) {
@@ -3305,7 +3306,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const peerEid = eids[offset + i];
             const peer = entityRefs[peerEid];
             if (!peer || peer === prop || peer._physId === undefined || peer._physId !== peerEid) continue;
-            if (kineticDynamicSlab.sleeping[peer._physId]) wakeKineticBody(peer);
+            if (kineticDynamicSlab.sleeping[peer._physId]) wakeKineticBody(peer._physId);
             this._ensureActive(peer);
             if (patchOut) patchOut.push(peer);
         }
@@ -3322,7 +3323,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     activateKineticBody(prop, snapshot = true) {
         if (prop._physId === undefined) return;
-        if (kineticDynamicSlab.sleeping[prop._physId]) wakeKineticBody(prop);
+        if (kineticDynamicSlab.sleeping[prop._physId]) wakeKineticBody(prop._physId);
         this._ensureActive(prop, snapshot);
         this._wakeConstraintLinkedPeers(prop);
     }

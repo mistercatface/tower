@@ -114,7 +114,7 @@ describe("kinetic islands", () => {
         assert.equal(kineticDynamicSlab.islandRoot[bodies[count - 1]._physId], bodies[0].id);
         assert.ok(evaluateKineticIslandSleepEligible(bodies, frame));
         for (let pass = 0; pass < SLEEP_FRAMES; pass++) {
-            for (let i = 0; i < bodies.length; i++) advanceKineticSleep(bodies[i], true);
+            for (let i = 0; i < bodies.length; i++) advanceKineticSleep(bodies[i]._physId, true);
         }
         for (let i = 0; i < bodies.length; i++) assert.equal(bodies[i].isSleeping, true);
     });
@@ -132,7 +132,7 @@ describe("kinetic islands", () => {
             bodies[i].isSleeping = true;
             bodies[i]._sleepFrames = SLEEP_FRAMES;
         }
-        wakeKineticBody(a);
+        wakeKineticBody(a._physId);
         assert.equal(a.isSleeping, false);
         assert.equal(b.isSleeping, false);
         assert.equal(c.isSleeping, true);

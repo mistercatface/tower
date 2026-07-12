@@ -519,7 +519,7 @@ class KineticDebrisStore {
             body.height = parent.height;
             copyDebrisPolygonGeometry(body, parent);
             this._pushBody(body);
-            wakeKineticBody(body);
+            wakeKineticBody(body._physId);
             admitScratch.length = 0;
             admitScratch.push(body);
             spatialFrame.admitKineticProps(admitScratch, this.world);
@@ -542,7 +542,7 @@ class KineticDebrisStore {
             body.height = parent.height;
             copyDebrisPolygonGeometry(body, parent);
             this._pushBody(body);
-            wakeKineticBody(body);
+            wakeKineticBody(body._physId);
             admitScratch.length = 0;
             admitScratch.push(body);
             spatialFrame.admitKineticProps(admitScratch, this.world);
@@ -618,7 +618,7 @@ class KineticDebrisStore {
         }
         for (let i = 0; i < spawnedScratch.length; i++) {
             this._pushBody(spawnedScratch[i]);
-            wakeKineticBody(spawnedScratch[i]);
+            wakeKineticBody(spawnedScratch[i]._physId);
         }
         return spawnedScratch;
     }

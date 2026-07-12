@@ -72,7 +72,7 @@ describe("active kinetic bodies", () => {
         frame._kineticBodies.push(prop);
         frame.syncActiveKineticBodies();
         assert.equal(frame._activeKineticBodies.length, 1);
-        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(prop, true);
+        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(prop._physId, true);
         assert.equal(prop.isSleeping, true);
         frame.syncActiveKineticBodies();
         assert.equal(frame._activeKineticBodies.length, 0);

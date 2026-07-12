@@ -1,10 +1,6 @@
-import { MAX_ENTITIES } from "../../Core/engineLimits.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab } from "../../Core/engineMemory.js";
-export const ENTITY_KIND_NONE = 0;
-export const ENTITY_KIND_WORLD_PROP = 1;
-export const ENTITY_KIND_DEBRIS = 2;
-export const ENTITY_FLAG_DEAD = 1 << 0;
-export const ENTITY_FLAG_KINETIC = 1 << 1;
+import { MAX_ENTITIES } from "./engineLimits.js";
+import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS } from "./engineEnums.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab } from "./engineMemory.js";
 let nextEid = 0;
 const eidFreeList = [];
 export function allocateEntityEid() {
@@ -21,6 +17,14 @@ export function entityEidHighWater() {
 }
 export function entityEidFreeCount() {
     return eidFreeList.length;
+}
+export function worldPropBindFlags(ref) {
+    let flags = 0;
+    if (ref.isDead) flags |= ENTITY_FLAG_DEAD;
+    const strategy = ref.strategy;
+    if (strategy?.isKinetic) flags |= ENTITY_FLAG_KINETIC;
+    if (strategy?.rolls) flags |= ENTITY_FLAG_ROLLS;
+    return flags;
 }
 export function releaseEntityEid(eid) {
     entityAlive[eid] = 0;

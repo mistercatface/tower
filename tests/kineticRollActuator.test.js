@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { applyGroundRollDrive } from "../Libraries/Physics/physics.js";
 import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST } from "../Core/engineEnums.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { clearGroundRollDrive, decelerateRoll, getKineticRollConfig, steerRollToward } from "../Libraries/Physics/physics.js";
+import { clearGroundRollDrive, decelerateRoll, steerRollToward } from "../Libraries/Physics/physics.js";
 import { integratePropMotion } from "../Libraries/Physics/physics.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 
@@ -115,8 +115,4 @@ describe("kineticRollActuator", () => {
         assert.ok(prop.vx > vxAfterFirst);
     });
 
-    it("getKineticRollConfig merges prop strategy overrides", () => {
-        const prop = mockRollingProp({ strategy: { rolls: true, groundNav: { maxSpeed: 90 } } });
-        assert.equal(getKineticRollConfig(prop).maxSpeed, 90);
-    });
 });
