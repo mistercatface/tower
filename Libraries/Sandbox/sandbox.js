@@ -20,7 +20,7 @@ import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import propCatalog from "../../Assets/props/index.js";
-import { createDragLaunchBehaviors, createGrabDragBehavior, assetSupportsDragInteraction, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
+import { createDragLaunchBehavior, createGrabDragBehavior, assetSupportsDragInteraction, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
     constructor() {
         this.byEntityId = new Map();
@@ -2139,7 +2139,7 @@ export function buildGroundNavSelectionMenuActions(propIds, worldX, worldY, navC
     return actions;
 }
 export function createDefaultSandboxBehaviors(state) {
-    return [...createDragLaunchBehaviors(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createDirectGroundNavBehavior(state), createHpaGroundNavBehavior(state), createFlowGroundNavBehavior(state)];
+    return [createDragLaunchBehavior(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createDirectGroundNavBehavior(state), createHpaGroundNavBehavior(state), createFlowGroundNavBehavior(state)];
 }
 /**
  * @param {import("../Viewport/Viewport.js").Viewport} viewport

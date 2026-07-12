@@ -14,6 +14,7 @@ const sandboxHpaSettingsAssignRe = /Object\.assign\s*\(\s*hpaPathSettingsScratch
 const sandboxStringBehaviorIdRe = /\brollToCursor(?:Direct|Flow|Hpa)\b|"grabDrag"|"dragLaunch"/;
 const sandboxLastTopologyKeyRe = /\blastTopologyKey\b/;
 const sandboxGetOrCreatePropRunRe = /\bgetOrCreatePropRun\b/;
+const dragAimBagRe = /\bcreateDragLaunchAim\b|\btargetWorld\b|\bcreateDragLaunchBehaviors\b/;
 export const id = "render-bags";
 export const description = "Render/Canvas/Spatial typed diet — no face bags, pending fills, string overlay/stamp keys, bag overlay cmds, or wall-bucket bags";
 export const severity = "fail";
@@ -71,6 +72,9 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inSandbox && sandboxGetOrCreatePropRunRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inSandbox && dragAimBagRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inSpatial && beltStripStringRe.test(line)) {

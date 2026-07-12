@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { applyGroundRollDrive, CircleShape } from "../Libraries/Physics/physics.js";
-import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, SANDBOX_BEHAVIOR_GRAB_DRAG } from "../Core/engineEnums.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
 import { createGrabDragBehavior, resolveDragLaunchConfigFromSize } from "../Libraries/Sandbox/dragBehaviors.js";
-import { createDefaultSandboxBehaviors } from "../Libraries/Sandbox/sandbox.js";
+import { createDefaultSandboxBehaviors, GROUND_NAV_BEHAVIOR_IDS } from "../Libraries/Sandbox/sandbox.js";
+import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, SANDBOX_BEHAVIOR_GRAB_DRAG } from "../Core/engineEnums.js";
 import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
 import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/sandboxDragHarness.js";
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
@@ -27,7 +27,7 @@ describe("grabDrag behavior", () => {
 
     it("onPointerDown returns true for kinetic props and false otherwise", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const kinetic = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 32, y: 32, type: "ball" }));
         const staticProp = registerGrabDragTestProp(state, { id: 2, x: 48, y: 48, radius: 8, shape: new CircleShape(8), strategy: { isKinetic: false }, isDead: false });
         assert.equal(behavior.onPointerDown(kinetic, { x: 32, y: 32 }), true);
@@ -36,7 +36,7 @@ describe("grabDrag behavior", () => {
 
     it("tickWorld steers toward pull target instead of teleporting", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
         assert.ok(behavior.onPointerDown(prop, { x: 0, y: 0 }));
         behavior.onPointerMove(prop, { x: 120, y: 0 });
@@ -48,7 +48,7 @@ describe("grabDrag behavior", () => {
 
     it("sustains thrust while cursor stays beyond a wall without snapping through", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
         behavior.onPointerDown(prop, { x: 0, y: 0 });
         behavior.onPointerMove(prop, { x: 200, y: 0 });
@@ -59,7 +59,7 @@ describe("grabDrag behavior", () => {
 
     it("onPointerUp clears roll drive but keeps momentum", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", vx: 12, vy: 3 }));
         behavior.onPointerDown(prop, { x: 0, y: 0 });
         behavior.onPointerMove(prop, { x: 80, y: 0 });
@@ -73,7 +73,7 @@ describe("grabDrag behavior", () => {
 
     it("pulls only the grabbed chain segment while neighbors follow via constraints", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 10, 10), {
             segmentCount: 3,
             spacing: 16,
@@ -123,7 +123,7 @@ describe("grabDrag behavior", () => {
 
     it("compound polygon grab uses drawOutline not first collision part", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, new WorldProp(0, 0, "cross_pinwheel", 0));
         assert.ok(prop.drawOutline?.length >= 6);
         assert.ok(prop.collisionParts?.length > 1);
@@ -146,7 +146,7 @@ describe("grabDrag behavior", () => {
 
     it("polygon grab uses off-center anchor and applies grab torque", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
         prop.angularVelocity = 0;
         behavior.onPointerDown(prop, { x: -9, y: -5 });
@@ -171,7 +171,7 @@ describe("grabDrag behavior", () => {
 
     it("sphere rim grab steers from rolled contact", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball", angularVelocity: 0 }));
         behavior.onPointerDown(prop, { x: 10, y: 0 });
         behavior.onPointerMove(prop, { x: 10, y: 100 });
@@ -182,7 +182,7 @@ describe("grabDrag behavior", () => {
 
     it("reference grab inertia matches spin for light and heavy polygons", () => {
         const state = createGrabDragTestState();
-        const behavior = createGrabDragBehavior(state);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const light = registerGrabDragTestProp(state, new WorldProp(0, 0, "tri_wedge", 0));
         const heavy = registerGrabDragTestProp(state, new WorldProp(100, 0, "tri_wedge", 0));
         light.angularVelocity = 0;
