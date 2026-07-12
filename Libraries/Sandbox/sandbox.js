@@ -10,7 +10,7 @@ import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
-import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, applyCrossPinwheelFootprint, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
+import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, getCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, buildSabPathOverlayFromProgress, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
 import { overlayCachedSelectionRing, overlayGridCellHighlight, overlayAabb, queryPropIdsInView, appendPathOverlayCommands } from "../Render/render.js";
@@ -473,17 +473,15 @@ function footprintDiffersFromAsset(prop) {
     if (!assetDefaultFootprintSpan(prop.type) || prop.shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return false;
     const defaultHx = ENGINE_F32[M_VEC_A];
     const defaultHy = ENGINE_F32[M_VEC_A + 1];
-    convexFootprintHalfExtents(ENGINE_F32, M_VEC_A, prop.shape.vertices);
+    const liveVerts = prop.drawOutline ?? prop.shape.vertices;
+    convexFootprintHalfExtents(ENGINE_F32, M_VEC_A, liveVerts);
     return ENGINE_F32[M_VEC_A] !== defaultHx || ENGINE_F32[M_VEC_A + 1] !== defaultHy;
 }
 function serializePlacedProp(prop) {
     const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: prop.faction };
     const assetRadius = propCatalog[prop.type]?.physics?.radius;
     if (prop.radius != null && assetRadius != null && prop.radius !== assetRadius) entry.radius = prop.radius;
-    if (prop.type === "cross_pinwheel") {
-        if (prop.crossLength !== undefined) entry.crossLength = prop.crossLength;
-        if (prop.crossThickness !== undefined) entry.crossThickness = prop.crossThickness;
-    } else if (footprintDiffersFromAsset(prop)) {
+    if (footprintDiffersFromAsset(prop)) {
         entry.width = ENGINE_F32[M_VEC_A] * 2;
         entry.height = ENGINE_F32[M_VEC_A + 1] * 2;
     }
@@ -749,7 +747,6 @@ const PLACEABLE = {
             const halfExtents = isResizableBoxSpawnAsset(placedAsset) ? ctx.spawnBoxHalfExtents : undefined;
             const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents);
             if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
-            if (spawned && propTypeId === "cross_pinwheel") applyCrossPinwheelFootprint(spawned, ctx.spawnCrossLength, ctx.spawnCrossThickness);
             if (spawned && isPolygonFamilyAsset(placedAsset) && !placedAsset.physics?.fracture) spawned.fractureEnabled = ctx.spawnFractureEnabled;
             if (spawned && spawned.wallChunkProfileId != null) applyPropSurfaceProfile(spawned, ctx.spawnSurfaceProfileId);
             if (spawned) {
@@ -942,10 +939,6 @@ function spawnSnapshotProp(state, entry) {
     if (entry.radius != null)
         if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
-    if (prop && entry.type === "cross_pinwheel") {
-        if (entry.crossLength == null || entry.crossThickness == null) throw new Error("cross_pinwheel snapshot entry requires crossLength and crossThickness");
-        applyCrossPinwheelFootprint(prop, entry.crossLength, entry.crossThickness);
-    }
     if (prop && entry.wallChunkProfileId) applyPropSurfaceProfile(prop, entry.wallChunkProfileId);
     return prop;
 }
@@ -1050,8 +1043,6 @@ export function createSandboxSession(state) {
     let spawnFaction = "alpha";
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
-    let spawnCrossLength = 32;
-    let spawnCrossThickness = 8;
     let spawnBallRadius = null;
     let spawnSnakeLength = 5;
     let spawnFractureEnabled = false;
@@ -1065,8 +1056,6 @@ export function createSandboxSession(state) {
             return spawnBallRadius ?? ballRadiusFromAsset(propCatalog[spawnPropIdFromPalette()]);
         },
         spawnBoxHalfExtents: { x: spawnBoxWidth / 2, y: spawnBoxHeight / 2 },
-        spawnCrossLength,
-        spawnCrossThickness,
         spawnSnakeLength,
         spawnFractureEnabled,
         pickSelection,
@@ -1422,16 +1411,6 @@ export function createSandboxSession(state) {
         getSpawnBallRadius: (asset) => spawnBallRadius ?? ballRadiusFromAsset(asset),
         setSpawnBallRadius: (radius) => {
             spawnBallRadius = Math.max(1, Math.min(32, Math.round(radius)));
-            notifyUi();
-        },
-        getSpawnCrossLength: () => spawnCrossLength,
-        setSpawnCrossLength: (len) => {
-            spawnCrossLength = Math.max(8, Math.min(128, Math.round(len)));
-            notifyUi();
-        },
-        getSpawnCrossThickness: () => spawnCrossThickness,
-        setSpawnCrossThickness: (thick) => {
-            spawnCrossThickness = Math.max(2, Math.min(64, Math.round(thick)));
             notifyUi();
         },
         getSpawnSnakeLength: () => spawnSnakeLength,
@@ -2505,10 +2484,6 @@ function appendShapeFamilyBoxFields(body, width, height, onWidthChange, onHeight
     appendNumberField(body, "Width", { value: width, step: 1, min: 6, max: 128, onChange: onWidthChange });
     appendNumberField(body, "Height", { value: height, step: 1, min: 6, max: 128, onChange: onHeightChange });
 }
-function appendCrossPinwheelDimensionFields(body, length, thickness, onLengthChange, onThicknessChange) {
-    appendNumberField(body, "Cross length", { value: length, step: 2, min: 8, max: 128, onChange: onLengthChange });
-    appendNumberField(body, "Cross thickness", { value: thickness, step: 1, min: 2, max: 64, onChange: onThicknessChange });
-}
 function appendShapeFamilyFractureField(body, checked, onChange) {
     appendCheckboxField(body, "Fracture", { name: "fracture", checked: Boolean(checked), onChange });
 }
@@ -2517,18 +2492,6 @@ function appendShapeFamilyFields(body, state, spec) {
     if (mode === "spawn") {
         const session = controller.session;
         const spawnAsset = propCatalog[spawnId];
-        if (spawnId === "cross_pinwheel") {
-            appendCrossPinwheelDimensionFields(
-                body,
-                session.getSpawnCrossLength(),
-                session.getSpawnCrossThickness(),
-                (val) => session.setSpawnCrossLength(val),
-                (val) => session.setSpawnCrossThickness(val),
-            );
-            appendShapeFamilyFractureField(body, session.getSpawnFractureEnabled(), (checked) => session.setSpawnFractureEnabled(checked));
-            appendSurfaceProfileSelect(body, { value: session.getSpawnSurfaceProfileId(), onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId) });
-            return;
-        }
         if (isBallFamilyAsset(spawnAsset)) {
             appendShapeFamilyRadiusField(body, session.getSpawnBallRadius(spawnAsset), (radius) => session.setSpawnBallRadius(radius));
             appendSurfaceProfileSelect(body, { value: session.getSpawnSurfaceProfileId(), onChange: (profileId) => session.setSpawnSurfaceProfileId(profileId) });
@@ -2555,27 +2518,6 @@ function appendShapeFamilyFields(body, state, spec) {
         applyPropSurfaceProfile(selectedProp, profileId);
         dirty();
     };
-    if (selectedProp.type === "cross_pinwheel") {
-        appendCrossPinwheelDimensionFields(
-            body,
-            selectedProp.crossLength ?? 32,
-            selectedProp.crossThickness ?? 8,
-            (val) => {
-                applyCrossPinwheelFootprint(selectedProp, val, selectedProp.crossThickness ?? 8);
-                dirty();
-            },
-            (val) => {
-                applyCrossPinwheelFootprint(selectedProp, selectedProp.crossLength ?? 32, val);
-                dirty();
-            },
-        );
-        appendShapeFamilyFractureField(body, selectedProp.fractureEnabled, (checked) => {
-            selectedProp.fractureEnabled = checked;
-            dirty();
-        });
-        if (selectedProp.wallChunkProfileId != null) appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
-        return;
-    }
     if (isBallFamilyAsset(asset)) {
         appendShapeFamilyRadiusField(body, getCirclePropRadius(selectedProp) ?? ballRadiusFromAsset(asset), (radius) => {
             setCirclePropRadius(selectedProp, radius);

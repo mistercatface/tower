@@ -2,8 +2,8 @@ import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { PolygonShape, writeLivePolygon, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, kineticMassFromFootprint, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
-import { ensureFlatVerts, quantizeAngleIndex, boxLocalFootprint, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, crossPinwheelOutlineInto } from "../Math/math.js";
-import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
+import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex, earClipConvexPartsInto } from "../Math/math.js";
+import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, getWallChunkSpriteCacheKey } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
@@ -129,20 +129,21 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     prop.mass = kineticMassFromFootprint(prop);
     normalizeKineticBody(prop);
 }
-export function ensureDrawOutline(prop, floatCount) {
-    if (floatCount > MAX_OUTLINE_VERTS * 2) throw new Error(`ensureDrawOutline: ${floatCount} floats exceeds MAX_OUTLINE_VERTS*2 (${MAX_OUTLINE_VERTS * 2})`);
-    if (!prop.drawOutline || prop.drawOutline.length < floatCount) prop.drawOutline = new Float32Array(floatCount);
-    return prop.drawOutline;
-}
 export function initWorldPropShape(prop) {
-    if (prop.strategy.collisionParts) {
+    const template = prop.strategy.localFootprint;
+    if (template && vertCount(template) >= 3) {
+        if (polygonIsConvex(template)) {
+            writeLivePolygon(prop, template, template.length);
+            prop.collisionParts = undefined;
+            prop.drawOutline = undefined;
+            invalidatePropFootprintKey(prop);
+            return;
+        }
+        prop.drawOutline = new Float32Array(template);
+        const partVerts = [];
+        earClipConvexPartsInto(partVerts, template);
         releaseLivePolygon(prop);
-        prop.collisionParts = prop.strategy.collisionParts.map((part) => {
-            if (typeof part.getBoundingRadius === "function") return part;
-            if (part.vertices) return new PolygonShape(part.vertices);
-            if (part.radius != null) return new CircleShape(part.radius);
-            throw new Error("Unknown collision part: need vertices or radius");
-        });
+        prop.collisionParts = partVerts.map((verts) => new PolygonShape(verts));
         let maxR = 0;
         for (let i = 0; i < prop.collisionParts.length; i++) maxR = Math.max(maxR, prop.collisionParts[i].getBoundingRadius());
         prop.radius = maxR;
@@ -150,16 +151,11 @@ export function initWorldPropShape(prop) {
         invalidatePropFootprintKey(prop);
         return;
     }
-    const template = prop.strategy.localFootprint;
-    if (template && vertCount(template) >= 3) {
-        const n = template.length;
-        writeLivePolygon(prop, template, n);
-        invalidatePropFootprintKey(prop);
-        return;
-    }
     releaseLivePolygon(prop);
     prop.radius = prop.strategy.radius ?? 0;
     prop.shape = new CircleShape(prop.radius);
+    prop.collisionParts = undefined;
+    prop.drawOutline = undefined;
     invalidatePropFootprintKey(prop);
 }
 export function propFootprintHalfExtentsInto(buf, o, prop) {
@@ -284,11 +280,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
     }
     const { spawn, renderMode, ...strategy } = asset.physics;
     if (strategy.localFootprint) strategy.localFootprint = new Float32Array(ensureFlatVerts(strategy.localFootprint));
-    if (strategy.collisionParts)
-        strategy.collisionParts = strategy.collisionParts.map((part) => {
-            if (part.vertices) return { ...part, vertices: new Float32Array(ensureFlatVerts(part.vertices)) };
-            return part;
-        });
+    if (strategy.collisionParts) throw new Error(`${asset.id}: physics.collisionParts is deleted — use localFootprint (concave outlines auto-decompose)`);
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? PROP_RENDER_MODE_3D, inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
     if (assetUsesWallChunkSurface(asset) && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
@@ -365,7 +357,6 @@ export class WorldProp {
         stampSurfaceProfileFields(this, asset);
         this._footprintKey = undefined;
         initWorldPropShape(this);
-        if (type === "cross_pinwheel") applyCrossPinwheelFootprint(this, this.crossLength ?? 32, this.crossThickness ?? 8);
         this.mass = kineticMassFromFootprint(this);
         normalizeKineticBody(this);
         this._neighborEidCount = 0;
@@ -519,22 +510,6 @@ export class WorldProp {
         this.tickPropFrame(dt, state, spatialFrame);
         this.tickPropSubstep(dt);
     }
-}
-export function applyCrossPinwheelFootprint(prop, length, thickness) {
-    const halfL = length / 2;
-    const halfT = thickness / 2;
-    releaseLivePolygon(prop);
-    prop.collisionParts = [new PolygonShape(boxLocalFootprint(halfL, halfT)), new PolygonShape(boxLocalFootprint(halfT, halfL))];
-    prop.shape = prop.collisionParts[0];
-    prop.radius = Math.hypot(halfL, halfT);
-    prop.crossLength = length;
-    prop.crossThickness = thickness;
-    crossPinwheelOutlineInto(ensureDrawOutline(prop, 24), length, thickness);
-    invalidatePropFootprintKey(prop);
-    markBroadphaseDirty(prop);
-    if (prop._physId !== undefined) stampKineticBodyFromEntity(prop._physId, prop);
-    prop.mass = kineticMassFromFootprint(prop);
-    normalizeKineticBody(prop);
 }
 /**
  * Asset-level fixed child visuals. These are render-only and never become

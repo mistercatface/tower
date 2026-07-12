@@ -120,11 +120,10 @@ export const P_OUT_SWEEP_T = ENGINE_PHYS_BASE + 39;
 export const P_OUT_SWEEP_X = ENGINE_PHYS_BASE + 40;
 export const P_OUT_SWEEP_Y = ENGINE_PHYS_BASE + 41;
 export const P_SAT = ENGINE_PHYS_BASE + 42;
-export const P_SAT_BEST = ENGINE_PHYS_BASE + 67;
-export const P_CLIP_X = ENGINE_PHYS_BASE + 92;
-export const P_CLIP_Y = ENGINE_PHYS_BASE + 96;
-export const P_PROJ_A = ENGINE_PHYS_BASE + 100;
-export const P_PROJ_B = ENGINE_PHYS_BASE + 102;
+export const P_CLIP_X = ENGINE_PHYS_BASE + 67;
+export const P_CLIP_Y = ENGINE_PHYS_BASE + 71;
+export const P_PROJ_A = ENGINE_PHYS_BASE + 75;
+export const P_PROJ_B = ENGINE_PHYS_BASE + 77;
 /**
  * Library baseline — games override via `gameDefinition.collisionSettings`, project via Config.
  */
@@ -984,7 +983,6 @@ export function ensureLivePolygonCapacity(body, floatCount) {
 }
 const MANIFOLD_MAX_POINTS = 2;
 export const SAT_RESULT = ENGINE_F32.subarray(P_SAT, P_SAT + 25);
-const SAT_BEST_RESULT = ENGINE_F32.subarray(P_SAT_BEST, P_SAT_BEST + 25);
 const clipX = ENGINE_F32.subarray(P_CLIP_X, P_CLIP_X + 4);
 const clipY = ENGINE_F32.subarray(P_CLIP_Y, P_CLIP_Y + 4);
 const PROJ_A = ENGINE_F32.subarray(P_PROJ_A, P_PROJ_A + 2);
@@ -1207,23 +1205,7 @@ export function checkPairCollisionAtSlabPose(physIdA, physIdB, xA, yA, xB, yB) {
     const sinB = slab.sin[physIdB];
     const countA = slab.partCount[physIdA];
     const countB = slab.partCount[physIdB];
-    if (countA === 1 && countB === 1) return satCheckPartRowsAtPose(geomA, geomB, xA, yA, cosA, sinA, xB, yB, cosB, sinB);
-    let bestOverlap = -Infinity;
-    let found = false;
-    for (let i = 0; i < countA; i++)
-        for (let j = 0; j < countB; j++) {
-            if (!satCheckPartRowsAtPose(geomA + i, geomB + j, xA, yA, cosA, sinA, xB, yB, cosB, sinB)) continue;
-            const overlap = SAT_RESULT[0];
-            if (overlap > bestOverlap) {
-                bestOverlap = overlap;
-                found = true;
-                SAT_BEST_RESULT.set(SAT_RESULT);
-            }
-        }
-    if (found) {
-        SAT_RESULT.set(SAT_BEST_RESULT);
-        return true;
-    }
+    for (let i = 0; i < countA; i++) for (let j = 0; j < countB; j++) if (satCheckPartRowsAtPose(geomA + i, geomB + j, xA, yA, cosA, sinA, xB, yB, cosB, sinB)) return true;
     return false;
 }
 export function checkEntityPairCollisionAtSlabPose(bodyA, bodyB, physIdA, physIdB, xA, yA, xB, yB) {
@@ -1294,27 +1276,6 @@ function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, sh
     }
     return false;
 }
-function bestEntityPairContactAtPose(partsA, partsB, xA, yA, cosA, sinA, xB, yB, cosB, sinB) {
-    let bestOverlap = -Infinity;
-    let found = false;
-    for (let i = 0; i < partsA.length; i++) {
-        const shapeA = partsA[i];
-        for (let j = 0; j < partsB.length; j++)
-            if (satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, partsB[j])) {
-                const overlap = SAT_RESULT[0];
-                if (overlap > bestOverlap) {
-                    bestOverlap = overlap;
-                    found = true;
-                    SAT_BEST_RESULT.set(SAT_RESULT);
-                }
-            }
-    }
-    if (found) {
-        SAT_RESULT.set(SAT_BEST_RESULT);
-        return true;
-    }
-    return false;
-}
 export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.y, xB = bodyB.x, yB = bodyB.y) {
     const facingA = readEntityFacing(bodyA);
     const facingB = readEntityFacing(bodyB);
@@ -1325,7 +1286,10 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
     const compoundA = entityHasCompoundParts(bodyA);
     const compoundB = entityHasCompoundParts(bodyB);
     if (!compoundA && !compoundB) return satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, bodyB.shape);
-    return bestEntityPairContactAtPose(contactPartsRef(bodyA, compoundA, sContactPartsA), contactPartsRef(bodyB, compoundB, sContactPartsB), xA, yA, cosA, sinA, xB, yB, cosB, sinB);
+    const partsA = contactPartsRef(bodyA, compoundA, sContactPartsA);
+    const partsB = contactPartsRef(bodyB, compoundB, sContactPartsB);
+    for (let i = 0; i < partsA.length; i++) for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, partsA[i], xB, yB, cosB, sinB, partsB[j])) return true;
+    return false;
 }
 export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
     return satCheckShapesAtPose(xA, yA, Math.cos(angleA), Math.sin(angleA), shapeA, xB, yB, Math.cos(angleB), Math.sin(angleB), shapeB);
@@ -2883,8 +2847,13 @@ export function worldAnchorFromSlab(body, physId, localX, localY, slab, destOffs
     ENGINE_F32[destOffset + 1] = slab.y[physId] + localX * sin + localY * cos;
 }
 export const PAIR_KEY_SCALE = 1_000_000;
-const WARM_START_FEATURE_STRIDE = 1024;
+const WARM_START_FEATURE_STRIDE = 65536;
 const FEATURE_ANGLE_BUCKETS = 32;
+function packContactFeature(partIndex, edgeFeature) {
+    if ((partIndex & ~0xff) !== 0) throw new Error(`packContactFeature: partIndex ${partIndex} exceeds Uint8`);
+    if (partIndex === 0) return edgeFeature & 0xff;
+    return partIndex & 0xff;
+}
 export function quantizeContactFeatureId(nx, ny) {
     if (nx === 0 && ny === 0) return 0;
     const angle = Math.atan2(ny, nx);
@@ -2900,11 +2869,11 @@ export function contactWarmStartKey(bodyA, bodyB, featureA = 0, featureB = 0) {
     const isAFirst = bodyA.id < bodyB.id;
     const f1 = isAFirst ? featureA : featureB;
     const f2 = isAFirst ? featureB : featureA;
-    const featureKey = (f1 & 0x1f) | ((f2 & 0x1f) << 5);
+    const featureKey = (f1 & 0xff) | ((f2 & 0xff) << 8);
     return pairContactKey(bodyA, bodyB) * WARM_START_FEATURE_STRIDE + featureKey;
 }
 export function contactWarmStartKeyFromPairKey(pairKey, featureA = 0, featureB = 0) {
-    const featureKey = (featureA & 0x1f) | ((featureB & 0x1f) << 5);
+    const featureKey = (featureA & 0xff) | ((featureB & 0xff) << 8);
     return pairKey * WARM_START_FEATURE_STRIDE + featureKey;
 }
 export function warmStartCacheIndex(warmStartKey) {
@@ -3008,7 +2977,7 @@ function storeKineticWarmStartCache(contacts) {
     }
 }
 function appendContact(contacts, pairs, pairIndex, nx, ny, rax, ray, rbx, rby, featureA = 0, featureB = 0) {
-    if (contacts.count >= MAX_CONTACTS) return;
+    if (contacts.count >= MAX_CONTACTS) throw new Error(`kineticContactBuffer full (${MAX_CONTACTS})`);
     const i = contacts.count++;
     contacts.physIdA[i] = pairs.physIdA[pairIndex];
     contacts.physIdB[i] = pairs.physIdB[pairIndex];
@@ -3060,26 +3029,30 @@ function narrowPhaseSatContact(pairs, pairIndex, contacts) {
     const physIdA = pairs.physIdA[pairIndex];
     const physIdB = pairs.physIdB[pairIndex];
     const slab = kineticDynamicSlab;
-    const collided = checkPairCollisionAtSlabPose(physIdA, physIdB, slab.x[physIdA], slab.y[physIdA], slab.x[physIdB], slab.y[physIdB]);
-    if (!collided) return;
-    const overlap = SAT_RESULT[0];
-    const nx = SAT_RESULT[1];
-    const ny = SAT_RESULT[2];
-    const coincident = SAT_RESULT[5] !== 0;
-    if (coincident) {
-        separateCoincidentCircleSlab(physIdA, physIdB, overlap);
-        return;
-    }
-    separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap);
-    const pointCount = SAT_RESULT[8];
-    for (let p = 0; p < pointCount; p++) {
-        const offset = 9 + p * 4;
-        const cx = SAT_RESULT[offset + 0];
-        const cy = SAT_RESULT[offset + 1];
-        const featureA = SAT_RESULT[offset + 2];
-        const featureB = SAT_RESULT[offset + 3];
-        appendContact(contacts, pairs, pairIndex, nx, ny, cx - slab.x[physIdA], cy - slab.y[physIdA], cx - slab.x[physIdB], cy - slab.y[physIdB], featureA, featureB);
-    }
+    const geomA = slab.partGeomOffset[physIdA];
+    const geomB = slab.partGeomOffset[physIdB];
+    if (geomA < 0 || geomB < 0) throw new Error(`narrowPhaseSatContact: missing shape CSR for physId ${geomA < 0 ? physIdA : physIdB}`);
+    const countA = slab.partCount[physIdA];
+    const countB = slab.partCount[physIdB];
+    for (let i = 0; i < countA; i++)
+        for (let j = 0; j < countB; j++) {
+            if (!satCheckPartRowsAtPose(geomA + i, geomB + j, slab.x[physIdA], slab.y[physIdA], slab.cos[physIdA], slab.sin[physIdA], slab.x[physIdB], slab.y[physIdB], slab.cos[physIdB], slab.sin[physIdB])) continue;
+            const overlap = SAT_RESULT[0];
+            const nx = SAT_RESULT[1];
+            const ny = SAT_RESULT[2];
+            if (SAT_RESULT[5] !== 0) {
+                separateCoincidentCircleSlab(physIdA, physIdB, overlap);
+                return;
+            }
+            separateAlongNormalSlab(physIdA, physIdB, nx, ny, overlap);
+            const pointCount = SAT_RESULT[8];
+            for (let p = 0; p < pointCount; p++) {
+                const offset = 9 + p * 4;
+                const cx = SAT_RESULT[offset];
+                const cy = SAT_RESULT[offset + 1];
+                appendContact(contacts, pairs, pairIndex, nx, ny, cx - slab.x[physIdA], cy - slab.y[physIdA], cx - slab.x[physIdB], cy - slab.y[physIdB], packContactFeature(i, SAT_RESULT[offset + 2]), packContactFeature(j, SAT_RESULT[offset + 3]));
+            }
+        }
 }
 function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     contacts.reset();

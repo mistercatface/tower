@@ -377,6 +377,88 @@ export function polygonSignedArea2D(vertices) {
     }
     return area * 0.5;
 }
+export function polygonIsConvex(flatVerts) {
+    const n = flatVerts.length >> 1;
+    if (n < 3) return false;
+    let sign = 0;
+    for (let i = 0; i < n; i++) {
+        const ax = flatVerts[i * 2];
+        const ay = flatVerts[i * 2 + 1];
+        const bi = ((i + 1) % n) * 2;
+        const ci = ((i + 2) % n) * 2;
+        const cross = (flatVerts[bi] - ax) * (flatVerts[ci + 1] - ay) - (flatVerts[bi + 1] - ay) * (flatVerts[ci] - ax);
+        if (cross > 1e-10) {
+            if (sign < 0) return false;
+            sign = 1;
+        } else if (cross < -1e-10) {
+            if (sign > 0) return false;
+            sign = -1;
+        }
+    }
+    return sign !== 0;
+}
+function earClipCross(verts, i0, i1, i2) {
+    const ax = verts[i0 * 2];
+    const ay = verts[i0 * 2 + 1];
+    return (verts[i1 * 2] - ax) * (verts[i2 * 2 + 1] - ay) - (verts[i1 * 2 + 1] - ay) * (verts[i2 * 2] - ax);
+}
+function earClipPointInTriangle(px, py, verts, i0, i1, i2) {
+    const ax = verts[i0 * 2];
+    const ay = verts[i0 * 2 + 1];
+    const bx = verts[i1 * 2];
+    const by = verts[i1 * 2 + 1];
+    const cx = verts[i2 * 2];
+    const cy = verts[i2 * 2 + 1];
+    const c0 = (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+    const c1 = (cx - bx) * (py - by) - (cy - by) * (px - bx);
+    const c2 = (ax - cx) * (py - cy) - (ay - cy) * (px - cx);
+    return (c0 >= -1e-10 && c1 >= -1e-10 && c2 >= -1e-10) || (c0 <= 1e-10 && c1 <= 1e-10 && c2 <= 1e-10);
+}
+function earClipIsEar(verts, idx, at) {
+    const n = idx.length;
+    const i0 = idx[(at - 1 + n) % n];
+    const i1 = idx[at];
+    const i2 = idx[(at + 1) % n];
+    if (earClipCross(verts, i0, i1, i2) <= 1e-10) return false;
+    for (let k = 0; k < n; k++) {
+        if (k === (at - 1 + n) % n || k === at || k === (at + 1) % n) continue;
+        const pi = idx[k];
+        if (earClipPointInTriangle(verts[pi * 2], verts[pi * 2 + 1], verts, i0, i1, i2)) return false;
+    }
+    return true;
+}
+export function earClipConvexPartsInto(outParts, flatVerts) {
+    outParts.length = 0;
+    const n0 = flatVerts.length >> 1;
+    if (n0 < 3 || (flatVerts.length & 1) !== 0) throw new Error(`earClipConvexPartsInto: need even floatCount >= 6, got ${flatVerts.length}`);
+    let verts = flatVerts;
+    if (polygonSignedArea2D(verts) < 0) verts = reversePolygonWinding(verts);
+    if (n0 === 3) {
+        outParts.push(new Float32Array(verts));
+        return outParts;
+    }
+    const idx = new Array(n0);
+    for (let i = 0; i < n0; i++) idx[i] = i;
+    let guard = 0;
+    const maxGuard = n0 * n0;
+    while (idx.length > 3) {
+        if (++guard > maxGuard) throw new Error("earClipConvexPartsInto: no ear (non-simple polygon?)");
+        let clipped = false;
+        for (let at = 0; at < idx.length; at++) {
+            if (!earClipIsEar(verts, idx, at)) continue;
+            const i0 = idx[(at - 1 + idx.length) % idx.length];
+            const i1 = idx[at];
+            const i2 = idx[(at + 1) % idx.length];
+            outParts.push(new Float32Array([verts[i0 * 2], verts[i0 * 2 + 1], verts[i1 * 2], verts[i1 * 2 + 1], verts[i2 * 2], verts[i2 * 2 + 1]]));
+            idx.splice(at, 1);
+            clipped = true;
+            break;
+        }
+        if (!clipped) throw new Error("earClipConvexPartsInto: stuck (non-simple polygon?)");
+    }
+    outParts.push(new Float32Array([verts[idx[0] * 2], verts[idx[0] * 2 + 1], verts[idx[1] * 2], verts[idx[1] * 2 + 1], verts[idx[2] * 2], verts[idx[2] * 2 + 1]]));
+    return outParts;
+}
 /** Writes cx, cy, signedArea at buf[o..o+2]. */
 export function polygonCentroid2DInto(buf, o, vertices) {
     let cx = 0;

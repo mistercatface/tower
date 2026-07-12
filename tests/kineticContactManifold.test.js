@@ -21,6 +21,14 @@ describe("kinetic contact manifold keys", () => {
         assert.equal(quantizeContactFeatureId(0, 0), 0);
         const a = { id: 1 };
         const b = { id: 3 };
-        assert.equal(contactWarmStartKey(a, b, 0, 0), pairContactKey(a, b) * 1024);
+        assert.equal(contactWarmStartKey(a, b, 0, 0), pairContactKey(a, b) * 65536);
+    });
+
+    it("packs distinct part indices into distinct warm-start keys", () => {
+        const a = { id: 1 };
+        const b = { id: 3 };
+        const part0 = contactWarmStartKey(a, b, 0, 0);
+        const part1 = contactWarmStartKey(a, b, 1, 0);
+        assert.notEqual(part0, part1);
     });
 });
