@@ -24,7 +24,7 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
 const EMPTY_WALL_CANDIDATES = new GrowI32(0);
 /**
  * Duck-typed per-tick spatial frame: entity grid, wall segment cache.
- * Game adapters call resetFrame / insertEntity then run pair policies.
+ * Game adapters call resetFrame / insertEid then run pair policies.
  */
 export class SpatialFrameCore {
     constructor(cellSize = 50) {
@@ -66,16 +66,9 @@ export class SpatialFrameCore {
         commitWallCandidateBucket(this._wallBuckets, sWallBucketHitSlot[1], keyLo, keyHi, this.frameId, revision, segIds);
         return segIds;
     }
-    // NEXT eid: insertEntity → insertEid (SoA-only grid insert; no entity.x seed after bind)
-    insertEntity(entity, physId) {
-        entity._physId = physId;
-        noteEntityEidHighWater(physId);
-        entityRefs[physId] = entity;
-        entityAlive[physId] = 1;
-        entityX[physId] = entity.x;
-        entityY[physId] = entity.y;
-        entityR[physId] = entityCollisionSpan(entity);
-        this.entityGrid.insert(physId);
+    insertEid(eid) {
+        noteEntityEidHighWater(eid);
+        this.entityGrid.insert(eid);
     }
     reindexKineticBodies(bodies) {
         if (!bodies?.length) return;
@@ -3131,16 +3124,16 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         for (let i = 0; i < worldProps.length; i++) {
             const prop = worldProps[i];
             const needBind = prop._physId === undefined || !entityAlive[prop._physId] || entityRefs[prop._physId] !== prop;
-            const x = prop.x;
-            const y = prop.y;
             const physId = prop._physId ?? allocateEntityEid();
             prop._physId = physId;
             if (needBind) {
+                const x = prop.x;
+                const y = prop.y;
                 const flags = worldPropBindFlags(prop);
                 bindEntitySlot(physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
                 clearWorldPropSpawnPose(prop);
             }
-            this.insertEntity(prop, physId);
+            this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
         const debrisBodies = state.fractureEngine.debris.list();
@@ -3148,16 +3141,16 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const body = debrisBodies[i];
             if (body.isDead) continue;
             const needBind = body._physId === undefined || !entityAlive[body._physId] || entityRefs[body._physId] !== body;
-            const x = body.x;
-            const y = body.y;
             const physId = body._physId ?? allocateEntityEid();
             body._physId = physId;
             if (needBind) {
+                const x = body.x;
+                const y = body.y;
                 const flags = worldPropBindFlags(body);
                 bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, x, y, entityCollisionSpan(body), flags);
                 clearWorldPropSpawnPose(body);
             }
-            this.insertEntity(body, physId);
+            this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
         this.populatedMembershipGen = state.entityRegistry.membershipGen;

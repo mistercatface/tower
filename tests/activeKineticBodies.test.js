@@ -46,8 +46,8 @@ describe("active kinetic bodies", () => {
         const tail = mockCircleProp(20, 0, 10);
         assignPhysIdWithPose(head, 0);
         assignPhysIdWithPose(tail, 1);
-        frame.insertEntity(head, 0);
-        frame.insertEntity(tail, 1);
+        frame.insertEid(0);
+        frame.insertEid(1);
         resetKineticLinkNeighborArena();
         writeKineticLinkNeighbors(head._physId, [tail._physId]);
         writeKineticLinkNeighbors(tail._physId, [head._physId]);
@@ -93,7 +93,8 @@ describe("active kinetic bodies", () => {
         frame.resetFrame(mockGrid);
         clearActiveKineticBodySlab();
         const anchor = mockCircleProp(0, 0, 10);
-        frame.insertEntity(anchor, 0);
+        assignPhysIdWithPose(anchor, 0);
+        frame.insertEid(0);
         frame._pushKineticEid(anchor._physId);
         frame._nextPhysId = 1;
         const fragment = mockCircleProp(24, 0, 8);
@@ -111,7 +112,8 @@ describe("active kinetic bodies", () => {
         frame.resetFrame(mockGrid);
         clearActiveKineticBodySlab();
         const anchor = mockCircleProp(0, 0, 10);
-        frame.insertEntity(anchor, 0);
+        assignPhysIdWithPose(anchor, 0);
+        frame.insertEid(0);
         frame._pushKineticEid(anchor._physId);
         frame._nextPhysId = 1;
         const fragment = mockCircleProp(240, 180, 8);
@@ -126,7 +128,8 @@ describe("active kinetic bodies", () => {
         frame.resetFrame(mockGrid);
         clearActiveKineticBodySlab();
         const mover = mockCircleProp(0, 0, 10);
-        frame.insertEntity(mover, 0);
+        assignPhysIdWithPose(mover, 0);
+        frame.insertEid(0);
         frame._pushKineticEid(mover._physId);
         frame._nextPhysId = 1;
         const witness = mockCircleProp(200, 0, 8);
@@ -154,8 +157,10 @@ describe("active kinetic bodies", () => {
         frame.resetFrame(mockGrid);
         const head = mockCircleProp(0, 0, 10);
         const tail = mockCircleProp(20, 0, 10);
-        frame.insertEntity(head, 0);
-        frame.insertEntity(tail, 1);
+        assignPhysIdWithPose(head, 0);
+        assignPhysIdWithPose(tail, 1);
+        frame.insertEid(0);
+        frame.insertEid(1);
         resetKineticLinkNeighborArena();
         writeKineticLinkNeighbors(head._physId, [1]);
         delete tail._physId;
@@ -180,9 +185,9 @@ describe("active kinetic bodies", () => {
         assignPhysIdWithPose(head, 0);
         assignPhysIdWithPose(mid, 1);
         assignPhysIdWithPose(tail, 2);
-        frame.insertEntity(head, 0);
-        frame.insertEntity(mid, 1);
-        frame.insertEntity(tail, 2);
+        frame.insertEid(0);
+        frame.insertEid(1);
+        frame.insertEid(2);
         resetKineticLinkNeighborArena();
         writeKineticLinkNeighbors(head._physId, [mid._physId]);
         writeKineticLinkNeighbors(mid._physId, [head._physId, tail._physId]);

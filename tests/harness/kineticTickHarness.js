@@ -354,7 +354,7 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
     frame.kineticEidCount = 0;
     for (let i = 0; i < bodies.length; i++) {
         assignPhysIdWithPose(bodies[i], i);
-        frame.insertEntity(bodies[i], i);
+        frame.insertEid(i);
         frame._pushKineticEid(i);
     }
     frame._nextPhysId = bodies.length;
@@ -374,7 +374,7 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     frame.kineticEidCount = 0;
     for (let i = 0; i < props.length; i++) {
         assignPhysIdWithPose(props[i], i);
-        frame.insertEntity(props[i], i);
+        frame.insertEid(i);
         frame._pushKineticEid(i);
     }
     frame._nextPhysId = props.length;
