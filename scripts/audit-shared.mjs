@@ -21,6 +21,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "cellBoundsFromStampLayout",
     "clearGridWallsQuiet",
     "collectExposedWallEdgesInAabb",
+    "_chunkKeyRange",
     "createWallFaceAxes",
     "createCueStrikeBehavior",
     "createDirectGroundNavBehavior",

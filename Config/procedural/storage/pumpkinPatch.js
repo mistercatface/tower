@@ -1,3 +1,4 @@
+import { SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.007, amplitude: 12, octaves: 2, sampleOffset: [400, 300] },
     palette: { base: [15, 8, 2], floorBase: [8, 4, 1], wallBase: [16, 6, 2] },
@@ -5,7 +6,7 @@ export default {
         { type: "baseMetal", structure: { frequency: 0.005, octaves: 2, rgbDelta: [2, 1, 0] }, grain: { frequency: 0.35, octaves: 2, amplitude: 0.6 } },
         {
             type: "stainBlotch",
-            surfaceMask: "floor",
+            surfaceMask: SURFACE_MASK_FLOOR,
             coordinateSpace: "eval",
             frequency: 0.02,
             threshold: 0.4,
@@ -17,7 +18,7 @@ export default {
         },
         {
             type: "topoContours",
-            surfaceMask: "floor",
+            surfaceMask: SURFACE_MASK_FLOOR,
             coordinateSpace: "warped",
             frequency: 0.015,
             bands: 8,
@@ -29,7 +30,7 @@ export default {
         },
         {
             type: "wallHorizontalBevel",
-            surfaceMask: "wall",
+            surfaceMask: SURFACE_MASK_WALL,
             bands: 3,
             ribFill: 0.5,
             highlightPeak: 10,
@@ -42,7 +43,7 @@ export default {
         },
         {
             type: "circuitLattice",
-            surfaceMask: "all",
+            surfaceMask: SURFACE_MASK_ALL,
             coordinateSpace: "eval",
             frequency: 0.018,
             angle: 0.25,
@@ -56,14 +57,14 @@ export default {
         },
         {
             type: "wallLighting",
-            surfaceMask: "wall",
+            surfaceMask: SURFACE_MASK_WALL,
             power: 1.4,
             topDarken: 22,
             coolBias: 1.02,
             blendMode: "multiply",
             opacity: 1
         },
-        { type: "filterHSV", surfaceMask: "all", hueShift: 0, saturation: 1.6, value: 1.0, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.6, value: 1.0, blendMode: "replace", opacity: 1 }
     ],
     animation: {
         stages: [

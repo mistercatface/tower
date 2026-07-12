@@ -1,3 +1,4 @@
+import { SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.005, amplitude: 2, octaves: 1, sampleOffset: [0, 0] },
     palette: { base: [10, 10, 12], floorBase: [8, 8, 10], wallBase: [6, 6, 8] },
@@ -9,7 +10,7 @@ export default {
         },
         {
             type: "circuitTraces",
-            surfaceMask: "all",
+            surfaceMask: SURFACE_MASK_ALL,
             coordinateSpace: "eval",
             gridSize: 32,
             lineWidth: 2,
@@ -24,7 +25,7 @@ export default {
         },
         {
             type: "filterHSV",
-            surfaceMask: "all",
+            surfaceMask: SURFACE_MASK_ALL,
             hueShift: 0,
             saturation: 1.2,
             value: 0.9,

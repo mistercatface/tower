@@ -1,3 +1,4 @@
+import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL } from "../../../Core/engineEnums.js";
 export default {
     "warp": {
         "frequency": 0.004,
@@ -42,13 +43,13 @@ export default {
                 "octaves": 2,
                 "amplitude": 0.8
             },
-            "surfaceMask": "all",
+            "surfaceMask": SURFACE_MASK_ALL,
             "blendMode": "add",
             "opacity": 1
         },
         {
             "type": "stainBlotch",
-            "surfaceMask": "all",
+            "surfaceMask": SURFACE_MASK_ALL,
             "coordinateSpace": "eval",
             "frequency": 0.012,
             "threshold": 0.45,
@@ -68,7 +69,7 @@ export default {
         },
         {
             "type": "deckPlates",
-            "surfaceMask": "floor",
+            "surfaceMask": SURFACE_MASK_FLOOR,
             "cellWorldSize": 8,
             "plateCells": 2,
             "plateRows": 2,
@@ -98,7 +99,7 @@ export default {
         },
         {
             "type": "wallHorizontalBevel",
-            "surfaceMask": "wall",
+            "surfaceMask": SURFACE_MASK_WALL,
             "bands": 5,
             "ribFill": 0.6,
             "highlightPeak": 6,
@@ -116,7 +117,7 @@ export default {
         },
         {
             "type": "wallLighting",
-            "surfaceMask": "wall",
+            "surfaceMask": SURFACE_MASK_WALL,
             "power": 1.3,
             "topDarken": 25,
             "coolBias": 1.06,
@@ -125,7 +126,7 @@ export default {
         },
         {
             "type": "filterHSV",
-            "surfaceMask": "all",
+            "surfaceMask": SURFACE_MASK_ALL,
             "hueShift": -172,
             "saturation": 1.1,
             "value": 0.3,

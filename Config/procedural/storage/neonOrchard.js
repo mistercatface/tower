@@ -1,3 +1,4 @@
+import { SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.006, amplitude: 8, octaves: 2, sampleOffset: [200, 100] },
     palette: { base: [4, 8, 24], floorBase: [2, 3, 12], wallBase: [4, 6, 18] },
@@ -5,7 +6,7 @@ export default {
         { type: "baseMetal", structure: { frequency: 0.003, octaves: 2, rgbDelta: [1, 1, 3] }, grain: { frequency: 0.4, octaves: 1, amplitude: 0.4 } },
         {
             type: "hexGrid",
-            surfaceMask: "floor",
+            surfaceMask: SURFACE_MASK_FLOOR,
             cellWorldSize: 48,
             groutWidth: 0.06,
             groutPeak: 10,
@@ -19,7 +20,7 @@ export default {
         },
         {
             type: "concentricRings",
-            surfaceMask: "floor",
+            surfaceMask: SURFACE_MASK_FLOOR,
             coordinateSpace: "warped",
             frequency: 0.025,
             ringWidth: 0.08,
@@ -30,7 +31,7 @@ export default {
         },
         {
             type: "wallHorizontalBevel",
-            surfaceMask: "wall",
+            surfaceMask: SURFACE_MASK_WALL,
             bands: 5,
             ribFill: 0.6,
             highlightPeak: 6,
@@ -43,7 +44,7 @@ export default {
         },
         {
             type: "starburst",
-            surfaceMask: "all",
+            surfaceMask: SURFACE_MASK_ALL,
             coordinateSpace: "warped",
             gridSize: 64,
             density: 0.25,
@@ -56,14 +57,14 @@ export default {
         },
         {
             type: "wallLighting",
-            surfaceMask: "wall",
+            surfaceMask: SURFACE_MASK_WALL,
             power: 1.3,
             topDarken: 24,
             coolBias: 1.08,
             blendMode: "multiply",
             opacity: 1
         },
-        { type: "filterHSV", surfaceMask: "all", hueShift: 0, saturation: 1.7, value: 1.0, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.7, value: 1.0, blendMode: "replace", opacity: 1 }
     ],
     animation: {
         stages: [

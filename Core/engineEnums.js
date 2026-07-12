@@ -43,6 +43,13 @@ export const WALL_FACE_ATLAS_MISS = -1;
 export const WALL_FACE_ATLAS_SOLID = -2;
 export const WALL_FACE_SUBDIV_NONE = -3;
 //
+// Surface motif mask (profile motif.surfaceMask)
+export const SURFACE_MASK_ALL = 0;
+export const SURFACE_MASK_FLOOR = 1;
+export const SURFACE_MASK_WALL = 2;
+export const SURFACE_MASK_WALL_FACE = 3;
+export const SURFACE_MASK_WALL_CELL = 4;
+//
 export const SPRITE_CACHE_FLAG_LIVE = 1;
 export const SPRITE_CACHE_FLAG_BITMAP = 2;
 //

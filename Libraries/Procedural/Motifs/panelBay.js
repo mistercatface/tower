@@ -1,3 +1,4 @@
+import { SURFACE_MASK_WALL_FACE } from "../../../Core/engineEnums.js";
 import { applyTint } from "../util/motifUtilities.js";
 /**
  * Recessed module bays on wall faces (wallU/wallV). Reads as layered tech panels top-down.
@@ -5,7 +6,7 @@ import { applyTint } from "../util/motifUtilities.js";
 export const panelBayMotif = {
     metadata: {
         label: "Panel bays (wall face)",
-        defaults: { type: "panelBay", rows: 5, cols: 2, inset: 0.16, frameWidth: 0.07, highlightPeak: 4, shadowPeak: 5, rimPeak: 5, interiorDarken: 5, surfaceMask: "wallFace", blendMode: "add" },
+        defaults: { type: "panelBay", rows: 5, cols: 2, inset: 0.16, frameWidth: 0.07, highlightPeak: 4, shadowPeak: 5, rimPeak: 5, interiorDarken: 5, surfaceMask: SURFACE_MASK_WALL_FACE, blendMode: "add" },
         fields: [
             { path: "rows", label: "Rows", min: 2, max: 12, step: 1 },
             { path: "cols", label: "Cols", min: 1, max: 6, step: 1 },

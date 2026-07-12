@@ -1,3 +1,4 @@
+import { SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
 export default {
     "warp": {
         "frequency": 0.01,
@@ -42,7 +43,7 @@ export default {
                 3.2,
                 2.6
             ],
-            "surfaceMask": "all",
+            "surfaceMask": SURFACE_MASK_ALL,
             "blendMode": "add",
             "opacity": 1
         },
@@ -51,7 +52,7 @@ export default {
             "hueShift": 171,
             "saturation": 5,
             "value": 1.6,
-            "surfaceMask": "all",
+            "surfaceMask": SURFACE_MASK_ALL,
             "blendMode": "add",
             "opacity": 1
         },
@@ -71,7 +72,7 @@ export default {
                 1.9,
                 5
             ],
-            "surfaceMask": "all",
+            "surfaceMask": SURFACE_MASK_ALL,
             "blendMode": "replace",
             "opacity": 1
         },
@@ -80,7 +81,7 @@ export default {
             "hueShift": 7,
             "saturation": 5,
             "value": 0,
-            "surfaceMask": "all",
+            "surfaceMask": SURFACE_MASK_ALL,
             "blendMode": "add",
             "opacity": 1
         },
@@ -91,7 +92,7 @@ export default {
             "gamma": 0.2,
             "blendMode": "replace",
             "opacity": 1,
-            "surfaceMask": "all"
+            "surfaceMask": SURFACE_MASK_ALL
         }
     ]
 };

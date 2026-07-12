@@ -3,6 +3,8 @@ import { blendMotifRgb } from "./util/blend.js";
 import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
+import { BI_USE_WALL_BASE, BI_WALL_FACE, BI_WALL_CELL } from "../WorldSurface/worldSurface.js";
+import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_WALL_FACE, SURFACE_MASK_WALL_CELL } from "../../Core/engineEnums.js";
 const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0, isWall: false, noise: null };
 const sWarpScratch = { x: 0, y: 0 };
 const beforeRgb = { r: 0, g: 0, b: 0 };
@@ -31,12 +33,13 @@ function resolveMotifStack(profile) {
     return stack;
 }
 function motifMatchesBake(config, bake) {
-    const mask = config.surfaceMask ?? "all";
-    if (mask === "all") return true;
-    if (mask === "floor") return !bake.useWallBase;
-    if (mask === "wall") return bake.useWallBase;
-    if (mask === "wallFace") return bake.wallFace === true;
-    if (mask === "wallCell") return bake.wallCell === true;
+    const mask = config.surfaceMask ?? SURFACE_MASK_ALL;
+    if (mask === SURFACE_MASK_ALL) return true;
+    const i = bake._i32;
+    if (mask === SURFACE_MASK_FLOOR) return !i[BI_USE_WALL_BASE];
+    if (mask === SURFACE_MASK_WALL) return !!i[BI_USE_WALL_BASE];
+    if (mask === SURFACE_MASK_WALL_FACE) return !!i[BI_WALL_FACE];
+    if (mask === SURFACE_MASK_WALL_CELL) return !!i[BI_WALL_CELL];
     return true;
 }
 function motifUsesWarpedCoords(config) {
@@ -104,11 +107,12 @@ export function composeSurfaceImage(samples, profile, seed, bakeSession, rgbBuff
     const numPixels = samples.width * samples.height;
     if (!rgbBuffer) rgbBuffer = new Float32Array(numPixels * 3);
     const bake = bakeSession;
-    const base = resolvePaletteBase(profile, bake.useWallBase);
+    const useWallBase = !!bake._i32[BI_USE_WALL_BASE];
+    const base = resolvePaletteBase(profile, useWallBase);
     const warp = profile.warp;
     sampleScratch.seed = seed;
     sampleScratch.noise = noise;
-    sampleScratch.isWall = bake.useWallBase;
+    sampleScratch.isWall = useWallBase;
     const motifs = resolveMotifStack(profile);
     const endIdx = motifEndIndex ?? motifs.length;
     const translateContext = createTranslateContext();

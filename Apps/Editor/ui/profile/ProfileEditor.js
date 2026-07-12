@@ -7,12 +7,16 @@ import { renderPipelineListUi } from "../../../../Libraries/UI/pipelineListUi.js
 import { renderSchemaFields } from "../../../../Libraries/UI/renderSchemaFields.js";
 import { appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
 import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/math.js";
+import { SURFACE_MASK_ALL } from "../../../../Core/engineEnums.js";
 import { BLEND_OPTIONS, EASING_OPTIONS, LAYER_OPTIONS, MOTIF_TYPES, PALETTE_FIELDS, WARP_FIELDS, getAnimatableMotifFields, isContextMotif } from "./profileSchema.js";
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
 let editorState = null;
 let selectedMotifId = null;
 let onChangeCallback = null;
 let nextMotifId = 1;
+function surfaceMaskLabel(mask) {
+    return LAYER_OPTIONS.find((opt) => opt.id === mask)?.label ?? String(mask);
+}
 function defaultWarp() {
     return { frequency: 0.005, amplitude: 0, octaves: 1, sampleOffset: [0, 0] };
 }
@@ -27,7 +31,7 @@ function motifsFromProfile(profile) {
         const blendMode = config.blendMode ?? "add";
         delete config.blendMode;
         delete config.opacity;
-        rows.push({ id: `m${nextMotifId++}`, enabled: motif.enabled !== false, surfaceMask: motif.surfaceMask ?? "all", blendMode, config });
+        rows.push({ id: `m${nextMotifId++}`, enabled: motif.enabled !== false, surfaceMask: motif.surfaceMask ?? SURFACE_MASK_ALL, blendMode, config });
     }
     return rows;
 }
@@ -100,7 +104,7 @@ function renderMotifList(container) {
         getRowId: pipelineRowId,
         selectedId: selectedMotifId,
         getLabel: (row) => MOTIF_TYPES[row.config.type]?.label ?? row.config.type,
-        getMeta: (row) => (isContextMotif(row.config.type) ? "moves below" : row.surfaceMask),
+        getMeta: (row) => (isContextMotif(row.config.type) ? "moves below" : surfaceMaskLabel(row.surfaceMask)),
         renderExtras: (row, _index, _item, extrasSlot) => {
             if (isContextMotif(row.config.type)) return;
             const blendSel = document.createElement("select");
@@ -164,7 +168,7 @@ function renderMotifParams(container) {
         container.appendChild(hint);
     } else {
         const layerSelect = new SelectControl("Surface Mask", LAYER_OPTIONS, row.surfaceMask, (val) => {
-            row.surfaceMask = val;
+            row.surfaceMask = Number(val);
             notifyChange();
             refreshEditorPanels({ motifParams: false, global: false });
         });
@@ -206,7 +210,7 @@ export function initProfileEditor({ onChange }) {
         const type = addSelect.value;
         const schema = MOTIF_TYPES[type];
         if (!schema || !editorState) return;
-        const row = { id: `m${nextMotifId++}`, enabled: true, surfaceMask: "all", blendMode: "add", config: deepClone(schema.defaults) };
+        const row = { id: `m${nextMotifId++}`, enabled: true, surfaceMask: SURFACE_MASK_ALL, blendMode: "add", config: deepClone(schema.defaults) };
         editorState.motifs.push(row);
         selectMotifById(row.id);
         notifyChange();

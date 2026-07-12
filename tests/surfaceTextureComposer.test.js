@@ -5,6 +5,7 @@ import { deckPlatesMotif } from "../Libraries/Procedural/Motifs/deckPlates.js";
 import { filterHSVMotif } from "../Libraries/Procedural/Motifs/Filters/filterHSV.js";
 import { SeededNoise2D, setNoiseProfileEnabled } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
 import { composeSurfaceImage } from "../Libraries/Procedural/SurfaceTextureComposer.js";
+import { BakeSession } from "../Libraries/WorldSurface/worldSurface.js";
 
 function makeSamples(width, height) {
     const numPixels = width * height;
@@ -18,12 +19,18 @@ function makeSamples(width, height) {
     }
     return { width, height, evalX, evalY, lookupX, lookupY, wallU: new Float32Array(numPixels), wallV: new Float32Array(numPixels) };
 }
+function floorBakeSession(noise) {
+    const bakeSession = new BakeSession();
+    bakeSession.noiseEvaluator = noise;
+    bakeSession.configureFloor(16, 1);
+    return bakeSession;
+}
 
 describe("composeSurfaceImage pass 3", () => {
     it("skips domain warp noise when the active stack is eval-only", () => {
         setNoiseProfileEnabled(true);
         const noise = new SeededNoise2D(99);
-        const bakeSession = { noiseEvaluator: noise, useWallBase: false };
+        const bakeSession = floorBakeSession(noise);
         const samples = makeSamples(4, 4);
         const profile = {
             warp: { frequency: 0.004, amplitude: 5, octaves: 2, sampleOffset: [0, 0] },
@@ -41,7 +48,7 @@ describe("composeSurfaceImage pass 3", () => {
     it("precomputes domain warp when a warped motif is active", () => {
         setNoiseProfileEnabled(true);
         const noise = new SeededNoise2D(99);
-        const bakeSession = { noiseEvaluator: noise, useWallBase: false };
+        const bakeSession = floorBakeSession(noise);
         const samples = makeSamples(4, 4);
         const profile = {
             warp: { frequency: 0.004, amplitude: 5, octaves: 2, sampleOffset: [0, 0] },
@@ -59,7 +66,7 @@ describe("composeSurfaceImage pass 3", () => {
     it("runs trailing post filters after color motifs without extra noise", () => {
         setNoiseProfileEnabled(true);
         const noise = new SeededNoise2D(99);
-        const bakeSession = { noiseEvaluator: noise, useWallBase: false };
+        const bakeSession = floorBakeSession(noise);
         const samples = makeSamples(4, 4);
         const profile = {
             palette: { base: [10, 8, 6], floorBase: [10, 8, 6] },
@@ -100,13 +107,13 @@ describe("composeSurfaceImage pass 3", () => {
                 { type: "filterHSV", hueShift: 15, saturation: 1.4, value: 0.85, blendMode: "replace" },
             ],
         };
-        const compiled = composeSurfaceImage(samples, profile, 42, { noiseEvaluator: new SeededNoise2D(99), useWallBase: false });
+        const compiled = composeSurfaceImage(samples, profile, 42, floorBakeSession(new SeededNoise2D(99)));
         const compilers = [baseMetalMotif.compile, deckPlatesMotif.compile, filterHSVMotif.compile];
         delete baseMetalMotif.compile;
         delete deckPlatesMotif.compile;
         delete filterHSVMotif.compile;
         try {
-            const fallback = composeSurfaceImage(samples, profile, 42, { noiseEvaluator: new SeededNoise2D(99), useWallBase: false });
+            const fallback = composeSurfaceImage(samples, profile, 42, floorBakeSession(new SeededNoise2D(99)));
             assert.deepEqual(Array.from(compiled), Array.from(fallback));
         } finally {
             baseMetalMotif.compile = compilers[0];

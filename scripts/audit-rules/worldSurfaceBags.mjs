@@ -3,8 +3,9 @@ import { issue, rel } from "../audit-shared.mjs";
 
 const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest|writeWallFaceAxes|boundsToCellRect)\b/;
 const nestedPayloadRe = /payload\.p[12]\b/;
-const paintOptionsBagRe = /\bpaintOptions\b|options\.isWall|options\.roofSurface|options\.p1x|writeWallCellPixel|writeWallFaceAxes|_chunkDraw\s*=\s*\{/;
+const paintOptionsBagRe = /\bpaintOptions\b|options\.isWall|options\.roofSurface|options\.p1x|writeWallCellPixel|writeWallFaceAxes|_chunkDraw\s*=\s*\{|_chunkKeyRange\s*=\s*\{|_frameGrid\b/;
 const deadBankRe = /\bSS_(?:CELL|DRAW|AXES)\b(?!_)/;
+const bakeScalarTwinRe = /this\.(?:p1x|invBakeScale|useWallBase|wallFace|wallCell)\s*=/;
 
 function isHotBagReturn(line) {
     if (!/return\s*\{/.test(line)) return false;
@@ -45,6 +46,9 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inWorldSurface && deadBankRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inWorldSurface && bakeScalarTwinRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if ((inWorldSurface || inTileWorker) && nestedPayloadRe.test(line)) {

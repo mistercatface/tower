@@ -1,13 +1,14 @@
 import { EASING_OPTIONS } from "../../../../Libraries/Math/math.js";
 import { BLEND_OPTIONS } from "../../../../Libraries/Procedural/util/blend.js";
 import { MOTIF_TYPES } from "../../../../Libraries/Procedural/MotifRegistry.js";
+import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_WALL_FACE, SURFACE_MASK_WALL_CELL } from "../../../../Core/engineEnums.js";
 export { EASING_OPTIONS, BLEND_OPTIONS, MOTIF_TYPES };
 export const LAYER_OPTIONS = [
-    { id: "all", label: "All" },
-    { id: "floor", label: "Ground only" },
-    { id: "wall", label: "Wall only" },
-    { id: "wallFace", label: "Wall face" },
-    { id: "wallCell", label: "Wall cell top" },
+    { id: SURFACE_MASK_ALL, label: "All" },
+    { id: SURFACE_MASK_FLOOR, label: "Ground only" },
+    { id: SURFACE_MASK_WALL, label: "Wall only" },
+    { id: SURFACE_MASK_WALL_FACE, label: "Wall face" },
+    { id: SURFACE_MASK_WALL_CELL, label: "Wall cell top" },
 ];
 export const WARP_FIELDS = [
     { path: "warp.frequency", label: "Warp frequency", min: 0, max: 0.02, step: 0.0005 },

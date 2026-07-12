@@ -152,12 +152,12 @@ export class SurfaceSpatialMap {
     tileChunkBoundsF32(buf, o, obstacleGrid, chunkKey, cellsPerChunk = this.settings.cellsPerChunk) {
         this.chunkBoundsF32(buf, o, obstacleGrid, this.wrappedChunkKey(chunkKey, cellsPerChunk), cellsPerChunk);
     }
-    writeChunkKeyRange(range, buf, o, gridMinX, gridMinY, chunkSizePx) {
-        range.startKey = packChunkKey(Math.floor((buf[o] - gridMinX) / chunkSizePx), Math.floor((buf[o + 1] - gridMinY) / chunkSizePx));
-        range.endKey = packChunkKey(Math.floor((buf[o + 2] - 1 - gridMinX) / chunkSizePx), Math.floor((buf[o + 3] - 1 - gridMinY) / chunkSizePx));
+    writeChunkKeyRange(i32, keyO, buf, o, gridMinX, gridMinY, chunkSizePx) {
+        i32[keyO] = packChunkKey(Math.floor((buf[o] - gridMinX) / chunkSizePx), Math.floor((buf[o + 1] - gridMinY) / chunkSizePx));
+        i32[keyO + 1] = packChunkKey(Math.floor((buf[o + 2] - 1 - gridMinX) / chunkSizePx), Math.floor((buf[o + 3] - 1 - gridMinY) / chunkSizePx));
     }
-    writeViewportChunkKeyRange(range, buf, o, obstacleGrid, chunkSizePx) {
-        this.writeChunkKeyRange(range, buf, o, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
+    writeViewportChunkKeyRange(i32, keyO, buf, o, obstacleGrid, chunkSizePx) {
+        this.writeChunkKeyRange(i32, keyO, buf, o, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
     writeWallAtlasWrap(x1, y1, x2, y2) {
         const surfaceTilePeriodPx = this.settings.surfaceTilePeriodPx;
@@ -601,33 +601,39 @@ class TileMemoryPool {
         if (pool) pool.push(buffer);
     }
 }
+export const BF_INV_BAKE_SCALE = 0;
+export const BF_START_X = 1;
+export const BF_START_Y = 2;
+export const BF_CELL_SIZE = 3;
+export const BF_SPAN_U = 4;
+export const BF_WALL_HEIGHT = 5;
+export const BF_WALL_WIDTH = 6;
+export const BF_P1X = 7;
+export const BF_P1Y = 8;
+export const BF_P2X = 9;
+export const BF_P2Y = 10;
+export const BF_EDGE_LEN = 11;
+export const BF_DIR_X = 12;
+export const BF_DIR_Y = 13;
+export const BF_FOLD_X = 14;
+export const BF_FOLD_Y = 15;
+export const BF_INV_EDGE_LEN = 16;
+export const BF_COUNT = 17;
+export const BI_WIDTH = 0;
+export const BI_HEIGHT = 1;
+export const BI_USE_WALL_BASE = 2;
+export const BI_WALL_FACE = 3;
+export const BI_WALL_CELL = 4;
+export const BI_COUNT = 5;
 export class BakeSession {
     constructor() {
         this.memoryPool = new TileMemoryPool();
         this.noiseEvaluator = new SeededNoise2D(0);
         this.lastMetrics = null;
-        this.invBakeScale = 0;
-        this.startWorldX = 0;
-        this.startWorldY = 0;
-        this.width = 0;
-        this.height = 0;
-        this.cellSize = 0;
-        this.spanU = 1;
-        this.wallHeight = 0;
-        this.wallWidth = 0;
-        this.p1x = 0;
-        this.p1y = 0;
-        this.p2x = 0;
-        this.p2y = 0;
-        this.edgeLen = 0;
-        this.dirX = 0;
-        this.dirY = 0;
-        this.foldX = 0;
-        this.foldY = 0;
-        this.invEdgeLen = 1;
-        this.useWallBase = false;
-        this.wallFace = false;
-        this.wallCell = false;
+        this._f32 = new Float32Array(BF_COUNT);
+        this._i32 = new Int32Array(BI_COUNT);
+        this._f32[BF_SPAN_U] = 1;
+        this._f32[BF_INV_EDGE_LEN] = 1;
         this.evalX = null;
         this.evalY = null;
         this.lookupX = null;
@@ -637,61 +643,69 @@ export class BakeSession {
         this._samplePoolEntry = null;
     }
     configureFloor(cellSize, surfaceBakeScale) {
-        this.cellSize = cellSize;
-        this.invBakeScale = 1 / surfaceBakeScale;
-        this.useWallBase = false;
-        this.wallFace = false;
-        this.wallCell = false;
+        const f = this._f32;
+        const i = this._i32;
+        f[BF_CELL_SIZE] = cellSize;
+        f[BF_INV_BAKE_SCALE] = 1 / surfaceBakeScale;
+        i[BI_USE_WALL_BASE] = 0;
+        i[BI_WALL_FACE] = 0;
+        i[BI_WALL_CELL] = 0;
     }
     configureRoof(cellSize, surfaceBakeScale) {
-        this.cellSize = cellSize;
-        this.invBakeScale = 1 / surfaceBakeScale;
-        this.useWallBase = true;
-        this.wallFace = false;
-        this.wallCell = true;
+        const f = this._f32;
+        const i = this._i32;
+        f[BF_CELL_SIZE] = cellSize;
+        f[BF_INV_BAKE_SCALE] = 1 / surfaceBakeScale;
+        i[BI_USE_WALL_BASE] = 1;
+        i[BI_WALL_FACE] = 0;
+        i[BI_WALL_CELL] = 1;
     }
     configureWallFace(p1x, p1y, p2x, p2y, wallHeight, wallWidth, surfaceBakeScale) {
         const dx = p2x - p1x;
         const dy = p2y - p1y;
         const edgeLen = Math.hypot(dx, dy);
-        this.invBakeScale = 1 / surfaceBakeScale;
-        this.p1x = p1x;
-        this.p1y = p1y;
-        this.p2x = p2x;
-        this.p2y = p2y;
-        this.edgeLen = edgeLen;
-        this.dirX = edgeLen > 0 ? dx / edgeLen : 0;
-        this.dirY = edgeLen > 0 ? dy / edgeLen : 0;
-        this.foldX = -this.dirY;
-        this.foldY = this.dirX;
-        this.invEdgeLen = edgeLen > 0 ? 1 / edgeLen : 1;
-        this.wallHeight = wallHeight;
-        this.wallWidth = wallWidth;
-        this.useWallBase = true;
-        this.wallFace = true;
-        this.wallCell = false;
+        const f = this._f32;
+        const i = this._i32;
+        f[BF_INV_BAKE_SCALE] = 1 / surfaceBakeScale;
+        f[BF_P1X] = p1x;
+        f[BF_P1Y] = p1y;
+        f[BF_P2X] = p2x;
+        f[BF_P2Y] = p2y;
+        f[BF_EDGE_LEN] = edgeLen;
+        f[BF_DIR_X] = edgeLen > 0 ? dx / edgeLen : 0;
+        f[BF_DIR_Y] = edgeLen > 0 ? dy / edgeLen : 0;
+        f[BF_FOLD_X] = -f[BF_DIR_Y];
+        f[BF_FOLD_Y] = f[BF_DIR_X];
+        f[BF_INV_EDGE_LEN] = edgeLen > 0 ? 1 / edgeLen : 1;
+        f[BF_WALL_HEIGHT] = wallHeight;
+        f[BF_WALL_WIDTH] = wallWidth;
+        i[BI_USE_WALL_BASE] = 1;
+        i[BI_WALL_FACE] = 1;
+        i[BI_WALL_CELL] = 0;
     }
 }
 export const globalBakeSession = new BakeSession();
 function writeFloorPixel(session, idx, x, y) {
-    const invBakeScale = session.invBakeScale;
-    session.evalX[idx] = session.startWorldX + x * invBakeScale;
-    session.evalY[idx] = session.startWorldY + y * invBakeScale;
+    const f = session._f32;
+    const invBakeScale = f[BF_INV_BAKE_SCALE];
+    session.evalX[idx] = f[BF_START_X] + x * invBakeScale;
+    session.evalY[idx] = f[BF_START_Y] + y * invBakeScale;
     session.wallU[idx] = 0;
     session.wallV[idx] = 0;
 }
 function fillWallFaceRows(session, width, height) {
-    const invBakeScale = session.invBakeScale;
-    const H = session.wallHeight;
-    const W = session.wallWidth;
-    const heightPx = session.height;
-    const dirX = session.dirX;
-    const dirY = session.dirY;
-    const foldX = session.foldX;
-    const foldY = session.foldY;
-    const invEdgeLen = session.invEdgeLen;
-    const p1x = session.p1x;
-    const p1y = session.p1y;
+    const f = session._f32;
+    const invBakeScale = f[BF_INV_BAKE_SCALE];
+    const H = f[BF_WALL_HEIGHT];
+    const W = f[BF_WALL_WIDTH];
+    const heightPx = session._i32[BI_HEIGHT];
+    const dirX = f[BF_DIR_X];
+    const dirY = f[BF_DIR_Y];
+    const foldX = f[BF_FOLD_X];
+    const foldY = f[BF_FOLD_Y];
+    const invEdgeLen = f[BF_INV_EDGE_LEN];
+    const p1x = f[BF_P1X];
+    const p1y = f[BF_P1Y];
     let idx = 0;
     for (let y = 0; y < height; y++) {
         const v = (heightPx - 1 - y) * invBakeScale;
@@ -720,14 +734,15 @@ function fillWallFaceRows(session, width, height) {
     }
 }
 function writeRoofPixel(session, idx, x, y) {
-    const invBakeScale = session.invBakeScale;
-    session.evalX[idx] = session.startWorldX + x * invBakeScale;
-    session.evalY[idx] = session.startWorldY + y * invBakeScale;
-    session.wallU[idx] = x / session.spanU;
+    const f = session._f32;
+    const invBakeScale = f[BF_INV_BAKE_SCALE];
+    session.evalX[idx] = f[BF_START_X] + x * invBakeScale;
+    session.evalY[idx] = f[BF_START_Y] + y * invBakeScale;
+    session.wallU[idx] = x / f[BF_SPAN_U];
     session.wallV[idx] = 1;
 }
 function fillPaintRows(bakeSession, width, height, writePixel) {
-    if (bakeSession.wallFace) {
+    if (bakeSession._i32[BI_WALL_FACE]) {
         fillWallFaceRows(bakeSession, width, height);
         return;
     }
@@ -742,12 +757,14 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const metricsOn = isTileBakeMetricsEnabled();
     if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
     const profile = resolveSurfaceProfile(profileId);
-    bakeSession.startWorldX = startWorldX;
-    bakeSession.startWorldY = startWorldY;
-    bakeSession.width = width;
-    bakeSession.height = height;
-    if (bakeSession.wallCell) bakeSession.spanU = width > 1 ? width - 1 : 1;
-    const writePixel = bakeSession.wallCell ? writeRoofPixel : writeFloorPixel;
+    const f = bakeSession._f32;
+    const i = bakeSession._i32;
+    f[BF_START_X] = startWorldX;
+    f[BF_START_Y] = startWorldY;
+    i[BI_WIDTH] = width;
+    i[BI_HEIGHT] = height;
+    if (i[BI_WALL_CELL]) f[BF_SPAN_U] = width > 1 ? width - 1 : 1;
+    const writePixel = i[BI_WALL_CELL] ? writeRoofPixel : writeFloorPixel;
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
     const numPixels = width * height;
@@ -888,6 +905,13 @@ const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
 const ENGINE_DRAW_O = 0;
 const ENGINE_CHUNK_O = 4;
+const EF_Z = 0;
+const EF_COUNT = 1;
+const EI_READY = 0;
+const EI_KEY_START = 1;
+const EI_KEY_END = 2;
+const EI_SEED = 3;
+const EI_COUNT = 4;
 export class WorldSurfaceEngine {
     constructor(settings) {
         this.settings = settings;
@@ -895,24 +919,31 @@ export class WorldSurfaceEngine {
         this.cacheKeys = new SurfaceBakeCacheKeys(this.surfaceSpace);
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this._engineBounds = new Float32Array(8);
+        this._f32 = new Float32Array(EF_COUNT);
+        this._i32 = new Int32Array(EI_COUNT);
+        this._i32[EI_SEED] = (Math.random() * 0x100000000) >>> 0;
         this._drawCtx = null;
         this._drawGrid = null;
         this._drawViewport = null;
         this._drawState = null;
-        this._drawZLevel = 0;
-        this._frameGrid = null;
-        this._frameViewport = null;
-        this._frameState = null;
-        this._frameZ = 0;
-        this._chunkKeyRange = { startKey: 0, endKey: 0 };
         this._resolvedChunkCanvas = null;
         this._wallChunkSideCanvas = null;
         this._wallChunkCapCanvas = null;
-        this._wallChunkReady = false;
         this.activeSurfaceProfileId = SURFACE_PROFILE_ID.tomatoGarden;
-        this.worldSurfaceSeed = (Math.random() * 0x100000000) >>> 0;
         this.bakeCooldowns = new Map();
         this.bakeFailCounts = new Map();
+    }
+    get _wallChunkReady() {
+        return this._i32[EI_READY] !== 0;
+    }
+    set _wallChunkReady(v) {
+        this._i32[EI_READY] = v ? 1 : 0;
+    }
+    get worldSurfaceSeed() {
+        return this._i32[EI_SEED] >>> 0;
+    }
+    set worldSurfaceSeed(v) {
+        this._i32[EI_SEED] = v | 0;
     }
     clearBakeCache() {
         this.surfaceCache.clear();
@@ -1081,11 +1112,7 @@ export class WorldSurfaceEngine {
             o = ENGINE_DRAW_O;
         }
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);
-        this._frameGrid = obstacleGrid;
-        this._frameViewport = viewport;
-        this._frameState = this._drawState;
-        this._frameZ = this._drawZLevel;
-        this.surfaceSpace.writeViewportChunkKeyRange(this._chunkKeyRange, buf, o, obstacleGrid, chunkSizePx);
+        this.surfaceSpace.writeViewportChunkKeyRange(this._i32, EI_KEY_START, buf, o, obstacleGrid, chunkSizePx);
         return true;
     }
     _fillDrawableGroundChunkCanvas(chunkKey, zLevel) {
@@ -1098,14 +1125,14 @@ export class WorldSurfaceEngine {
         return true;
     }
     drawGroundPlaneChunks() {
-        this._drawZLevel = 0;
+        this._f32[EF_Z] = 0;
         if (!this._beginVisibleChunkDraw()) return;
         const ctx = this._drawCtx;
-        const obstacleGrid = this._frameGrid;
-        const chunkKeyRange = this._chunkKeyRange;
+        const obstacleGrid = this._drawGrid;
+        const i = this._i32;
         const b = this._engineBounds;
         const o = ENGINE_CHUNK_O;
-        forEachChunkKeyInRange(chunkKeyRange.startKey, chunkKeyRange.endKey, (chunkKey) => {
+        forEachChunkKeyInRange(i[EI_KEY_START], i[EI_KEY_END], (chunkKey) => {
             this.surfaceSpace.chunkBoundsF32(b, o, obstacleGrid, chunkKey);
             if (!this._fillDrawableGroundChunkCanvas(chunkKey, 0)) return;
             ctx.drawImage(this._resolvedChunkCanvas, b[o], b[o + 1], b[o + 2] - b[o], b[o + 3] - b[o + 1]);
@@ -1135,27 +1162,27 @@ export class WorldSurfaceEngine {
     }
     drawStaticRoofChunksForLevels(levels) {
         for (let i = 0; i < levels.length; i++) {
-            this._drawZLevel = levels[i];
+            this._f32[EF_Z] = levels[i];
             this._drawElevatedChunks(ELEVATED_CHUNK_ROOF);
         }
     }
     drawFlatRailFloorChunksForLevels(levels) {
         for (let i = 0; i < levels.length; i++) {
-            this._drawZLevel = levels[i];
+            this._f32[EF_Z] = levels[i];
             this._drawElevatedChunks(ELEVATED_CHUNK_FLAT_RAIL);
         }
     }
     _drawElevatedChunks(mode) {
-        const zLevel = this._drawZLevel;
+        const zLevel = this._f32[EF_Z];
         if (zLevel <= 0) return;
         if (!this._beginVisibleChunkDraw()) return;
         const ctx = this._drawCtx;
-        const obstacleGrid = this._frameGrid;
-        const chunkKeyRange = this._chunkKeyRange;
-        const viewport = this._frameViewport;
+        const obstacleGrid = this._drawGrid;
+        const viewport = this._drawViewport;
+        const i = this._i32;
         const b = this._engineBounds;
         const o = ENGINE_CHUNK_O;
-        forEachChunkKeyInRange(chunkKeyRange.startKey, chunkKeyRange.endKey, (chunkKey) => {
+        forEachChunkKeyInRange(i[EI_KEY_START], i[EI_KEY_END], (chunkKey) => {
             this.surfaceSpace.chunkBoundsF32(b, o, obstacleGrid, chunkKey);
             if (mode === ELEVATED_CHUNK_ROOF) {
                 if (!chunkHasBlockedCellsF32(obstacleGrid, b, o) && !chunkHasStaticRoofAtLevel(obstacleGrid, b, o, zLevel)) return;
