@@ -459,8 +459,8 @@ export function earClipConvexPartsInto(outParts, flatVerts) {
     outParts.push(new Float32Array([verts[idx[0] * 2], verts[idx[0] * 2 + 1], verts[idx[1] * 2], verts[idx[1] * 2 + 1], verts[idx[2] * 2], verts[idx[2] * 2 + 1]]));
     return outParts;
 }
-/** Writes cx, cy, signedArea at buf[o..o+2]. */
-export function polygonCentroid2DInto(buf, o, verts, vo, floatCount) {
+/** Writes cx, cy, signedArea at buf[o..o+2]. Range defaults to the whole verts buffer. */
+export function polygonCentroid2DInto(buf, o, verts, vo = 0, floatCount = verts.length - vo) {
     let cx = 0;
     let cy = 0;
     let signedArea = 0;
@@ -492,7 +492,7 @@ export function polygonCentroid2DInto(buf, o, verts, vo, floatCount) {
 export function polygonSecondMomentAboutCentroid2D(vertices) {
     const count = vertices.length / 2;
     if (count < 3) return 0;
-    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, vertices, 0, vertices.length);
+    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, vertices);
     const cx = ENGINE_F32[M_OUT_CX];
     const cy = ENGINE_F32[M_OUT_CY];
     const signedArea = ENGINE_F32[M_OUT_AREA];

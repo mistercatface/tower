@@ -188,7 +188,7 @@ function collisionPartMassProperties(shape) {
         ENGINE_F32[P_OUT_MASS_INERTIA] = 0;
         return;
     }
-    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, verts, 0, verts.length);
+    polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, verts);
     ENGINE_F32[P_OUT_MASS_AREA] = area;
     ENGINE_F32[P_OUT_MASS_CX] = ENGINE_F32[M_OUT_CX];
     ENGINE_F32[P_OUT_MASS_CY] = ENGINE_F32[M_OUT_CY];
@@ -1202,7 +1202,7 @@ export function markHitCompoundParts(parts, lx, ly) {
     for (let i = 0; i < n; i++) {
         const part = parts[i];
         if (part.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
-        polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, part.vertices, 0, part.vertices.length);
+        polygonCentroid2DInto(ENGINE_F32, M_OUT_CX, part.vertices);
         const dx = ENGINE_F32[M_OUT_CX] - lx;
         const dy = ENGINE_F32[M_OUT_CY] - ly;
         const d = dx * dx + dy * dy;

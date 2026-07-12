@@ -1086,7 +1086,7 @@ export class FractureEngine {
         ENGINE_F32[F_OUT_DEBRIS_COUNT] = stores.debris.write - debrisStart;
     }
     static _buildShatterSeeds(flatVerts, hitX, hitY, seedCount, outSeeds) {
-        polygonCentroid2DInto(ENGINE_F32, F_VEC_A, flatVerts, 0, flatVerts.length);
+        polygonCentroid2DInto(ENGINE_F32, F_VEC_A, flatVerts);
         const cx = ENGINE_F32[F_VEC_A];
         const cy = ENGINE_F32[F_VEC_A + 1];
         let ox = hitX;
