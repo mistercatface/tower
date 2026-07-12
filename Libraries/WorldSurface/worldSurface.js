@@ -651,9 +651,7 @@ export class BakeSession {
         this.width = 0;
         this.height = 0;
         this.cellSize = 0;
-        this.zOffset = 0;
         this.spanU = 1;
-        this.invWallCellVSpan = 0;
         this.wallHeight = 0;
         this.wallWidth = 0;
         this.p1x = 0;
@@ -676,6 +674,41 @@ export class BakeSession {
         this.wallU = null;
         this.wallV = null;
         this._samplePoolEntry = null;
+    }
+    configureFloor(cellSize, surfaceBakeScale) {
+        this.cellSize = cellSize;
+        this.invBakeScale = 1 / surfaceBakeScale;
+        this.useWallBase = false;
+        this.wallFace = false;
+        this.wallCell = false;
+    }
+    configureRoof(cellSize, surfaceBakeScale) {
+        this.cellSize = cellSize;
+        this.invBakeScale = 1 / surfaceBakeScale;
+        this.useWallBase = true;
+        this.wallFace = false;
+        this.wallCell = true;
+    }
+    configureWallFace(p1x, p1y, p2x, p2y, wallHeight, wallWidth, surfaceBakeScale) {
+        const dx = p2x - p1x;
+        const dy = p2y - p1y;
+        const edgeLen = Math.hypot(dx, dy);
+        this.invBakeScale = 1 / surfaceBakeScale;
+        this.p1x = p1x;
+        this.p1y = p1y;
+        this.p2x = p2x;
+        this.p2y = p2y;
+        this.edgeLen = edgeLen;
+        this.dirX = edgeLen > 0 ? dx / edgeLen : 0;
+        this.dirY = edgeLen > 0 ? dy / edgeLen : 0;
+        this.foldX = -this.dirY;
+        this.foldY = this.dirX;
+        this.invEdgeLen = edgeLen > 0 ? 1 / edgeLen : 1;
+        this.wallHeight = wallHeight;
+        this.wallWidth = wallWidth;
+        this.useWallBase = true;
+        this.wallFace = true;
+        this.wallCell = false;
     }
 }
 export const globalBakeSession = new BakeSession();
@@ -729,13 +762,6 @@ function fillWallFaceRows(session, width, height) {
         }
     }
 }
-function writeWallCellPixel(session, idx, x, y) {
-    const invBakeScale = session.invBakeScale;
-    session.evalX[idx] = session.startWorldX + x * invBakeScale;
-    session.evalY[idx] = session.startWorldY + (session.cellSize - y * invBakeScale) + session.zOffset;
-    session.wallU[idx] = x / session.spanU;
-    session.wallV[idx] = (session.height - 1 - y) * session.invWallCellVSpan;
-}
 function writeRoofPixel(session, idx, x, y) {
     const invBakeScale = session.invBakeScale;
     session.evalX[idx] = session.startWorldX + x * invBakeScale;
@@ -743,61 +769,28 @@ function writeRoofPixel(session, idx, x, y) {
     session.wallU[idx] = x / session.spanU;
     session.wallV[idx] = 1;
 }
-export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId, bakeSession = globalBakeSession) {
+function fillPaintRows(bakeSession, width, height, writePixel) {
+    if (bakeSession.wallFace) {
+        fillWallFaceRows(bakeSession, width, height);
+        return;
+    }
+    let idx = 0;
+    for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) {
+            writePixel(bakeSession, idx, x, y);
+            idx++;
+        }
+}
+export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, profileOrId, bakeSession = globalBakeSession) {
     const metricsOn = isTileBakeMetricsEnabled();
     if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
     const profile = resolvePaintProfile(profileOrId);
-    const cellSize = options.cellSize;
-    if (cellSize == null) throw new Error("paintPixelArea requires options.cellSize");
-    const surfaceBakeScale = options.surfaceBakeScale;
-    if (surfaceBakeScale == null) throw new Error("paintPixelArea requires options.surfaceBakeScale");
-    const invBakeScale = 1 / surfaceBakeScale;
-    let writePixel = writeFloorPixel;
-    bakeSession.invBakeScale = invBakeScale;
     bakeSession.startWorldX = startWorldX;
     bakeSession.startWorldY = startWorldY;
     bakeSession.width = width;
     bakeSession.height = height;
-    bakeSession.useWallBase = false;
-    bakeSession.wallFace = false;
-    bakeSession.wallCell = false;
-    if (options.isWall && options.p1x != null && options.p2x != null) {
-        const p1x = options.p1x;
-        const p1y = options.p1y;
-        const p2x = options.p2x;
-        const p2y = options.p2y;
-        const dx = p2x - p1x;
-        const dy = p2y - p1y;
-        const edgeLen = Math.hypot(dx, dy);
-        if (options.wallHeight == null) throw new Error("paintPixelArea wallFace requires options.wallHeight");
-        bakeSession.p1x = p1x;
-        bakeSession.p1y = p1y;
-        bakeSession.p2x = p2x;
-        bakeSession.p2y = p2y;
-        bakeSession.edgeLen = edgeLen;
-        bakeSession.dirX = edgeLen > 0 ? dx / edgeLen : 0;
-        bakeSession.dirY = edgeLen > 0 ? dy / edgeLen : 0;
-        bakeSession.foldX = -bakeSession.dirY;
-        bakeSession.foldY = bakeSession.dirX;
-        bakeSession.invEdgeLen = edgeLen > 0 ? 1 / edgeLen : 1;
-        bakeSession.wallHeight = options.wallHeight;
-        bakeSession.wallWidth = options.wallWidth ?? cellSize;
-        bakeSession.useWallBase = true;
-        bakeSession.wallFace = true;
-    } else if (options.roofSurface) {
-        writePixel = writeRoofPixel;
-        bakeSession.spanU = width > 1 ? width - 1 : 1;
-        bakeSession.useWallBase = true;
-        bakeSession.wallCell = true;
-    } else if (options.isWall) {
-        writePixel = writeWallCellPixel;
-        bakeSession.cellSize = cellSize;
-        bakeSession.zOffset = options.zOffset ?? 0;
-        bakeSession.spanU = width > 1 ? width - 1 : 1;
-        bakeSession.invWallCellVSpan = height > 1 ? 1 / (height - 1) : 0;
-        bakeSession.useWallBase = true;
-        bakeSession.wallCell = true;
-    }
+    if (bakeSession.wallCell) bakeSession.spanU = width > 1 ? width - 1 : 1;
+    const writePixel = bakeSession.wallCell ? writeRoofPixel : writeFloorPixel;
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
     const numPixels = width * height;
@@ -806,15 +799,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     bakeSession._samplePoolEntry.height = height;
     const samples = bakeSession._samplePoolEntry;
     if (!metricsOn) {
-        if (bakeSession.wallFace) fillWallFaceRows(bakeSession, width, height);
-        else {
-            let idx = 0;
-            for (let y = 0; y < height; y++)
-                for (let x = 0; x < width; x++) {
-                    writePixel(bakeSession, idx, x, y);
-                    idx++;
-                }
-        }
+        fillPaintRows(bakeSession, width, height, writePixel);
         const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession);
         copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
         ctx.putImageData(imgData, 0, 0);
@@ -824,15 +809,7 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     }
     const phases = createEmptyBakePhases();
     let phaseStart = performance.now();
-    if (bakeSession.wallFace) fillWallFaceRows(bakeSession, width, height);
-    else {
-        let idx = 0;
-        for (let y = 0; y < height; y++)
-            for (let x = 0; x < width; x++) {
-                writePixel(bakeSession, idx, x, y);
-                idx++;
-            }
-    }
+    fillPaintRows(bakeSession, width, height, writePixel);
     phases.sampleFillMs = performance.now() - phaseStart;
     phaseStart = performance.now();
     const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession);
@@ -847,19 +824,20 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
 export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) {
     const { width, height, seed, profileId } = payload;
     const { cellSize, surfaceBakeScale } = getTileWorkerBakeConstants();
-    const paintCellSize = payload.wallWidth ?? cellSize;
+    const wallWidth = payload.wallWidth ?? cellSize;
+    bakeSession.configureWallFace(payload.p1x, payload.p1y, payload.p2x, payload.p2y, payload.wallHeight, wallWidth, surfaceBakeScale);
     const canvas = createOffscreenCanvas(width, height);
-    paintPixelArea(canvas.getContext("2d"), width, height, 0, 0, seed, { isWall: true, p1x: payload.p1x, p1y: payload.p1y, p2x: payload.p2x, p2y: payload.p2y, surfaceBakeScale, wallHeight: payload.wallHeight, wallWidth: paintCellSize, cellSize: paintCellSize }, profileId, bakeSession);
+    paintPixelArea(canvas.getContext("2d"), width, height, 0, 0, seed, profileId, bakeSession);
     return [canvas];
 }
 export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession) {
     const { minX, minY, seed, profileId } = payload;
     const { cellSize, cellsPerChunk, surfaceBakeScale } = getTileWorkerBakeConstants();
     const bakeSize = bakePixelsForWorldSpan(cellSize * cellsPerChunk, surfaceBakeScale);
-    const zLevel = payload.zLevel ?? 0;
+    if ((payload.zLevel ?? 0) > 0) bakeSession.configureRoof(cellSize, surfaceBakeScale);
+    else bakeSession.configureFloor(cellSize, surfaceBakeScale);
     const canvas = createOffscreenCanvas(bakeSize, bakeSize);
-    const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
-    paintPixelArea(canvas.getContext("2d"), bakeSize, bakeSize, minX, minY, seed, paintOptions, profileId, bakeSession);
+    paintPixelArea(canvas.getContext("2d"), bakeSize, bakeSize, minX, minY, seed, profileId, bakeSession);
     return [canvas];
 }
 const SS_CELL_RECT = new Int32Array(4);

@@ -82,7 +82,7 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - Draw/cache path: no XY/AABB return bags; `SurfaceSpatialMap` mutates `_boundsBank` (`SS_CELL`/`SS_POINTS`/`SS_CHUNK`/`SS_DRAW`/`SS_AXES`); chunk range mutates preallocated `chunkKeyRange`.
 - Wall atlas: scalars in, memo slab columns + canvas handles out — no `wrappedP1` / `_wallAtlasStashes` bags.
 - Wall-chunk prop textures bind on the engine for the current draw (`_wallChunkSideCanvas` / `_wallChunkCapCanvas` / `_wallChunkReady`); no prop texture bags; scale/chunk size from settings.
-- Bake: no `paintOptions`/`BakeRequest`/`wallPaintOptions` bags — `BakeSession` fields + flat worker payloads only.
+- Bake: configure `BakeSession` (`configureFloor` / `configureRoof` / `configureWallFace`) then `paintPixelArea` — no `paintOptions`/`BakeRequest`/`wallPaintOptions` bags; flat worker payloads only.
 - Worker payloads: flat scalars only (`p1x…p2y`); no nested points.
 - Modes (`WALL_FACE_*`, `PRIMITIVE_PHYSICS_ROW_*`) live in `engineEnums`, not `engineMemory`.
 - Metrics/scheduler Promise records may remain bags (non-hot).

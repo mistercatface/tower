@@ -68,6 +68,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "parseGlassLaunchSizePx",
     "preparedSearchState",
     "paintBakeRequest",
+    "paintOptions",
     "P_OUT_WALL_X",
     "P_OUT_WALL_Y",
     "P_OUT_WALL_Z",
