@@ -108,8 +108,8 @@ export class SpatialFrameCore {
         entity._neighborsFrameId = this.frameId;
         return count;
     }
-    collectEntityEidsInBoundsF32(buf, o, outEids, outCap, excludeEid = -1) {
-        return this.entityGrid.collectEidsInBoundsF32(buf, o, outEids, outCap, excludeEid);
+    collectEntityEidsInBoundsF32(buf, o, outEids, outStart, outCap, excludeEid = -1) {
+        return this.entityGrid.collectEidsInBoundsF32(buf, o, outEids, outStart, outCap, excludeEid);
     }
 }
 function idxCol(idx, cols) {
@@ -1711,9 +1711,9 @@ export class EntityGrid {
         const searchRadius = entityCollisionSpan(entity) + this.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(entity));
         centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity.x, entity.y, searchRadius);
         const excludeEid = entity._physId !== undefined ? entity._physId : -1;
-        return this.collectEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, outEids, outCap, excludeEid);
+        return this.collectEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, outEids, 0, outCap, excludeEid);
     }
-    collectEidsInBoundsF32(buf, o, outEids, outCap, excludeEid = -1) {
+    collectEidsInBoundsF32(buf, o, outEids, outStart, outCap, excludeEid = -1) {
         const stamp = (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
         this.queryGen = stamp;
         let write = 0;
@@ -1734,7 +1734,7 @@ export class EntityGrid {
                     if (curr !== excludeEid && entitySpatialGen[curr] !== stamp) {
                         entitySpatialGen[curr] = stamp;
                         if (write >= outCap) return -1;
-                        outEids[write++] = curr;
+                        outEids[outStart + write++] = curr;
                     }
                     curr = entityNext[curr];
                 }

@@ -1726,10 +1726,10 @@ export function bakeSpatialNeighborCsr(spatialFrame) {
         centerReachAabbF32(ENGINE_F32, padBase, slab.x[physId], slab.y[physId], searchRadius);
         let offset = slab.spatialNeighborEidsUsed;
         ensureSpatialNeighborArena(offset + 16);
-        let count = grid.collectEidsInBoundsF32(ENGINE_F32, padBase, slab.spatialNeighborEids.subarray(offset), slab.spatialNeighborEids.length - offset, physId);
+        let count = grid.collectEidsInBoundsF32(ENGINE_F32, padBase, slab.spatialNeighborEids, offset, slab.spatialNeighborEids.length - offset, physId);
         while (count < 0) {
             ensureSpatialNeighborArena(Math.max(offset + 16, slab.spatialNeighborEids.length * 2));
-            count = grid.collectEidsInBoundsF32(ENGINE_F32, padBase, slab.spatialNeighborEids.subarray(offset), slab.spatialNeighborEids.length - offset, physId);
+            count = grid.collectEidsInBoundsF32(ENGINE_F32, padBase, slab.spatialNeighborEids, offset, slab.spatialNeighborEids.length - offset, physId);
         }
         slab.spatialNeighborOffset[physId] = offset;
         slab.spatialNeighborCount[physId] = count;
@@ -4031,10 +4031,10 @@ export function evaluateKineticIslandSleepEligible(islandMembers, spatialFrame) 
     }
     const eg = spatialFrame.entityGrid;
     padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, eg.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
-    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, sleepNeighborEids.buf.length);
+    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, 0, sleepNeighborEids.buf.length);
     while (n < 0) {
         sleepNeighborEids.ensure(sleepNeighborEids.buf.length * 2);
-        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, sleepNeighborEids.buf.length);
+        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, 0, sleepNeighborEids.buf.length);
     }
     for (let i = 0; i < islandMembers.length; i++) if (hasSleepBlockingNeighbor(islandMembers[i], sleepNeighborEids.buf, n)) return false;
     return true;

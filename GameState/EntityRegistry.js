@@ -366,10 +366,10 @@ export class EntityArena {
         const queryGen = ++this._candidateQueryGen;
         const scratch = this._candidateEids;
         this._ensureCandidateCap(256);
-        let n = spatialFrame.collectEntityEidsInBoundsF32(buf, o, scratch, scratch.length);
+        let n = spatialFrame.collectEntityEidsInBoundsF32(buf, o, scratch, 0, scratch.length);
         while (n < 0) {
             this._ensureCandidateCap(this._candidateEids.length * 2);
-            n = spatialFrame.collectEntityEidsInBoundsF32(buf, o, this._candidateEids, this._candidateEids.length);
+            n = spatialFrame.collectEntityEidsInBoundsF32(buf, o, this._candidateEids, 0, this._candidateEids.length);
         }
         const eidBuf = this._candidateEids;
         this._candidateCount = 0;
