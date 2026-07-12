@@ -6,10 +6,8 @@ import { GRAB_DRAG_BEHAVIOR_ID } from "../Sandbox/dragBehaviors.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
-import { wakeKineticBody } from "../Physics/physics.js";
 import { ENGINE_F32, M_VEC_A } from "../../Core/engineMemory.js";
 import { EDITOR_NAV_MODE_OFF, NAV_PATH_DEBUG_OFF, NAV_PATH_DEBUG_REACHABLE } from "../../Core/engineEnums.js";
-const GLASS_STAR_SPIN_RATE = 3;
 export const GAME_LAUNCHERS = {
     snake: {
         title: "Snake",
@@ -185,10 +183,6 @@ async function runFractureLaunch(state, ctx) {
     applyPropBoxFootprint(pane, half, half);
     pane.fractureEnabled = true;
     const star = spawnPlacedSandboxProp(state, cx, cy - (half + 24), "star_block", "alpha");
-    star.spinMotor = GLASS_STAR_SPIN_RATE;
-    star.spinMotorSign = 1;
-    star.angularVelocity = GLASS_STAR_SPIN_RATE;
-    wakeKineticBody(star);
     state.appLaunch?.session?.bind(ctx);
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [star.id] });

@@ -13,8 +13,6 @@ export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
 const GRAB_DRAG_ANGULAR_DAMP = 4;
-/** Extra spin multiplier at full grab pull (rate = base * (1 + ratio * gain)). */
-const SPIN_MOTOR_PULL_GAIN = 3;
 const REFERENCE_GRAB_INERTIA = (() => {
     const body = { shape: new CircleShape(4), radius: 4, strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE) };
     return kineticInertiaFromBody(body);
@@ -198,13 +196,6 @@ export function createDragLaunchBehaviors(state) {
     ];
 }
 function resolveGrabDragAnchor(prop, world) {
-    if (prop.spinMotor) {
-        ENGINE_F32[G_LX] = 0;
-        ENGINE_F32[G_LY] = 0;
-        ENGINE_F32[G_OX] = prop.x - world.x;
-        ENGINE_F32[G_OY] = prop.y - world.y;
-        return;
-    }
     const asset = propCatalog[prop.type];
     const verts = prop.drawOutline?.length >= 6 ? prop.drawOutline : prop.shape?.vertices;
     if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && verts?.length >= 6) {
@@ -260,28 +251,18 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             dy = ty - ENGINE_F32[G_WY];
         }
         const dist = Math.hypot(dx, dy);
-        const spinBase = prop.spinMotor ? Math.abs(prop.spinMotor) : 0;
         if (dist < rollConfig.stopRadius) {
-            if (spinBase) prop.spinMotorDrive = (prop.spinMotorSign ?? 1) * spinBase;
             decelerateRoll(prop, rollConfig);
             return;
         }
         const power = computeLaunchPower(dist, grabConfig);
         if (power <= 0) {
-            if (spinBase) prop.spinMotorDrive = (prop.spinMotorSign ?? 1) * spinBase;
             decelerateRoll(prop, rollConfig);
             return;
         }
         const ratio = power / grabConfig.maxPower;
         steerRollToward(prop, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
         if (prop.strategy?.rolls) return;
-        if (spinBase) {
-            // +w is clockwise; prefer CW when dragging north (-dy), CCW when dragging south.
-            const dirSign = dy !== 0 ? Math.sign(-dy) : Math.sign(dx) || 1;
-            prop.spinMotorSign = dirSign;
-            prop.spinMotorDrive = dirSign * spinBase * (1 + ratio * SPIN_MOTOR_PULL_GAIN);
-            return;
-        }
         grabDragAnchorWorld(prop, run);
         const rx = ENGINE_F32[G_WX] - prop.x;
         const ry = ENGINE_F32[G_WY] - prop.y;
