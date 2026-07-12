@@ -42,7 +42,7 @@ export function createSpherePrimitive(visuals) {
             drawFlatSphereDisc(ctx, prop, radius, pendingFill);
             return;
         }
-        drawSphere(ctx, prop, viewport, { panelCount, latBands, pendingFill, textures: prop._wallChunkTextures });
+        drawSphere(ctx, prop, viewport, { panelCount, latBands, pendingFill });
     };
 }
 function stampSurfaceProfileFields(prop, asset) {
@@ -205,7 +205,7 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 const sQuantizeSteps = { facing: 0, view: 0 };
 const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined, _wallChunkTextures: null };
+const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined };
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
     const override = prop.strategy?.quantizeSteps;
@@ -267,7 +267,6 @@ export function getPropStageBakeState(prop) {
     sStageProp.id = prop.id;
     sStageProp.wallChunkProfileId = prop.wallChunkProfileId;
     sStageProp.wallChunkHeightPx = prop.wallChunkHeightPx;
-    sStageProp._wallChunkTextures = prop._wallChunkTextures;
     return sStageProp;
 }
 export function buildWorldPropStrategyFromAsset(asset) {
@@ -351,7 +350,6 @@ export class WorldProp {
         this.alpha = undefined;
         this.wallChunkProfileId = undefined;
         this.wallChunkHeightPx = undefined;
-        this._wallChunkTextures = undefined;
         this._wallChunkTextureReady = undefined;
         stampSurfaceProfileFields(this, asset);
         this._footprintKey = undefined;
@@ -648,10 +646,6 @@ function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: resolveAssetPropHeight(childAsset), visualOverride: undefined, _visualAttachmentId: cfg.id, _footprintKey: undefined };
     stampSurfaceProfileFields(prop, childAsset);
     if (parentProp.wallChunkProfileId) prop.wallChunkProfileId = parentProp.wallChunkProfileId;
-    if (prop.wallChunkProfileId && prop.wallChunkProfileId === parentProp.wallChunkProfileId && parentProp._wallChunkTextures) {
-        prop._wallChunkTextures = parentProp._wallChunkTextures;
-        prop._wallChunkTextureReady = parentProp._wallChunkTextureReady;
-    }
     initWorldPropShape(prop);
     scaleVirtualPropShape(prop, resolveVirtualPropScale(parentProp, prop, cfg));
     return prop;

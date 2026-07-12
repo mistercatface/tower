@@ -124,9 +124,6 @@ export class SurfaceBakeCacheKeys {
         const rev = getSurfaceProfileRevision(profileId);
         return `wall:${rev}:${profileId}:${surfaceSeed}:${atlasHeight}:${b[o].toFixed(1)},${b[o + 1].toFixed(1)}-${b[o + 2].toFixed(1)},${b[o + 3].toFixed(1)}`;
     }
-    wallAtlasRevision(profileId) {
-        return getSurfaceProfileRevision(profileId);
-    }
 }
 const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = 0;
 function positiveModulo(value, period) {
@@ -608,31 +605,28 @@ export function getTileWorkerBakeConstants() {
     if (!tileWorkerBakeConstants) throw new Error("Tile worker bake constants not installed");
     return tileWorkerBakeConstants;
 }
-/**
- * @typedef {Object} BakeRequest
- * @property {CanvasRenderingContext2D} ctx
- * @property {number} width
- * @property {number} height
- * @property {number} startWorldX
- * @property {number} startWorldY
- * @property {number} seed
- * @property {object} paintOptions
- * @property {string | object} profileOrId
- */
 class TileMemoryPool {
     constructor() {
         this.buffers = new Map();
         this.rgbBuffers = new Map();
     }
-    getSamples(numPixels) {
+    bindSamples(session, numPixels) {
         if (!this.buffers.has(numPixels)) this.buffers.set(numPixels, []);
         const pool = this.buffers.get(numPixels);
-        if (pool.length > 0) return pool.pop();
-        return { evalX: new Float32Array(numPixels), evalY: new Float32Array(numPixels), lookupX: new Float32Array(numPixels), lookupY: new Float32Array(numPixels), wallU: new Float32Array(numPixels), wallV: new Float32Array(numPixels) };
+        const pooled = pool.length > 0 ? pool.pop() : { evalX: new Float32Array(numPixels), evalY: new Float32Array(numPixels), lookupX: new Float32Array(numPixels), lookupY: new Float32Array(numPixels), wallU: new Float32Array(numPixels), wallV: new Float32Array(numPixels) };
+        session.evalX = pooled.evalX;
+        session.evalY = pooled.evalY;
+        session.lookupX = pooled.lookupX;
+        session.lookupY = pooled.lookupY;
+        session.wallU = pooled.wallU;
+        session.wallV = pooled.wallV;
+        session._samplePoolEntry = pooled;
     }
-    release(samples, numPixels) {
+    releaseBoundSamples(session, numPixels) {
+        const pooled = session._samplePoolEntry;
+        session._samplePoolEntry = null;
         const pool = this.buffers.get(numPixels);
-        if (pool) pool.push(samples);
+        if (pool) pool.push(pooled);
     }
     getRgbBuffer(numPixels) {
         const size = numPixels * 3;
@@ -681,6 +675,7 @@ export class BakeSession {
         this.lookupY = null;
         this.wallU = null;
         this.wallV = null;
+        this._samplePoolEntry = null;
     }
 }
 export const globalBakeSession = new BakeSession();
@@ -748,16 +743,6 @@ function writeRoofPixel(session, idx, x, y) {
     session.wallU[idx] = x / session.spanU;
     session.wallV[idx] = 1;
 }
-/** @param {BakeRequest} req */
-export function paintBakeRequest(req, bakeSession = globalBakeSession) {
-    paintPixelArea(req.ctx, req.width, req.height, req.startWorldX, req.startWorldY, req.seed, req.paintOptions, resolvePaintProfile(req.profileOrId), bakeSession);
-}
-/** @param {Omit<BakeRequest, "ctx">} req @returns {OffscreenCanvas} */
-export function bakeRequestToCanvas(req, bakeSession = globalBakeSession) {
-    const canvas = createOffscreenCanvas(req.width, req.height);
-    paintBakeRequest({ ...req, ctx: canvas.getContext("2d") }, bakeSession);
-    return canvas;
-}
 export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, options = {}, profileOrId, bakeSession = globalBakeSession) {
     const metricsOn = isTileBakeMetricsEnabled();
     if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
@@ -816,17 +801,10 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
     const numPixels = width * height;
-    const pooled = bakeSession.memoryPool.getSamples(numPixels);
-    bakeSession.evalX = pooled.evalX;
-    bakeSession.evalY = pooled.evalY;
-    bakeSession.lookupX = pooled.lookupX;
-    bakeSession.lookupY = pooled.lookupY;
-    bakeSession.wallU = pooled.wallU;
-    bakeSession.wallV = pooled.wallV;
-    pooled.width = width;
-    pooled.height = height;
-    const samples = pooled;
-    const bake = { useWallBase: bakeSession.useWallBase, wallFace: bakeSession.wallFace, wallCell: bakeSession.wallCell };
+    bakeSession.memoryPool.bindSamples(bakeSession, numPixels);
+    bakeSession._samplePoolEntry.width = width;
+    bakeSession._samplePoolEntry.height = height;
+    const samples = bakeSession._samplePoolEntry;
     if (!metricsOn) {
         if (bakeSession.wallFace) fillWallFaceRows(bakeSession, width, height);
         else {
@@ -837,10 +815,10 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
                     idx++;
                 }
         }
-        const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession, bake);
+        const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession);
         copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
         ctx.putImageData(imgData, 0, 0);
-        bakeSession.memoryPool.release(pooled, numPixels);
+        bakeSession.memoryPool.releaseBoundSamples(bakeSession, numPixels);
         bakeSession.lastMetrics = null;
         return;
     }
@@ -857,37 +835,31 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     }
     phases.sampleFillMs = performance.now() - phaseStart;
     phaseStart = performance.now();
-    const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession, bake);
+    const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession);
     phases.composeStaticMs = performance.now() - phaseStart;
     phaseStart = performance.now();
     copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
     ctx.putImageData(imgData, 0, 0);
     phases.rgbaCopyMs = performance.now() - phaseStart;
-    bakeSession.memoryPool.release(pooled, numPixels);
+    bakeSession.memoryPool.releaseBoundSamples(bakeSession, numPixels);
     bakeSession.lastMetrics = createTileBakeMetrics("paintPixelArea", numPixels, phases, bakeSession.noiseEvaluator.profile);
 }
-function resolvePaintCellSize(optionsPayload) {
-    const cellSize = optionsPayload?.wallWidth ?? getTileWorkerBakeConstants().cellSize;
-    return cellSize;
-}
-function wallPaintOptions(optionsPayload) {
-    const { surfaceBakeScale } = getTileWorkerBakeConstants();
-    const cellSize = resolvePaintCellSize(optionsPayload);
-    return { isWall: true, p1x: optionsPayload.p1x, p1y: optionsPayload.p1y, p2x: optionsPayload.p2x, p2y: optionsPayload.p2y, surfaceBakeScale, wallHeight: optionsPayload?.wallHeight, wallWidth: cellSize, cellSize };
-}
-/** @param {object} payload */
 export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) {
     const { width, height, seed, profileId } = payload;
-    return [bakeRequestToCanvas({ width, height, startWorldX: 0, startWorldY: 0, seed, paintOptions: wallPaintOptions(payload), profileOrId: profileId }, bakeSession)];
+    const { cellSize, surfaceBakeScale } = getTileWorkerBakeConstants();
+    const paintCellSize = payload.wallWidth ?? cellSize;
+    const canvas = createOffscreenCanvas(width, height);
+    paintPixelArea(canvas.getContext("2d"), width, height, 0, 0, seed, { isWall: true, p1x: payload.p1x, p1y: payload.p1y, p2x: payload.p2x, p2y: payload.p2y, surfaceBakeScale, wallHeight: payload.wallHeight, wallWidth: paintCellSize, cellSize: paintCellSize }, profileId, bakeSession);
+    return [canvas];
 }
-/** Bake a static ground-chunk canvas. */
 export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession) {
     const { minX, minY, seed, profileId } = payload;
     const { cellSize, cellsPerChunk, surfaceBakeScale } = getTileWorkerBakeConstants();
     const bakeSize = bakePixelsForWorldSpan(cellSize * cellsPerChunk, surfaceBakeScale);
     const zLevel = payload.zLevel ?? 0;
+    const canvas = createOffscreenCanvas(bakeSize, bakeSize);
     const paintOptions = zLevel > 0 ? { cellSize, surfaceBakeScale, isWall: true, roofSurface: true } : { cellSize, surfaceBakeScale };
-    const canvas = bakeRequestToCanvas({ width: bakeSize, height: bakeSize, startWorldX: minX, startWorldY: minY, seed, paintOptions, profileOrId: profileId }, bakeSession);
+    paintPixelArea(canvas.getContext("2d"), bakeSize, bakeSize, minX, minY, seed, paintOptions, profileId, bakeSession);
     return [canvas];
 }
 const SS_CELL_RECT = new Int32Array(4);
@@ -989,6 +961,9 @@ export class WorldSurfaceEngine {
         this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, zLevel: 0, beforeDraw: null };
         this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, chunkKeyRange: { startKey: 0, endKey: 0 } };
         this._resolvedChunkCanvas = null;
+        this._wallChunkSideCanvas = null;
+        this._wallChunkCapCanvas = null;
+        this._wallChunkReady = false;
         this.activeSurfaceProfileId = SURFACE_PROFILE_ID.tomatoGarden;
         this.worldSurfaceSeed = (Math.random() * 0x100000000) >>> 0;
         this.bakeCooldowns = new Map();
@@ -1279,13 +1254,12 @@ export class WorldSurfaceEngine {
         const sideCanvases = this.getOrEnsureWallAtlasScalars(0, 0, cellSize, 0, profileId, wallHeightPx);
         const sideCanvas = sideCanvases?.[0] ?? null;
         const chunkKey = this.surfaceSpace.sampleWallChunkTexture(cellSize);
-        const b = this.surfaceSpace._boundsBank;
-        const o = SS_CHUNK;
         const capCanvasEntry = this.getGroundChunkCanvas(chunkKey, state, 1, true, profileId);
         const capCanvas = capCanvasEntry?.[0] ?? null;
         const sideReady = sideCanvas && !sideCanvas.isPlaceholder;
         const capReady = capCanvas && !capCanvas.isPlaceholder;
-        const ready = sideReady && capReady;
-        return { sideCanvas, capCanvas, ready, scale: this.settings.surfaceBakeScale, chunkSizePx: b[o + 2] - b[o] };
+        this._wallChunkSideCanvas = sideCanvas;
+        this._wallChunkCapCanvas = capCanvas;
+        this._wallChunkReady = !!(sideReady && capReady);
     }
 }

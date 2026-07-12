@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns)\b/;
+const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest)\b/;
 const nestedPayloadRe = /payload\.p[12]\b/;
 
 function isHotBagReturn(line) {
@@ -9,6 +9,7 @@ function isHotBagReturn(line) {
     if (/wrappedP1|wrappedP2|startKey\s*:/.test(line)) return true;
     if (/dirX/.test(line) && /edgeLen/.test(line)) return true;
     if (/chunkSizePx/.test(line) && /minX/.test(line)) return true;
+    if (/sideCanvas|capCanvas/.test(line)) return true;
     return false;
 }
 
@@ -33,6 +34,9 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inWorldSurface && deletedExportRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inWorldSurface && /_wallChunkTextures|wallAtlasRevision/.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if ((inWorldSurface || inTileWorker) && nestedPayloadRe.test(line)) {

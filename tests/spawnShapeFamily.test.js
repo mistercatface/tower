@@ -6,7 +6,7 @@ import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { createSandboxSession, collectFlatPlacedSandboxPropEntries } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
-import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
+import { getWallChunkSpriteCacheKey, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 import propCatalog from "../Assets/props/index.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE } from "../Core/engineEnums.js";
@@ -47,7 +47,6 @@ describe("spawn shape family defaults", () => {
         assert.equal(session.spawnAt(64, 64), true);
         const prop = state.worldProps[0];
         assert.equal(prop.wallChunkProfileId, "tomatoGarden");
-        assert.equal(prop._wallChunkTextures, null);
         assert.equal(prop._wallChunkTextureReady, false);
         assert.match(getWallChunkSpriteCacheKey(prop), /^wallchunk:tomatoGarden:/);
     });
@@ -119,7 +118,12 @@ describe("sphere surface profile draw", () => {
 
     it("flat sphere disc fills a circle path with pattern when textured", () => {
         const prop = new WorldProp(10, 20, "ball", 0);
-        prop._wallChunkTextures = { ready: true, scale: 1, chunkSizePx: 128, capCanvas: { width: 128, height: 128 } };
+        bindWallChunkTexturePipeline({
+            _wallChunkReady: true,
+            _wallChunkCapCanvas: { width: 128, height: 128 },
+            _wallChunkSideCanvas: null,
+            settings: { surfaceBakeScale: 1, cellSize: 16, cellsPerChunk: 8 },
+        });
         const draw = createSpherePrimitive(propCatalog.ball.visuals);
         let arcs = 0;
         let fills = 0;
@@ -147,9 +151,11 @@ describe("sphere surface profile draw", () => {
         assert.equal(arcs, 1);
         assert.equal(fills, 1);
         assert.equal(meshFills, 0);
+        bindWallChunkTexturePipeline(null);
     });
 
     it("radial pending sphere fills faces without coat panels", () => {
+        bindWallChunkTexturePipeline(null);
         const prop = new WorldProp(0, 0, "ball", 0);
         const draw = createSpherePrimitive(propCatalog.ball.visuals);
         let fills = 0;
@@ -173,25 +179,21 @@ describe("sphere surface profile draw", () => {
         assert.equal(fillStyles.size, 1);
     });
 
-    it("boid attachment stamps profile and copies parent textures", () => {
+    it("boid attachment stamps profile from parent", () => {
         const parent = new WorldProp(0, 0, "boid_triangle", 0);
-        parent._wallChunkTextures = { ready: true, scale: 1, chunkSizePx: 64, capCanvas: { width: 64, height: 64 } };
         parent._wallChunkTextureReady = true;
         const { after } = resolveVisualAttachmentProps(parent);
         assert.ok(after.length >= 1);
         const wedge = after[0];
         assert.equal(wedge.type, "tri_wedge");
         assert.equal(wedge.wallChunkProfileId, "poolTableFelt");
-        assert.equal(wedge._wallChunkTextures, parent._wallChunkTextures);
     });
 
     it("boid attachment inherits parent surface profile override", () => {
         const parent = new WorldProp(0, 0, "boid_triangle", 0);
         parent.wallChunkProfileId = "tomatoGarden";
-        parent._wallChunkTextures = { ready: true, scale: 1, chunkSizePx: 64, capCanvas: { width: 64, height: 64 } };
         parent._wallChunkTextureReady = true;
         const { after } = resolveVisualAttachmentProps(parent);
         assert.equal(after[0].wallChunkProfileId, "tomatoGarden");
-        assert.equal(after[0]._wallChunkTextures, parent._wallChunkTextures);
     });
 });

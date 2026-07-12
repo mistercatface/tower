@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { CircleShape, PolygonShape, kineticFootprintArea, kineticInertiaFromBody, kineticMassFromFootprint, stampPrimitivePhysics, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { polygonSecondMomentAboutCentroid2D, polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, primitivePhysics, kineticStaticSlab } from "../Core/engineMemory.js";
+import { primitivePhysics, kineticStaticSlab } from "../Core/engineMemory.js";
+import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../Core/engineEnums.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 describe("bodyMass", () => {
     it("scales mass with polygon footprint area", () => {

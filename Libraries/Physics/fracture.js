@@ -445,7 +445,6 @@ class KineticDebrisStore {
         body._staticKeyRoll = undefined;
         body.wallChunkProfileId = undefined;
         body.wallChunkHeightPx = undefined;
-        body._wallChunkTextures = undefined;
         body._wallChunkTextureReady = undefined;
         body.isDead = false;
         body.isSleeping = false;

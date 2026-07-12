@@ -118,7 +118,6 @@ function appendMapGenSurfaceProfileSelect(panel, config, state, regionKind, onPr
 }
 function applyPropSurfaceProfile(prop, profileId) {
     prop.wallChunkProfileId = profileId;
-    prop._wallChunkTextures = null;
     prop._wallChunkTextureReady = false;
 }
 function assetDefaultSurfaceProfileId(asset) {

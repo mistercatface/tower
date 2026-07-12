@@ -38,10 +38,6 @@ import {
     P_OUT_SOLVE_ITERS,
     P_OUT_SOLVE_IMPULSE,
     P_OUT_SOLVE_REST,
-    P_OUT_WALL_X,
-    P_OUT_WALL_Y,
-    P_OUT_WALL_Z,
-    P_OUT_WALL_IDX,
     P_OUT_SWEEP_T,
     P_OUT_SWEEP_X,
     P_OUT_SWEEP_Y,
@@ -66,8 +62,6 @@ import {
     kineticDynamicSlab,
     kineticStaticSlab,
     primitivePhysics,
-    PRIMITIVE_PHYSICS_ROW_CIRCLE,
-    PRIMITIVE_PHYSICS_ROW_POLYGON,
     kineticConstraintSlab,
     kineticConstraintStore,
     kineticContactBuffer,
@@ -115,7 +109,7 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */

@@ -98,11 +98,12 @@ function writeLookupForPixel(samples, index, warp, warpAmp, noise) {
         samples.lookupY[index] = samples.evalY[index];
     }
 }
-export function composeSurfaceImage(samples, profile, seed, bakeSession = null, bake = { useWallBase: false }, rgbBuffer = null, motifStartIndex = 0, motifEndIndex = undefined) {
+export function composeSurfaceImage(samples, profile, seed, bakeSession, rgbBuffer = null, motifStartIndex = 0, motifEndIndex = undefined) {
     const noise = bakeSession.noiseEvaluator;
     noise.setSeed(seed);
     const numPixels = samples.width * samples.height;
     if (!rgbBuffer) rgbBuffer = new Float32Array(numPixels * 3);
+    const bake = bakeSession;
     const base = resolvePaletteBase(profile, bake.useWallBase);
     const warp = profile.warp;
     sampleScratch.seed = seed;

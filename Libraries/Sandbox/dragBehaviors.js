@@ -5,8 +5,7 @@ import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "
 import { FloorBelt } from "../Spatial/belts.js";
 import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON } from "../../Core/engineEnums.js";
-import { PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineEnums.js";
 /** @typedef {{ minDrag: number, maxPull: number, pullScale: number, minPower: number, maxPower: number, powerCurve?: number }} DragLaunchConfig */
 /** @typedef {{ active: boolean, anchorX: number, anchorY: number, startX: number, startY: number, pullX: number, pullY: number, shotNx: number | null, shotNy: number | null }} DragLaunchAim */
 export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";

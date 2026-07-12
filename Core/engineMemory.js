@@ -5,7 +5,11 @@ import { MAX_ENTITIES } from "./engineLimits.js";
  * PHYS: +0…78 P_* scratch, +79…84 G_* grab, +85…92 P_WALL_VERTS, +93…100 P_WALL_NORMS, +101…127 reserved.
  * Note: P_VEC_C+2/+3 aliases P_VEC_D (legacy overlap — leave values).
  * FRAC: +0…33 F_OUT_/F_VEC_/F_EDGE_, +34 F_SHATTER_SEEDS (+57 for 12 shards), +58…63 reserved.
+ * ENGINE_U8: R_FACE_VISIBLE at 0…MAX_PRISM_FACES-1; compound hit marks share low U8.
+ * ENGINE_I32: I_SPRITE_KEY_* sprite cache key scratch.
+ * viewBoundsBuf: session camera SoA (not ENGINE_F32 Bounds bank) — VIEW_TIER_* offsets.
  * All ENGINE_F32 bank slot consts live here; Libraries may keep subarray views only.
+ * Modes (WALL_FACE_*, PRIMITIVE_PHYSICS_ROW_*) live in engineEnums.js.
  */
 export const ENGINE_F32 = new Float32Array(832);
 export const ENGINE_U8 = new Uint8Array(256);
@@ -61,10 +65,6 @@ export const P_OUT_DIST_DIST = ENGINE_PHYS_BASE + 31;
 export const P_OUT_SOLVE_ITERS = ENGINE_PHYS_BASE + 32;
 export const P_OUT_SOLVE_IMPULSE = ENGINE_PHYS_BASE + 33;
 export const P_OUT_SOLVE_REST = ENGINE_PHYS_BASE + 34;
-export const P_OUT_WALL_X = ENGINE_PHYS_BASE + 35;
-export const P_OUT_WALL_Y = ENGINE_PHYS_BASE + 36;
-export const P_OUT_WALL_Z = ENGINE_PHYS_BASE + 37;
-export const P_OUT_WALL_IDX = ENGINE_PHYS_BASE + 38;
 export const P_OUT_SWEEP_T = ENGINE_PHYS_BASE + 39;
 export const P_OUT_SWEEP_X = ENGINE_PHYS_BASE + 40;
 export const P_OUT_SWEEP_Y = ENGINE_PHYS_BASE + 41;
@@ -93,13 +93,8 @@ export const F_OUT_DEBRIS_COUNT = ENGINE_FRAC_BASE + 7;
 export const F_OUT_MOTION_VX = ENGINE_FRAC_BASE + 8;
 export const F_OUT_MOTION_VY = ENGINE_FRAC_BASE + 9;
 export const F_OUT_MOTION_W = ENGINE_FRAC_BASE + 10;
-export const F_OUT_POS_X = ENGINE_FRAC_BASE + 11;
-export const F_OUT_POS_Y = ENGINE_FRAC_BASE + 12;
 export const F_OUT_REMNANT = ENGINE_FRAC_BASE + 13;
 export const F_VEC_A = ENGINE_FRAC_BASE + 14;
-export const F_VEC_B = ENGINE_FRAC_BASE + 16;
-export const F_VEC_C = ENGINE_FRAC_BASE + 18;
-export const F_VEC_D = ENGINE_FRAC_BASE + 20;
 export const F_OUT_ORIGIN_X = ENGINE_FRAC_BASE + 22;
 export const F_OUT_ORIGIN_Y = ENGINE_FRAC_BASE + 23;
 export const F_OUT_FACING = ENGINE_FRAC_BASE + 24;
@@ -374,9 +369,6 @@ kineticDynamicSlab.partGeomOffset.fill(-1);
 kineticDynamicSlab.sleeping.fill(0);
 kineticDynamicSlab.sleepFrames.fill(0);
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
-export const PRIMITIVE_PHYSICS_ROWS = 2;
-export const PRIMITIVE_PHYSICS_ROW_CIRCLE = 0;
-export const PRIMITIVE_PHYSICS_ROW_POLYGON = 1;
 export const primitivePhysics = { density: new Float32Array([0.007958, 1.5 / 256]), dragFriction: new Float32Array([4, 8]), wallRestitution: new Float32Array([0.35, 0.15]), wallFriction: new Float32Array([0.4, 0.8]) };
 export const kineticConstraintStore = { count: 0, id: new Int32Array(MAX_KINETIC_CONSTRAINTS), type: new Uint8Array(MAX_KINETIC_CONSTRAINTS), bodyAId: new Int32Array(MAX_KINETIC_CONSTRAINTS), bodyBId: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS), anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS) }; // persistent constraint rows
 export const kineticConstraintSlab = {
@@ -521,10 +513,10 @@ export function allocStaticWallSegment() {
     staticWallSegmentSlab.count = id + 1;
     return id;
 }
-// --- Sprite / wall-face draw caches ---
-export const SPRITE_CACHE_PROP_INIT = 2560;
-export const SPRITE_CACHE_GRID_INIT = 512;
-export const SPRITE_CACHE_OVERLAY_INIT = 1024;
+// --- Sprite cache slabs ---
+const SPRITE_CACHE_PROP_INIT = 2560;
+const SPRITE_CACHE_GRID_INIT = 512;
+const SPRITE_CACHE_OVERLAY_INIT = 1024;
 export function createSpriteCacheSlab(capacity) {
     const hashCap = 1 << (32 - Math.clz32(Math.max(8, capacity * 2 - 1)));
     const slab = { capacity, maxLive: capacity, liveCount: 0, lruHead: -1, lruTail: -1, keyLo: new Uint32Array(capacity), keyHi: new Uint32Array(capacity), bakeScale: new Float32Array(capacity), anchorX: new Float32Array(capacity), anchorY: new Float32Array(capacity), drawW: new Float32Array(capacity), drawH: new Float32Array(capacity), flags: new Uint8Array(capacity), frameCount: new Uint16Array(capacity), frameWidthCanvas: new Uint16Array(capacity), lruPrev: new Int32Array(capacity), lruNext: new Int32Array(capacity), slotGen: new Uint32Array(capacity), hashTable: new Int32Array(hashCap), hashCap, keys: new Array(capacity), handles: new Array(capacity), freeSlots: new Int32Array(capacity), freeCount: 0 };
@@ -537,11 +529,13 @@ export function createSpriteCacheSlab(capacity) {
 export const propSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_PROP_INIT);
 export const gridStampSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_GRID_INIT);
 export const overlaySpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_OVERLAY_INIT);
-export const WALL_FACE_DRAW_MEMO_INIT = 2048;
-export const WALL_FACE_ATLAS_MISS = -1;
-export const WALL_FACE_ATLAS_SOLID = -2;
-export const WALL_FACE_SUBDIV_NONE = -3;
-export function createWallFaceDrawMemoSlab(capacity) {
+// --- Wall-face draw memo (atlas + subdiv) ---
+// Columns: memoKey/camKey/perspKey; subdivX/Y, capPx, alphaBase/alphaBandMax;
+// geom: capHeight, bandHeight, wallBaseZ, edgeLen, wallCx/Cy;
+// atlas: atlasWx1/Wy1/Wx2/Wy2, atlasRev, atlasSeed, atlasWallHeightKey, atlasProfileHash;
+// handles[] = canvas arrays; hashTable/freeSlots for open-address reuse.
+const WALL_FACE_DRAW_MEMO_INIT = 2048;
+function createWallFaceDrawMemoSlab(capacity) {
     const hashCap = 1 << (32 - Math.clz32(Math.max(8, capacity * 2 - 1)));
     const slab = {
         capacity,

@@ -1,12 +1,17 @@
 export const CONSTRAINT_TYPE_DISTANCE = 0;
 export const CONSTRAINT_TYPE_ANGLE = 1;
+// Constraint
 //
+// Shape
 export const SHAPE_TYPE_CIRCLE = 1;
 export const SHAPE_TYPE_POLYGON = 2;
 //
+// Prop
 export const PROP_PRIMITIVE_SPHERE = 1;
 export const PROP_PRIMITIVE_POLYGON = 2;
 export const PROP_PRIMITIVE_COUNT = 3;
+export const PRIMITIVE_PHYSICS_ROW_CIRCLE = 0;
+export const PRIMITIVE_PHYSICS_ROW_POLYGON = 1;
 //
 export const PROP_DRAW_WALL_CHUNK = 1;
 //
@@ -28,17 +33,25 @@ export const GRID_NAV_EPOCH_FLOOR = 1;
 export const GRID_NAV_EPOCH_TOPOLOGY = 2;
 export const GRID_NAV_EPOCH_COUNT = 3;
 //
+// Wall
 export const WALL_SEG_VOXEL = 1;
 export const WALL_SEG_EDGE_RAIL = 2;
 export const WALL_SEG_STATIC_FACE = 4;
+export const WALL_STAMP_VOXEL = 0;
+export const WALL_STAMP_RAIL = 1;
+export const WALL_FACE_ATLAS_MISS = -1;
+export const WALL_FACE_ATLAS_SOLID = -2;
+export const WALL_FACE_SUBDIV_NONE = -3;
 //
 export const SPRITE_CACHE_FLAG_LIVE = 1;
 export const SPRITE_CACHE_FLAG_BITMAP = 2;
 //
+// Draw
 export const DRAW_KIND_PROP = 0;
 export const DRAW_KIND_VOXEL = 1;
 export const DRAW_KIND_RAIL = 2;
 //
+// Kinetic
 export const KINETIC_PAIR_CIRCLE_CIRCLE = 0;
 export const KINETIC_PAIR_CIRCLE_POLY = 1;
 export const KINETIC_PAIR_POLY_POLY = 2;
@@ -48,6 +61,7 @@ export const ROLL_DRIVE_NONE = -1;
 export const ROLL_DRIVE_THRUST = 0;
 export const ROLL_DRIVE_BRAKE = 1;
 //
+// Nav / overlay debug
 export const PATH_OVERLAY_MODE_DIRECT = 0;
 export const PATH_OVERLAY_MODE_FLOW = 1;
 export const PATH_OVERLAY_MODE_HPA = 2;
@@ -66,9 +80,7 @@ export const NAV_PATH_DEBUG_ALL = 1;
 export const NAV_PATH_DEBUG_REACHABLE = 2;
 export const NAV_PATH_DEBUG_COUNT = 3;
 //
-export const WALL_STAMP_VOXEL = 0;
-export const WALL_STAMP_RAIL = 1;
-//
+// Overlay commands
 export const OVERLAY_CMD_AABB = 0;
 export const OVERLAY_CMD_CIRCLE_STROKE = 1;
 export const OVERLAY_CMD_CIRCLE_FILL_STROKE = 2;

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
-import { createWallChunkDraw } from "../Libraries/Render/render.js";
+import { createWallChunkDraw, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
@@ -77,13 +77,13 @@ describe("draw shape parity", () => {
     });
     it("textured flat wall-chunk cap fills live polygon path (not clip+triangle quad)", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
-        prop._wallChunkTextures = {
-            ready: true,
-            scale: 1,
-            chunkSizePx: 128,
-            capCanvas: { width: 128, height: 128 },
-        };
         prop._wallChunkTextureReady = true;
+        bindWallChunkTexturePipeline({
+            _wallChunkReady: true,
+            _wallChunkCapCanvas: { width: 128, height: 128 },
+            _wallChunkSideCanvas: { width: 128, height: 128 },
+            settings: { surfaceBakeScale: 1, cellSize: 16, cellsPerChunk: 8 },
+        });
         const draw = createWallChunkDraw();
         const path = [];
         let fills = 0;
@@ -122,8 +122,10 @@ describe("draw shape parity", () => {
         assert.equal(path.length, 6);
         assert.equal(path[0][0], 0);
         assert.equal(path[0][1], -8);
+        bindWallChunkTexturePipeline(null);
     });
     it("polygon primitive extrudes in radial without textures as solid pending fill", () => {
+        bindWallChunkTexturePipeline(null);
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         assert.equal(prop.height, gridSettings.cellSize);

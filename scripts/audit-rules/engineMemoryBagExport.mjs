@@ -2,27 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { issue, rel } from "../audit-shared.mjs";
 
-const ALLOWED_BAG_EXPORTS = new Set([
-    "kineticDynamicSlab",
-    "kineticStaticSlab",
-    "kineticConstraintStore",
-    "kineticConstraintSlab",
-    "kineticContactBuffer",
-    "kineticPairBuffer",
-    "persistedKineticPairBuffer",
-    "kineticDebrisSlab",
-    "deferredFractureSlab",
-    "primitivePhysics",
-    "pendingWallBreaks",
-    "wallSpawnScratch",
-    "staticWallSegmentSlab",
-    "warmStartState",
-    "pairHashState",
-]);
+const ALLOWED_BAG_EXPORTS = new Set(["kineticDynamicSlab", "kineticStaticSlab", "kineticConstraintStore", "kineticConstraintSlab", "kineticContactBuffer", "kineticPairBuffer", "persistedKineticPairBuffer", "kineticDebrisSlab", "deferredFractureSlab", "primitivePhysics", "pendingWallBreaks", "wallSpawnScratch", "staticWallSegmentSlab", "warmStartState", "pairHashState", "propSpriteCacheSlab", "gridStampSpriteCacheSlab", "overlaySpriteCacheSlab", "wallFaceDrawMemoSlab"]);
 
 const bagExportRe = /^export const (\w+)\s*=\s*\{/gm;
 const xyBagRe = /^export const (\w+)\s*=\s*\{\s*(?:x|y|minX|col)\s*:/gm;
 const bagFactoryRe = /^export function create\w*(?:Point|Vec|Aabb|Bounds)\s*\(\s*\)\s*\{\s*return\s*\{/gm;
+const bannedModeExportRe = /^export const (WALL_FACE_ATLAS_\w+|WALL_FACE_SUBDIV_NONE|PRIMITIVE_PHYSICS_ROW_\w+|PRIMITIVE_PHYSICS_ROWS)\s*=/gm;
 
 export const id = "engine-memory-bag-export";
 export const description = "New object-bag exports from Core/engineMemory.js (XY/AABB fail; unknown SoA bags warn)";
@@ -54,6 +39,11 @@ export function run(ctx) {
         if (ALLOWED_BAG_EXPORTS.has(name)) continue;
         const line = src.slice(0, m.index).split("\n").length;
         findings.push(issue(id, "warn", relPath, `unallowlisted bag export ${name}`, line));
+    }
+    bannedModeExportRe.lastIndex = 0;
+    while ((m = bannedModeExportRe.exec(src))) {
+        const line = src.slice(0, m.index).split("\n").length;
+        findings.push(issue(id, "fail", relPath, `mode export ${m[1]} belongs in engineEnums.js`, line));
     }
     return findings;
 }

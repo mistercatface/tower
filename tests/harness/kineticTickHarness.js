@@ -1,8 +1,9 @@
+import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose } from "../../Libraries/Entity/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, kineticStaticSlab, kineticDynamicSlab, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
 let nextMockPhysId = 0;
 export function resetMockPhysId(next = 0) {
     nextMockPhysId = next;

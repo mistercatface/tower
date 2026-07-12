@@ -1,10 +1,11 @@
+import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../Core/engineEnums.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { WorldProp, buildWorldPropStrategyFromAsset, applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { primitivePhysics, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../Core/engineMemory.js";
+import { primitivePhysics } from "../Core/engineMemory.js";
 import { kineticMassFromFootprint, primitiveDragFriction } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
 
