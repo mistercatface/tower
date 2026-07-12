@@ -77,5 +77,12 @@ Illegal diet patterns (audits should catch; do not introduce):
 
 Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `GrowI32`/`GrowF32`; `viewBoundsBuf` camera SoA (not `ENGINE_F32`).
 
+### WorldSurface dialect
+
+- Draw/cache path: no XY/AABB return bags; `SurfaceSpatialMap` mutates `_boundsBank` (`SS_CELL`/`SS_POINTS`/`SS_CHUNK`/`SS_DRAW`/`SS_AXES`); chunk range mutates preallocated `chunkKeyRange`.
+- Wall atlas: scalars in, memo slab columns + canvas handles out — no `wrappedP1` / `_wallAtlasStashes` bags.
+- Worker payloads: flat scalars only (`p1x…p2y`); no nested points.
+- Metrics/scheduler Promise records may remain bags (non-hot).
+
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:
 `npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.

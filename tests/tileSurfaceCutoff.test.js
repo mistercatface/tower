@@ -39,9 +39,13 @@ describe("surface tile cutoff", () => {
 
     it("wraps wall atlas samples to the same surface period", () => {
         const surfaceSpace = createSurfaceSpace();
-        const atlas = surfaceSpace.wallAtlas({ x: 512, y: 0 }, { x: 528, y: 0 });
-        assert.deepEqual(atlas.wrappedP1, { x: 0, y: 0 });
-        assert.deepEqual(atlas.wrappedP2, { x: 16, y: 0 });
+        surfaceSpace.writeWallAtlasWrap(512, 0, 528, 0);
+        const b = surfaceSpace._boundsBank;
+        const o = 4;
+        assert.equal(b[o], 0);
+        assert.equal(b[o + 1], 0);
+        assert.equal(b[o + 2], 16);
+        assert.equal(b[o + 3], 0);
     });
 });
 

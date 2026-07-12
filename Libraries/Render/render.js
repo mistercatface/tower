@@ -10,7 +10,7 @@ import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, coll
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import propCatalog from "../../Assets/props/index.js";
-import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
+import { getSurfaceProfileRevision, SS_POINTS } from "../WorldSurface/worldSurface.js";
 import { propShapeFootprintId } from "../Props/props.js";
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
@@ -1393,39 +1393,79 @@ function computeFaceCornerElevatedInto(out8, offset, u, v, botBuf, botO, topBuf,
     out8[offset] = bx + (tx - bx) * v;
     out8[offset + 1] = by + (ty - by) * v;
 }
+function hashSurfaceProfileId(profileId) {
+    let h = 2166136261;
+    for (let i = 0; i < profileId.length; i++) {
+        h ^= profileId.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h | 0;
+}
 function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     const worldSurfaces = state.worldSurfaces;
-    const { wallHeight, wallBaseZ, wallCapHeight, cacheObj, atlasFaceId } = face;
+    const { wallHeight, wallBaseZ, wallCapHeight, cacheObj } = face;
     const settings = worldSurfaces.settings;
     const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.WallFace, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk, 0, 0, 0, face);
     const seed = worldSurfaces.worldSurfaceSeed;
     const wallHeightKey = resolveWallCapHeightPx(wallCapHeight, settings);
-    const canUseSideCache = cacheObj && worldSurfaces.cacheKeys && worldSurfaces.worldSurfaceSeed !== undefined;
-    let stash = null;
+    const canUseSideCache = cacheObj && worldSurfaces.cacheKeys && worldSurfaces.surfaceSpace && worldSurfaces.worldSurfaceSeed !== undefined;
     let row = WALL_FACE_ATLAS_MISS;
     if (canUseSideCache) {
         syncWallFaceDrawMemoRevision(state.obstacleGrid);
         row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot(face));
-        stash = wallFaceDrawMemoSlab.handles[row];
     }
+    const slab = wallFaceDrawMemoSlab;
+    let canvases = null;
     let cacheHit = false;
-    if (canUseSideCache && stash) {
-        const atlasKey = worldSurfaces.cacheKeys.wallAtlasKeyScalars(x1, y1, x2, y2, seed, profileId, wallHeightKey);
-        if (stash.profileId === profileId && stash.rev === atlasKey.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && worldSurfaces.surfaceCache.get(stash.key) === stash.canvases) cacheHit = true;
+    let rev = 0;
+    let profileHash = 0;
+    if (canUseSideCache && row >= 0) {
+        const space = worldSurfaces.surfaceSpace;
+        space.writeWallAtlasWrap(x1, y1, x2, y2);
+        const key = worldSurfaces.cacheKeys.wallAtlasCacheKey(seed, profileId, wallHeightKey);
+        rev = worldSurfaces.cacheKeys.wallAtlasRevision(profileId);
+        profileHash = hashSurfaceProfileId(profileId);
+        canvases = slab.handles[row];
+        if (canvases && slab.atlasRev[row] === rev && slab.atlasSeed[row] === seed && slab.atlasWallHeightKey[row] === wallHeightKey && slab.atlasProfileHash[row] === profileHash && worldSurfaces.surfaceCache.get(key) === canvases) cacheHit = true;
     }
     if (!cacheHit) {
-        stash = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, profileId, wallCapHeight, cacheObj && !cacheObj.isEdgeRail ? cacheObj : null, atlasFaceId ?? "side");
-        if (canUseSideCache && stash) wallFaceDrawMemoSlab.handles[row] = stash;
+        canvases = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, profileId, wallCapHeight);
+        if (!canvases) return WALL_FACE_ATLAS_MISS;
+        if (canUseSideCache && row >= 0) {
+            const space = worldSurfaces.surfaceSpace;
+            const b = space._boundsBank;
+            const o = SS_POINTS;
+            slab.handles[row] = canvases;
+            slab.atlasWx1[row] = b[o];
+            slab.atlasWy1[row] = b[o + 1];
+            slab.atlasWx2[row] = b[o + 2];
+            slab.atlasWy2[row] = b[o + 3];
+            slab.atlasRev[row] = rev;
+            slab.atlasSeed[row] = seed;
+            slab.atlasWallHeightKey[row] = wallHeightKey;
+            slab.atlasProfileHash[row] = profileHash;
+        }
     }
-    if (!stash) return WALL_FACE_ATLAS_MISS;
-    const canvas = stash.canvases[0];
+    const canvas = canvases[0];
     if (!canvas || canvas.isPlaceholder) return WALL_FACE_ATLAS_SOLID;
     if (row < 0) {
         syncWallFaceDrawMemoRevision(state.obstacleGrid);
         row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot(face));
-        wallFaceDrawMemoSlab.handles[row] = stash;
+        const space = worldSurfaces.surfaceSpace;
+        const b = space._boundsBank;
+        const o = SS_POINTS;
+        rev = worldSurfaces.cacheKeys.wallAtlasRevision(profileId);
+        profileHash = hashSurfaceProfileId(profileId);
+        slab.handles[row] = canvases;
+        slab.atlasWx1[row] = b[o];
+        slab.atlasWy1[row] = b[o + 1];
+        slab.atlasWx2[row] = b[o + 2];
+        slab.atlasWy2[row] = b[o + 3];
+        slab.atlasRev[row] = rev;
+        slab.atlasSeed[row] = seed;
+        slab.atlasWallHeightKey[row] = wallHeightKey;
+        slab.atlasProfileHash[row] = profileHash;
     }
-    const slab = wallFaceDrawMemoSlab;
     slab.capHeight[row] = wallCapHeight;
     slab.bandHeight[row] = wallHeight;
     slab.wallBaseZ[row] = wallBaseZ;
@@ -1459,7 +1499,7 @@ function computeWallFaceSubdivInto(row, settings, viewport) {
 }
 function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, row, viewport) {
     const slab = wallFaceDrawMemoSlab;
-    const canvas = slab.handles[row].canvases[0];
+    const canvas = slab.handles[row][0];
     const capHeight = slab.capHeight[row];
     const bandHeight = slab.bandHeight[row];
     const wallBaseZ = slab.wallBaseZ[row];

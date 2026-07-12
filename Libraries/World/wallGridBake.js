@@ -193,7 +193,6 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     return true;
 }
 function clearWallGridDrawableDrawMemos(drawable) {
-    delete drawable._wallAtlasStashes;
     delete drawable._faceSubdiv;
     delete drawable._faceSubdivKey;
 }

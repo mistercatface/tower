@@ -543,7 +543,39 @@ export const WALL_FACE_ATLAS_SOLID = -2;
 export const WALL_FACE_SUBDIV_NONE = -3;
 export function createWallFaceDrawMemoSlab(capacity) {
     const hashCap = 1 << (32 - Math.clz32(Math.max(8, capacity * 2 - 1)));
-    const slab = { capacity, liveCount: 0, wallRev: -1, surfRev: -1, memoKey: new Int32Array(capacity), camKey: new Int32Array(capacity), perspKey: new Int32Array(capacity), subdivX: new Int32Array(capacity), subdivY: new Int32Array(capacity), capPx: new Float32Array(capacity), alphaBase: new Float32Array(capacity), alphaBandMax: new Float32Array(capacity), capHeight: new Float32Array(capacity), bandHeight: new Float32Array(capacity), wallBaseZ: new Float32Array(capacity), edgeLen: new Float32Array(capacity), wallCx: new Float32Array(capacity), wallCy: new Float32Array(capacity), handles: new Array(capacity), hashTable: new Int32Array(hashCap), hashCap, freeSlots: new Int32Array(capacity), freeCount: 0 };
+    const slab = {
+        capacity,
+        liveCount: 0,
+        wallRev: -1,
+        surfRev: -1,
+        memoKey: new Int32Array(capacity),
+        camKey: new Int32Array(capacity),
+        perspKey: new Int32Array(capacity),
+        subdivX: new Int32Array(capacity),
+        subdivY: new Int32Array(capacity),
+        capPx: new Float32Array(capacity),
+        alphaBase: new Float32Array(capacity),
+        alphaBandMax: new Float32Array(capacity),
+        capHeight: new Float32Array(capacity),
+        bandHeight: new Float32Array(capacity),
+        wallBaseZ: new Float32Array(capacity),
+        edgeLen: new Float32Array(capacity),
+        wallCx: new Float32Array(capacity),
+        wallCy: new Float32Array(capacity),
+        atlasWx1: new Float32Array(capacity),
+        atlasWy1: new Float32Array(capacity),
+        atlasWx2: new Float32Array(capacity),
+        atlasWy2: new Float32Array(capacity),
+        atlasRev: new Int32Array(capacity),
+        atlasSeed: new Int32Array(capacity),
+        atlasWallHeightKey: new Float32Array(capacity),
+        atlasProfileHash: new Int32Array(capacity),
+        handles: new Array(capacity),
+        hashTable: new Int32Array(hashCap),
+        hashCap,
+        freeSlots: new Int32Array(capacity),
+        freeCount: 0,
+    };
     slab.hashTable.fill(-1);
     for (let i = 0; i < capacity; i++) slab.freeSlots[slab.freeCount++] = capacity - 1 - i;
     return slab;

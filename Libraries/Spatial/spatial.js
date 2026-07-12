@@ -2042,6 +2042,12 @@ export function packEdgeCellKey(col, row, side) {
 export function boundsToCellRect(minX, minY, maxX, maxY, cellSize) {
     return { minCol: Math.floor(minX / cellSize), maxCol: Math.floor(maxX / cellSize), minRow: Math.floor(minY / cellSize), maxRow: Math.floor(maxY / cellSize) };
 }
+export function boundsToCellRectInto(i32, o, minX, minY, maxX, maxY, cellSize) {
+    i32[o] = Math.floor(minX / cellSize);
+    i32[o + 1] = Math.floor(maxX / cellSize);
+    i32[o + 2] = Math.floor(minY / cellSize);
+    i32[o + 3] = Math.floor(maxY / cellSize);
+}
 /** @typedef {{ startCol: number, endCol: number, startRow: number, endRow: number }} CellBounds */
 export function emptyCellBounds() {
     return { startCol: Infinity, endCol: -Infinity, startRow: Infinity, endRow: -Infinity };
