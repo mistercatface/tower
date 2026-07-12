@@ -1,4 +1,5 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
+// --- Shared scratch buffers ---
 /** Shared Float32 scratch.
  * Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575, Compound 576–831.
  * PHYS layout: +0…78 physics scratch (P_* in physics.js), +79…84 grab (G_*), +85…127 reserved.
@@ -15,6 +16,7 @@ export const ENGINE_NAV_BASE = 320;
 export const ENGINE_BOUNDS_BASE = 400;
 export const ENGINE_RENDER_BASE = 420;
 export const ENGINE_COMPOUND_BASE = 576;
+// --- Math / spatial / nav / bounds / render scratch slots (indices into ENGINE_F32 or ViewBounds) ---
 export const M_VEC_A = ENGINE_MATH_BASE;
 export const M_OUT_NX = ENGINE_MATH_BASE + 8;
 export const M_OUT_NY = ENGINE_MATH_BASE + 9;
@@ -43,7 +45,7 @@ export const S_EDGE_P2Y = ENGINE_SPATIAL_BASE + 19;
 export const N_OUT_XY = ENGINE_NAV_BASE;
 export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
 export const N_OUT_STEER = ENGINE_NAV_BASE + 4;
-export const B_QUERY = 0;
+export const B_QUERY = 0; // ViewBounds tier offsets (not ENGINE_F32)
 export const B_CELL = 4;
 export const B_FOOTPRINT = 8;
 export const B_PAD = 12;
@@ -60,6 +62,7 @@ export const R_FACE_VISIBLE = 0;
 export const MAX_PRISM_FACES = 64;
 export const MAX_OUTLINE_VERTS = 64;
 export const P_COMPOUND = ENGINE_COMPOUND_BASE;
+// --- Entity SoA (indexed by physId / entity slot) ---
 export const entityX = new Float32Array(MAX_ENTITIES);
 export const entityY = new Float32Array(MAX_ENTITIES);
 export const entityVx = new Float32Array(MAX_ENTITIES);
@@ -76,22 +79,24 @@ export const entityKind = new Uint8Array(MAX_ENTITIES);
 export const entityFlags = new Uint32Array(MAX_ENTITIES);
 export const entityAlive = new Uint8Array(MAX_ENTITIES);
 export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
-export const entityRefs = new Array(MAX_ENTITIES);
+export const entityRefs = new Array(MAX_ENTITIES); // JS body / prop object per slot
 export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
 export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);
+// --- Physics capacity / open-address hash caps ---
 export const MAX_PHYS_BODIES = MAX_ENTITIES;
 export const MAX_CONTACTS = MAX_ENTITIES;
 export const MAX_KINETIC_PAIRS = MAX_ENTITIES;
 export const MAX_KINETIC_CONSTRAINTS = 2048;
 export const MAX_ISLAND_GROUPS = 256;
 export const WARM_START_CACHE_SIZE = 16384;
-export const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
-export const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2;
+export const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1; // power-of-two probe mask
+export const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2; // open-address pair presence table
 export const MAX_KINETIC_DEBRIS = 4096 * 4;
 export const MAX_PENDING_WALL_BREAKS = 256;
 export const PENDING_BREAK_HASH_CAPACITY = MAX_PENDING_WALL_BREAKS * 2;
-export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1;
+export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1; // power-of-two probe mask
 export const MAX_DEFERRED_FRACTURES = 256;
+// --- Fracture / grab scratch slots (ENGINE_F32 Frac + Phys grab band) ---
 export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
 export const F_OUT_CENTROID_Y = ENGINE_FRAC_BASE + 1;
 export const F_OUT_AREA = ENGINE_FRAC_BASE + 2;
@@ -122,13 +127,14 @@ export const F_EDGE_P1X = ENGINE_FRAC_BASE + 30;
 export const F_EDGE_P1Y = ENGINE_FRAC_BASE + 31;
 export const F_EDGE_P2X = ENGINE_FRAC_BASE + 32;
 export const F_EDGE_P2Y = ENGINE_FRAC_BASE + 33;
-export const F_SHATTER_SEEDS = ENGINE_FRAC_BASE + 34;
+export const F_SHATTER_SEEDS = ENGINE_FRAC_BASE + 34; // seed XY payload through +57 (12 shards)
 export const G_WX = ENGINE_PHYS_BASE + 79;
 export const G_WY = ENGINE_PHYS_BASE + 80;
 export const G_LX = ENGINE_PHYS_BASE + 81;
 export const G_LY = ENGINE_PHYS_BASE + 82;
 export const G_OX = ENGINE_PHYS_BASE + 83;
 export const G_OY = ENGINE_PHYS_BASE + 84;
+// --- Grow helpers (resizable typed lists / slab column grow) ---
 export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     const cur = obj[key];
     if (!cur) {
@@ -219,9 +225,11 @@ export class GrowF32 {
     }
 }
 export const pickWorldPoly = new GrowF32(64);
+// --- Kinetic slabs (dynamic aliases entity XYVW; static / constraints / contacts / pairs) ---
 const SHAPE_POOL_FLOATS_INIT = MAX_PHYS_BODIES * 16;
 const PART_TABLE_INIT = MAX_PHYS_BODIES * 2;
 export const kineticDynamicSlab = {
+    // x/y/vx/vy/w share entity* SoA columns
     x: entityX,
     y: entityY,
     vx: entityVx,
@@ -270,8 +278,9 @@ kineticDynamicSlab.spatialNeighborOffset.fill(0);
 kineticDynamicSlab.spatialNeighborCount.fill(0);
 kineticDynamicSlab.partGeomOffset.fill(-1);
 export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
-export const kineticConstraintStore = { count: 0, id: new Int32Array(MAX_KINETIC_CONSTRAINTS), type: new Uint8Array(MAX_KINETIC_CONSTRAINTS), bodyAId: new Int32Array(MAX_KINETIC_CONSTRAINTS), bodyBId: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS), anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS) };
+export const kineticConstraintStore = { count: 0, id: new Int32Array(MAX_KINETIC_CONSTRAINTS), type: new Uint8Array(MAX_KINETIC_CONSTRAINTS), bodyAId: new Int32Array(MAX_KINETIC_CONSTRAINTS), bodyBId: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS), anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS) }; // persistent constraint rows
 export const kineticConstraintSlab = {
+    // per-tick gathered active constraints + island groups
     count: 0,
     activeCount: 0,
     groupCount: 0,
@@ -310,12 +319,14 @@ function createKineticPairBuffer() {
     };
 }
 export const kineticPairBuffer = createKineticPairBuffer();
-export const persistedKineticPairBuffer = createKineticPairBuffer();
+export const persistedKineticPairBuffer = createKineticPairBuffer(); // survives substep compaction for warm-start keys
+// --- Contact warm-start cache (open-address; bump generation to clear) ---
 export const warmStartKeys = new Float64Array(WARM_START_CACHE_SIZE);
 export const warmStartGen = new Int32Array(WARM_START_CACHE_SIZE);
 export const warmStartJn = new Float32Array(WARM_START_CACHE_SIZE);
 export const warmStartJt = new Float32Array(WARM_START_CACHE_SIZE);
-export const warmStartState = { generation: 1 };
+export const warmStartState = { generation: 1 }; // bump to clear; wrap resets gen column
+// --- Constraint island gather / sleep scratch ---
 export const orderSeenPhysIds = new Uint8Array(MAX_PHYS_BODIES);
 export const orderUsedItems = new Uint8Array(MAX_KINETIC_CONSTRAINTS);
 export const bucketRoots = new Int32Array(MAX_ISLAND_GROUPS);
@@ -333,10 +344,12 @@ export const sleepComponentMaxSpeedSq = new Float32Array(MAX_PHYS_BODIES);
 export const sleepComponentHasBlocker = new Uint8Array(MAX_PHYS_BODIES);
 export const sleepComponentMemberCount = new Int32Array(MAX_PHYS_BODIES);
 export const sleepNeighborEids = new GrowI32(256);
+// --- Open-address pair hash (kinetic pair patch) ---
 export const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
 export const pairHashGen = new Int32Array(PAIR_HASH_CAPACITY);
-export const pairHashState = { generation: 1 };
-export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
+export const pairHashState = { generation: 1 }; // bump to clear; wrap resets gen column
+// --- Debris / deferred fracture / pending wall breaks ---
+export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1); // freelist / linked occupancy
 export const kineticDebrisSlab = { activeCount: 0, ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 export const deferredFractureSlab = { count: 0, propRef: new Array(MAX_DEFERRED_FRACTURES), debrisStart: new Int32Array(MAX_DEFERRED_FRACTURES), debrisCount: new Int32Array(MAX_DEFERRED_FRACTURES), originX: new Float32Array(MAX_DEFERRED_FRACTURES), originY: new Float32Array(MAX_DEFERRED_FRACTURES), facing: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalX: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalY: new Float32Array(MAX_DEFERRED_FRACTURES), impactForce: new Float32Array(MAX_DEFERRED_FRACTURES), remnant: new Uint8Array(MAX_DEFERRED_FRACTURES) };
 export function resetDeferredFractureSlab() {
@@ -347,9 +360,10 @@ export function resetDeferredFractureSlab() {
 }
 export const pendingWallBreaks = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 export const pendingBreakHashKeys = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
-export const pendingBreakHashRows = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
-export const pendingBreakHashGen = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
+export const pendingBreakHashRows = new Int32Array(PENDING_BREAK_HASH_CAPACITY); // key → pending row
+export const pendingBreakHashGen = new Int32Array(PENDING_BREAK_HASH_CAPACITY); // gen epoch lives in fracture.js
 export const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
+// --- Static wall segments (broadphase SAT sources) ---
 export const MAX_STATIC_WALL_SEGMENTS = 4096;
 export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS) };
 export function resetStaticWallSegmentSlab() {
@@ -361,6 +375,7 @@ export function allocStaticWallSegment() {
     staticWallSegmentSlab.count = id + 1;
     return id;
 }
+// --- Sprite / wall-face draw caches ---
 export const SPRITE_CACHE_PROP_INIT = 2560;
 export const SPRITE_CACHE_GRID_INIT = 512;
 export const SPRITE_CACHE_OVERLAY_INIT = 1024;
@@ -376,7 +391,7 @@ export function createSpriteCacheSlab(capacity) {
 export const propSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_PROP_INIT);
 export const gridStampSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_GRID_INIT);
 export const overlaySpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_OVERLAY_INIT);
-export const I_SPRITE_KEY_LO = 64;
+export const I_SPRITE_KEY_LO = 64; // ENGINE_I32 scratch for cache key halves
 export const I_SPRITE_KEY_HI = 65;
 export const R_SPRITE_BAKE_SCALE = ENGINE_RENDER_BASE + 60;
 export const R_SPRITE_ANCHOR_X = ENGINE_RENDER_BASE + 61;
