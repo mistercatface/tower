@@ -350,8 +350,6 @@ export class WorldProp {
         this._footprintKey = undefined;
         initWorldPropShape(this);
         normalizeKineticBody(this);
-        this._neighborEidCount = 0;
-        this._neighborsFrameId = -1;
         delete this._physId;
     }
     get x() {

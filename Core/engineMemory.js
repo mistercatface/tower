@@ -161,18 +161,21 @@ export const P_COMPOUND = ENGINE_COMPOUND_BASE;
 export const I_SPRITE_KEY_LO = 64;
 export const I_SPRITE_KEY_HI = 65;
 export const I_OUT_RAY_HIT = 66;
-// --- Entity SoA (indexed by physId / entity slot) ---
+// --- Entity SoA (eid === physId) ---
+// Pose / motion (aliased by kineticDynamicSlab.x/y/vx/vy/w)
 export const entityX = new Float32Array(MAX_ENTITIES);
 export const entityY = new Float32Array(MAX_ENTITIES);
 export const entityVx = new Float32Array(MAX_ENTITIES);
 export const entityVy = new Float32Array(MAX_ENTITIES);
 export const entityW = new Float32Array(MAX_ENTITIES);
+// Facing + roll orientation
 export const entityFacing = new Float32Array(MAX_ENTITIES);
 export const entityRollQw = new Float32Array(MAX_ENTITIES);
 export const entityRollQx = new Float32Array(MAX_ENTITIES);
 export const entityRollQy = new Float32Array(MAX_ENTITIES);
 export const entityRollQz = new Float32Array(MAX_ENTITIES);
 entityRollQw.fill(1);
+// Collision span + lifecycle meta
 export const entityR = new Float32Array(MAX_ENTITIES);
 export const entityAgeMs = new Float32Array(MAX_ENTITIES);
 export const entityKind = new Uint8Array(MAX_ENTITIES);
@@ -180,9 +183,17 @@ export const entityFlags = new Uint32Array(MAX_ENTITIES);
 export const entityAlive = new Uint8Array(MAX_ENTITIES);
 export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
 export const entityRenderKeyId = new Uint16Array(MAX_ENTITIES);
-export const entityRefs = new Array(MAX_ENTITIES); // JS body / prop object per slot
+// JS ref slot (shape / strategy / editor identity) — not pose
+export const entityRefs = new Array(MAX_ENTITIES);
+// EntityGrid membership
 export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
 export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);
+export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
+// ensureNeighborEids CSR (frame-scoped arena; kinetic pairs use slab.spatialNeighbor*)
+export const entityNeighborsFrameId = new Int32Array(MAX_ENTITIES).fill(-1);
+export const entityNeighborOffset = new Int32Array(MAX_ENTITIES);
+export const entityNeighborEidCount = new Int32Array(MAX_ENTITIES);
+export const entityNeighborEidStore = { eids: new Int32Array(256), used: 0 };
 // --- Camera view bounds (session SoA; not ENGINE_F32 scratch) ---
 export const VIEW_TIER_CLIP = 0;
 export const VIEW_TIER_PROPS = 4;
@@ -248,6 +259,12 @@ export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     if (n > 0) next.set(cur.subarray(0, Math.min(n, cur.length)));
     obj[key] = next;
     return next;
+}
+export function resetEntityNeighborEidArena() {
+    entityNeighborEidStore.used = 0;
+}
+export function ensureEntityNeighborEidArena(needed) {
+    ensureGrowI32(entityNeighborEidStore, "eids", needed, entityNeighborEidStore.used);
 }
 export function ensureGrowF32(obj, key, minCap, copyLen = -1) {
     const cur = obj[key];
@@ -475,7 +492,6 @@ export const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
 export const pairHashGen = new Int32Array(PAIR_HASH_CAPACITY);
 export const pairHashState = { generation: 1 }; // bump to clear; wrap resets gen column
 // --- Debris / deferred fracture / pending wall breaks ---
-export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1); // freelist / linked occupancy
 export const kineticDebrisSlab = { activeCount: 0, ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 export const deferredFractureSlab = { count: 0, propRef: new Array(MAX_DEFERRED_FRACTURES), debrisStart: new Int32Array(MAX_DEFERRED_FRACTURES), debrisCount: new Int32Array(MAX_DEFERRED_FRACTURES), originX: new Float32Array(MAX_DEFERRED_FRACTURES), originY: new Float32Array(MAX_DEFERRED_FRACTURES), facing: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalX: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalY: new Float32Array(MAX_DEFERRED_FRACTURES), impactForce: new Float32Array(MAX_DEFERRED_FRACTURES), remnant: new Uint8Array(MAX_DEFERRED_FRACTURES) };
 export function resetDeferredFractureSlab() {

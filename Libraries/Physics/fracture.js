@@ -282,8 +282,6 @@ class KineticDebrisBody {
         this._spawnSleepFrames = 0;
         this.isDead = false;
         this._fractureCooldown = 0;
-        this._neighborEidCount = 0;
-        this._neighborsFrameId = -1;
         this._listIndex = -1;
         this._footprintKey = undefined;
     }
@@ -451,8 +449,6 @@ class KineticDebrisStore {
         body.footprintArea = undefined;
         body.radius = 0;
         body._fractureCooldown = 0;
-        body._neighborEidCount = 0;
-        body._neighborsFrameId = -1;
         body._listIndex = -1;
         delete body._physId;
         body._spawnX = x;

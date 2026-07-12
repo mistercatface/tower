@@ -1,40 +1,45 @@
-import { pruneKineticConstraintsForBody, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, circleIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, pickWorldPoly, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, pickWorldPoly, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entityFacing } from "../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC } from "../Core/engineEnums.js";
 import { allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef, worldPropBindFlags } from "../Core/entitySlots.js";
 const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
-function worldPropFootprintInto(prop, shape) {
-    const facing = readEntityFacing(prop);
+function worldPropFootprintInto(eid, shape) {
+    const facing = entityFacing[eid];
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
+    const cx = entityX[eid];
+    const cy = entityY[eid];
     const verts = shape.vertices;
     const count = verts.length;
     const out = pickWorldPoly.ensure(count);
     for (let i = 0; i < count; i += 2) {
         const lx = verts[i];
         const ly = verts[i + 1];
-        out[i] = prop.x + lx * cos - ly * sin;
-        out[i + 1] = prop.y + lx * sin + ly * cos;
+        out[i] = cx + lx * cos - ly * sin;
+        out[i + 1] = cy + lx * sin + ly * cos;
     }
     return out;
 }
-export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
+export function worldPropContainsPoint(eid, worldX, worldY, padding = 0) {
+    const prop = entityRefs[eid];
     const compound = prop.collisionParts?.length > 1;
     const partCount = compound ? prop.collisionParts.length : prop.shape ? 1 : 0;
+    const cx = entityX[eid];
+    const cy = entityY[eid];
     let sawPolygon = false;
     for (let p = 0; p < partCount; p++) {
         const shape = compound ? prop.collisionParts[p] : prop.shape;
         if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
             const r = shape.radius + padding;
-            const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
+            const centerDistSq = (cx - worldX) ** 2 + (cy - worldY) ** 2;
             if (centerDistSq <= r * r) return true;
             continue;
         }
         if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
             sawPolygon = true;
-            const worldPoly = worldPropFootprintInto(prop, shape);
+            const worldPoly = worldPropFootprintInto(eid, shape);
             const floatCount = shape.vertices.length;
             if (pointInPolygon(worldX, worldY, worldPoly.subarray(0, floatCount))) return true;
             if (padding <= 0) continue;
@@ -50,8 +55,8 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
         }
     }
     if (sawPolygon) return false;
-    const r = prop.radius + padding;
-    const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
+    const r = entityR[eid] + padding;
+    const centerDistSq = (cx - worldX) ** 2 + (cy - worldY) ** 2;
     return centerDistSq <= r * r;
 }
 const WORLD_PROP_KIND_HASH = hashString("worldProp");
@@ -395,7 +400,7 @@ export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, pa
         if (distSq > r * r * 4) continue;
         const prop = entitySlotRef(eid);
         if (!prop || prop.isDead) continue;
-        if (!worldPropContainsPoint(prop, worldX, worldY, pad)) continue;
+        if (!worldPropContainsPoint(eid, worldX, worldY, pad)) continue;
         if (distSq < bestDistSq) {
             best = prop;
             bestDistSq = distSq;

@@ -4,7 +4,7 @@ import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
 import { clearActiveKineticBodySlab, writeKineticLinkNeighbors, resetKineticLinkNeighborArena } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab, entityRefs } from "../Core/engineMemory.js";
+import { kineticDynamicSlab, entityRefs, entityNeighborEidStore, entityNeighborOffset, entityX } from "../Core/engineMemory.js";
 import { mockKineticBody, mockCircleProp, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { createKineticAdmitTestState } from "./harness/stateFactories.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
@@ -98,10 +98,11 @@ describe("active kinetic bodies", () => {
         frame._nextPhysId = 1;
         const fragment = mockCircleProp(24, 0, 8);
         frame.admitKineticProps([fragment], mockState);
-        const count = frame.ensureNeighborEids(anchor);
-        const eids = anchor._neighborEids;
+        const count = frame.ensureNeighborEids(anchor._physId);
+        const eids = entityNeighborEidStore.eids;
+        const base = entityNeighborOffset[anchor._physId];
         let found = false;
-        for (let i = 0; i < count; i++) if (eids[i] === fragment._physId) found = true;
+        for (let i = 0; i < count; i++) if (eids[base + i] === fragment._physId) found = true;
         assert.ok(found);
         assert.ok(kineticDynamicSlab.activeSlot[fragment._physId] >= 0);
         assert.equal(kineticDynamicSlab.activeSlot[fragment._physId], kineticDynamicSlab.activeSlot[fragment._physId]);
@@ -132,19 +133,22 @@ describe("active kinetic bodies", () => {
         const witness = mockCircleProp(200, 0, 8);
         frame.admitKineticProps([witness], mockState);
         {
-            const count = frame.ensureNeighborEids(witness);
-            const eids = witness._neighborEids;
+            const count = frame.ensureNeighborEids(witness._physId);
+            const eids = entityNeighborEidStore.eids;
+            const base = entityNeighborOffset[witness._physId];
             let found = false;
-            for (let i = 0; i < count; i++) if (eids[i] === mover._physId) found = true;
+            for (let i = 0; i < count; i++) if (eids[base + i] === mover._physId) found = true;
             assert.equal(found, false);
         }
+        entityX[mover._physId] = 200;
         mover.x = 200;
         frame.admitKineticProps([mover], mockState);
         {
-            const count = frame.ensureNeighborEids(witness);
-            const eids = witness._neighborEids;
+            const count = frame.ensureNeighborEids(witness._physId);
+            const eids = entityNeighborEidStore.eids;
+            const base = entityNeighborOffset[witness._physId];
             let found = false;
-            for (let i = 0; i < count; i++) if (eids[i] === mover._physId) found = true;
+            for (let i = 0; i < count; i++) if (eids[base + i] === mover._physId) found = true;
             assert.ok(found);
         }
     });
