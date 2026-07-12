@@ -1661,10 +1661,10 @@ export function driveGroundNav(eid, targetX, targetY, nav, state, dtMs, pathSett
     }
     return true;
 }
-function computeFlowFieldSteering(prop, targetX, targetY, flowFieldGrid) {
+function computeFlowFieldSteering(eid, targetX, targetY, flowFieldGrid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
     if (!flowField) return false;
-    return sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, prop.x, prop.y, flowField, flowFieldGrid.frame);
+    return sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, entityX[eid], entityY[eid], flowField, flowFieldGrid.frame);
 }
 function writeMoveTargetFromSlotInto(buf, o, slab, slot) {
     if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return false;
@@ -1714,7 +1714,7 @@ function forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickFn,
             activeRunEids.splice(i, 1);
             continue;
         }
-        tickFn(prop, slot, dt);
+        tickFn(eid, slot, dt);
         if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) activeRunEids.splice(i, 1);
     }
 }
@@ -1782,63 +1782,64 @@ export function createDirectGroundNavBehavior(state) {
     const slab = createGroundNavRunSlab();
     const eidToSlot = new Map();
     const activeRunEids = [];
-    const getSlot = (prop) => ensurePropRunSlot(slab, eidToSlot, prop._physId);
+    const getSlot = (eid) => ensurePropRunSlot(slab, eidToSlot, eid);
     const clearSlotTarget = (slot) => {
         clearRunTargetFlags(slab, slot);
         slab.flags[slot] &= ~(GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_MOVE_ACTIVE);
     };
-    const tickSteering = (prop, slot) => {
+    const tickSteering = (eid, slot) => {
         const flags = slab.flags[slot];
         if ((flags & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
         if ((flags & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_MOVE_ACTIVE)) === 0) return;
         const config = physicsSettings.groundNavRoll;
-        const dx = slab.targetX[slot] - prop.x;
-        const dy = slab.targetY[slot] - prop.y;
+        const dx = slab.targetX[slot] - entityX[eid];
+        const dy = slab.targetY[slot] - entityY[eid];
         const dist = Math.hypot(dx, dy);
         if (dist < config.stopRadius) {
             if ((flags & GROUND_NAV_RUN_MOVE_ACTIVE) !== 0) {
-                clearGroundRollDrive(prop._physId);
+                clearGroundRollDrive(eid);
                 clearSlotTarget(slot);
                 return;
             }
-            decelerateRoll(prop._physId, config);
+            decelerateRoll(eid, config);
             return;
         }
-        steerRollToward(prop._physId, dx / dist, dy / dist, config);
+        steerRollToward(eid, dx / dist, dy / dist, config);
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_DIRECT,
         onPointerDown(prop, world) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             slab.flags[slot] = (slab.flags[slot] | GROUND_NAV_RUN_DRAGGING) & ~GROUND_NAV_RUN_MOVE_ACTIVE;
             setRunTargetXY(slab, slot, world.x, world.y);
-            markPropRunActive(activeRunEids, prop._physId);
+            markPropRunActive(activeRunEids, eid);
             return true;
         },
         onPointerMove(prop, world) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
             setRunTargetXY(slab, slot, world.x, world.y);
         },
         onPointerUp(prop) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
             if ((slab.flags[slot] & GROUND_NAV_RUN_MOVE_ACTIVE) === 0) {
-                clearGroundRollDrive(prop._physId);
+                clearGroundRollDrive(eid);
                 clearSlotTarget(slot);
-                markPropRunInactive(activeRunEids, prop._physId);
+                markPropRunInactive(activeRunEids, eid);
             }
         },
         setMoveTarget(eid, x, y) {
-            const prop = state.entityRegistry.getRef(eid);
-            const slot = getSlot(prop);
+            const slot = getSlot(eid);
             slab.flags[slot] = (slab.flags[slot] & ~GROUND_NAV_RUN_DRAGGING) | GROUND_NAV_RUN_MOVE_ACTIVE;
             setRunTargetXY(slab, slot, x, y);
-            markPropRunActive(activeRunEids, prop._physId);
+            markPropRunActive(activeRunEids, eid);
         },
         updateMoveTarget(eid, x, y) {
-            const prop = state.entityRegistry.getRef(eid);
-            const slot = getSlot(prop);
+            const slot = getSlot(eid);
             if ((slab.flags[slot] & (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_MOVE_ACTIVE | GROUND_NAV_RUN_HAS_TARGET)) return;
             setRunTargetXY(slab, slot, x, y);
         },
@@ -1857,21 +1858,21 @@ export function createDirectGroundNavBehavior(state) {
             return writeMoveTargetFromSlotInto(buf, o, slab, eidToSlot.get(eid));
         },
         tick(eid, dt) {
-            const prop = state.entityRegistry.getRef(eid);
-            if (!prop) return;
+            if (!state.entityRegistry.getRef(eid)) return;
             const slot = eidToSlot.get(eid);
-            if (slot != null) tickSteering(prop, slot);
+            if (slot != null) tickSteering(eid, slot);
         },
         tickWorld(dt) {
             forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickSteering, dt);
         },
         appendPathOverlay(overlaySlab, prop, visual) {
-            const slot = eidToSlot.get(prop._physId);
+            const eid = prop._physId;
+            const slot = eidToSlot.get(eid);
             if (slot == null) return;
             const flags = slab.flags[slot];
             if ((flags & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
             if ((flags & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_MOVE_ACTIVE)) === 0) return;
-            stampPathDirect(overlaySlab, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot], visual);
+            stampPathDirect(overlaySlab, entityX[eid], entityY[eid], slab.targetX[slot], slab.targetY[slot], visual);
         },
         reset() {
             clearGroundNavRunSlab(slab);
@@ -1884,25 +1885,27 @@ export function createFlowGroundNavBehavior(state) {
     const slab = createGroundNavRunSlab();
     const eidToSlot = new Map();
     const activeRunEids = [];
-    const getSlot = (prop) => ensurePropRunSlot(slab, eidToSlot, prop._physId);
+    const getSlot = (eid) => ensurePropRunSlot(slab, eidToSlot, eid);
     const clearSlotTarget = (slot) => {
         clearRunTargetFlags(slab, slot);
         slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
         const o = slot * GRID_NAV_EPOCH_COUNT;
         for (let c = 0; c < GRID_NAV_EPOCH_COUNT; c++) slab.lastEpoch[o + c] = -1;
     };
-    const applyMoveTargetXY = (slot, x, y, prop) => {
+    const applyMoveTargetXY = (slot, x, y, eid) => {
         snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, state.obstacleGrid, x, y);
         setRunTargetXY(slab, slot, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1]);
-        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot]);
-        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, entityX[eid], entityY[eid], slab.targetX[slot], slab.targetY[slot]);
+        state.flowFieldGrid.ensureRollTargetWindow(entityX[eid], entityY[eid], ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
     };
-    const tickSteering = (prop, slot) => {
+    const tickSteering = (eid, slot) => {
         if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
+        const px = entityX[eid];
+        const py = entityY[eid];
         const config = physicsSettings.groundNavRoll;
         const stopRadius = physicsSettings.groundNavHpa.stopRadius;
         const grid = state.obstacleGrid;
-        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot]);
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, px, py, slab.targetX[slot], slab.targetY[slot]);
         const steerX = ENGINE_F32[N_OUT_XY];
         const steerY = ENGINE_F32[N_OUT_XY + 1];
         const flowFieldGrid = state.flowFieldGrid;
@@ -1910,46 +1913,47 @@ export function createFlowGroundNavBehavior(state) {
             stampFlowTopology(slab, slot, grid);
             flowFieldGrid.refresh();
         }
-        flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, steerX, steerY, state.nav.settings.recenterThreshold);
-        const distToTarget = Math.hypot(steerX - prop.x, steerY - prop.y);
+        flowFieldGrid.ensureRollTargetWindow(px, py, steerX, steerY, state.nav.settings.recenterThreshold);
+        const distToTarget = Math.hypot(steerX - px, steerY - py);
         if (distToTarget <= stopRadius) {
-            clearGroundRollDrive(prop._physId);
+            clearGroundRollDrive(eid);
             clearSlotTarget(slot);
             return;
         }
-        if (!computeFlowFieldSteering(prop, steerX, steerY, flowFieldGrid)) return;
-        steerRollToward(prop._physId, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
+        if (!computeFlowFieldSteering(eid, steerX, steerY, flowFieldGrid)) return;
+        steerRollToward(eid, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
     };
     return {
         id: SANDBOX_BEHAVIOR_GROUND_FLOW,
         onPointerDown(prop, world) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             slab.flags[slot] |= GROUND_NAV_RUN_DRAGGING;
-            applyMoveTargetXY(slot, world.x, world.y, prop);
-            markPropRunActive(activeRunEids, prop._physId);
+            applyMoveTargetXY(slot, world.x, world.y, eid);
+            markPropRunActive(activeRunEids, eid);
             return true;
         },
         onPointerMove(prop, world) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
-            applyMoveTargetXY(slot, world.x, world.y, prop);
+            applyMoveTargetXY(slot, world.x, world.y, eid);
         },
         onPointerUp(prop) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
         },
         setMoveTarget(eid, x, y) {
-            const prop = state.entityRegistry.getRef(eid);
-            const slot = getSlot(prop);
+            const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
-            applyMoveTargetXY(slot, x, y, prop);
-            markPropRunActive(activeRunEids, prop._physId);
+            applyMoveTargetXY(slot, x, y, eid);
+            markPropRunActive(activeRunEids, eid);
         },
         updateMoveTarget(eid, x, y) {
-            const prop = state.entityRegistry.getRef(eid);
-            const slot = getSlot(prop);
+            const slot = getSlot(eid);
             if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
-            applyMoveTargetXY(slot, x, y, prop);
+            applyMoveTargetXY(slot, x, y, eid);
         },
         hasMoveTarget(eid) {
             const slot = eidToSlot.get(eid);
@@ -1965,20 +1969,22 @@ export function createFlowGroundNavBehavior(state) {
             return writeMoveTargetFromSlotInto(buf, o, slab, eidToSlot.get(eid));
         },
         tick(eid, dt) {
-            const prop = state.entityRegistry.getRef(eid);
-            if (!prop) return;
+            if (!state.entityRegistry.getRef(eid)) return;
             const slot = eidToSlot.get(eid);
-            if (slot != null) tickSteering(prop, slot);
+            if (slot != null) tickSteering(eid, slot);
         },
         tickWorld(dt) {
             forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickSteering, dt);
         },
         appendPathOverlay(overlaySlab, prop, visual) {
-            const slot = eidToSlot.get(prop._physId);
+            const eid = prop._physId;
+            const slot = eidToSlot.get(eid);
             if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
-            snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, slab.targetX[slot], slab.targetY[slot]);
+            const px = entityX[eid];
+            const py = entityY[eid];
+            snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, px, py, slab.targetX[slot], slab.targetY[slot]);
             const polyBase = beginOverlayPoly(overlaySlab);
-            const pathLen = writeFlowFieldPathInto(overlaySlab, prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.flowFieldGrid, state.obstacleGrid);
+            const pathLen = writeFlowFieldPathInto(overlaySlab, px, py, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.flowFieldGrid, state.obstacleGrid);
             stampPathPolyline(overlaySlab, polyBase, pathLen, PATH_OVERLAY_MODE_FLOW, visual);
         },
         reset() {
@@ -1992,8 +1998,7 @@ export function createHpaGroundNavBehavior(state) {
     const slab = createGroundNavRunSlab();
     const eidToSlot = new Map();
     const activeRunEids = [];
-    const getSlot = (prop) => {
-        const eid = prop._physId;
+    const getSlot = (eid) => {
         let slot = eidToSlot.get(eid);
         if (slot != null) return slot;
         slot = allocGroundNavRunSlot(slab, eid);
@@ -2014,9 +2019,8 @@ export function createHpaGroundNavBehavior(state) {
         slab.targetCellIdx[slot] = nextIdx === -1 ? -1 : nextIdx;
         if (forceReset || cellChanged) slab.sessions[slot].markTargetChanged();
     };
-    const tickSteering = (prop, slot, dtMs) => {
+    const tickSteering = (eid, slot, dtMs) => {
         if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
-        const eid = prop._physId;
         const grid = state.obstacleGrid;
         const config = physicsSettings.groundNavRoll;
         const stopRadius = physicsSettings.groundNavHpa.stopRadius;
@@ -2034,31 +2038,32 @@ export function createHpaGroundNavBehavior(state) {
     return {
         id: SANDBOX_BEHAVIOR_GROUND_HPA,
         onPointerDown(prop, world) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             slab.flags[slot] |= GROUND_NAV_RUN_DRAGGING;
             applyMoveTargetXY(slot, world.x, world.y, true);
-            markPropRunActive(activeRunEids, prop._physId);
+            markPropRunActive(activeRunEids, eid);
             return true;
         },
         onPointerMove(prop, world) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             if ((slab.flags[slot] & (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) !== (GROUND_NAV_RUN_DRAGGING | GROUND_NAV_RUN_HAS_TARGET)) return;
             applyMoveTargetXY(slot, world.x, world.y, false);
         },
         onPointerUp(prop) {
-            const slot = getSlot(prop);
+            const eid = prop._physId;
+            const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
         },
         setMoveTarget(eid, x, y) {
-            const prop = state.entityRegistry.getRef(eid);
-            const slot = getSlot(prop);
+            const slot = getSlot(eid);
             slab.flags[slot] &= ~GROUND_NAV_RUN_DRAGGING;
             applyMoveTargetXY(slot, x, y, true);
             markPropRunActive(activeRunEids, eid);
         },
         updateMoveTarget(eid, x, y) {
-            const prop = state.entityRegistry.getRef(eid);
-            const slot = getSlot(prop);
+            const slot = getSlot(eid);
             if ((slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
             applyMoveTargetXY(slot, x, y, false);
         },
@@ -2094,20 +2099,20 @@ export function createHpaGroundNavBehavior(state) {
             return writeMoveTargetFromSlotInto(buf, o, slab, eidToSlot.get(eid));
         },
         tick(eid, dt) {
-            const prop = state.entityRegistry.getRef(eid);
-            if (!prop) return;
+            if (!state.entityRegistry.getRef(eid)) return;
             const slot = eidToSlot.get(eid);
-            if (slot != null) tickSteering(prop, slot, dt);
+            if (slot != null) tickSteering(eid, slot, dt);
         },
         tickWorld(dt) {
             forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickSteering, dt);
         },
         appendPathOverlay(overlaySlab, prop, visual) {
-            const slot = eidToSlot.get(prop._physId);
+            const eid = prop._physId;
+            const slot = eidToSlot.get(eid);
             if (slot == null || (slab.flags[slot] & GROUND_NAV_RUN_HAS_TARGET) === 0) return;
             const nav = slab.sessions[slot].navState;
             const polyBase = beginOverlayPoly(overlaySlab);
-            const pathLen = nav.pathLen > 0 && nav.pathSlot >= 0 ? writeSabPathOverlayInto(overlaySlab.poly, prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, nav.pathProgressIdx, state.obstacleGrid) : 0;
+            const pathLen = nav.pathLen > 0 && nav.pathSlot >= 0 ? writeSabPathOverlayInto(overlaySlab.poly, entityX[eid], entityY[eid], state.nav.worker, nav.pathSlot, nav.pathLen, nav.pathProgressIdx, state.obstacleGrid) : 0;
             stampPathPolyline(overlaySlab, polyBase, pathLen, PATH_OVERLAY_MODE_HPA, visual);
         },
         reset() {
@@ -2542,7 +2547,7 @@ export function buildSandboxOverlayCommands(state, session, spatialFrame, marque
     if (state.editor.showSelectionRings) {
         for (let i = 0; i < overlayVisibleSelectedProps.length; i++) {
             const prop = overlayVisibleSelectedProps[i];
-            stampSelectionRing(slab, prop.x, prop.y, prop.radius + SELECTION_RING_PAD);
+            stampSelectionRing(slab, entityX[prop._physId], entityY[prop._physId], entityR[prop._physId] + SELECTION_RING_PAD);
         }
         if (sel?.kind === "floor" && grid) {
             const x = grid.gridCenterXByIdx(sel.idx);
