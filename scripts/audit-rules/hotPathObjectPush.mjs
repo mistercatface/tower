@@ -8,6 +8,7 @@ const hotDirs = [
     "Libraries/Math",
     "Libraries/Viewport",
     "Libraries/Sandbox",
+    "Libraries/Render",
 ];
 
 export const id = "hot-path-object-push";

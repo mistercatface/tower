@@ -986,16 +986,16 @@ export class SurfaceMaterialStore {
         return this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 0)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 1)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 2)) || this.edgeProfileIds.has(cellEdgeSlotOffset(idx, 3));
     }
 }
-export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0, face = null) {
+export function resolveSurfaceProfileId(grid, ownerKind, baseProfileId, cellsPerChunk, a, b = 0, c = 0) {
     if (ownerKind === SURFACE_MATERIAL_OWNER.Chunk) return grid.surfaceMaterials.getChunkAtKey(a) ?? baseProfileId;
     if (ownerKind === SURFACE_MATERIAL_OWNER.Cell) {
         const chunkBase = cellsPerChunk > 0 ? resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, cellIdxToChunkKey(a, grid, cellsPerChunk)) : baseProfileId;
         return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
     }
     if (ownerKind === SURFACE_MATERIAL_OWNER.WallFace) {
-        const chunkBase = cellsPerChunk > 0 ? resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, cellIdxToChunkKey(face.gridIdx, grid, cellsPerChunk)) : baseProfileId;
-        if (face.isEdgeRail) return grid.surfaceMaterials.getEdgeByIdx(face.gridIdx, face.gridSide) ?? chunkBase;
-        return grid.surfaceMaterials.getCellAtIdx(face.gridIdx) ?? chunkBase;
+        const chunkBase = cellsPerChunk > 0 ? resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, baseProfileId, 0, cellIdxToChunkKey(a, grid, cellsPerChunk)) : baseProfileId;
+        if (c) return grid.surfaceMaterials.getEdgeByIdx(a, b) ?? chunkBase;
+        return grid.surfaceMaterials.getCellAtIdx(a) ?? chunkBase;
     }
     throw new Error(`unknown surface material owner kind: ${ownerKind}`);
 }

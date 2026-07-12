@@ -95,5 +95,12 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - Modes (`WALL_FACE_*`, `PRIMITIVE_PHYSICS_ROW_*`, `SURFACE_MASK_*`, `BLEND_MODE_*`, `COORD_SPACE_*`) live in `engineEnums`, not `engineMemory`.
 - Scheduler Promise records / thin queue `stats()` may remain bags (non-hot).
 
+### Render dialect
+
+- Wall face draw state: module `wallFaceF32` / `wallFaceI32` (`WF_*`) via `writeWallFaceScratch` — no `wallFaceScratch` bags on `WorldSceneRenderer`.
+- Overlay glyph `customKey` / `OVERLAY_RENDER_KEY_*` are packed numbers (ints / `mixHash4`) — no `` `r${…}` `` template strings / nested key objects.
+- CSS color strings stay only at the canvas `fillStyle` / `strokeStyle` edge (slot arrays for prism/wall chunk colors).
+- Overlay AABB draw: `drawAabbStyle(ctx, minX, minY, maxX, maxY, …)` — no `{ minX, minY, maxX, maxY }` rebox on bake.
+
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:
 `npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.

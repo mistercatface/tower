@@ -1,7 +1,7 @@
 ﻿import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH } from "../../Core/engineMemory.js";
-import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP } from "../../Core/engineEnums.js";
+import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
 import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
@@ -812,10 +812,9 @@ export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfExte
     const slot = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount);
     blitAnchoredSprite(ctx, gridStampSpriteCacheSlab, slot, worldX, worldY, null, frameIndex);
 }
-export const OVERLAY_RENDER_KEY = { SelectionRing: "overlay_selection_ring", PathDestination: "overlay_path_destination", PathArrowHead: "overlay_path_arrow_head", FlowDirectionArrow: "overlay_flow_direction_arrow", WireEndpoint: "overlay_wire_endpoint", GridCellHighlight: "overlay_grid_cell_highlight", PathDebugNode: "overlay_path_debug_node", FloatingText: "overlay_floating_text" };
 const OVERLAY_STAGE_PADDING = 6;
 export function drawCachedFloatingText(ctx, worldX, worldY, cacheKey, text, style, color, alpha, scale) {
-    let key = BigInt(internSpriteKeyPart(OVERLAY_RENDER_KEY.FloatingText));
+    let key = BigInt(internSpriteKeyPart(OVERLAY_RENDER_KEY_FLOATING_TEXT));
     key = (key << 20n) | BigInt(internSpriteKeyPart(cacheKey));
     const slot = overlaySpriteCacheSlab.getOrBake(key, () => {
         const measureCtx = acquireOffscreenCanvas(1, 1).getContext("2d");

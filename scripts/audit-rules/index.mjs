@@ -15,6 +15,7 @@ import * as dualBagF32Api from "./dualBagF32Api.mjs";
 import * as engineMemoryBagExport from "./engineMemoryBagExport.mjs";
 import * as engineF32BankLayout from "./engineF32BankLayout.mjs";
 import * as worldSurfaceBags from "./worldSurfaceBags.mjs";
+import * as renderBags from "./renderBags.mjs";
 
 export const rules = [
     reexportBarrel,
@@ -34,4 +35,5 @@ export const rules = [
     engineMemoryBagExport,
     engineF32BankLayout,
     worldSurfaceBags,
+    renderBags,
 ];

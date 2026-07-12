@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math", "Libraries/Viewport", "Libraries/Sandbox"];
+const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math", "Libraries/Viewport", "Libraries/Sandbox", "Libraries/Render"];
 const intoFnRe = /export (?:async )?function (\w*Into\w*)\s*\(([^)]*)\)/g;
 const bagWriteRe = /\bout\.(?:x|y|minX|minY|maxX|maxY|col|row|cx|cy)\s*=/;
 

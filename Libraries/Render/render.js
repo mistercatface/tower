@@ -1,11 +1,11 @@
-import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
+import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
-import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
+import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_PATH_ARROW_HEAD, OVERLAY_RENDER_KEY_FLOW_DIRECTION_ARROW, OVERLAY_RENDER_KEY_WIRE_ENDPOINT, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
@@ -18,6 +18,26 @@ const WALL_ATLAS_FACE_OUTER = 2;
 const WALL_ATLAS_FACE_END0 = 3;
 const WALL_ATLAS_FACE_END1 = 4;
 const WALL_ATLAS_WRAP = new Float32Array(4);
+const WF_F_WALL_HEIGHT = 0;
+const WF_F_WALL_BASE_Z = 1;
+const WF_F_WALL_CAP_HEIGHT = 2;
+const WF_F_COUNT = 3;
+const WF_I_ATLAS_FACE_KIND = 0;
+const WF_I_GRID_SIDE = 1;
+const WF_I_GRID_IDX = 2;
+const WF_I_IS_EDGE_RAIL = 3;
+const WF_I_COUNT = 4;
+const wallFaceF32 = new Float32Array(WF_F_COUNT);
+const wallFaceI32 = new Int32Array(WF_I_COUNT);
+export function writeWallFaceScratch(wallHeight, wallBaseZ, wallCapHeight, gridSide, gridIdx, isEdgeRail, atlasFaceKind = WALL_ATLAS_FACE_NONE) {
+    wallFaceF32[WF_F_WALL_HEIGHT] = wallHeight;
+    wallFaceF32[WF_F_WALL_BASE_Z] = wallBaseZ;
+    wallFaceF32[WF_F_WALL_CAP_HEIGHT] = wallCapHeight;
+    wallFaceI32[WF_I_GRID_SIDE] = gridSide;
+    wallFaceI32[WF_I_GRID_IDX] = gridIdx;
+    wallFaceI32[WF_I_IS_EDGE_RAIL] = isEdgeRail ? 1 : 0;
+    wallFaceI32[WF_I_ATLAS_FACE_KIND] = atlasFaceKind;
+}
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rSubdiv = ENGINE_F32.subarray(R_SUBDIV, R_SUBDIV + 8);
@@ -122,28 +142,10 @@ export function quantizeOverlayRadius(r) {
     return Math.max(OVERLAY_RADIUS_STEP, Math.round(r / OVERLAY_RADIUS_STEP) * OVERLAY_RADIUS_STEP);
 }
 export function quantizeOverlayDirKey(dirX, dirY, steps = OVERLAY_DIR_STEPS) {
-    if (dirX == null || dirY == null) return "d0";
-    return `d${quantizeAngleIndex(Math.atan2(dirY, dirX), steps)}`;
+    if (dirX == null || dirY == null) return 0;
+    return quantizeAngleIndex(Math.atan2(dirY, dirX), steps);
 }
-export function selectionRingCacheKey(r) {
-    return `r${quantizeOverlayRadius(r)}`;
-}
-export function pathDestinationCacheKey(r, fill) {
-    return `r${quantizeOverlayRadius(r)}_${fill}`;
-}
-export function pathArrowHeadCacheKey(dirX, dirY, fill, headLen = 9, headWidth = 6) {
-    return `${quantizeOverlayDirKey(dirX, dirY)}_${fill}_hl${headLen}_hw${headWidth}`;
-}
-export function flowDirectionArrowCacheKey(dirX, dirY, pad, len, stroke, headLen = 9, headWidth = 6) {
-    return `${quantizeOverlayDirKey(dirX, dirY)}_p${Math.round(pad)}_l${len}_${stroke}_hl${headLen}_hw${headWidth}`;
-}
-export function wireEndpointCacheKey(r, fill) {
-    return `r${quantizeOverlayRadius(r)}_${fill}`;
-}
-export function gridCellHighlightCacheKey(grid, tint) {
-    return `cs${grid.cellSize}_${tint}`;
-}
-/** @typedef {{ renderKey: string, customKey: string, worldSpan: number, anchorX?: number, anchorY?: number }} OverlayCacheMeta */
+/** @typedef {{ renderKey: number, customKey: number, worldSpan: number, anchorX?: number, anchorY?: number }} OverlayCacheMeta */
 /** @typedef {{ kind: 'aabb', minX: number, minY: number, maxX: number, maxY: number, fill?: string, stroke?: string, lineWidth?: number, dash?: number[], cache?: OverlayCacheMeta }} OverlayAabbCommand */
 /** @typedef {{ kind: 'circleStroke', cx: number, cy: number, r: number, stroke: string, lineWidth?: number, dash?: number[], cache?: OverlayCacheMeta }} OverlayCircleStrokeCommand */
 /** @typedef {{ kind: 'circleFillStroke', cx: number, cy: number, r: number, fill: string, stroke?: string, lineWidth?: number, cache?: OverlayCacheMeta }} OverlayCircleFillStrokeCommand */
@@ -168,7 +170,7 @@ export function overlayGridCellHighlight(minX, minY, maxX, maxY, grid, tint, sty
     const anchorX = (minX + maxX) * 0.5;
     const anchorY = (minY + maxY) * 0.5;
     const cmd = overlayAabb(minX, minY, maxX, maxY, style);
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.GridCellHighlight, gridCellHighlightCacheKey(grid, tint), Math.max(w, h), anchorX, anchorY);
+    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, mixHash4(grid.cellSize | 0, hashString(tint), 2, 0), Math.max(w, h), anchorX, anchorY);
     return cmd;
 }
 export function overlayCircleStroke(cx, cy, r, { stroke, lineWidth = 1, dash }) {
@@ -176,7 +178,7 @@ export function overlayCircleStroke(cx, cy, r, { stroke, lineWidth = 1, dash }) 
 }
 export function overlayCachedSelectionRing(cx, cy, r, style) {
     const cmd = overlayCircleStroke(cx, cy, r, style);
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.SelectionRing, selectionRingCacheKey(r), overlayGlyphSpan(r, style.lineWidth ?? 1, 4), cx, cy);
+    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY_SELECTION_RING, quantizeOverlayRadius(r), overlayGlyphSpan(r, style.lineWidth ?? 1, 4), cx, cy);
     return cmd;
 }
 export function overlayCircleFillStroke(cx, cy, r, { fill, stroke = "#fff", lineWidth = 1 }) {
@@ -198,18 +200,18 @@ export function overlayArrowHead(x, y, dirX, dirY, { fill, headLen = 9, headWidt
 }
 export function overlayCachedArrowHead(x, y, dirX, dirY, { fill, headLen = 9, headWidth = 6 }) {
     const cmd = overlayArrowHead(x, y, dirX, dirY, { fill, headLen, headWidth });
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.PathArrowHead, pathArrowHeadCacheKey(dirX, dirY, fill, headLen, headWidth), overlayGlyphSpan(Math.max(headLen, headWidth), 1, 2), x, y);
+    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY_PATH_ARROW_HEAD, mixHash4(quantizeOverlayDirKey(dirX, dirY), hashString(fill), headLen | 0, headWidth | 0), overlayGlyphSpan(Math.max(headLen, headWidth), 1, 2), x, y);
     return cmd;
 }
 export function overlayCachedFlowDirectionArrow(cx, cy, dirX, dirY, { pad = 0, len = 20, stroke, lineWidth = 2, headLen = 9, headWidth = 6 }) {
     const cmd = { kind: OVERLAY_CMD_DIRECTION_ARROW, cx, cy, dirX, dirY, pad, len, stroke, lineWidth, headLen, headWidth };
-    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY.FlowDirectionArrow, flowDirectionArrowCacheKey(dirX, dirY, pad, len, stroke, headLen, headWidth), pad + len + headLen + lineWidth + 4, cx, cy);
+    cmd.cache = overlayCacheMeta(OVERLAY_RENDER_KEY_FLOW_DIRECTION_ARROW, mixHash4(quantizeOverlayDirKey(dirX, dirY), Math.round(pad) | 0, len | 0, mixHash4(hashString(stroke), headLen | 0, headWidth | 0, 0)), pad + len + headLen + lineWidth + 4, cx, cy);
     return cmd;
 }
 export function appendOverlayWireLink(out, x0, y0, x1, y1, color, { lineWidth = 2, dash = [6, 4], endpointRadius = 3, live = false } = {}) {
     out.push(overlaySegment(x0, y0, x1, y1, { stroke: color, lineWidth, dash }));
     if (live) out.push(overlayCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }));
-    else out.push(overlayCachedCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }, OVERLAY_RENDER_KEY.WireEndpoint, wireEndpointCacheKey(endpointRadius, color), 1));
+    else out.push(overlayCachedCircleFillStroke(x1, y1, endpointRadius, { fill: color, stroke: color, lineWidth: 1 }, OVERLAY_RENDER_KEY_WIRE_ENDPOINT, mixHash4(quantizeOverlayRadius(endpointRadius), hashString(color), 1, 0), 1));
 }
 export function overlayAimSegment(x1, y1, x2, y2, { color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = {}) {
     return { kind: OVERLAY_CMD_AIM_SEGMENT, x1, y1, x2, y2, color, lineWidth, arrowhead, glow, glowHue };
@@ -230,19 +232,19 @@ function drawArrowHeadAt(ctx, tipX, tipY, dirX, dirY, fill, headLen, headWidth) 
     traceClosedFlatPolygon(ctx, rChevron, 3);
     ctx.fill();
 }
-function drawAabbStyle(ctx, rect, { fill, stroke, lineWidth = 1, dash }) {
-    const w = rect.maxX - rect.minX;
-    const h = rect.maxY - rect.minY;
+function drawAabbStyle(ctx, minX, minY, maxX, maxY, fill, stroke, lineWidth = 1, dash) {
+    const w = maxX - minX;
+    const h = maxY - minY;
     if (fill) {
         ctx.fillStyle = fill;
-        ctx.fillRect(rect.minX, rect.minY, w, h);
+        ctx.fillRect(minX, minY, w, h);
     }
     if (!stroke) return;
     ctx.strokeStyle = stroke;
     ctx.lineWidth = lineWidth;
     if (dash?.length) ctx.setLineDash(dash);
     ctx.beginPath();
-    traceAabbRect(ctx, rect.minX, rect.minY, rect.maxX, rect.maxY);
+    traceAabbRect(ctx, minX, minY, maxX, maxY);
     ctx.stroke();
     if (dash?.length) ctx.setLineDash([]);
 }
@@ -283,7 +285,7 @@ export function bakeOverlayCommand(ctx, anchorX, anchorY, cmd) {
         const h = cmd.maxY - cmd.minY;
         const minX = anchorX - w * 0.5;
         const minY = anchorY - h * 0.5;
-        drawAabbStyle(ctx, { minX, minY, maxX: minX + w, maxY: minY + h }, cmd);
+        drawAabbStyle(ctx, minX, minY, minX + w, minY + h, cmd.fill, cmd.stroke, cmd.lineWidth ?? 1, cmd.dash);
     }
 }
 /** @typedef {Object} PathOverlayData
@@ -326,7 +328,7 @@ function appendFlowAgentArrow(out, overlay) {
         out.push(overlayCachedFlowDirectionArrow(propX, propY, dirX, dirY, { pad: propRadius + FLOW_ARROW_PAD, len: FLOW_ARROW_LEN, stroke: color, lineWidth: PATH_STROKE_WIDTH }));
         return;
     }
-    if (targetX != null && targetY != null) out.push(overlayCachedCircleFillStroke(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }, OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(4, "rgba(255, 193, 7, 0.85)")));
+    if (targetX != null && targetY != null) out.push(overlayCachedCircleFillStroke(targetX, targetY, 4, { fill: "rgba(255, 193, 7, 0.85)" }, OVERLAY_RENDER_KEY_PATH_DESTINATION, mixHash4(quantizeOverlayRadius(4), hashString("rgba(255, 193, 7, 0.85)"), 0, 0)));
 }
 function appendNormalPathOverlayCommands(out, overlay) {
     const { mode, targetX, targetY, pathNodes } = overlay;
@@ -353,21 +355,21 @@ export function appendPathOverlayCommands(out, overlay, grid, visual = SANDBOX_P
     const { mode, pathNodes } = overlay;
     if (mode === PATH_OVERLAY_MODE_HPA) {
         if (pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#00e5ff", lineWidth: 4 }));
-        for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#00e5ff")));
+        for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#00e5ff" }, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, mixHash4(quantizeOverlayRadius(6), hashString("#00e5ff"), 0, 0)));
         return;
     }
     if (mode === PATH_OVERLAY_MODE_FLOW) {
         if (pathNodes && pathNodes.length >= 2) out.push(overlayPolyline(pathNodes, { stroke: "#4caf50", lineWidth: 4 }));
-        if (pathNodes) for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#4caf50" }, OVERLAY_RENDER_KEY.PathDebugNode, pathDestinationCacheKey(6, "#4caf50")));
+        if (pathNodes) for (let i = 0; i < pathNodes.length; i++) out.push(overlayCachedCircleFillStroke(pathNodes[i].x, pathNodes[i].y, 6, { fill: "#4caf50" }, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, mixHash4(quantizeOverlayRadius(6), hashString("#4caf50"), 0, 0)));
         return;
     }
     if (pathNodes.length < 2) return;
     out.push(overlayPolyline(pathNodes, { stroke: "rgba(0, 188, 212, 0.65)", lineWidth: 3, dash: [8, 6] }));
     const end = pathNodes[pathNodes.length - 1];
-    out.push(overlayCachedCircleFillStroke(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }, OVERLAY_RENDER_KEY.PathDestination, pathDestinationCacheKey(10, "rgba(0, 188, 212, 0.85)")));
+    out.push(overlayCachedCircleFillStroke(end.x, end.y, 10, { fill: "rgba(0, 188, 212, 0.85)" }, OVERLAY_RENDER_KEY_PATH_DESTINATION, mixHash4(quantizeOverlayRadius(10), hashString("rgba(0, 188, 212, 0.85)"), 0, 0)));
 }
 function drawAabbCommand(ctx, cmd) {
-    drawAabbStyle(ctx, cmd, cmd);
+    drawAabbStyle(ctx, cmd.minX, cmd.minY, cmd.maxX, cmd.maxY, cmd.fill, cmd.stroke, cmd.lineWidth ?? 1, cmd.dash);
 }
 function drawAimSegmentCommand(ctx, cmd) {
     const { x1, y1, x2, y2, color, lineWidth = 3, arrowhead = true, glow = true, glowHue = 180 } = cmd;
@@ -857,12 +859,7 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha) 
         ctx.fill();
     }
 }
-function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
-    const height = opts.height ?? DEFAULT_PROP_HEIGHT;
-    const facing = opts.facing ?? readEntityFacing(prop);
-    const faceColors = opts.faceColors;
-    const backFaceColors = opts.backFaceColors ?? null;
-    const topColors = opts.topColors;
+function drawExtrudedPrism(ctx, prop, viewport, localVerts, height, facing, faceShadow, faceMid, faceHighlight, backShadow, backMid, backHighlight, topMid) {
     const count = localVerts.length / 2;
     if (count < 3) return;
     ensurePrismScratch(count);
@@ -874,10 +871,7 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
     const topY = ENGINE_F32[S_OUT_XY + 1];
     extrudeLocalVertsInto(sBaseRing, sTopRing, localVerts, cx, cy, topX, topY, alpha, facing);
     classifyPrismFaces(count, viewport, cx, cy);
-    const backShadow = backFaceColors ? backFaceColors.shadow : faceColors.shadow;
-    const backMid = backFaceColors ? backFaceColors.mid : faceColors.shadow;
-    const backHighlight = backFaceColors ? backFaceColors.highlight : faceColors.mid;
-    ctx.fillStyle = faceColors.shadow;
+    ctx.fillStyle = faceShadow;
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, sBaseRing, count);
     ctx.fill();
@@ -885,38 +879,63 @@ function drawExtrudedPrism(ctx, prop, viewport, localVerts, opts) {
         const wantFront = pass === 1;
         for (let i = 0; i < count; i++) {
             if ((rFaceVisible[i] === 1) !== wantFront) continue;
-            const shadow = wantFront ? faceColors.shadow : backShadow;
-            const mid = wantFront ? faceColors.mid : backMid;
-            const highlight = wantFront ? faceColors.highlight : backHighlight;
+            const shadow = wantFront ? faceShadow : backShadow;
+            const mid = wantFront ? faceMid : backMid;
+            const highlight = wantFront ? faceHighlight : backHighlight;
             drawSideFaceFlat(ctx, i, count, shadow, mid, highlight);
         }
     }
-    ctx.fillStyle = topColors.mid;
+    ctx.fillStyle = topMid;
     ctx.beginPath();
     traceClosedFlatPolygon(ctx, sTopRing, count);
     ctx.fill();
 }
-const sPrismOpts = { height: DEFAULT_PROP_HEIGHT, facing: 0, faceColors: null, backFaceColors: null, topColors: null, topHx: null, topHy: null };
-function fillPrismOptsFromDraw(opts, prop) {
-    sPrismOpts.height = opts.height ?? DEFAULT_PROP_HEIGHT;
-    sPrismOpts.facing = opts.facing ?? readEntityFacing(prop);
-    sPrismOpts.faceColors = opts.faceColors;
-    sPrismOpts.backFaceColors = opts.backFaceColors ?? null;
-    sPrismOpts.topColors = opts.topColors;
-    sPrismOpts.topHx = opts.topHx ?? null;
-    sPrismOpts.topHy = opts.topHy ?? null;
-    return sPrismOpts;
+const PRISM_F_HEIGHT = 0;
+const PRISM_F_FACING = 1;
+const PRISM_F_TOP_HX = 2;
+const PRISM_F_TOP_HY = 3;
+const PRISM_F_COUNT = 4;
+const PRISM_I_HAS_TOP_EXT = 0;
+const prismF32 = new Float32Array(PRISM_F_COUNT);
+const prismI32 = new Int32Array(1);
+const prismFaceColor = ["", "", ""];
+const prismBackColor = ["", "", ""];
+const prismTopColor = ["", "", ""];
+let prismLocalVerts = null;
+function fillPrismDrawSlots(opts, prop) {
+    prismF32[PRISM_F_HEIGHT] = opts.height ?? DEFAULT_PROP_HEIGHT;
+    prismF32[PRISM_F_FACING] = opts.facing ?? readEntityFacing(prop);
+    prismFaceColor[0] = opts.faceColors.shadow;
+    prismFaceColor[1] = opts.faceColors.mid;
+    prismFaceColor[2] = opts.faceColors.highlight;
+    if (opts.backFaceColors) {
+        prismBackColor[0] = opts.backFaceColors.shadow;
+        prismBackColor[1] = opts.backFaceColors.mid;
+        prismBackColor[2] = opts.backFaceColors.highlight;
+    } else {
+        prismBackColor[0] = prismFaceColor[0];
+        prismBackColor[1] = prismFaceColor[0];
+        prismBackColor[2] = prismFaceColor[1];
+    }
+    prismTopColor[1] = opts.topColors.mid;
+    if (opts.topHx == null || opts.topHy == null) prismI32[PRISM_I_HAS_TOP_EXT] = 0;
+    else {
+        prismI32[PRISM_I_HAS_TOP_EXT] = 1;
+        prismF32[PRISM_F_TOP_HX] = opts.topHx;
+        prismF32[PRISM_F_TOP_HY] = opts.topHy;
+    }
+    prismLocalVerts = opts.localVerts;
 }
 function scalePrismTopExtents(viewport) {
-    if (sPrismOpts.topHx == null || sPrismOpts.topHy == null) return;
-    const alpha = resolveElevationAlpha(sPrismOpts.height, viewport);
-    sPrismOpts.topHx = sPrismOpts.topHx * (1 + alpha);
-    sPrismOpts.topHy = sPrismOpts.topHy * (1 + alpha);
+    if (!prismI32[PRISM_I_HAS_TOP_EXT]) return;
+    const alpha = resolveElevationAlpha(prismF32[PRISM_F_HEIGHT], viewport);
+    prismF32[PRISM_F_TOP_HX] *= 1 + alpha;
+    prismF32[PRISM_F_TOP_HY] *= 1 + alpha;
 }
 export function drawExtrudedConvexPolygon(ctx, prop, viewport, opts) {
-    fillPrismOptsFromDraw(opts, prop);
+    fillPrismDrawSlots(opts, prop);
     scalePrismTopExtents(viewport);
-    drawExtrudedPrism(ctx, prop, viewport, opts.localVerts, sPrismOpts);
+    drawExtrudedPrism(ctx, prop, viewport, prismLocalVerts, prismF32[PRISM_F_HEIGHT], prismF32[PRISM_F_FACING], prismFaceColor[0], prismFaceColor[1], prismFaceColor[2], prismBackColor[0], prismBackColor[1], prismBackColor[2], prismTopColor[1]);
 }
 export function drawWallChunkTextured(ctx, prop, viewport, localVerts) {
     if (!wallChunkPipeline?._wallChunkReady) return false;
@@ -964,10 +983,13 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = readEntityF
     ctx.fill();
     return true;
 }
-const sWallFaceColors = { shadow: null, mid: null, highlight: null };
-const sWallBackFaceColors = { shadow: null, mid: null, highlight: null };
-const sWallTopColors = { light: null, mid: null, dark: null };
-const sWallDrawOpts = { height: 0, facing: 0, faceColors: sWallFaceColors, backFaceColors: sWallBackFaceColors, topColors: sWallTopColors, localVerts: null, topHx: null, topHy: null };
+const wallFaceColor = ["", "", ""];
+const wallBackColor = ["", "", ""];
+const wallTopColor = ["", "", ""];
+const WALL_DRAW_F_HEIGHT = 0;
+const WALL_DRAW_F_FACING = 1;
+const wallDrawF32 = new Float32Array(2);
+let wallDrawLocalVerts = null;
 const sWallFlatVerts = new Float32Array(1024);
 function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts, colors) {
     if (!localVerts || localVerts.length < 6) return;
@@ -998,21 +1020,17 @@ function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts,
     const height = prop.height ?? DEFAULT_PROP_HEIGHT;
     const side = tinted.side;
     const sideShadow = tinted.sideShadow ?? side;
-    sWallFaceColors.shadow = sideShadow;
-    sWallFaceColors.mid = side;
-    sWallFaceColors.highlight = shadeHex(side, -0.12);
-    sWallBackFaceColors.shadow = sideShadow;
-    sWallBackFaceColors.mid = sideShadow;
-    sWallBackFaceColors.highlight = side;
-    sWallTopColors.light = tinted.top;
-    sWallTopColors.mid = tinted.top;
-    sWallTopColors.dark = tinted.top;
-    sWallDrawOpts.height = height;
-    sWallDrawOpts.facing = readEntityFacing(prop);
-    sWallDrawOpts.localVerts = localVerts;
-    sWallDrawOpts.topHx = null;
-    sWallDrawOpts.topHy = null;
-    drawExtrudedConvexPolygon(ctx, prop, viewport, sWallDrawOpts);
+    wallFaceColor[0] = sideShadow;
+    wallFaceColor[1] = side;
+    wallFaceColor[2] = shadeHex(side, -0.12);
+    wallBackColor[0] = sideShadow;
+    wallBackColor[1] = sideShadow;
+    wallBackColor[2] = side;
+    wallTopColor[1] = tinted.top;
+    wallDrawF32[WALL_DRAW_F_HEIGHT] = height;
+    wallDrawF32[WALL_DRAW_F_FACING] = readEntityFacing(prop);
+    wallDrawLocalVerts = localVerts;
+    drawExtrudedPrism(ctx, prop, viewport, wallDrawLocalVerts, wallDrawF32[WALL_DRAW_F_HEIGHT], wallDrawF32[WALL_DRAW_F_FACING], wallFaceColor[0], wallFaceColor[1], wallFaceColor[2], wallBackColor[0], wallBackColor[1], wallBackColor[2], wallTopColor[1]);
 }
 export function createWallChunkDraw() {
     return (ctx, prop, viewport, flatPresentation) => {
@@ -1181,13 +1199,13 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, outQueue)
 export function getVoxelWallFaceData() {
     return sGeomCache.faces.data;
 }
-export function drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face) {
+export function drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state) {
     const data = sGeomCache.faces.data;
     const x1 = data[baseIndex + VOXEL_FACE.x1];
     const y1 = data[baseIndex + VOXEL_FACE.y1];
     const x2 = data[baseIndex + VOXEL_FACE.x2];
     const y2 = data[baseIndex + VOXEL_FACE.y2];
-    drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face);
+    drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state);
 }
 export function invalidateStaticGridWallDrawCache() {
     sGeomCache.wallGridRevision = -1;
@@ -1253,7 +1271,7 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, outQu
 export function getRailWallBoxData() {
     return sBoxCache.boxes.data;
 }
-export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, face, skipWallCaps = false) {
+export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, skipWallCaps = false) {
     const data = sBoxCache.boxes.data;
     const base = baseIndex;
     const viewerX = viewport.x;
@@ -1269,12 +1287,12 @@ export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, f
     const inwardX = data[base + RAIL_BOX.inwardX];
     const inwardY = data[base + RAIL_BOX.inwardY];
     if (isOutwardFaceTowardViewer((innerP1x + innerP2x) * 0.5, (innerP1y + innerP2y) * 0.5, inwardX, inwardY, viewerX, viewerY)) {
-        face.atlasFaceKind = WALL_ATLAS_FACE_INNER;
-        drawProjectedWallFaceScalars(ctx, innerP1x, innerP1y, innerP2x, innerP2y, viewport, state, face);
+        wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_INNER;
+        drawProjectedWallFaceScalars(ctx, innerP1x, innerP1y, innerP2x, innerP2y, viewport, state);
     }
     if (isOutwardFaceTowardViewer((outerP1x + outerP2x) * 0.5, (outerP1y + outerP2y) * 0.5, -inwardX, -inwardY, viewerX, viewerY)) {
-        face.atlasFaceKind = WALL_ATLAS_FACE_OUTER;
-        drawProjectedWallFaceScalars(ctx, outerP1x, outerP1y, outerP2x, outerP2y, viewport, state, face);
+        wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_OUTER;
+        drawProjectedWallFaceScalars(ctx, outerP1x, outerP1y, outerP2x, outerP2y, viewport, state);
     }
     const dx = innerP2x - innerP1x;
     const dy = innerP2y - innerP1y;
@@ -1283,16 +1301,16 @@ export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, f
         const tx = dx / len;
         const ty = dy / len;
         if (isOutwardFaceTowardViewer((outerP1x + innerP1x) * 0.5, (outerP1y + innerP1y) * 0.5, -tx, -ty, viewerX, viewerY)) {
-            face.atlasFaceKind = WALL_ATLAS_FACE_END0;
-            drawProjectedWallFaceScalars(ctx, outerP1x, outerP1y, innerP1x, innerP1y, viewport, state, face);
+            wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_END0;
+            drawProjectedWallFaceScalars(ctx, outerP1x, outerP1y, innerP1x, innerP1y, viewport, state);
         }
         if (isOutwardFaceTowardViewer((innerP2x + outerP2x) * 0.5, (innerP2y + outerP2y) * 0.5, tx, ty, viewerX, viewerY)) {
-            face.atlasFaceKind = WALL_ATLAS_FACE_END1;
-            drawProjectedWallFaceScalars(ctx, innerP2x, innerP2y, outerP2x, outerP2y, viewport, state, face);
+            wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_END1;
+            drawProjectedWallFaceScalars(ctx, innerP2x, innerP2y, outerP2x, outerP2y, viewport, state);
         }
     }
-    face.atlasFaceKind = WALL_ATLAS_FACE_NONE;
-    if (!skipWallCaps) drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, face);
+    wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_NONE;
+    if (!skipWallCaps) drawProjectedRailWallCapFlat(ctx, data, base, viewport, state);
 }
 export function invalidateStaticGridEdgeRailDrawCache() {
     sBoxCache.wallGridRevision = -1;
@@ -1302,8 +1320,8 @@ export function invalidateStaticGridEdgeRailDrawCache() {
  * Projects wall faces via radial elevation projection and samples baked atlases from WorldSurfaceEngine.
  * Vertical bands: projectWorldPoint. Horizontal caps: box top ring + per-corner chunk UV.
  */
-function wallDrawMemoSlot(face) {
-    return (face.gridIdx * 4 + face.gridSide) * 5 + (face.atlasFaceKind | 0);
+function wallDrawMemoSlot() {
+    return (wallFaceI32[WF_I_GRID_IDX] * 4 + wallFaceI32[WF_I_GRID_SIDE]) * 5 + wallFaceI32[WF_I_ATLAS_FACE_KIND];
 }
 function syncWallFaceDrawMemoRevision(grid) {
     const slab = wallFaceDrawMemoSlab;
@@ -1391,18 +1409,20 @@ function computeFaceCornerElevatedInto(out8, offset, u, v, botBuf, botO, topBuf,
     out8[offset] = bx + (tx - bx) * v;
     out8[offset + 1] = by + (ty - by) * v;
 }
-function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
+function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state) {
     const worldSurfaces = state.worldSurfaces;
-    const { wallHeight, wallBaseZ, wallCapHeight } = face;
+    const wallHeight = wallFaceF32[WF_F_WALL_HEIGHT];
+    const wallBaseZ = wallFaceF32[WF_F_WALL_BASE_Z];
+    const wallCapHeight = wallFaceF32[WF_F_WALL_CAP_HEIGHT];
     const settings = worldSurfaces.settings;
-    const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.WallFace, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk, 0, 0, 0, face);
+    const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.WallFace, worldSurfaces.activeSurfaceProfileId, settings.cellsPerChunk, wallFaceI32[WF_I_GRID_IDX], wallFaceI32[WF_I_GRID_SIDE], wallFaceI32[WF_I_IS_EDGE_RAIL]);
     const seed = worldSurfaces.worldSurfaceSeed;
     const wallHeightKey = resolveWallCapHeightPx(wallCapHeight, settings);
     const canUseSideCache = !!(worldSurfaces.cacheKeys && worldSurfaces.surfaceSpace && worldSurfaces.worldSurfaceSeed !== undefined);
     let row = WALL_FACE_ATLAS_MISS;
     if (canUseSideCache) {
         syncWallFaceDrawMemoRevision(state.obstacleGrid);
-        row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot(face));
+        row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot());
     }
     const slab = wallFaceDrawMemoSlab;
     let canvases = null;
@@ -1449,7 +1469,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     if (!canvas) return WALL_FACE_ATLAS_SOLID;
     if (row < 0) {
         syncWallFaceDrawMemoRevision(state.obstacleGrid);
-        row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot(face));
+        row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot());
         const space = worldSurfaces.surfaceSpace;
         const b = space._boundsBank;
         const o = SS_POINTS;
@@ -1533,7 +1553,7 @@ function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, row, viewport) {
         }
     }
 }
-function resolveWallFaceSubdiv(face, row, viewport, grid, settings) {
+function resolveWallFaceSubdiv(row, viewport, grid, settings) {
     const camKey = Math.round(viewport.cameraHeight);
     const perspKey = Math.round(viewport.perspectiveStrength * 100);
     syncWallFaceDrawMemoRevision(grid);
@@ -1543,16 +1563,16 @@ function resolveWallFaceSubdiv(face, row, viewport, grid, settings) {
     slab.perspKey[row] = perspKey;
     return computeWallFaceSubdivInto(row, settings, viewport);
 }
-function drawFaceTextureScalars(ctx, x1, y1, x2, y2, botBuf, botO, topBuf, topO, viewport, state, face) {
+function drawFaceTextureScalars(ctx, x1, y1, x2, y2, botBuf, botO, topBuf, topO, viewport, state) {
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
-    const row = resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face);
+    const row = resolveWallFaceAtlasScalars(x1, y1, x2, y2, state);
     if (row === WALL_FACE_ATLAS_MISS) return;
     if (row === WALL_FACE_ATLAS_SOLID) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
         return;
     }
-    const subdivRow = resolveWallFaceSubdiv(face, row, viewport, state.obstacleGrid, state.worldSurfaces.settings);
+    const subdivRow = resolveWallFaceSubdiv(row, viewport, state.obstacleGrid, state.worldSurfaces.settings);
     if (subdivRow === WALL_FACE_SUBDIV_NONE) {
         ctx.fillStyle = fillStyle;
         ctx.fill();
@@ -1560,8 +1580,9 @@ function drawFaceTextureScalars(ctx, x1, y1, x2, y2, botBuf, botO, topBuf, topO,
     }
     blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, subdivRow, viewport);
 }
-export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
-    const { wallHeight, wallBaseZ } = face;
+export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state) {
+    const wallHeight = wallFaceF32[WF_F_WALL_HEIGHT];
+    const wallBaseZ = wallFaceF32[WF_F_WALL_BASE_Z];
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     const topZ = wallBaseZ + wallHeight;
     projectWallFaceBandInto(ENGINE_F32, R_FACE_BAND_BOT, x1, y1, x2, y2, wallBaseZ, viewport);
@@ -1570,7 +1591,7 @@ export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, stat
     if (state.worldSurfaces) {
         ctx.save();
         ctx.clip();
-        drawFaceTextureScalars(ctx, x1, y1, x2, y2, ENGINE_F32, R_FACE_BAND_BOT, ENGINE_F32, R_FACE_BAND_TOP, viewport, state, face);
+        drawFaceTextureScalars(ctx, x1, y1, x2, y2, ENGINE_F32, R_FACE_BAND_BOT, ENGINE_F32, R_FACE_BAND_TOP, viewport, state);
         ctx.restore();
     } else {
         ctx.fillStyle = fillStyle;
@@ -1598,7 +1619,7 @@ function blitHorizontalCapSampleFlat(ctx, dest8, src8, canvas) {
     drawImageTriangleWithBaseTransformScalars(ctx, canvas, src8[2], src8[3], src8[4], src8[5], src8[6], src8[7], dest8[2], dest8[3], dest8[4], dest8[5], dest8[6], dest8[7], baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
     ctx.restore();
 }
-export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state, face) {
+export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state) {
     const worldSurfaces = state.worldSurfaces;
     const fillStyle = gameWorldSurfaceSettings.floorShadow;
     projectRailWallTopCornersIntoFlat(rCapCorners, data, base, viewport);
@@ -1741,26 +1762,15 @@ export function createConveyorDraw(options = {}) {
 }
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 const match3d = (p) => p.strategy?.renderMode === PROP_RENDER_MODE_3D;
-function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
-    scratch.atlasFaceKind = WALL_ATLAS_FACE_NONE;
+function bindWallFaceScratchFlat(kind, baseIndex) {
     if (kind === DRAW_KIND_RAIL) {
         const d = getRailWallBoxData();
         const b = baseIndex;
-        scratch.wallHeight = d[b + RAIL_BOX.wallHeight];
-        scratch.wallBaseZ = d[b + RAIL_BOX.wallBaseZ];
-        scratch.wallCapHeight = d[b + RAIL_BOX.wallCapHeight];
-        scratch.gridSide = d[b + RAIL_BOX.gridSide];
-        scratch.gridIdx = d[b + RAIL_BOX.gridIdx];
-        scratch.isEdgeRail = true;
+        writeWallFaceScratch(d[b + RAIL_BOX.wallHeight], d[b + RAIL_BOX.wallBaseZ], d[b + RAIL_BOX.wallCapHeight], d[b + RAIL_BOX.gridSide], d[b + RAIL_BOX.gridIdx], true);
     } else if (kind === DRAW_KIND_VOXEL) {
         const d = getVoxelWallFaceData();
         const b = baseIndex;
-        scratch.wallHeight = d[b + VOXEL_FACE.wallHeight];
-        scratch.wallBaseZ = d[b + VOXEL_FACE.wallBaseZ];
-        scratch.wallCapHeight = d[b + VOXEL_FACE.wallCapHeight];
-        scratch.gridSide = d[b + VOXEL_FACE.gridSide];
-        scratch.gridIdx = d[b + VOXEL_FACE.gridIdx];
-        scratch.isEdgeRail = false;
+        writeWallFaceScratch(d[b + VOXEL_FACE.wallHeight], d[b + VOXEL_FACE.wallBaseZ], d[b + VOXEL_FACE.wallCapHeight], d[b + VOXEL_FACE.gridSide], d[b + VOXEL_FACE.gridIdx], false);
     }
 }
 function prepareWallChunkPropTextures(state, prop) {
@@ -1779,7 +1789,6 @@ function prepareWallChunkPropTextures(state, prop) {
 export class WorldSceneRenderer {
     constructor() {
         this.visibleDrawQueue = new VisibleDrawQueue();
-        this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, atlasFaceKind: WALL_ATLAS_FACE_NONE, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     _appendVisible3dProps(state, viewport) {
         const count = state.entityRegistry.queryViewTier(state.spatialFrame, VIEW_TIER_PROPS, "3d", match3d);
@@ -1799,7 +1808,6 @@ export class WorldSceneRenderer {
     }
     draw3DBuildings(ctx, state, viewport, options = {}) {
         const q = this.visibleDrawQueue;
-        const face = this.wallFaceScratch;
         q.clear();
         this._appendVisible3dProps(state, viewport);
         const skipWalls = options.skipWalls === true;
@@ -1814,11 +1822,11 @@ export class WorldSceneRenderer {
             const ref = q.refs[i];
             if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, flatProps, radialSpheres);
             else if (kind === DRAW_KIND_VOXEL) {
-                bindWallFaceScratchFlat(face, DRAW_KIND_VOXEL, baseIndex);
-                drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state, face);
+                bindWallFaceScratchFlat(DRAW_KIND_VOXEL, baseIndex);
+                drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state);
             } else if (kind === DRAW_KIND_RAIL) {
-                bindWallFaceScratchFlat(face, DRAW_KIND_RAIL, baseIndex);
-                drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, face, skipWallCaps);
+                bindWallFaceScratchFlat(DRAW_KIND_RAIL, baseIndex);
+                drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, skipWallCaps);
             }
         }
     }

@@ -8,6 +8,7 @@ const hotDirs = [
     "Libraries/Math",
     "Libraries/Viewport",
     "Libraries/Sandbox",
+    "Libraries/Render",
 ];
 const allowDirs = ["Libraries/Input", "Libraries/Procedural", "Libraries/Workers"];
 const exportRe = /^export (?:async )?(?:function|const|class) (\w+)/gm;

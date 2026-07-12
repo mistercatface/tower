@@ -8,6 +8,7 @@ const hotDirs = [
     "Libraries/Math",
     "Libraries/Viewport",
     "Libraries/Sandbox",
+    "Libraries/Render",
 ];
 const reboxRe = /\{\s*(?:x|y|x1|y1|minX|maxX|col|row|desiredX|desiredY|cx|cy)\s*:\s*ENGINE_F32\[/;
 const moduleScratchRe = /\bconst [A-Z][A-Z0-9_]*_SCRATCH\b/;

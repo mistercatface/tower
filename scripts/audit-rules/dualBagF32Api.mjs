@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math", "Libraries/Viewport"];
+const hotDirs = ["Libraries/Spatial", "Libraries/Physics", "Libraries/Navigation", "Libraries/Math", "Libraries/Viewport", "Libraries/Render"];
 const exportFnRe = /export (?:async )?function (\w+)\b/g;
 
 export const id = "dual-bag-f32-api";

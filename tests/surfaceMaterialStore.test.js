@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
-import { drawProjectedWallFaceScalars } from "../Libraries/Render/render.js";
+import { drawProjectedWallFaceScalars, writeWallFaceScratch } from "../Libraries/Render/render.js";
 import { resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { minCornerAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP } from "../Core/engineMemory.js";
@@ -80,17 +80,8 @@ describe("surface material stores", () => {
             },
         };
         const viewport = { x: 0, y: 0, cameraHeight: 256, perspectiveStrength: 1 };
-        const face = {
-            gridCol: 1,
-            gridRow: 1,
-            gridSide: 1,
-            gridIdx: worldIdxAtCell(grid,1, 1),
-            isEdgeRail: true,
-            wallHeight: 16,
-            wallBaseZ: 0,
-            wallCapHeight: 16,
-        };
-        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
+        writeWallFaceScratch(16, 0, 16, 1, worldIdxAtCell(grid, 1, 1), true);
+        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state);
         assert.equal(capturedProfileId, "edge-profile");
     });
 
@@ -114,17 +105,8 @@ describe("surface material stores", () => {
             },
         };
         const viewport = { x: 0, y: 0, cameraHeight: 256, perspectiveStrength: 1 };
-        const face = {
-            gridCol: 1,
-            gridRow: 1,
-            gridSide: 1,
-            gridIdx: idx,
-            isEdgeRail: false,
-            wallHeight: 16,
-            wallBaseZ: 0,
-            wallCapHeight: 16,
-        };
-        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
+        writeWallFaceScratch(16, 0, 16, 1, idx, false);
+        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state);
         assert.equal(capturedProfileId, "cell-profile");
     });
 
@@ -146,17 +128,9 @@ describe("surface material stores", () => {
             },
         };
         const viewport = { x: 0, y: 0, cameraHeight: 256, perspectiveStrength: 1 };
-        const face = {
-            gridCol: 9,
-            gridRow: 9,
-            gridSide: 1,
-            gridIdx: worldIdxAtCell(grid,9, 9),
-            isEdgeRail: false,
-            wallHeight: 16,
-            wallBaseZ: 0,
-            wallCapHeight: 16,
-        };
-        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state, face);
+        const idx = worldIdxAtCell(grid, 9, 9);
+        writeWallFaceScratch(16, 0, 16, 1, idx, false);
+        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state);
         assert.equal(capturedProfileId, "chunk-profile");
     });
 
