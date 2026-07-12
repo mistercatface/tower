@@ -37,25 +37,24 @@ describe("tile bake metrics", () => {
         const accumulator = new TileBakeMetricsAccumulator(2);
         assert.deepEqual(accumulator.averages(), { ...EMPTY_BAKE_TIMING_STATS });
         accumulator.record({
-            phases: { sampleFillMs: 2, composeStaticMs: 10, composeFrameMs: 0, rgbaCopyMs: 1, transferMs: 3 },
+            phases: { sampleFillMs: 2, composeStaticMs: 10, rgbaCopyMs: 1, transferMs: 3 },
             noise: { callsPerPixel: 4, hitRate: 0.5, overflowRate: 0.1 },
         });
         accumulator.record({
-            phases: { sampleFillMs: 4, composeStaticMs: 20, composeFrameMs: 6, rgbaCopyMs: 2, transferMs: 5 },
+            phases: { sampleFillMs: 4, composeStaticMs: 20, rgbaCopyMs: 2, transferMs: 5 },
             noise: { callsPerPixel: 6, hitRate: 0.25, overflowRate: 0.2 },
         });
         const avg = accumulator.averages();
         assert.equal(avg.sampleCount, 2);
         assert.equal(avg.sampleFillMs, 3);
         assert.equal(avg.composeStaticMs, 15);
-        assert.equal(avg.composeFrameMs, 3);
         assert.equal(avg.rgbaCopyMs, 1.5);
         assert.equal(avg.transferMs, 4);
         assert.equal(avg.noiseCallsPerPixel, 5);
         assert.equal(avg.noiseHitRate, 0.375);
         assert.ok(Math.abs(avg.noiseOverflowRate - 0.15) < 1e-9);
         accumulator.record({
-            phases: { sampleFillMs: 0, composeStaticMs: 0, composeFrameMs: 0, rgbaCopyMs: 0, transferMs: 0 },
+            phases: { sampleFillMs: 0, composeStaticMs: 0, rgbaCopyMs: 0, transferMs: 0 },
             noise: { callsPerPixel: 0, hitRate: 0, overflowRate: 0 },
         });
         assert.equal(accumulator.averages().sampleCount, 2);
@@ -73,7 +72,7 @@ describe("tile bake metrics", () => {
             id: 1,
             bitmaps: [],
             metrics: {
-                phases: { sampleFillMs: 1, composeStaticMs: 8, composeFrameMs: 0, rgbaCopyMs: 2, transferMs: 1 },
+                phases: { sampleFillMs: 1, composeStaticMs: 8, rgbaCopyMs: 2, transferMs: 1 },
                 noise: { callsPerPixel: 3, hitRate: 0.4, overflowRate: 0.05, calls: 300, hits: 120, overflows: 15, numPixels: 100 },
             },
         });

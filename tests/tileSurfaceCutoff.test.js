@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey, WorldSurfaceEngine, TileWorkerCoordinator } from "../Libraries/WorldSurface/worldSurface.js";
+import { SurfaceBakeCacheKeys, groundChunkWorkerDedupeKey, WorldSurfaceEngine, TileWorkerCoordinator, SS_POINTS } from "../Libraries/WorldSurface/worldSurface.js";
 import { SurfaceSpatialMap } from "../Libraries/WorldSurface/worldSurface.js";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { createSurfaceBakeTestState } from "./harness/stateFactories.js";
@@ -41,7 +41,7 @@ describe("surface tile cutoff", () => {
         const surfaceSpace = createSurfaceSpace();
         surfaceSpace.writeWallAtlasWrap(512, 0, 528, 0);
         const b = surfaceSpace._boundsBank;
-        const o = 4;
+        const o = SS_POINTS;
         assert.equal(b[o], 0);
         assert.equal(b[o + 1], 0);
         assert.equal(b[o + 2], 16);

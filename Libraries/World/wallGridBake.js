@@ -1,4 +1,4 @@
-import { cellIdxToChunkKey, boundsToCellRect, forEachObstacleGridCellInAabbF32, GRID_SIDE_NX, GRID_SIDE_NY } from "../Spatial/spatial.js";
+import { cellIdxToChunkKey, boundsToCellRectInto, forEachObstacleGridCellInAabbF32, GRID_SIDE_NX, GRID_SIDE_NY } from "../Spatial/spatial.js";
 import { railWallEdgeAt, neighborFillLevel, resolveCellWallHeightAtIdx, edgeNeighborIdx, cellEdgeEndpointsIdx, edgeRailEmitOwner, railWallEdgeShouldEmit } from "../Spatial/spatial.js";
 import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spatial/spatial.js";
 import { gridSettings } from "../../Config/world.js";
@@ -6,6 +6,7 @@ import { StrideFloatList } from "./StrideFloatList.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y } from "../../Core/engineMemory.js";
 export const RAIL_BOX = { chunkKey: 0, gridIdx: 1, gridSide: 2, minX: 3, minY: 4, maxX: 5, maxY: 6, innerP1x: 7, innerP1y: 8, innerP2x: 9, innerP2y: 10, outerP1x: 11, outerP1y: 12, outerP2x: 13, outerP2y: 14, inwardX: 15, inwardY: 16, wallBaseZ: 17, wallHeight: 18, wallCapHeight: 19, edgeThickness: 20, cx: 21, cy: 22 };
 export const RAIL_BOX_STRIDE = 23;
+const CHUNK_CELL_RECT = new Int32Array(4);
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
     return faceHeight > neighborCap;
@@ -375,13 +376,13 @@ export function resolveWallCapHeightPx(capHeight, settings) {
     return capHeight ?? defaultWallCapPx(settings);
 }
 export function chunkHasStaticRoofAtLevel(obstacleGrid, buf, o, zLevel) {
-    const rect = boundsToCellRect(buf[o] - obstacleGrid.minX, buf[o + 1] - obstacleGrid.minY, buf[o + 2] - obstacleGrid.minX - 1e-6, buf[o + 3] - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+    boundsToCellRectInto(CHUNK_CELL_RECT, 0, buf[o] - obstacleGrid.minX, buf[o + 1] - obstacleGrid.minY, buf[o + 2] - obstacleGrid.minX - 1e-6, buf[o + 3] - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
     const cols = obstacleGrid.cols;
     const rows = obstacleGrid.rows;
-    const startCol = Math.max(0, rect.minCol);
-    const endCol = Math.min(cols - 1, rect.maxCol);
-    const startRow = Math.max(0, rect.minRow);
-    const endRow = Math.min(rows - 1, rect.maxRow);
+    const startCol = Math.max(0, CHUNK_CELL_RECT[0]);
+    const endCol = Math.min(cols - 1, CHUNK_CELL_RECT[1]);
+    const startRow = Math.max(0, CHUNK_CELL_RECT[2]);
+    const endRow = Math.min(rows - 1, CHUNK_CELL_RECT[3]);
     for (let r = startRow; r <= endRow; r++) {
         const rowOffset = r * cols;
         for (let c = startCol; c <= endCol; c++) if (resolveCellWallHeightAtIdx(obstacleGrid, rowOffset + c) === zLevel) return true;
@@ -392,13 +393,13 @@ export function chunkHasStaticStructureAtLevel(obstacleGrid, buf, o, zLevel) {
     return chunkHasStaticRoofAtLevel(obstacleGrid, buf, o, zLevel) || chunkHasStaticEdgeRailsAtLevel(obstacleGrid, buf, o, zLevel);
 }
 export function chunkHasStaticEdgeRailsAtLevel(obstacleGrid, buf, o, zLevel) {
-    const rect = boundsToCellRect(buf[o] - obstacleGrid.minX, buf[o + 1] - obstacleGrid.minY, buf[o + 2] - obstacleGrid.minX - 1e-6, buf[o + 3] - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
+    boundsToCellRectInto(CHUNK_CELL_RECT, 0, buf[o] - obstacleGrid.minX, buf[o + 1] - obstacleGrid.minY, buf[o + 2] - obstacleGrid.minX - 1e-6, buf[o + 3] - obstacleGrid.minY - 1e-6, obstacleGrid.cellSize);
     const cols = obstacleGrid.cols;
     const rows = obstacleGrid.rows;
-    const startCol = Math.max(0, rect.minCol);
-    const endCol = Math.min(cols - 1, rect.maxCol);
-    const startRow = Math.max(0, rect.minRow);
-    const endRow = Math.min(rows - 1, rect.maxRow);
+    const startCol = Math.max(0, CHUNK_CELL_RECT[0]);
+    const endCol = Math.min(cols - 1, CHUNK_CELL_RECT[1]);
+    const startRow = Math.max(0, CHUNK_CELL_RECT[2]);
+    const endRow = Math.min(rows - 1, CHUNK_CELL_RECT[3]);
     for (let r = startRow; r <= endRow; r++) {
         const rowOffset = r * cols;
         for (let c = startCol; c <= endCol; c++) {

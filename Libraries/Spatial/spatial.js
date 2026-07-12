@@ -20,7 +20,6 @@ export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     if (dc === -1 && dr === 0) return 3;
     throw new Error(`gridSideFromCellToNeighbor: non-cardinal step ${dc},${dr}`);
 }
-/** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 const EMPTY_WALL_CANDIDATES = new GrowI32(0);
 /**
  * Duck-typed per-tick spatial frame: entity grid, neighbor cache, wall segment cache.
@@ -211,7 +210,7 @@ export function collectExposedWallEdges(grid, out) {
     for (let idx = 0; idx < cellCount; idx++) pushExposedWallEdgesForCell(grid, idx, out);
 }
 /** Same as collectExposedWallEdges but only visits wall cells overlapping the world AABB. */
-export function collectExposedWallEdgesInAabb(grid, buf, o, out) {
+export function collectExposedWallEdgesInAabbF32(grid, buf, o, out) {
     forEachObstacleGridCellInAabbF32(grid, buf, o, (idx) => {
         pushExposedWallEdgesForCell(grid, idx, out);
     });
@@ -348,20 +347,16 @@ export function getCellBoundsInCenteredFrame(buf, o, frame, idx) {
     const minY = row * frame.cellSize + frame.centerY - frame.offsetY;
     minCornerAabbF32(buf, o, minX, minY, frame.cellSize, frame.cellSize);
 }
-/**
- * Visit each obstacle-grid cell overlapping a world AABB.
- * @param {{ minX: number, minY: number, cols: number, rows: number, cellSize: number }} grid
- * @param {import("../../Math/Aabb2D.js").Aabb2D} aabb
- * @param {(idx: number) => void} fn
- */
+/** Visit each obstacle-grid cell overlapping a world AABB `(buf, o)`. */
+const CELL_RECT_SCRATCH = new Int32Array(4);
 export function forEachObstacleGridCellInAabbF32(grid, buf, o, fn) {
-    const rect = boundsToCellRect(buf[o] - grid.minX, buf[o + 1] - grid.minY, buf[o + 2] - grid.minX - 1e-6, buf[o + 3] - grid.minY - 1e-6, grid.cellSize);
+    boundsToCellRectInto(CELL_RECT_SCRATCH, 0, buf[o] - grid.minX, buf[o + 1] - grid.minY, buf[o + 2] - grid.minX - 1e-6, buf[o + 3] - grid.minY - 1e-6, grid.cellSize);
     const cols = grid.cols;
     const rows = grid.rows;
-    const startCol = Math.max(0, rect.minCol);
-    const endCol = Math.min(cols - 1, rect.maxCol);
-    const startRow = Math.max(0, rect.minRow);
-    const endRow = Math.min(rows - 1, rect.maxRow);
+    const startCol = Math.max(0, CELL_RECT_SCRATCH[0]);
+    const endCol = Math.min(cols - 1, CELL_RECT_SCRATCH[1]);
+    const startRow = Math.max(0, CELL_RECT_SCRATCH[2]);
+    const endRow = Math.min(rows - 1, CELL_RECT_SCRATCH[3]);
     forEachCellInColRowBounds(startCol, endCol, startRow, endRow, cols, (c, r, idx) => fn(idx));
 }
 // Viewer-relative radial elevation projection (WORLD_RENDER_MODE_RADIAL).
@@ -1508,7 +1503,6 @@ export class WorldObstacleGrid {
         buf[o + 3] = minY + this.cellSize;
     }
 }
-/** @typedef {import("../../Math/Aabb2D.js").Aabb2D} Aabb2D */
 let entityGridQueryGen = 1;
 export class EntityGrid {
     constructor(cellSize) {
@@ -2023,7 +2017,7 @@ export function commitWallCandidateBucket(slab, slot, keyLo, keyHi, frameId, rev
 /**
  * Packed (col, row) key for sparse unbounded grids.
  *
- * World AABB → cell index range uses minCol/maxCol/minRow/maxRow (see boundsToCellRect).
+ * World AABB → cell index range uses minCol/maxCol/minRow/maxRow via boundsToCellRectInto.
  * Wall bake / obstacle patches use startCol/endCol/startRow/endRow — same indices as {@link CellBounds} in CellRect.js.
  */
 export const KEY_STRIDE = 65536;
@@ -2039,9 +2033,6 @@ export function packEdgeCellKey(col, row, side) {
 }
 /** @param {number} key from `packEdgeCellKey` */
 /** @param {number} key */
-export function boundsToCellRect(minX, minY, maxX, maxY, cellSize) {
-    return { minCol: Math.floor(minX / cellSize), maxCol: Math.floor(maxX / cellSize), minRow: Math.floor(minY / cellSize), maxRow: Math.floor(maxY / cellSize) };
-}
 export function boundsToCellRectInto(i32, o, minX, minY, maxX, maxY, cellSize) {
     i32[o] = Math.floor(minX / cellSize);
     i32[o + 1] = Math.floor(maxX / cellSize);

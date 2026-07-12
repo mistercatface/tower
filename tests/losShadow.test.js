@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { traceWoundFlatQuad } from "../Libraries/Canvas/canvas.js";
 import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabbF32, EdgeList } from "../Libraries/Render/render.js";
-import {  collectExposedWallEdges, collectExposedWallEdgesInAabb  } from "../Libraries/Spatial/spatial.js";
+import {  collectExposedWallEdges, collectExposedWallEdgesInAabbF32  } from "../Libraries/Spatial/spatial.js";
 import {  projectWorldPointToScreen, projectWallShadowQuadScreen, shadowGroundContact  } from "../Libraries/Spatial/spatial.js";
 import { ENGINE_F32, S_OUT_SCREEN, S_OUT_XY, S_QUAD } from "../Core/engineMemory.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
@@ -116,19 +116,19 @@ describe("collectExposedWallEdges", () => {
         collectExposedWallEdges(grid, edges);
         assert.equal(edges.length, 6);
     });
-    it("collectExposedWallEdgesInAabb skips wall cells outside the query box", () => {
+    it("collectExposedWallEdgesInAabbF32 skips wall cells outside the query box", () => {
         const grid = makeTestObstacleGrid(32, 32);
         stampWallRect(grid, 2, 2, 1, 1);
         stampWallRect(grid, 28, 28, 1, 1);
         const near = new EdgeList();
         const bufNear = new Float32Array([0, 0, 128, 128]);
-        collectExposedWallEdgesInAabb(grid, bufNear, 0, near);
+        collectExposedWallEdgesInAabbF32(grid, bufNear, 0, near);
         const far = new EdgeList();
         const bufFar = new Float32Array([400, 400, 512, 512]);
-        collectExposedWallEdgesInAabb(grid, bufFar, 0, far);
+        collectExposedWallEdgesInAabbF32(grid, bufFar, 0, far);
         const empty = new EdgeList();
         const bufEmpty = new Float32Array([200, 200, 280, 280]);
-        collectExposedWallEdgesInAabb(grid, bufEmpty, 0, empty);
+        collectExposedWallEdgesInAabbF32(grid, bufEmpty, 0, empty);
         assert.equal(near.length, 4);
         assert.equal(far.length, 4);
         assert.equal(empty.length, 0);
@@ -153,7 +153,7 @@ describe("collectRailWallShadowEdgesInAabbF32", () => {
         assert.equal(voxelEdges.length, 3);
         const all = new EdgeList();
         const buf = new Float32Array([0, 0, 512, 512]);
-        collectExposedWallEdgesInAabb(grid, buf, 0, all);
+        collectExposedWallEdgesInAabbF32(grid, buf, 0, all);
         collectRailWallShadowEdgesInAabbF32(grid, buf, 0, all);
         assert.equal(all.length, 3 + 4);
     });
@@ -167,7 +167,7 @@ describe("losShadowEdges", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampWallRect(grid, 4, 4, 1, 1);
         const edges = new EdgeList();
-        collectExposedWallEdgesInAabb(grid, { minX: 0, minY: 0, maxX: 256, maxY: 256 }, edges);
+        collectExposedWallEdgesInAabbF32(grid, new Float32Array([0, 0, 256, 256]), 0, edges);
         const viewport = makeTestViewport(128, 128);
         const scratch = new Float32Array(8);
         const quads = [];

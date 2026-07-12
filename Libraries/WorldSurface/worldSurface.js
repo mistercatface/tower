@@ -22,7 +22,7 @@ export function bumpSurfaceProfileRevision(profileId) {
     return rev;
 }
 export const TILE_WORKER_MESSAGE = { CONFIGURE_BAKE_CONSTANTS: "configureBakeConstants", BAKE_GROUND_CHUNK: "bakeGroundChunk", BAKE_WALL_ATLAS: "bakeWallAtlas", REGISTER_RUNTIME_PROFILE: "registerRuntimeProfile" };
-export const EMPTY_BAKE_TIMING_STATS = { sampleCount: 0, sampleFillMs: 0, composeStaticMs: 0, composeFrameMs: 0, rgbaCopyMs: 0, transferMs: 0, noiseCallsPerPixel: 0, noiseHitRate: 0, noiseOverflowRate: 0 };
+export const EMPTY_BAKE_TIMING_STATS = { sampleCount: 0, sampleFillMs: 0, composeStaticMs: 0, rgbaCopyMs: 0, transferMs: 0, noiseCallsPerPixel: 0, noiseHitRate: 0, noiseOverflowRate: 0 };
 let tileBakeMetricsEnabled = false;
 export function isTileBakeMetricsEnabled() {
     return tileBakeMetricsEnabled;
@@ -32,7 +32,7 @@ export function setTileBakeMetricsEnabled(enabled) {
     setNoiseProfileEnabled(enabled);
 }
 export function createEmptyBakePhases() {
-    return { sampleFillMs: 0, composeStaticMs: 0, composeFrameMs: 0, rgbaCopyMs: 0, transferMs: 0 };
+    return { sampleFillMs: 0, composeStaticMs: 0, rgbaCopyMs: 0, transferMs: 0 };
 }
 export function createNoiseProfileSnapshot(profile, numPixels) {
     const calls = profile.calls;
@@ -55,7 +55,6 @@ export class TileBakeMetricsAccumulator {
         if (this.samples.length === 0) return { ...EMPTY_BAKE_TIMING_STATS };
         let sampleFillMs = 0;
         let composeStaticMs = 0;
-        let composeFrameMs = 0;
         let rgbaCopyMs = 0;
         let transferMs = 0;
         let noiseCallsPerPixel = 0;
@@ -67,20 +66,19 @@ export class TileBakeMetricsAccumulator {
             const phases = sample.phases;
             sampleFillMs += phases.sampleFillMs;
             composeStaticMs += phases.composeStaticMs;
-            composeFrameMs += phases.composeFrameMs;
             rgbaCopyMs += phases.rgbaCopyMs;
             transferMs += phases.transferMs ?? 0;
             noiseCallsPerPixel += sample.noise.callsPerPixel;
             noiseHitRate += sample.noise.hitRate;
             noiseOverflowRate += sample.noise.overflowRate;
         }
-        return { sampleCount: n, sampleFillMs: sampleFillMs / n, composeStaticMs: composeStaticMs / n, composeFrameMs: composeFrameMs / n, rgbaCopyMs: rgbaCopyMs / n, transferMs: transferMs / n, noiseCallsPerPixel: noiseCallsPerPixel / n, noiseHitRate: noiseHitRate / n, noiseOverflowRate: noiseOverflowRate / n };
+        return { sampleCount: n, sampleFillMs: sampleFillMs / n, composeStaticMs: composeStaticMs / n, rgbaCopyMs: rgbaCopyMs / n, transferMs: transferMs / n, noiseCallsPerPixel: noiseCallsPerPixel / n, noiseHitRate: noiseHitRate / n, noiseOverflowRate: noiseOverflowRate / n };
     }
 }
 export function formatTileBakeMetricsLog(type, metrics, transferMs = 0) {
     const phases = metrics.phases;
     const noise = metrics.noise;
-    return `[TileWorker] ${type} | sampleFill: ${phases.sampleFillMs.toFixed(2)}ms` + ` | composeStatic: ${phases.composeStaticMs.toFixed(2)}ms` + ` | composeFrame: ${phases.composeFrameMs.toFixed(2)}ms` + ` | rgbaCopy: ${phases.rgbaCopyMs.toFixed(2)}ms` + ` | transfer: ${transferMs.toFixed(2)}ms` + ` | noise: ${noise.callsPerPixel.toFixed(2)} calls/px` + ` hit ${(noise.hitRate * 100).toFixed(1)}%` + ` overflow ${(noise.overflowRate * 100).toFixed(1)}%` + ` (${metrics.numPixels}px)`;
+    return `[TileWorker] ${type} | sampleFill: ${phases.sampleFillMs.toFixed(2)}ms` + ` | composeStatic: ${phases.composeStaticMs.toFixed(2)}ms` + ` | rgbaCopy: ${phases.rgbaCopyMs.toFixed(2)}ms` + ` | transfer: ${transferMs.toFixed(2)}ms` + ` | noise: ${noise.callsPerPixel.toFixed(2)} calls/px` + ` hit ${(noise.hitRate * 100).toFixed(1)}%` + ` overflow ${(noise.overflowRate * 100).toFixed(1)}%` + ` (${metrics.numPixels}px)`;
 }
 export function horizontalZCacheTag(zLevel = 0) {
     return zLevel > 0 ? `z${zLevel}roof` : `z${zLevel}`;
@@ -129,28 +127,13 @@ const WALL_CHUNK_TEXTURE_SAMPLE_CHUNK = 0;
 function positiveModulo(value, period) {
     return ((value % period) + period) % period;
 }
-/** SurfaceSpatialMap._boundsBank: SS_CELL=0, SS_POINTS=4, SS_CHUNK=8, SS_DRAW=12, SS_AXES=16 (edgeLen,dirX,dirY,foldX,foldY). */
-export const SS_CELL = 0;
-export const SS_POINTS = 4;
-export const SS_CHUNK = 8;
-export const SS_DRAW = 12;
-export const SS_AXES = 16;
+/** SurfaceSpatialMap._boundsBank: SS_POINTS=0 (wrapped wall atlas AABB), SS_CHUNK=4. */
+export const SS_POINTS = 0;
+export const SS_CHUNK = 4;
 export class SurfaceSpatialMap {
     constructor(settings) {
         this.settings = settings;
-        this._boundsBank = new Float32Array(24);
-    }
-    get _cellBoundsO() {
-        return SS_CELL;
-    }
-    get _pointsO() {
-        return SS_POINTS;
-    }
-    get _chunkBoundsO() {
-        return SS_CHUNK;
-    }
-    get chunkDrawBoundsO() {
-        return SS_DRAW;
+        this._boundsBank = new Float32Array(8);
     }
     chunkSizePx(obstacleGrid, cellsPerChunk = this.settings.cellsPerChunk) {
         return obstacleGrid.cellSize * cellsPerChunk;
@@ -186,28 +169,6 @@ export class SurfaceSpatialMap {
         b[o + 1] = wy1;
         b[o + 2] = wx1 + (x2 - x1);
         b[o + 3] = wy1 + (y2 - y1);
-    }
-    writeWallFaceAxes(x1, y1, x2, y2) {
-        const b = this._boundsBank;
-        const o = SS_AXES;
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const edgeLen = Math.hypot(dx, dy);
-        if (edgeLen <= 0) {
-            b[o] = 0;
-            b[o + 1] = 0;
-            b[o + 2] = 0;
-            b[o + 3] = 0;
-            b[o + 4] = 0;
-            return;
-        }
-        const dirX = dx / edgeLen;
-        const dirY = dy / edgeLen;
-        b[o] = edgeLen;
-        b[o + 1] = dirX;
-        b[o + 2] = dirY;
-        b[o + 3] = -dirY;
-        b[o + 4] = dirX;
     }
     sampleFlatHorizontal(worldCorners8, obstacleGrid) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid);
@@ -712,10 +673,6 @@ export class BakeSession {
     }
 }
 export const globalBakeSession = new BakeSession();
-function resolvePaintProfile(profileOrId) {
-    if (profileOrId != null && typeof profileOrId === "object") return profileOrId;
-    return resolveSurfaceProfile(profileOrId);
-}
 function writeFloorPixel(session, idx, x, y) {
     const invBakeScale = session.invBakeScale;
     session.evalX[idx] = session.startWorldX + x * invBakeScale;
@@ -781,10 +738,10 @@ function fillPaintRows(bakeSession, width, height, writePixel) {
             idx++;
         }
 }
-export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, profileOrId, bakeSession = globalBakeSession) {
+export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, profileId, bakeSession = globalBakeSession) {
     const metricsOn = isTileBakeMetricsEnabled();
     if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
-    const profile = resolvePaintProfile(profileOrId);
+    const profile = resolveSurfaceProfile(profileId);
     bakeSession.startWorldX = startWorldX;
     bakeSession.startWorldY = startWorldY;
     bakeSession.width = width;
@@ -929,6 +886,8 @@ export function clipChunkToFlatWallFootprintsF32(ctx, obstacleGrid, buf, o, zLev
  */
 const ELEVATED_CHUNK_ROOF = 0;
 const ELEVATED_CHUNK_FLAT_RAIL = 1;
+const ENGINE_DRAW_O = 0;
+const ENGINE_CHUNK_O = 4;
 export class WorldSurfaceEngine {
     constructor(settings) {
         this.settings = settings;
@@ -936,8 +895,16 @@ export class WorldSurfaceEngine {
         this.cacheKeys = new SurfaceBakeCacheKeys(this.surfaceSpace);
         this.surfaceCache = new SurfaceBitmapCache(settings.maxCachedSurfaces);
         this._engineBounds = new Float32Array(8);
-        this._chunkDraw = { ctx: null, obstacleGrid: null, viewport: null, state: null, zLevel: 0, beforeDraw: null };
-        this._visibleChunkFrame = { obstacleGrid: null, viewport: null, state: null, zLevel: 0, chunkKeyRange: { startKey: 0, endKey: 0 } };
+        this._drawCtx = null;
+        this._drawGrid = null;
+        this._drawViewport = null;
+        this._drawState = null;
+        this._drawZLevel = 0;
+        this._frameGrid = null;
+        this._frameViewport = null;
+        this._frameState = null;
+        this._frameZ = 0;
+        this._chunkKeyRange = { startKey: 0, endKey: 0 };
         this._resolvedChunkCanvas = null;
         this._wallChunkSideCanvas = null;
         this._wallChunkCapCanvas = null;
@@ -946,12 +913,6 @@ export class WorldSurfaceEngine {
         this.worldSurfaceSeed = (Math.random() * 0x100000000) >>> 0;
         this.bakeCooldowns = new Map();
         this.bakeFailCounts = new Map();
-    }
-    get chunkDrawBoundsO() {
-        return 0;
-    }
-    get _chunkBoundsO() {
-        return 4;
     }
     clearBakeCache() {
         this.surfaceCache.clear();
@@ -993,12 +954,12 @@ export class WorldSurfaceEngine {
             centerY = (b[o + 1] + b[o + 3]) / 2;
             tileChunkKey = chunkKey;
         } else {
-            this.surfaceSpace.chunkBoundsF32(this._engineBounds, this._chunkBoundsO, state.obstacleGrid, chunkKey);
+            this.surfaceSpace.chunkBoundsF32(this._engineBounds, ENGINE_CHUNK_O, state.obstacleGrid, chunkKey);
             const b = this._engineBounds;
-            const o = this._chunkBoundsO;
+            const o = ENGINE_CHUNK_O;
             centerX = (b[o] + b[o + 2]) / 2;
             centerY = (b[o + 1] + b[o + 3]) / 2;
-            this.surfaceSpace.tileChunkBoundsF32(this._engineBounds, this._chunkBoundsO, state.obstacleGrid, chunkKey);
+            this.surfaceSpace.tileChunkBoundsF32(this._engineBounds, ENGINE_CHUNK_O, state.obstacleGrid, chunkKey);
             minX = b[o];
             minY = b[o + 1];
             tileChunkKey = this.surfaceSpace.wrappedChunkKey(chunkKey);
@@ -1010,8 +971,7 @@ export class WorldSurfaceEngine {
         if (cached) return cached;
         const cooldown = this.bakeCooldowns.get(key);
         if (cooldown && performance.now() < cooldown) return null;
-        this.surfaceSpace.writeWallFaceAxes(x1, y1, x2, y2);
-        const edgeLen = this.surfaceSpace._boundsBank[SS_AXES];
+        const edgeLen = Math.hypot(x2 - x1, y2 - y1);
         if (edgeLen < 0.001) return null;
         const cellSize = this.settings.cellSize;
         const surfaceBakeScale = this.settings.surfaceBakeScale;
@@ -1087,13 +1047,11 @@ export class WorldSurfaceEngine {
         }
         return isDrawableBakedSurface(canvas) ? canvas : null;
     }
-    bindGroundChunkDraw(ctx, state, viewport, beforeDraw = null) {
-        const d = this._chunkDraw;
-        d.ctx = ctx;
-        d.obstacleGrid = state.obstacleGrid;
-        d.viewport = viewport;
-        d.state = state;
-        d.beforeDraw = beforeDraw;
+    bindGroundChunkDraw(ctx, state, viewport) {
+        this._drawCtx = ctx;
+        this._drawGrid = state.obstacleGrid;
+        this._drawViewport = viewport;
+        this._drawState = state;
     }
     drawGround(ctx, state, viewport) {
         this.bindGroundChunkDraw(ctx, state, viewport);
@@ -1110,30 +1068,28 @@ export class WorldSurfaceEngine {
         this.drawFlatRailFloorChunksForLevels(levels);
     }
     _beginVisibleChunkDraw() {
-        const d = this._chunkDraw;
-        const { ctx, obstacleGrid, viewport, zLevel, beforeDraw } = d;
+        const obstacleGrid = this._drawGrid;
+        const viewport = this._drawViewport;
         const chunkSizePx = this.surfaceSpace.chunkSizePx(obstacleGrid);
         const viewportBounds = viewBoundsBuf;
         let buf = viewportBounds;
         let o = VIEW_TIER_CHUNKS;
         if (obstacleGrid?.cols) {
             minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, obstacleGrid.minX, obstacleGrid.minY, obstacleGrid.cols * obstacleGrid.cellSize, obstacleGrid.rows * obstacleGrid.cellSize);
-            if (!intersectAabbOptionalF32(this._engineBounds, this.chunkDrawBoundsO, viewportBounds, VIEW_TIER_CHUNKS, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP)) return null;
+            if (!intersectAabbOptionalF32(this._engineBounds, ENGINE_DRAW_O, viewportBounds, VIEW_TIER_CHUNKS, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP)) return false;
             buf = this._engineBounds;
-            o = this.chunkDrawBoundsO;
+            o = ENGINE_DRAW_O;
         }
         TileWorkerCoordinator.updateFocus(viewport.x, viewport.y);
-        if (beforeDraw) beforeDraw(ctx, buf, o);
-        const frame = this._visibleChunkFrame;
-        frame.obstacleGrid = obstacleGrid;
-        frame.viewport = viewport;
-        frame.state = d.state;
-        frame.zLevel = zLevel;
-        this.surfaceSpace.writeViewportChunkKeyRange(frame.chunkKeyRange, buf, o, obstacleGrid, chunkSizePx);
-        return frame;
+        this._frameGrid = obstacleGrid;
+        this._frameViewport = viewport;
+        this._frameState = this._drawState;
+        this._frameZ = this._drawZLevel;
+        this.surfaceSpace.writeViewportChunkKeyRange(this._chunkKeyRange, buf, o, obstacleGrid, chunkSizePx);
+        return true;
     }
     _fillDrawableGroundChunkCanvas(chunkKey, zLevel) {
-        const state = this._chunkDraw.state;
+        const state = this._drawState;
         const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.Chunk, this.activeSurfaceProfileId, 0, chunkKey);
         const canvases = this.getGroundChunkCanvas(chunkKey, state, zLevel, false, profileId);
         const canvas = canvases ? canvases[0] : null;
@@ -1142,14 +1098,13 @@ export class WorldSurfaceEngine {
         return true;
     }
     drawGroundPlaneChunks() {
-        const d = this._chunkDraw;
-        d.zLevel = 0;
-        const frame = this._beginVisibleChunkDraw();
-        if (!frame) return;
-        const ctx = d.ctx;
-        const { obstacleGrid, chunkKeyRange } = frame;
+        this._drawZLevel = 0;
+        if (!this._beginVisibleChunkDraw()) return;
+        const ctx = this._drawCtx;
+        const obstacleGrid = this._frameGrid;
+        const chunkKeyRange = this._chunkKeyRange;
         const b = this._engineBounds;
-        const o = this._chunkBoundsO;
+        const o = ENGINE_CHUNK_O;
         forEachChunkKeyInRange(chunkKeyRange.startKey, chunkKeyRange.endKey, (chunkKey) => {
             this.surfaceSpace.chunkBoundsF32(b, o, obstacleGrid, chunkKey);
             if (!this._fillDrawableGroundChunkCanvas(chunkKey, 0)) return;
@@ -1179,29 +1134,27 @@ export class WorldSurfaceEngine {
         return masked;
     }
     drawStaticRoofChunksForLevels(levels) {
-        const d = this._chunkDraw;
         for (let i = 0; i < levels.length; i++) {
-            d.zLevel = levels[i];
+            this._drawZLevel = levels[i];
             this._drawElevatedChunks(ELEVATED_CHUNK_ROOF);
         }
     }
     drawFlatRailFloorChunksForLevels(levels) {
-        const d = this._chunkDraw;
         for (let i = 0; i < levels.length; i++) {
-            d.zLevel = levels[i];
+            this._drawZLevel = levels[i];
             this._drawElevatedChunks(ELEVATED_CHUNK_FLAT_RAIL);
         }
     }
     _drawElevatedChunks(mode) {
-        const d = this._chunkDraw;
-        const zLevel = d.zLevel;
+        const zLevel = this._drawZLevel;
         if (zLevel <= 0) return;
-        const frame = this._beginVisibleChunkDraw();
-        if (!frame) return;
-        const ctx = d.ctx;
-        const { obstacleGrid, chunkKeyRange, viewport } = frame;
+        if (!this._beginVisibleChunkDraw()) return;
+        const ctx = this._drawCtx;
+        const obstacleGrid = this._frameGrid;
+        const chunkKeyRange = this._chunkKeyRange;
+        const viewport = this._frameViewport;
         const b = this._engineBounds;
-        const o = this._chunkBoundsO;
+        const o = ENGINE_CHUNK_O;
         forEachChunkKeyInRange(chunkKeyRange.startKey, chunkKeyRange.endKey, (chunkKey) => {
             this.surfaceSpace.chunkBoundsF32(b, o, obstacleGrid, chunkKey);
             if (mode === ELEVATED_CHUNK_ROOF) {

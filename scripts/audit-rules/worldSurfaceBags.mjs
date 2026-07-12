@@ -1,9 +1,10 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest)\b/;
+const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest|writeWallFaceAxes|boundsToCellRect)\b/;
 const nestedPayloadRe = /payload\.p[12]\b/;
-const paintOptionsBagRe = /\bpaintOptions\b|options\.isWall|options\.roofSurface|options\.p1x|writeWallCellPixel/;
+const paintOptionsBagRe = /\bpaintOptions\b|options\.isWall|options\.roofSurface|options\.p1x|writeWallCellPixel|writeWallFaceAxes|_chunkDraw\s*=\s*\{/;
+const deadBankRe = /\bSS_(?:CELL|DRAW|AXES)\b(?!_)/;
 
 function isHotBagReturn(line) {
     if (!/return\s*\{/.test(line)) return false;
@@ -41,6 +42,9 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inWorldSurface && paintOptionsBagRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inWorldSurface && deadBankRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if ((inWorldSurface || inTileWorker) && nestedPayloadRe.test(line)) {

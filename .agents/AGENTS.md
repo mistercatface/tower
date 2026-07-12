@@ -79,7 +79,8 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 
 ### WorldSurface dialect
 
-- Draw/cache path: no XY/AABB return bags; `SurfaceSpatialMap` mutates `_boundsBank` (`SS_CELL`/`SS_POINTS`/`SS_CHUNK`/`SS_DRAW`/`SS_AXES`); chunk range mutates preallocated `chunkKeyRange`.
+- Draw/cache path: no XY/AABB return bags; `SurfaceSpatialMap` mutates `_boundsBank` (`SS_POINTS`/`SS_CHUNK`); chunk range mutates preallocated `chunkKeyRange`.
+- World AABB cell walks use `boundsToCellRectInto` only (no allocating `boundsToCellRect` bag).
 - Wall atlas: scalars in, memo slab columns + canvas handles out — no `wrappedP1` / `_wallAtlasStashes` bags.
 - Wall-chunk prop textures bind on the engine for the current draw (`_wallChunkSideCanvas` / `_wallChunkCapCanvas` / `_wallChunkReady`); no prop texture bags; scale/chunk size from settings.
 - Bake: configure `BakeSession` (`configureFloor` / `configureRoof` / `configureWallFace`) then `paintPixelArea` — no `paintOptions`/`BakeRequest`/`wallPaintOptions` bags; flat worker payloads only.

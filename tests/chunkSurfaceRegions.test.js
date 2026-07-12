@@ -41,7 +41,7 @@ describe("chunk surface regions", () => {
             captured.push({ chunkKey, profileIdOverride, zLevel });
             return [{ isPlaceholder: true }];
         };
-        engine._chunkDraw.state = state;
+        engine._drawState = state;
         engine._fillDrawableGroundChunkCanvas(packChunkKey(1, 0), 0);
         assert.equal(captured.length, 1);
         assert.equal(captured[0].profileIdOverride, "east");
