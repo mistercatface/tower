@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp, applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckPolygonVsWallSegment, readEntityFacing, SAT_RESULT, resolveBodyAgainstWallSegments, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { satCheckPolygonVsWallSegment, readEntityFacing, SAT_RESULT, resolveBodyAgainstWallSegments, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, snapshotKineticBodySlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Libraries/Physics/physics.js";
 import { computeWallBreakStrength } from "../Libraries/Physics/fracture.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { staticWallSegmentSlab, kineticStaticSlab } from "../Core/engineMemory.js";
@@ -26,7 +26,7 @@ function bar16x8(x, y, physId) {
     const bar = new WorldProp(x, y, "box", 0);
     applyPropBoxFootprint(bar, 8, 4);
     assignPhysIdWithPose(bar, physId);
-    snapshotKineticBodySlab([bar]);
+    snapshotKineticBodySlab([bar._physId], 1);
     return bar;
 }
 describe("polygon wall resolution", () => {
@@ -48,7 +48,7 @@ describe("polygon wall resolution", () => {
     it("tri wedge resolves against floor wall with upward normal", () => {
         const wedge = new WorldProp(0, 6, "tri_wedge", 0);
         assignPhysIdWithPose(wedge, 1);
-        snapshotKineticBodySlab([wedge]);
+        snapshotKineticBodySlab([wedge._physId], 1);
         wedge.vx = 0;
         wedge.vy = 0;
         const floor = mockWallSegment(0, 16);
@@ -72,12 +72,22 @@ describe("polygon wall resolution", () => {
         const bar = bar16x8(5, 0, 0);
         bar.vx = 0;
         bar.vy = 0;
-        snapshotKineticBodySlab([bar]);
+        snapshotKineticBodySlab([bar._physId], 1);
         const wall = mockWallSegment(-8, 0);
         const segs = wallSegIds(wall);
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
-        const frame = { frameId: 1, _kineticBodies: [bar], _activeKineticBodies: [bar], getWallCandidates: () => segs, ensureNeighborEids: () => 0, flushScheduledKineticActivations() {} };
+        const frame = {
+            frameId: 1,
+            kineticEids: Int32Array.of(bar._physId),
+            kineticEidCount: 1,
+            getWallCandidates: () => segs,
+            ensureNeighborEids: () => 0,
+            flushScheduledKineticActivations() {},
+            syncActiveKineticBodies() {},
+        };
+        clearActiveKineticBodySlab();
+        appendActiveKineticBodySlabPhysId(bar._physId);
         const session = createKineticSession();
         const world = {
             worldProps: [bar],
@@ -90,7 +100,7 @@ describe("polygon wall resolution", () => {
     it("wall hit wakes a sleeping polygon", () => {
         const bar = new WorldProp(5, 0, "hex_block", 0);
         assignPhysIdWithPose(bar, 3);
-        snapshotKineticBodySlab([bar]);
+        snapshotKineticBodySlab([bar._physId], 1);
         bar.isSleeping = true;
         bar.vx = -50;
         const wall = mockWallSegment(-8, 0);

@@ -351,14 +351,15 @@ export function createKineticTestWorld(initialProps, { constraintsDirty = false 
 export function setupKineticTestFrame(bodies, cellSize = 50) {
     const frame = new KineticSpatialFrame(cellSize);
     frame.resetFrame({ minX: -500, maxX: 500, minY: -500, maxY: 500 });
+    frame.kineticEidCount = 0;
     for (let i = 0; i < bodies.length; i++) {
         assignPhysIdWithPose(bodies[i], i);
         frame.insertEntity(bodies[i], i);
+        frame._pushKineticEid(i);
     }
-    frame._kineticBodies = bodies.slice();
     frame._nextPhysId = bodies.length;
-    snapshotKineticBodySlab(frame._kineticBodies);
-    applyHarnessPairOverrides(frame._kineticBodies);
+    snapshotKineticBodySlab(frame.kineticEids, frame.kineticEidCount);
+    applyHarnessPairOverrides(bodies);
     frame.syncActiveKineticBodies();
     return frame;
 }
@@ -370,14 +371,19 @@ export function createKineticTestTick(initialProps, options = {}) {
 export function attachKineticTestTickFromState(state, props, cellSize = state.obstacleGrid?.cellSize ?? 16) {
     const frame = new KineticSpatialFrame(cellSize);
     frame.resetFrame(state.obstacleGrid);
+    frame.kineticEidCount = 0;
     for (let i = 0; i < props.length; i++) {
         assignPhysIdWithPose(props[i], i);
         frame.insertEntity(props[i], i);
+        frame._pushKineticEid(i);
     }
-    frame._kineticBodies = props.slice();
     frame._nextPhysId = props.length;
-    snapshotKineticBodySlab(frame._kineticBodies);
-    applyHarnessPairOverrides(frame._kineticBodies);
+    snapshotKineticBodySlab(frame.kineticEids, frame.kineticEidCount);
+    applyHarnessPairOverrides(props);
     frame.syncActiveKineticBodies();
     return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
+}
+export function snapshotKineticBodies(...bodies) {
+    const eids = bodies.map((b) => b._physId);
+    snapshotKineticBodySlab(eids, eids.length);
 }

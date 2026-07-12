@@ -17,7 +17,7 @@ function bindPair(a, b) {
     assignPhysIdWithPose(b, 1);
     entityRefs[0] = a;
     entityRefs[1] = b;
-    snapshotKineticBodySlab([a, b]);
+    snapshotKineticBodySlab([a._physId, b._physId], 2);
 }
 function neighborEids(...bodies) {
     const eids = new Int32Array(bodies.length);
@@ -66,7 +66,7 @@ describe("kinetic sleep on proof props", () => {
         separatePairUntilClear(rest, mover);
         bindPair(rest, mover);
         mover.vx = 5;
-        snapshotKineticBodySlab([rest, mover]);
+        snapshotKineticBodySlab([rest._physId, mover._physId], 2);
         const n = neighborEids(mover);
         assert.ok(hasSleepBlockingNeighbor(rest, n));
         assert.ok(!evaluateKineticSleepEligible(rest, n));
@@ -105,10 +105,10 @@ describe("kinetic sleep on proof props", () => {
         separatePairUntilClear(a, b);
         assignPhysIdWithPose(a, 0);
         assignPhysIdWithPose(b, 1);
-        snapshotKineticBodySlab([a, b]);
+        snapshotKineticBodySlab([a._physId, b._physId], 2);
         assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlapSlab(a._physId, b._physId)) === false);
         a.vx = 10;
-        snapshotKineticBodySlab([a, b]);
+        snapshotKineticBodySlab([a._physId, b._physId], 2);
         assert.ok(shouldResolveKineticPair(a, b, pairBroadphaseOverlapSlab(a._physId, b._physId)));
     });
 });

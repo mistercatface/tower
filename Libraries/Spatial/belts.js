@@ -3,7 +3,7 @@ import { CorridorPathfinder, createNavGraphView } from "../Navigation/navigation
 import { createSeededRng } from "../Math/math.js";
 import { BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
 import { GRID_NAV_EPOCH_FLOOR, GRID_STAMP_RENDER_KEY_FLOOR_BELT } from "../../Core/engineEnums.js";
-import { circleInViewBounds, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
+import { circleInViewBounds, VIEW_TIER_PROPS, entityX, entityY } from "../../Core/engineMemory.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = Int8Array.from([0, 1, 0, -1]);
 const BELT_DIR_Y = Int8Array.from([-1, 0, 1, 0]);
@@ -257,11 +257,12 @@ export class FloorBelt {
         const prevCount = grid._floorBeltLoadedCount;
         for (let i = 0; i < prevCount; i++) load[list[i]] = 0;
         let write = 0;
-        const kineticBodies = spatialFrame._kineticBodies;
-        if (kineticBodies?.length)
-            for (let i = 0; i < kineticBodies.length; i++) {
-                const entity = kineticBodies[i];
-                const idx = grid.worldToIdx(entity.x, entity.y);
+        const kineticEids = spatialFrame.kineticEids;
+        const eidCount = spatialFrame.kineticEidCount;
+        if (eidCount)
+            for (let i = 0; i < eidCount; i++) {
+                const eid = kineticEids[i];
+                const idx = grid.worldToIdx(entityX[eid], entityY[eid]);
                 if (idx < 0 || !grid.floorPacked[idx]) continue;
                 if (load[idx] === 0) {
                     if (write >= list.length) {

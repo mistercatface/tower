@@ -11,7 +11,7 @@ describe("kinetic substep early-out", () => {
             const body = mockKineticCircle(0, 0, 10, 120, 0, { currentState: true, dampedMotion: true, needsWallCollision: false });
             const dt = 100;
             const tick = createKineticTestTick([body]);
-            const planned = countMotionSubsteps(dt, tick.frame._activeKineticBodies, { maxStepPx: 4, maxSubsteps: 8 });
+            const planned = countMotionSubsteps(dt, { maxStepPx: 4, maxSubsteps: 8 });
             assert.ok(planned > 1);
             runKineticPhysics(tick, dt, kineticIntegrateHooks((prop, subDt) => prop.update(subDt)));
             assert.ok(tick.world.kinetic.motionSubstepStats.substepsRun < tick.world.kinetic.motionSubstepStats.substepsPlanned);

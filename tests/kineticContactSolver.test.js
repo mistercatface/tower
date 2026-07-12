@@ -7,7 +7,7 @@ import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab } from "../Core/engineMemory.js";
+import { kineticDynamicSlab, entityRefs } from "../Core/engineMemory.js";
 import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/math.js";
@@ -40,7 +40,8 @@ function resolveContactUntilClear(tick, maxPasses = 4) {
     const pairs = gatherKineticContactPairs(tick);
     for (let pass = 0; pass < maxPasses; pass++) {
         resolveKineticContactPassWithPairs(tick, pairs);
-        const [a, b] = tick.frame._activeKineticBodies;
+        const a = entityRefs[kineticDynamicSlab.activePhysIds[0]];
+        const b = entityRefs[kineticDynamicSlab.activePhysIds[1]];
         if (!slabPairStillOverlaps(a, b)) return;
     }
 }

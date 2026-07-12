@@ -53,6 +53,11 @@ import {
     entityRefs,
     entityFlags,
     entityFacing,
+    entityX,
+    entityY,
+    entityVx,
+    entityVy,
+    entityW,
     entityRollQw,
     entityRollQx,
     entityRollQy,
@@ -1740,17 +1745,19 @@ function normalizeEntityRollQuat(physId) {
     entityRollQy[physId] /= len;
     entityRollQz[physId] /= len;
 }
-export function snapshotKineticBodySlab(bodies) {
-    for (let i = 0; i < bodies.length; i++) {
-        const entity = bodies[i];
+export function snapshotKineticBodySlab(eids, count = eids.length) {
+    for (let i = 0; i < count; i++) {
+        const eid = eids[i];
+        const entity = entityRefs[eid];
+        if (!entity) continue;
         normalizeKineticBody(entity);
-        stampKineticBodyFromEntity(entity._physId, entity);
+        stampKineticBodyFromEntity(eid, entity);
     }
 }
-export function refreshActiveKineticBodySlabPose(bodies) {
+export function refreshActiveKineticBodySlabPose() {
     const slab = kineticDynamicSlab;
-    for (let i = 0; i < bodies.length; i++) {
-        const physId = bodies[i]._physId;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
         if (slab.shapeKind[physId] !== SHAPE_TYPE_CIRCLE) {
             const angle = entityFacing[physId];
             slab.cos[physId] = Math.cos(angle);
@@ -2157,7 +2164,7 @@ export function gatherKineticConstraintSlab(tick) {
     slab.reset();
     const spatialFrame = tick.frame;
     const session = tick.world.kinetic;
-    const plan = ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
+    const plan = ensureKineticIslandPlan(session, spatialFrame.kineticEids, spatialFrame.kineticEidCount);
     const store = kineticConstraintStore;
     sBucketCounts.fill(0);
     let bucketCount = 0;
@@ -2349,8 +2356,8 @@ function projectDistanceLinkCapsuleAgainstWalls(slab, i, linkWalls, spatialFrame
         translateLinkAwayFromSlabWall(physIdA, physIdB, bestNx, bestNy, bestOverlap);
         wakeKineticBody(bodyA._physId);
         wakeKineticBody(bodyB._physId);
-        spatialFrame.scheduleKineticActivation(bodyA);
-        spatialFrame.scheduleKineticActivation(bodyB);
+        spatialFrame.scheduleKineticActivation(bodyA._physId);
+        spatialFrame.scheduleKineticActivation(bodyB._physId);
     }
 }
 function projectIslandLinkCapsulesAgainstWalls(spatialFrame) {
@@ -2453,8 +2460,8 @@ function solveDistanceConstraintVelocity(slab, index, spatialFrame, velocityBias
     dynSlab.vy[physIdB] += lambda * ny * invMassB;
     dynSlab.w[physIdA] -= lambda * rAn * invIA;
     dynSlab.w[physIdB] += lambda * rBn * invIB;
-    spatialFrame.scheduleKineticActivation(bodyA);
-    spatialFrame.scheduleKineticActivation(bodyB);
+    spatialFrame.scheduleKineticActivation(bodyA._physId);
+    spatialFrame.scheduleKineticActivation(bodyB._physId);
     return Math.abs(lambda);
 }
 function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
@@ -2474,8 +2481,8 @@ function solveAngleConstraintVelocity(slab, index, spatialFrame, velocityBias) {
     const invIB = slab.static.invIB[index];
     dynSlab.w[physIdA] -= lambda * invIA;
     dynSlab.w[physIdB] += lambda * invIB;
-    spatialFrame.scheduleKineticActivation(bodyA);
-    spatialFrame.scheduleKineticActivation(bodyB);
+    spatialFrame.scheduleKineticActivation(bodyA._physId);
+    spatialFrame.scheduleKineticActivation(bodyB._physId);
     return Math.abs(lambda);
 }
 function solveConstraintVelocity(slab, index, spatialFrame, velocityBias) {
@@ -3206,13 +3213,13 @@ function applyKineticContactWake(contacts, spatialFrame) {
         const bodyB = entityRefs[contacts.physIdB[i]]?._physId === contacts.physIdB[i] ? entityRefs[contacts.physIdB[i]] : null;
         if (!bodyA || !bodyB) continue;
         invalidateWallResolveCache(bodyA, bodyB);
-        spatialFrame.scheduleKineticActivation(bodyA);
-        spatialFrame.scheduleKineticActivation(bodyB);
+        spatialFrame.scheduleKineticActivation(bodyA._physId);
+        spatialFrame.scheduleKineticActivation(bodyB._physId);
     }
 }
 export function gatherKineticContactPairs(tick) {
     const spatialFrame = tick.frame;
-    refreshActiveKineticBodySlabPose(spatialFrame._activeKineticBodies);
+    refreshActiveKineticBodySlabPose();
     stampKineticPairGatherTopology(spatialFrame, tick.world.kinetic);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(spatialFrame, pairs);
@@ -3232,17 +3239,17 @@ export function ensureKineticContactPairs(tick, outPairs) {
         bumpPairGatherStat(session, "full");
         return outPairs;
     }
-    refreshActiveKineticBodySlabPose(spatialFrame._activeKineticBodies);
+    refreshActiveKineticBodySlabPose();
     stampKineticPairGatherTopology(spatialFrame, session);
     if (!compactSubstepKineticPairs(spatialFrame, outPairs)) {
         session.substepPairsValid = false;
         return ensureKineticContactPairs(tick, outPairs);
     }
     bumpPairGatherStat(session, "refresh");
-    const patchBodies = session.substepPairPatchBodies;
-    if (patchBodies?.length) {
-        if (patchKineticPairsForBodies(spatialFrame, outPairs, patchBodies) > 0) bumpPairGatherStat(session, "patch");
-        patchBodies.length = 0;
+    const patchEids = session.substepPairPatchBodies;
+    if (patchEids?.length) {
+        if (patchKineticPairsForEids(spatialFrame, outPairs, patchEids) > 0) bumpPairGatherStat(session, "patch");
+        patchEids.length = 0;
     }
     return outPairs;
 }
@@ -3356,8 +3363,8 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
     pairs.count = write;
     return true;
 }
-export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
-    if (!bodies.length) return 0;
+export function patchKineticPairsForEids(spatialFrame, pairs, eids) {
+    if (!eids.length) return 0;
     bakeSpatialNeighborCsr(spatialFrame);
     clearPairHash();
     for (let i = 0; i < pairs.count; i++) addPairHash(pairPhysKey(pairs.physIdA[i], pairs.physIdB[i]));
@@ -3367,9 +3374,9 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
     const seenPrimaryIds = spatialFrame._patchPrimarySeenIds;
     const slab = kineticDynamicSlab;
     const neighborEids = slab.spatialNeighborEids;
-    for (let i = 0; i < bodies.length; i++) {
-        const physIdA = bodies[i]._physId;
-        if (physIdA === undefined) continue;
+    for (let i = 0; i < eids.length; i++) {
+        const physIdA = eids[i];
+        if (physIdA === undefined || physIdA === -1) continue;
         if (seenPrimary[physIdA]) continue;
         seenPrimary[physIdA] = 1;
         seenPrimaryIds[seenCount++] = physIdA;
@@ -3439,9 +3446,12 @@ export function separateCoincidentCircleSlab(physIdA, physIdB, overlap) {
     dynSlab.x[physIdB] += overlap * (massA / totalMass);
 }
 // Merged from collisionPipeline.js
-function resolveActiveBodyWalls(activeBodies, spatialFrame, resolveWalls) {
-    for (let i = 0; i < activeBodies.length; i++) {
-        const prop = activeBodies[i];
+function resolveActiveBodyWalls(spatialFrame, resolveWalls) {
+    const slab = kineticDynamicSlab;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const eid = slab.activePhysIds[i];
+        const prop = entityRefs[eid];
+        if (!prop || prop._physId !== eid) continue;
         const wallCandidates = spatialFrame.getWallCandidates(prop);
         if (!shouldResolveKineticBodyAgainstWalls(prop, wallCandidates)) continue;
         resolveWalls(prop);
@@ -3451,8 +3461,7 @@ function resolveActiveBodyWalls(activeBodies, spatialFrame, resolveWalls) {
 export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects, kineticIterations = collisionSettings.kineticIterations) {
     const spatialFrame = tick.frame;
     const { velocityEpsilonSq, constraintErrorEpsilon } = collisionSettings.kineticEarlyOut;
-    const activeBodies = spatialFrame._activeKineticBodies;
-    const hasActiveBodies = activeBodies.length > 0;
+    const hasActiveBodies = kineticDynamicSlab.activePhysCount > 0;
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
         beginSleepIslands(spatialFrame);
@@ -3465,14 +3474,14 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
             applyContactSideEffects?.(tick, kineticContactBuffer);
             resolveGatheredKineticConstraintSlab(tick);
             const maxError = measureConstraintSlabMaxError();
-            const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
+            const maxSpeedSq = maxActiveKineticSpeedSq();
             const settled = maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq;
-            if (!settled || iter === 0) resolveActiveBodyWalls(activeBodies, spatialFrame, resolveWalls);
+            if (!settled || iter === 0) resolveActiveBodyWalls(spatialFrame, resolveWalls);
             spatialFrame.flushScheduledKineticActivations(patchBodies);
             clampActiveKineticBodySlabSpeed(1000);
             if (settled) break;
         }
-        refreshActiveKineticBodySlabPose(activeBodies);
+        refreshActiveKineticBodySlabPose();
         sKineticSolverStats.outerIterations = outerIterationsRun;
         sKineticSolverStats.maxIterations = kineticIterations;
         sKineticSolverStats.pairCount = persistedKineticPairBuffer.count;
@@ -3484,21 +3493,24 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
         tick.world.kinetic.kineticSolverStats = sKineticSolverStats;
     }
 }
-function applyKineticAcceleration(body, ax, ay, dtSec) {
-    body.vx = (body.vx ?? 0) + ax * dtSec;
-    body.vy = (body.vy ?? 0) + ay * dtSec;
-    wakeKineticBody(body._physId);
+function applyKineticAcceleration(eid, ax, ay, dtSec) {
+    entityVx[eid] += ax * dtSec;
+    entityVy[eid] += ay * dtSec;
+    wakeKineticBody(eid);
 }
 function applyFloorBeltForces(world, spatialFrame, dtMs) {
     const grid = world.obstacleGrid;
     if (grid.floorBeltCount === 0) return;
-    const kineticBodies = spatialFrame._kineticBodies;
-    if (!kineticBodies?.length) return;
+    const eids = spatialFrame.kineticEids;
+    const eidCount = spatialFrame.kineticEidCount;
+    if (!eidCount) return;
     const dtSec = dtMs / 1000;
     const force = DEFAULT_FLOOR_BELT_FORCE;
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const entity = kineticBodies[i];
-        const idx = grid.worldToIdx(entity.x, entity.y);
+    for (let i = 0; i < eidCount; i++) {
+        const eid = eids[i];
+        const x = entityX[eid];
+        const y = entityY[eid];
+        const idx = grid.worldToIdx(x, y);
         if (idx < 0) continue;
         const packed = grid.floorPacked[idx];
         if (!packed) continue;
@@ -3513,19 +3525,19 @@ function applyFloorBeltForces(world, spatialFrame, dtMs) {
             const flowY = Math.sin(beltAngle);
             const normalX = -flowY;
             const normalY = flowX;
-            const dispX = cx - entity.x;
-            const dispY = cy - entity.y;
+            const dispX = cx - x;
+            const dispY = cy - y;
             const lateralOffset = dispX * normalX + dispY * normalY;
             const lateralForceMagnitude = (lateralOffset / grid.cellHalfSize) * force * 1.5;
-            const v_lateral = (entity.vx || 0) * normalX + (entity.vy || 0) * normalY;
+            const v_lateral = entityVx[eid] * normalX + entityVy[eid] * normalY;
             const lateralDamping = -v_lateral * 5.0;
             ax = flowX * force + normalX * (lateralForceMagnitude + lateralDamping);
             ay = flowY * force + normalY * (lateralForceMagnitude + lateralDamping);
         } else {
             const pivotX = cx + BeltPacked.pivotDx(packed) * grid.cellHalfSize;
             const pivotY = cy + BeltPacked.pivotDy(packed) * grid.cellHalfSize;
-            const dx = entity.x - pivotX;
-            const dy = entity.y - pivotY;
+            const dx = x - pivotX;
+            const dy = y - pivotY;
             const dist = Math.hypot(dx, dy);
             const isLeft = turn === 0;
             let rX = 0,
@@ -3544,12 +3556,12 @@ function applyFloorBeltForces(world, spatialFrame, dtMs) {
             }
             const diff = dist - grid.cellHalfSize;
             const springForce = -(diff / (grid.cellHalfSize * 0.5)) * force * 1.5;
-            const v_radial = (entity.vx || 0) * rX + (entity.vy || 0) * rY;
+            const v_radial = entityVx[eid] * rX + entityVy[eid] * rY;
             const damping = -v_radial * 5.0;
             ax = tX * force + rX * (springForce + damping);
             ay = tY * force + rY * (springForce + damping);
         }
-        applyKineticAcceleration(entity, ax, ay, dtSec);
+        applyKineticAcceleration(eid, ax, ay, dtSec);
     }
 }
 const PORTAL_TICK = { grid: null, spatialFrame: null, exitIdx: -1, exitCx: 0, exitCy: 0, tx: 0, ty: 0 };
@@ -3569,7 +3581,7 @@ function portalTeleportHandler(body) {
     body.vy = 0;
     body.angularVelocity = 0;
     clearGroundRollDrive(body._physId);
-    if (body._physId !== undefined) snapshotKineticBodySlab([body]);
+    if (body._physId !== undefined) snapshotKineticBodySlab([body._physId], 1);
     const eg = t.spatialFrame.entityGrid;
     if (eg) {
         eg.remove(body);
@@ -3614,23 +3626,22 @@ export function runKineticPhysics(tick, dt, hooks) {
     applyFloorBeltForces(world, spatialFrame, dt);
     applyFloorPortalTeleports(world, spatialFrame);
     const session = world.kinetic;
-    ensureKineticIslandPlan(session, spatialFrame._kineticBodies);
+    ensureKineticIslandPlan(session, spatialFrame.kineticEids, spatialFrame.kineticEidCount);
     session.kineticConstraintsDirty = false;
     session.substepPairsValid = false;
     session.substepPairPatchBodies = session.substepPairPatchBodies ?? [];
     session.substepPairPatchBodies.length = 0;
     session.kineticPairGatherStats = { full: 0, refresh: 0, patch: 0 };
-    const kineticBodies = spatialFrame._kineticBodies;
+    const eids = spatialFrame.kineticEids;
+    const eidCount = spatialFrame.kineticEidCount;
     const rollKind = kineticDynamicSlab.rollDriveKind;
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const body = kineticBodies[i];
-        const eid = body._physId;
-        if (rollKind[eid] !== ROLL_DRIVE_NONE) wakeKineticBody(body._physId);
+    for (let i = 0; i < eidCount; i++) {
+        const eid = eids[i];
+        if (rollKind[eid] !== ROLL_DRIVE_NONE) wakeKineticBody(eid);
     }
     spatialFrame.syncActiveKineticBodies();
-    const activeBodies = spatialFrame._activeKineticBodies;
     const { maxStepPx, maxSubsteps } = collisionSettings.motionSubsteps;
-    const steps = countMotionSubsteps(dt, activeBodies, { maxStepPx, maxSubsteps });
+    const steps = countMotionSubsteps(dt, { maxStepPx, maxSubsteps });
     const subDt = dt / steps;
     const subDtSec = subDt / 1000;
     const { velocityEpsilonSq } = collisionSettings.kineticEarlyOut;
@@ -3638,12 +3649,16 @@ export function runKineticPhysics(tick, dt, hooks) {
     const resolveWalls = (entity) => hooks.resolveWalls(entity, spatialFrame);
     for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updatePropFrame(world.worldProps[i], dt, spatialFrame);
     world.fractureEngine.debris.tickFrames(dt, spatialFrame);
+    const slab = kineticDynamicSlab;
     for (let s = 0; s < steps; s++) {
-        for (let i = 0; i < activeBodies.length; i++) applyGroundRollDrive(activeBodies[i]._physId, subDtSec);
-        for (let i = 0; i < activeBodies.length; i++) hooks.updatePropSubstep(activeBodies[i], subDt, spatialFrame);
-        spatialFrame.reindexKineticBodies(activeBodies);
+        for (let i = 0; i < slab.activePhysCount; i++) applyGroundRollDrive(slab.activePhysIds[i], subDtSec);
+        for (let i = 0; i < slab.activePhysCount; i++) {
+            const prop = entityRefs[slab.activePhysIds[i]];
+            if (prop) hooks.updatePropSubstep(prop, subDt, spatialFrame);
+        }
+        spatialFrame.reindexActiveKineticBodies();
         runCollisionPipeline(tick, resolveWalls, hooks.applyContactSideEffects);
-        const maxSpeedSq = maxActiveKineticSpeedSq(activeBodies);
+        const maxSpeedSq = maxActiveKineticSpeedSq();
         const solverStats = world.kinetic.kineticSolverStats;
         const constraintsStable = !solverStats || solverStats.outerIterations < collisionSettings.kineticConstraints.iterations;
         if (s + 1 < steps && maxSpeedSq <= velocityEpsilonSq && constraintsStable) {
@@ -3657,43 +3672,33 @@ export function runKineticPhysics(tick, dt, hooks) {
     world.simulationFrameHooks?.afterPhysics?.(world);
     hooks.afterKineticPhysics?.(tick, dt);
 }
-/**
- * Adaptive physics substep count from peak kinetic body displacement this tick.
- * Used by {@link runKineticPhysics}.
- *
- * @param {number} dtMs
- * @param {object[] | null | undefined} bodies
- * @param {{ maxStepPx?: number, maxSubsteps?: number }} [opts]
- * @returns {number}
- */
-export function countMotionSubsteps(dtMs, bodies, { maxStepPx = 4, maxSubsteps = 8 } = {}) {
-    if (!bodies?.length || dtMs <= 0 || maxStepPx <= 0) return 1;
+export function countMotionSubsteps(dtMs, { maxStepPx = 4, maxSubsteps = 8 } = {}) {
+    const slab = kineticDynamicSlab;
+    if (!slab.activePhysCount || dtMs <= 0 || maxStepPx <= 0) return 1;
     const dtSec = dtMs / 1000;
     let maxDisp = 0;
-    for (let i = 0; i < bodies.length; i++) {
-        const body = bodies[i];
-        const physId = body._physId;
-        if (physId !== undefined && kineticDynamicSlab.sleeping[physId]) continue;
-        const disp = lengthXY(body.vx ?? 0, body.vy ?? 0) * dtSec;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
+        if (slab.sleeping[physId]) continue;
+        const disp = lengthXY(entityVx[physId], entityVy[physId]) * dtSec;
         if (disp > maxDisp) maxDisp = disp;
     }
     if (maxDisp <= 1e-6) return 1;
     return Math.min(maxSubsteps, Math.max(1, Math.ceil(maxDisp / maxStepPx)));
 }
-/** @param {object[] | null | undefined} bodies */
-export function maxActiveKineticSpeedSq(bodies) {
+export function maxActiveKineticSpeedSq() {
     let max = 0;
-    if (!bodies?.length) return max;
-    for (let i = 0; i < bodies.length; i++) {
-        const vx = bodies[i].vx ?? 0;
-        const vy = bodies[i].vy ?? 0;
+    const slab = kineticDynamicSlab;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
+        const vx = entityVx[physId];
+        const vy = entityVy[physId];
         const sq = vx * vx + vy * vy;
         if (sq > max) max = sq;
     }
     return max;
 }
-function clearBodyIslandFields(body) {
-    const physId = body._physId;
+function clearBodyIslandFields(physId) {
     if (physId !== undefined && physId !== -1) {
         kineticDynamicSlab.linkNeighborOffset[physId] = 0;
         kineticDynamicSlab.linkNeighborCount[physId] = 0;
@@ -3743,27 +3748,27 @@ const islandBakeDegree = new Int32Array(MAX_PHYS_BODIES);
 const islandBakeFill = new Int32Array(MAX_PHYS_BODIES);
 const islandBakeVisited = new Uint8Array(MAX_PHYS_BODIES);
 const islandBakeStack = new Int32Array(MAX_PHYS_BODIES);
-function physIdForBodyIdInList(kineticBodies, bodyId) {
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const body = kineticBodies[i];
-        if (body.id === bodyId) return body._physId === undefined ? -1 : body._physId;
+function physIdForBodyIdInList(eids, count, bodyId) {
+    for (let i = 0; i < count; i++) {
+        const physId = eids[i];
+        if (kineticStaticSlab.entityId[physId] === bodyId) return physId;
     }
     return -1;
 }
-export function bakeKineticIslandPlan(session, kineticBodies) {
+export function bakeKineticIslandPlan(session, eids, count = eids.length) {
     resetKineticLinkNeighborArena();
     const slab = kineticDynamicSlab;
     const constraints = kineticConstraintStore;
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const physId = kineticBodies[i]._physId;
+    for (let i = 0; i < count; i++) {
+        const physId = eids[i];
         if (physId === undefined || physId === -1) continue;
         islandBakeDegree[physId] = 0;
         islandBakeVisited[physId] = 0;
-        clearBodyIslandFields(kineticBodies[i]);
+        clearBodyIslandFields(physId);
     }
     for (let i = 0; i < constraints.count; i++) {
-        const physIdA = physIdForBodyIdInList(kineticBodies, constraints.bodyAId[i]);
-        const physIdB = physIdForBodyIdInList(kineticBodies, constraints.bodyBId[i]);
+        const physIdA = physIdForBodyIdInList(eids, count, constraints.bodyAId[i]);
+        const physIdB = physIdForBodyIdInList(eids, count, constraints.bodyBId[i]);
         constraints.physIdA[i] = physIdA;
         constraints.physIdB[i] = physIdB;
         if (physIdA === -1 || physIdB === -1 || physIdA === physIdB) continue;
@@ -3771,8 +3776,8 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         islandBakeDegree[physIdB]++;
     }
     let used = 0;
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const physId = kineticBodies[i]._physId;
+    for (let i = 0; i < count; i++) {
+        const physId = eids[i];
         if (physId === undefined || physId === -1) continue;
         const degree = islandBakeDegree[physId];
         slab.linkNeighborOffset[physId] = used;
@@ -3789,28 +3794,27 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
         slab.linkNeighborEids[islandBakeFill[physIdA]++] = physIdB;
         slab.linkNeighborEids[islandBakeFill[physIdB]++] = physIdA;
     }
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const physId = kineticBodies[i]._physId;
+    for (let i = 0; i < count; i++) {
+        const physId = eids[i];
         if (physId === undefined || physId === -1) continue;
         const degree = islandBakeDegree[physId];
         slab.linkNeighborCount[physId] = degree;
         sortLinkNeighborSlice(slab.linkNeighborOffset[physId], degree);
     }
-    for (let i = 0; i < kineticBodies.length; i++) {
-        const start = kineticBodies[i];
-        const startPhys = start._physId;
+    for (let i = 0; i < count; i++) {
+        const startPhys = eids[i];
         if (startPhys === undefined || startPhys === -1) continue;
         if (islandBakeVisited[startPhys]) continue;
         let stackSize = 0;
         islandBakeStack[stackSize++] = startPhys;
         islandBakeVisited[startPhys] = 1;
-        const root = start.id;
+        const root = kineticStaticSlab.entityId[startPhys];
         while (stackSize > 0) {
             const physId = islandBakeStack[--stackSize];
             slab.islandRoot[physId] = root;
             const offset = slab.linkNeighborOffset[physId];
-            const count = slab.linkNeighborCount[physId];
-            for (let j = 0; j < count; j++) {
+            const nCount = slab.linkNeighborCount[physId];
+            for (let j = 0; j < nCount; j++) {
                 const neighbor = slab.linkNeighborEids[offset + j];
                 if (islandBakeVisited[neighbor]) continue;
                 islandBakeVisited[neighbor] = 1;
@@ -3820,11 +3824,11 @@ export function bakeKineticIslandPlan(session, kineticBodies) {
     }
     session._kineticIslandPlan = { version: getKineticConstraintsVersion(session) };
 }
-export function ensureKineticIslandPlan(session, kineticBodies) {
+export function ensureKineticIslandPlan(session, eids, count = eids.length) {
     const version = getKineticConstraintsVersion(session);
     const plan = session._kineticIslandPlan;
     if (plan && plan.version === version) return plan;
-    bakeKineticIslandPlan(session, kineticBodies);
+    bakeKineticIslandPlan(session, eids, count);
     return session._kineticIslandPlan;
 }
 export function shareKineticIsland(bodyA, bodyB) {
@@ -3884,11 +3888,9 @@ function union(i, j) {
         }
 }
 function beginSleepIslands(frame) {
-    const activeBodies = frame._activeKineticBodies;
     const slab = kineticDynamicSlab;
-    for (let i = 0; i < activeBodies.length; i++) {
-        const physId = activeBodies[i]._physId;
-        if (physId === undefined || physId === -1) continue;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
         sleepIslandParent[physId] = -1;
         sleepIslandRank[physId] = 0;
         const offset = slab.linkNeighborOffset[physId];
@@ -3899,14 +3901,12 @@ function beginSleepIslands(frame) {
             sleepIslandRank[peerPhysId] = 0;
         }
     }
-    for (let i = 0; i < activeBodies.length; i++) {
-        const physId = activeBodies[i]._physId;
-        if (physId === undefined || physId === -1) continue;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
         sleepIslandParent[physId] = physId;
     }
-    for (let i = 0; i < activeBodies.length; i++) {
-        const physId = activeBodies[i]._physId;
-        if (physId === undefined || physId === -1) continue;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
         const offset = slab.linkNeighborOffset[physId];
         const count = slab.linkNeighborCount[physId];
         for (let j = 0; j < count; j++) {
@@ -3917,12 +3917,10 @@ function beginSleepIslands(frame) {
     }
 }
 export function advanceKineticSleepIslands(frame, session) {
-    const activeBodies = frame._activeKineticBodies;
-    if (!activeBodies || activeBodies.length === 0) return;
-    for (let i = 0; i < activeBodies.length; i++) {
-        const body = activeBodies[i];
-        const physId = body._physId;
-        if (physId === undefined || physId === -1) continue;
+    const slab = kineticDynamicSlab;
+    if (!slab.activePhysCount) return;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
         ensureSleepIslandMember(physId);
         const root = find(physId);
         sleepComponentRoot[physId] = root;
@@ -3930,22 +3928,18 @@ export function advanceKineticSleepIslands(frame, session) {
         sleepComponentHasBlocker[root] = 0;
         sleepComponentMemberCount[root] = 0;
     }
-    for (let i = 0; i < activeBodies.length; i++) {
-        const body = activeBodies[i];
-        const physId = body._physId;
-        if (physId === undefined || physId === -1) continue;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
         const root = sleepComponentRoot[physId];
-        const vx = kineticDynamicSlab.vx[physId] || 0;
-        const vy = kineticDynamicSlab.vy[physId] || 0;
+        const vx = slab.vx[physId] || 0;
+        const vy = slab.vy[physId] || 0;
         const speedSq = vx * vx + vy * vy;
         if (speedSq > sleepComponentMaxSpeedSq[root]) sleepComponentMaxSpeedSq[root] = speedSq;
         if (!canSleepKinetic(physId)) sleepComponentHasBlocker[root] = 1;
         sleepComponentMemberCount[root]++;
     }
-    for (let i = 0; i < activeBodies.length; i++) {
-        const body = activeBodies[i];
-        const physId = body._physId;
-        if (physId === undefined || physId === -1) continue;
+    for (let i = 0; i < slab.activePhysCount; i++) {
+        const physId = slab.activePhysIds[i];
         const root = sleepComponentRoot[physId];
         const eligible = sleepComponentHasBlocker[root] === 0;
         advanceKineticSleep(physId, eligible);
@@ -4681,47 +4675,47 @@ export function applyGroundRollDrive(eid, dtSec) {
     const slab = kineticDynamicSlab;
     const kind = slab.rollDriveKind[eid];
     if (kind === ROLL_DRIVE_NONE) return false;
-    const prop = entityRefs[eid];
-    if (kind === ROLL_DRIVE_BRAKE) return applyRollBrake(prop, dtSec, slab.rollDriveAccel[eid]);
-    applyRollThrust(prop, dtSec, slab.rollDriveDirX[eid], slab.rollDriveDirY[eid], slab.rollDriveAccel[eid], slab.rollDriveMaxSpeed[eid]);
+    if (kind === ROLL_DRIVE_BRAKE) return applyRollBrake(eid, dtSec, slab.rollDriveAccel[eid]);
+    applyRollThrust(eid, dtSec, slab.rollDriveDirX[eid], slab.rollDriveDirY[eid], slab.rollDriveAccel[eid], slab.rollDriveMaxSpeed[eid]);
     return true;
 }
-function applyRollBrake(prop, dtSec, accel) {
-    const speed = Math.hypot(prop.vx, prop.vy);
+function applyRollBrake(eid, dtSec, accel) {
+    const vx = entityVx[eid];
+    const vy = entityVy[eid];
+    const speed = Math.hypot(vx, vy);
     if (speed <= 0) return false;
     const decel = accel * dtSec * 2;
     if (speed <= decel) {
-        prop.vx = 0;
-        prop.vy = 0;
-        prop.angularVelocity = 0;
+        entityVx[eid] = 0;
+        entityVy[eid] = 0;
+        entityW[eid] = 0;
     } else {
-        prop.vx -= (prop.vx / speed) * decel;
-        prop.vy -= (prop.vy / speed) * decel;
+        entityVx[eid] = vx - (vx / speed) * decel;
+        entityVy[eid] = vy - (vy / speed) * decel;
     }
-    wakeKineticBody(prop._physId);
+    wakeKineticBody(eid);
     return true;
 }
-function applyRollThrust(prop, dtSec, dirX, dirY, accel, maxSpeed) {
+function applyRollThrust(eid, dtSec, dirX, dirY, accel, maxSpeed) {
     const len = Math.hypot(dirX, dirY);
     const dx = len > 0.001 ? dirX / len : 0;
     const dy = len > 0.001 ? dirY / len : 0;
-    // Steering force: Desired Velocity - Current Velocity
     const desiredVx = dx * maxSpeed;
     const desiredVy = dy * maxSpeed;
-    const steerX = desiredVx - (prop.vx || 0);
-    const steerY = desiredVy - (prop.vy || 0);
+    const steerX = desiredVx - entityVx[eid];
+    const steerY = desiredVy - entityVy[eid];
     const steerLen = Math.hypot(steerX, steerY);
     if (steerLen > 0.001) {
         const ax = (steerX / steerLen) * accel;
         const ay = (steerY / steerLen) * accel;
-        applyKineticAcceleration(prop, ax, ay, dtSec);
+        applyKineticAcceleration(eid, ax, ay, dtSec);
     }
-    const speed = Math.hypot(prop.vx, prop.vy);
+    const speed = Math.hypot(entityVx[eid], entityVy[eid]);
     if (speed > maxSpeed) {
-        prop.vx = (prop.vx / speed) * maxSpeed;
-        prop.vy = (prop.vy / speed) * maxSpeed;
+        entityVx[eid] = (entityVx[eid] / speed) * maxSpeed;
+        entityVy[eid] = (entityVy[eid] / speed) * maxSpeed;
     }
-    wakeKineticBody(prop._physId);
+    wakeKineticBody(eid);
 }
 export function snapMoveTargetToCellCenter(buf, o, grid, worldX, worldY) {
     const idx = grid.worldToIdx(worldX, worldY);

@@ -42,7 +42,7 @@ describe("kinetic pair stream", () => {
         const b = mockKineticCircle(18, 0, 10);
         a._physId = 0;
         b._physId = 1;
-        snapshotKineticBodySlab([a, b]);
+        snapshotKineticBodySlab([a._physId, b._physId], 2);
         assert.ok(pairBroadphaseOverlapSlab(a._physId, b._physId));
     });
     it("slab-backed pair policy resolves resting overlap only when mover is active", () => {
@@ -50,18 +50,18 @@ describe("kinetic pair stream", () => {
         const mover = mockKineticCircle(18, 0, 10, 20, 0);
         assignPhysIdWithPose(rest, 0);
         assignPhysIdWithPose(mover, 1);
-        snapshotKineticBodySlab([rest, mover]);
+        snapshotKineticBodySlab([rest._physId, mover._physId], 2);
         assert.ok(allowsKineticCollisionPairSlab(rest._physId, mover._physId, pairBroadphaseOverlapSlab(rest._physId, mover._physId)));
         rest.vx = 0;
         mover.vx = 0;
-        snapshotKineticBodySlab([rest, mover]);
+        snapshotKineticBodySlab([rest._physId, mover._physId], 2);
         assert.equal(allowsKineticCollisionPairSlab(rest._physId, mover._physId, pairBroadphaseOverlapSlab(rest._physId, mover._physId)), false);
     });
     it("resting overlapping circles emit no candidate pairs", () => {
         const a = mockKineticCircle(0, 0, 10, 0, 0);
         const b = mockKineticCircle(18, 0, 10, 0, 0);
         const frame = setupKineticTestFrame([a, b]);
-        snapshotKineticBodySlab(frame._activeKineticBodies);
+        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
         gatherKineticCandidatePairs(frame, pairBuffer);
         assert.equal(pairBuffer.count, 0);
     });
@@ -69,7 +69,7 @@ describe("kinetic pair stream", () => {
         const a = mockKineticCircle(0, 0, 10, 30, 0);
         const b = mockKineticCircle(18, 0, 10, 0, 0);
         const frame = setupKineticTestFrame([a, b]);
-        snapshotKineticBodySlab(frame._activeKineticBodies);
+        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
         gatherKineticCandidatePairs(frame, pairBuffer);
         assert.equal(pairBuffer.count, 1);
         assert.equal((entityRefs[pairBuffer.physIdA[0]]?._physId === pairBuffer.physIdA[0] ? entityRefs[pairBuffer.physIdA[0]] : null).id, a.id);
@@ -80,7 +80,7 @@ describe("kinetic pair stream", () => {
         const center = mockKineticCircle(18, 0, 10, 25, 0);
         const right = mockKineticCircle(36, 0, 10, 0, 0);
         const frame = setupKineticTestFrame([left, center, right]);
-        snapshotKineticBodySlab(frame._activeKineticBodies);
+        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
         gatherKineticCandidatePairs(frame, pairBuffer);
         assert.deepEqual(pairKeys(pairBuffer, frame), [left.id * 1_000_000 + center.id, center.id * 1_000_000 + right.id]);
     });
@@ -99,11 +99,11 @@ describe("kinetic pair stream on proof props", () => {
         const top = new WorldProp(0, 14, "box", 0);
         separatePairUntilClear(bottom, top);
         const frame = setupKineticTestFrame([bottom, top]);
-        snapshotKineticBodySlab(frame._activeKineticBodies);
+        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
         gatherKineticCandidatePairs(frame, pairBuffer);
         assert.equal(pairBuffer.count, 0);
         top.vx = 12;
-        snapshotKineticBodySlab(frame._activeKineticBodies);
+        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
         gatherKineticCandidatePairs(frame, pairBuffer);
         assert.equal(pairBuffer.count, 1);
     });

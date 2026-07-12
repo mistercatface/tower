@@ -353,7 +353,6 @@ export class WorldProp {
         this._neighborEidCount = 0;
         this._neighborsFrameId = -1;
         delete this._physId;
-        delete this._activeSlot;
     }
     get x() {
         const eid = this._physId;

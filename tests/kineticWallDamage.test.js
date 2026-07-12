@@ -281,7 +281,7 @@ describe("kinetic wall damage", () => {
         const x0 = shard.x;
         const y0 = shard.y;
         const frame = kineticSpatial.begin(state);
-        assert.ok(frame._kineticBodies.includes(shard));
+        assert.ok(Array.from(frame.kineticEids.subarray(0, frame.kineticEidCount)).includes(shard._physId));
         runKineticPhysics(
             { frame, world: { obstacleGrid: state.obstacleGrid, worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
             100,
@@ -370,7 +370,7 @@ describe("kinetic wall damage", () => {
         ballProp.vx = 560;
         ballProp.vy = 0;
         assignPhysIdWithPose(ballProp, 0);
-        snapshotKineticBodySlab([ballProp]);
+        snapshotKineticBodySlab([ballProp._physId], 1);
         
         const resolver = new WallCollisionResolver();
         const candidates = new GrowI32(16);
@@ -414,7 +414,7 @@ describe("kinetic wall damage", () => {
         ball.vx = 560;
         ball.vy = 0;
         assignPhysIdWithPose(ball, 0);
-        snapshotKineticBodySlab([ball]);
+        snapshotKineticBodySlab([ball._physId], 1);
         const candidates = new GrowI32(16);
         state.obstacleGrid.appendStaticWallSegmentsNearWorld(ball.x, ball.y, ball.radius + 32, candidates);
         assert.ok(candidates.used > 0);

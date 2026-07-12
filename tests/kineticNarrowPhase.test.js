@@ -53,7 +53,7 @@ describe("kinetic narrow phase tiers", () => {
         const a = mockKineticCircle(0, 0, 10, 40, 0);
         const b = mockKineticCircle(15, 0, 10, -10, 0);
         const frame = setupKineticTestFrame([a, b]);
-        snapshotKineticBodySlab(frame._activeKineticBodies);
+        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
         gatherKineticCandidatePairs(frame, kineticPairBuffer);
         assert.equal(kineticPairBuffer.count, 1);
         assert.equal(kineticPairBuffer.static.tier[0], KINETIC_PAIR_CIRCLE_CIRCLE);

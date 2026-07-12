@@ -10,6 +10,7 @@ import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, kineticIntegrateHooks, noop, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { collisionSettingsForIterations, withCollisionSettings } from "./harness/collisionSettingsHarness.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
@@ -28,7 +29,7 @@ describe("kinetic pair persistence", () => {
             assert.equal(tick.world.kinetic.kineticSolverStats.outerIterations, 3);
             assert.equal(tick.world.kinetic.kineticSolverStats.pairCount, 1);
             assert.ok(a.x !== ax0 || b.x !== 14);
-            assert.ok(bodiesMatchKineticSlab(tick.frame._activeKineticBodies));
+            assert.ok(bodiesMatchKineticSlab([a, b]));
         });
     });
 
@@ -39,8 +40,8 @@ describe("kinetic pair persistence", () => {
             const tick = createKineticTestTick([bodyA, bodyB]);
             addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 20 });
             runCollisionPipeline(tick, noop, noop);
-            snapshotKineticBodySlab(tick.frame._activeKineticBodies);
-            assert.ok(bodiesMatchKineticSlab(tick.frame._activeKineticBodies));
+            snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
+            assert.ok(bodiesMatchKineticSlab([bodyA, bodyB]));
             assert.ok(tick.world.kinetic.kineticSolverStats.outerIterations <= tick.world.kinetic.kineticSolverStats.maxIterations);
         });
     });

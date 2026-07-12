@@ -3131,11 +3131,8 @@ export async function generateLabRailMaze(state, options = {}) {
 export class KineticSpatialFrame extends SpatialFrameCore {
     constructor(cellSize = 50) {
         super(cellSize);
-        /** Every kinetic body in the sim (sleeping + awake) — occupancy, sleep eval. */
-        this._kineticBodies = [];
-        /** Awake kinetic bodies only — reindex, pair loop, wall resolve substeps. */
-        this._activeKineticBodies = [];
-        /** Registry membershipGen when this frame was last populated. */
+        this.kineticEids = new Int32Array(64);
+        this.kineticEidCount = 0;
         this.populatedMembershipGen = 0;
         this._activationScheduled = new Set();
         this._patchPrimarySeen = new Uint8Array(MAX_ENTITIES);
@@ -3150,6 +3147,16 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     get _physIdFreeList() {
         return { length: entityEidFreeCount() };
     }
+    _ensureKineticEidCap(n) {
+        if (this.kineticEids.length >= n) return;
+        const next = new Int32Array(Math.max(n, this.kineticEids.length * 2));
+        next.set(this.kineticEids.subarray(0, this.kineticEidCount));
+        this.kineticEids = next;
+    }
+    _pushKineticEid(eid) {
+        this._ensureKineticEidCap(this.kineticEidCount + 1);
+        this.kineticEids[this.kineticEidCount++] = eid;
+    }
     releasePhysId(physId, prop, session) {
         invalidateKineticSlabSlot(physId);
         this.entityGrid.entityNext[physId] = -1;
@@ -3159,7 +3166,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         if (session) bumpKineticTopologyGeneration(session);
     }
     repopulateFrameMembership(state) {
-        this._kineticBodies.length = 0;
+        this.kineticEidCount = 0;
         const worldProps = state.worldProps;
         for (let i = 0; i < worldProps.length; i++) {
             const prop = worldProps[i];
@@ -3174,7 +3181,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 clearWorldPropSpawnPose(prop);
             }
             this.insertEntity(prop, physId);
-            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._kineticBodies.push(prop);
+            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
         const debrisBodies = state.fractureEngine.debris.list();
         for (let i = 0; i < debrisBodies.length; i++) {
@@ -3191,23 +3198,21 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 clearWorldPropSpawnPose(body);
             }
             this.insertEntity(body, physId);
-            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._kineticBodies.push(body);
+            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
     }
     begin(state) {
         this.resetFrame(state.obstacleGrid);
         this.repopulateFrameMembership(state);
-        if (this._kineticBodies.length) snapshotKineticBodySlab(this._kineticBodies);
+        if (this.kineticEidCount) snapshotKineticBodySlab(this.kineticEids, this.kineticEidCount);
         this.syncActiveKineticBodies();
         return this;
     }
-    /**
-     * Insert or re-insert kinetic props after mid-tick spawn or geometry change.
-     */
     admitKineticProps(props, world) {
         let anyAdmitted = false;
-        const kineticAdmitted = [];
+        let admittedCount = 0;
+        const admittedEids = [];
         for (let i = 0; i < props.length; i++) {
             const prop = props[i];
             if (!prop) continue;
@@ -3220,18 +3225,18 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 const kind = prop.isKineticDebris ? ENTITY_KIND_DEBRIS : ENTITY_KIND_WORLD_PROP;
                 bindEntitySlot(prop._physId, kind, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
                 clearWorldPropSpawnPose(prop);
-                this._kineticBodies.push(prop);
+                if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(prop._physId);
             } else this.entityGrid.remove(prop);
             this.entityGrid.insert(prop);
             prop._neighborsFrameId = -1;
             prop._neighborEidCount = 0;
             if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) {
-                this.activateKineticBody(prop, false);
-                kineticAdmitted.push(prop);
+                this.activateKineticBody(prop._physId, false);
+                admittedEids[admittedCount++] = prop._physId;
             }
             anyAdmitted = true;
         }
-        if (kineticAdmitted.length) snapshotKineticBodySlab(kineticAdmitted);
+        if (admittedCount) snapshotKineticBodySlab(admittedEids, admittedCount);
         if (anyAdmitted) {
             this.frameId = (this.frameId + 1) | 0;
             this.populatedMembershipGen = world.entityRegistry.membershipGen;
@@ -3248,90 +3253,101 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         return super.getWallCandidates(entity);
     }
     syncActiveKineticBodies() {
-        const active = this._activeKineticBodies;
-        active.length = 0;
         clearActiveKineticBodySlab();
-        const all = this._kineticBodies;
-        for (let i = 0; i < all.length; i++) {
-            const prop = all[i];
-            if (prop._physId === undefined) {
-                prop._activeSlot = -1;
-                continue;
-            }
-            if (!kineticDynamicSlab.sleeping[prop._physId]) {
-                prop._activeSlot = active.length;
-                active.push(prop);
-                appendActiveKineticBodySlabPhysId(prop._physId);
-            } else prop._activeSlot = -1;
+        const all = this.kineticEids;
+        const n = this.kineticEidCount;
+        const sleeping = kineticDynamicSlab.sleeping;
+        for (let i = 0; i < n; i++) {
+            const eid = all[i];
+            const prop = entityRefs[eid];
+            if (!prop || prop._physId !== eid) continue;
+            if (!sleeping[eid]) appendActiveKineticBodySlabPhysId(eid);
         }
     }
-    _ensureActive(prop, snapshot = true) {
-        if (prop._physId === undefined) return;
-        const active = this._activeKineticBodies;
-        if (prop._activeSlot >= 0 && active[prop._activeSlot] === prop) return;
-        prop._activeSlot = active.length;
-        active.push(prop);
-        appendActiveKineticBodySlabPhysId(prop._physId);
-        if (snapshot) snapshotKineticBodySlab([prop]);
+    _ensureActive(eid, snapshot = true) {
+        if (eid === undefined || eid === -1) return;
+        const prop = entityRefs[eid];
+        if (!prop || prop._physId !== eid) return;
+        if (kineticDynamicSlab.activeSlot[eid] >= 0) return;
+        appendActiveKineticBodySlabPhysId(eid);
+        if (snapshot) snapshotKineticBodySlab([eid], 1);
     }
-    _removeFromActive(prop) {
-        const slot = prop._activeSlot;
+    _removeFromActive(eid) {
+        const slab = kineticDynamicSlab;
+        const slot = slab.activeSlot[eid];
         if (slot == null || slot < 0) return;
-        const active = this._activeKineticBodies;
-        if (slot >= active.length || active[slot] !== prop) return;
-        const last = active.pop();
-        if (last && last !== prop) {
-            active[slot] = last;
-            last._activeSlot = slot;
-            kineticDynamicSlab.activePhysIds[slot] = last._physId;
-            kineticDynamicSlab.activeSlot[last._physId] = slot;
+        const lastIdx = slab.activePhysCount - 1;
+        const last = slab.activePhysIds[lastIdx];
+        slab.activePhysCount = lastIdx;
+        if (slot < lastIdx) {
+            slab.activePhysIds[slot] = last;
+            slab.activeSlot[last] = slot;
         }
-        prop._activeSlot = -1;
-        kineticDynamicSlab.activeSlot[prop._physId] = -1;
-        kineticDynamicSlab.activePhysCount = active.length;
+        slab.activeSlot[eid] = -1;
     }
-    scheduleKineticActivation(prop) {
-        if (prop._physId === undefined) return;
-        wakeKineticBody(prop._physId);
-        this._activationScheduled.add(prop);
+    scheduleKineticActivation(eid) {
+        if (eid === undefined || eid === -1) return;
+        wakeKineticBody(eid);
+        this._activationScheduled.add(eid);
     }
-    _wakeConstraintLinkedPeers(prop, patchOut) {
-        const physId = prop._physId;
-        if (physId === undefined || physId === -1) return;
-        const count = kineticDynamicSlab.linkNeighborCount[physId];
+    _wakeConstraintLinkedPeers(eid, patchOut) {
+        if (eid === undefined || eid === -1) return;
+        const count = kineticDynamicSlab.linkNeighborCount[eid];
         if (count === 0) return;
-        const offset = kineticDynamicSlab.linkNeighborOffset[physId];
-        const eids = kineticDynamicSlab.linkNeighborEids;
+        const offset = kineticDynamicSlab.linkNeighborOffset[eid];
+        const peerEids = kineticDynamicSlab.linkNeighborEids;
         for (let i = 0; i < count; i++) {
-            const peerEid = eids[offset + i];
-            const peer = entityRefs[peerEid];
-            if (!peer || peer === prop || peer._physId === undefined || peer._physId !== peerEid) continue;
-            if (kineticDynamicSlab.sleeping[peer._physId]) wakeKineticBody(peer._physId);
-            this._ensureActive(peer);
-            if (patchOut) patchOut.push(peer);
+            const peerEid = peerEids[offset + i];
+            if (peerEid === eid) continue;
+            if (!entityAlive[peerEid] || entityRefs[peerEid]?._physId !== peerEid) continue;
+            if (kineticDynamicSlab.sleeping[peerEid]) wakeKineticBody(peerEid);
+            this._ensureActive(peerEid);
+            if (patchOut) patchOut.push(peerEid);
         }
     }
     flushScheduledKineticActivations(patchOut) {
         const scheduled = this._activationScheduled;
         if (scheduled.size === 0) return;
-        for (const prop of scheduled) {
-            this._ensureActive(prop);
-            this._wakeConstraintLinkedPeers(prop, patchOut);
-            if (patchOut) patchOut.push(prop);
+        for (const eid of scheduled) {
+            this._ensureActive(eid);
+            this._wakeConstraintLinkedPeers(eid, patchOut);
+            if (patchOut) patchOut.push(eid);
         }
         scheduled.clear();
     }
-    activateKineticBody(prop, snapshot = true) {
-        if (prop._physId === undefined) return;
-        if (kineticDynamicSlab.sleeping[prop._physId]) wakeKineticBody(prop._physId);
-        this._ensureActive(prop, snapshot);
-        this._wakeConstraintLinkedPeers(prop);
+    activateKineticBody(eid, snapshot = true) {
+        if (eid === undefined || eid === -1) return;
+        if (kineticDynamicSlab.sleeping[eid]) wakeKineticBody(eid);
+        this._ensureActive(eid, snapshot);
+        this._wakeConstraintLinkedPeers(eid);
     }
-    reindexKineticBodies(bodies) {
-        if (!bodies?.length) return;
-        for (let i = bodies.length - 1; i >= 0; i--) if (bodies[i]._physId === undefined) bodies.splice(i, 1);
-        if (!bodies.length) return;
-        super.reindexKineticBodies(bodies);
+    reindexActiveKineticBodies() {
+        const slab = kineticDynamicSlab;
+        if (!slab.activePhysCount) return;
+        for (let i = 0; i < slab.activePhysCount; i++) {
+            const eid = slab.activePhysIds[i];
+            const entity = entityRefs[eid];
+            if (!entity || entity._physId !== eid) continue;
+            this.entityGrid.remove(entity);
+            this.entityGrid.insert(entity);
+            entity._neighborsFrameId = -1;
+            entity._neighborEidCount = 0;
+        }
+        this.frameId = (this.frameId + 1) | 0;
+        invalidateWallCandidateBucketFrame(this._wallBuckets);
+    }
+    reindexKineticBodies(eids, count = eids.length) {
+        if (!count) return;
+        for (let i = 0; i < count; i++) {
+            const entity = entityRefs[eids[i]];
+            if (!entity) continue;
+            this.entityGrid.remove(entity);
+            this.entityGrid.insert(entity);
+            entity._neighborsFrameId = -1;
+            entity._neighborEidCount = 0;
+        }
+        this.frameId = (this.frameId + 1) | 0;
+        invalidateWallCandidateBucketFrame(this._wallBuckets);
     }
     evictKineticProp(prop, session) {
         if (!prop || prop._physId === undefined) return;
@@ -3347,10 +3363,14 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         prop._spawnVy = vy;
         prop._spawnW = w;
         this.entityGrid.remove(prop);
-        const all = this._kineticBodies;
-        for (let i = all.length - 1; i >= 0; i--) if (all[i] === prop) all.splice(i, 1);
-        this._removeFromActive(prop);
-        this._activationScheduled.delete(prop);
+        const all = this.kineticEids;
+        for (let i = this.kineticEidCount - 1; i >= 0; i--)
+            if (all[i] === physId) {
+                all[i] = all[--this.kineticEidCount];
+                break;
+            }
+        this._removeFromActive(physId);
+        this._activationScheduled.delete(physId);
         this.releasePhysId(physId, prop, session);
         prop._neighborsFrameId = -1;
         prop._neighborEidCount = 0;

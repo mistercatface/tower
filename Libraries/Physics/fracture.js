@@ -657,11 +657,11 @@ class KineticDebrisStore {
             const body = bodies[i];
             if (body.isDead || body.isSleeping) continue;
             body.tickPropSubstep(dtMs);
-            integrated.push(body);
+            integrated.push(body._physId);
         }
         if (!integrated.length) return;
-        snapshotKineticBodySlab(integrated);
-        spatialFrame.reindexKineticBodies(integrated);
+        snapshotKineticBodySlab(integrated, integrated.length);
+        spatialFrame.reindexKineticBodies(integrated, integrated.length);
         integrated.length = 0;
     }
 }
