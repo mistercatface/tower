@@ -32,18 +32,48 @@ describe("fracture contact queue", () => {
         assert.ok(!prop.isDead);
     });
 
-    it("skips mutual fracture when both bodies are fracturable", () => {
+    it("hard mutual fracture shatters the larger body with higher force excess", () => {
         const a = new WorldProp(100, 100, "box", 0);
         a.fractureEnabled = true;
-        applyPropBoxFootprint(a, 32, 32);
+        applyPropBoxFootprint(a, 20, 20);
         const b = new WorldProp(108, 100, "box", 0);
         b.fractureEnabled = true;
-        applyPropBoxFootprint(b, 32, 32);
+        applyPropBoxFootprint(b, 12, 12);
         const tick = createKineticTestTick([a, b]);
         tick.world.fractureEngine.queueFractureKineticContact(a, b, 104, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
+        const deadCount = [a, b].filter((p) => p.isDead).length;
+        assert.equal(deadCount, 1);
+        assert.ok(a.isDead);
+        assert.ok(!b.isDead);
+    });
+
+    it("small mutual shards stay intact at the same force that breaks large pieces", () => {
+        const a = new WorldProp(100, 100, "box", 0);
+        a.fractureEnabled = true;
+        applyPropBoxFootprint(a, 2.5, 2.5);
+        const b = new WorldProp(105, 100, "box", 0);
+        b.fractureEnabled = true;
+        applyPropBoxFootprint(b, 2.5, 2.5);
+        const tick = createKineticTestTick([a, b]);
+        tick.world.fractureEngine.queueFractureKineticContact(a, b, 102, 100, 80);
+        tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         assert.ok(!a.isDead);
         assert.ok(!b.isDead);
+    });
+
+    it("picks the higher-excess side once when both large bodies qualify", () => {
+        const a = new WorldProp(100, 100, "box", 0);
+        a.fractureEnabled = true;
+        applyPropBoxFootprint(a, 16, 16);
+        const b = new WorldProp(108, 100, "box", 0);
+        b.fractureEnabled = true;
+        applyPropBoxFootprint(b, 16, 16);
+        const tick = createKineticTestTick([a, b]);
+        tick.world.fractureEngine.queueFractureKineticContact(a, b, 104, 100, 80);
+        tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
+        const deadCount = [a, b].filter((p) => p.isDead).length;
+        assert.equal(deadCount, 1);
     });
 
     it("respects fracture cooldown on fracturable props", () => {

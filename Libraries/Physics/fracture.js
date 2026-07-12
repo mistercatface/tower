@@ -8,12 +8,17 @@ import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, poly
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";
 import { stampPropVisualOverride } from "../Color/visualOverride.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
-export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8 }, default: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
+export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8, refSpan: 40, sizeForceExp: 1.25 }, default: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const DEFAULT_FRACTURE_CONFIG = Object.freeze({ impactThreshold: FRACTURE_TUNING.default.impactThreshold, minShardArea: FRACTURE_TUNING.default.minShardArea, maxShardsPerShatter: FRACTURE_TUNING.default.maxShardsPerShatter });
 const FRACTURE_IMPACT_THRESHOLD = DEFAULT_FRACTURE_CONFIG.impactThreshold;
 const FRACTURE_MIN_SHARD_AREA = DEFAULT_FRACTURE_CONFIG.minShardArea;
 export const FRACTURE_MAX_SHARDS_PER_SHATTER = DEFAULT_FRACTURE_CONFIG.maxShardsPerShatter;
 const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
+export function requiredImpactForce(prop, baseThreshold = FRACTURE_IMPACT_THRESHOLD) {
+    const span = Math.max(FractureEngine.propFractureSpan(prop), FRACTURE_MIN_PIECE_SIZE);
+    const t = FRACTURE_TUNING.shared.refSpan / span;
+    return baseThreshold * Math.pow(Math.max(1, t), FRACTURE_TUNING.shared.sizeForceExp);
+}
 const SHATTER_SEEDS = ENGINE_F32.subarray(F_SHATTER_SEEDS, F_SHATTER_SEEDS + FRACTURE_MAX_SHARDS_PER_SHATTER * 2);
 export function effectiveFracture(prop) {
     if (prop.fractureEnabled === true) return DEFAULT_FRACTURE_CONFIG;
@@ -882,23 +887,31 @@ export class FractureEngine {
         }
     }
     queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
+        let bestProp = null;
+        let bestExcess = -Infinity;
+        let bestArea = Infinity;
         for (let i = 0; i < 2; i++) {
             const prop = i === 0 ? bodyA : bodyB;
-            const other = i === 0 ? bodyB : bodyA;
             if (prop._physId === undefined) continue;
             const fractureConfig = effectiveFracture(prop);
             if (!fractureConfig) continue;
-            const minForce = fractureConfig.minForce ?? FRACTURE_IMPACT_THRESHOLD;
-            if (force < minForce) continue;
             if (!FractureEngine.canFracturePropSplit(prop)) continue;
             if (prop._fractureCooldown > 0) continue;
-            if (effectiveFracture(other)) continue;
             if (prop._pendingEviction) continue;
-            if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, force, this)) continue;
-            if (ENGINE_F32[F_OUT_REMNANT] !== 1) prop._pendingEviction = true;
-            this.enqueueDeferredFracture(prop);
-            return;
+            const baseThreshold = fractureConfig.minForce ?? FRACTURE_IMPACT_THRESHOLD;
+            const excess = force - requiredImpactForce(prop, baseThreshold);
+            if (excess < 0) continue;
+            const area = FractureEngine._fractureFootprintArea(prop);
+            if (excess > bestExcess || (excess === bestExcess && area < bestArea)) {
+                bestExcess = excess;
+                bestArea = area;
+                bestProp = prop;
+            }
         }
+        if (!bestProp) return;
+        if (!FractureEngine.fracturePropOnImpact(bestProp, hitX, hitY, force, this)) return;
+        if (ENGINE_F32[F_OUT_REMNANT] !== 1) bestProp._pendingEviction = true;
+        this.enqueueDeferredFracture(bestProp);
     }
     enqueueDeferredFracture(prop) {
         const deferred = deferredFractureSlab;
@@ -1007,27 +1020,41 @@ export class FractureEngine {
         prop.mass = kineticMassFromFootprint(prop);
         normalizeKineticBody(prop);
     }
+    static propFractureSpan(prop) {
+        const parts = collisionPartsList(prop);
+        if (parts) {
+            let maxSpan = 0;
+            for (let i = 0; i < parts.length; i++) {
+                const shape = parts[i];
+                if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
+                convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
+                maxSpan = Math.max(maxSpan, Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2);
+            }
+            return maxSpan;
+        }
+        const shape = prop.shape;
+        if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return 0;
+        convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
+        return Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2;
+    }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!effectiveFracture(prop)) return false;
         const parts = collisionPartsList(prop);
         if (parts) {
-            let maxSpan = 0;
             let refVerts = null;
             for (let i = 0; i < parts.length; i++) {
                 const shape = parts[i];
                 if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
-                if (!refVerts) refVerts = shape.vertices;
-                convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
-                maxSpan = Math.max(maxSpan, Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2);
+                refVerts = shape.vertices;
+                break;
             }
-            if (!refVerts || maxSpan < minSize) return false;
+            if (!refVerts || FractureEngine.propFractureSpan(prop) < minSize) return false;
             const minArea = FractureEngine.minShardAreaForPolygon(refVerts) * 2;
             return FractureEngine._fractureFootprintArea(prop) >= minArea;
         }
         const shape = prop.shape;
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return false;
-        convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
-        if (Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2 < minSize) return false;
+        if (FractureEngine.propFractureSpan(prop) < minSize) return false;
         const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
         return FractureEngine._fractureFootprintArea(prop) >= minArea;
     }

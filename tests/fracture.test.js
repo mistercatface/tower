@@ -257,18 +257,46 @@ describe("fracture", () => {
         }
         assert.equal(world.worldProps.length, 0);
     });
-    it("fracture shard on fracture shard does not reproduce on kinetic contact", () => {
+    it("soft fracture shard on fracture shard stays intact", () => {
         const { a, b } = makeOverlappingFractureShards();
         const tick = createKineticTestTick([a, b]);
-        tryFractureKineticContact(tick, a, b, 4, 0, 240);
+        tryFractureKineticContact(tick, a, b, 4, 0, 4);
         assert.equal(liveFracturePropCount(tick.world), 2);
     });
-    it("resolveKineticContactPassWithEffects keeps fracture shard count stable across substeps", () => {
-        const { a, b } = makeOverlappingFractureShards();
+    it("hard fracture shard on large fracture shard can shatter once", () => {
+        const a = new WorldProp(0, 0, "box", 0);
+        const b = new WorldProp(18, 0, "box", 0);
+        a.fractureEnabled = true;
+        b.fractureEnabled = true;
+        applyPropBoxFootprint(a, 16, 16);
+        applyPropBoxFootprint(b, 16, 16);
+        a._fractureCooldown = 0;
+        b._fractureCooldown = 0;
         const tick = createKineticTestTick([a, b]);
-        for (let step = 0; step < 8; step++) {
+        tryFractureKineticContact(tick, a, b, 8, 0, 240);
+        const count = liveFracturePropCount(tick.world);
+        assert.ok(count > 2);
+        assert.ok(count <= FRACTURE_MAX_SHARDS_PER_SHATTER + 1);
+    });
+    it("resolveKineticContactPassWithEffects does not powder after a mutual shatter", () => {
+        const a = new WorldProp(0, 0, "box", 0);
+        const b = new WorldProp(18, 0, "box", 0);
+        a.fractureEnabled = true;
+        b.fractureEnabled = true;
+        applyPropBoxFootprint(a, 16, 16);
+        applyPropBoxFootprint(b, 16, 16);
+        a.vx = 120;
+        b.vx = -120;
+        a._fractureCooldown = 0;
+        b._fractureCooldown = 0;
+        const tick = createKineticTestTick([a, b]);
+        assert.ok(satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape));
+        resolveKineticContactPassWithEffects(tick);
+        const afterFirst = liveFracturePropCount(tick.world);
+        assert.ok(afterFirst > 2);
+        for (let step = 0; step < 7; step++) {
             resolveKineticContactPassWithEffects(tick);
-            assert.equal(liveFracturePropCount(tick.world), 2, `reproduced on substep ${step}`);
+            assert.ok(liveFracturePropCount(tick.world) <= afterFirst + FRACTURE_MAX_SHARDS_PER_SHATTER, `powdered on substep ${step}`);
         }
     });
     it("fracture shard still shatters against a non-fracture kinetic prop", () => {
