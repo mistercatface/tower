@@ -17,6 +17,7 @@ import {
     M_OUT_VZ,
     P_COMPOUND,
     entityRefs,
+    entityFacing,
     entityRollQw,
     entityRollQx,
     entityRollQy,
@@ -1754,10 +1755,9 @@ export function snapshotKineticBodySlab(bodies) {
 export function refreshActiveKineticBodySlabPose(bodies) {
     const slab = kineticDynamicSlab;
     for (let i = 0; i < bodies.length; i++) {
-        const entity = bodies[i];
-        const physId = entity._physId;
+        const physId = bodies[i]._physId;
         if (slab.shapeKind[physId] !== SHAPE_TYPE_CIRCLE) {
-            const angle = readEntityFacing(entity);
+            const angle = entityFacing[physId];
             slab.cos[physId] = Math.cos(angle);
             slab.sin[physId] = Math.sin(angle);
         }
@@ -4060,11 +4060,13 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
     const physId = body._physId;
     if (physId !== undefined) {
         const dyn = kineticDynamicSlab;
+        const dt = dtMs / 1000;
         let vx = dyn.vx[physId];
         let vy = dyn.vy[physId];
         if (vx || vy) {
-            addXY(body, vx * (dtMs / 1000), vy * (dtMs / 1000));
-            const dragFactor = Math.exp(-friction * (dtMs / 1000));
+            dyn.x[physId] += vx * dt;
+            dyn.y[physId] += vy * dt;
+            const dragFactor = Math.exp(-friction * dt);
             vx *= dragFactor;
             vy *= dragFactor;
             if (lengthXY(vx, vy) < snapSpeed) {
@@ -4075,8 +4077,8 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
             dyn.vy[physId] = vy;
         }
         if (integrateFacing && dyn.w[physId]) {
-            body.facing = readEntityFacing(body) + dyn.w[physId] * (dtMs / 1000);
-            const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
+            entityFacing[physId] += dyn.w[physId] * dt;
+            const angularDrag = Math.exp(-friction * 0.8 * dt);
             let w = dyn.w[physId] * angularDrag;
             if (Math.abs(w) < 0.1) w = 0;
             dyn.w[physId] = w;
@@ -4084,17 +4086,17 @@ export function applyVelocityDamping(body, dtMs, { friction = 8.0, integrateFaci
         return;
     }
     if (body.vx || body.vy) {
-        addXY(body, (body.vx ?? 0) * (dtMs / 1000), (body.vy ?? 0) * (dtMs / 1000));
+        addXY(body, body.vx * (dtMs / 1000), body.vy * (dtMs / 1000));
         const dragFactor = Math.exp(-friction * (dtMs / 1000));
-        body.vx = (body.vx ?? 0) * dragFactor;
-        body.vy = (body.vy ?? 0) * dragFactor;
+        body.vx *= dragFactor;
+        body.vy *= dragFactor;
         if (lengthXY(body.vx, body.vy) < snapSpeed) {
             body.vx = 0;
             body.vy = 0;
         }
     }
     if (integrateFacing && body.angularVelocity) {
-        body.facing = readEntityFacing(body) + body.angularVelocity * (dtMs / 1000);
+        body.facing += body.angularVelocity * (dtMs / 1000);
         const angularDrag = Math.exp(-friction * 0.8 * (dtMs / 1000));
         body.angularVelocity *= angularDrag;
         if (Math.abs(body.angularVelocity) < 0.1) body.angularVelocity = 0;
