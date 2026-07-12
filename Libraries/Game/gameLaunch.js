@@ -186,6 +186,7 @@ async function runFractureLaunch(state, ctx) {
     pane.fractureEnabled = true;
     const star = spawnPlacedSandboxProp(state, cx, cy - (half + 24), "star_block", "alpha");
     star.spinMotor = GLASS_STAR_SPIN_RATE;
+    star.spinMotorSign = 1;
     star.angularVelocity = GLASS_STAR_SPIN_RATE;
     wakeKineticBody(star);
     state.appLaunch?.session?.bind(ctx);

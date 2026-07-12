@@ -1724,6 +1724,11 @@ export function bakeSpatialNeighborCsr(spatialFrame) {
     const padBase = ENGINE_BOUNDS_BASE + B_PAD;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physId = slab.activePhysIds[i];
+        if (!isKinematicallyActiveSlab(physId)) {
+            slab.spatialNeighborOffset[physId] = 0;
+            slab.spatialNeighborCount[physId] = 0;
+            continue;
+        }
         const span = slabCollisionSpan(physId);
         const searchRadius = span + grid.maxInsertedExtent + neighborQueryPadForExtent(span);
         centerReachAabbF32(ENGINE_F32, padBase, slab.x[physId], slab.y[physId], searchRadius);
@@ -1776,9 +1781,8 @@ export function shouldResolveKineticPair(a, b, overlaps) {
 }
 export function allowsKineticCollisionPairOrderSlab(physIdA, physIdB) {
     if (physIdA === physIdB) return false;
-    const dyn = kineticDynamicSlab;
-    const stat = kineticStaticSlab;
-    if (dyn.activeSlot[physIdB] >= 0 && stat.entityId[physIdA] >= stat.entityId[physIdB]) return false;
+    // Undirected dedup only when B can also be a gather primary (kinematically active).
+    if (isKinematicallyActiveSlab(physIdB) && kineticStaticSlab.entityId[physIdA] >= kineticStaticSlab.entityId[physIdB]) return false;
     return true;
 }
 export function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
@@ -1787,6 +1791,11 @@ export function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
 }
 export function allowsKineticCollisionPair(primary, other, overlaps) {
     return allowsKineticCollisionPairSlab(primary._physId, other._physId, overlaps);
+}
+function kineticPairPassesBroadphase(physIdA, physIdB) {
+    if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) return false;
+    if (!isKinematicallyActiveSlab(physIdA) && !isKinematicallyActiveSlab(physIdB)) return false;
+    return pairBroadphaseOverlapSlab(physIdA, physIdB);
 }
 function kineticOverlapsWallCandidates(px, py, body, candidates) {
     if (!candidates.used) return false;
@@ -3358,9 +3367,7 @@ export function compactSubstepKineticPairs(spatialFrame, pairs) {
         const physIdA = pairs.physIdA[i];
         const physIdB = pairs.physIdB[i];
         if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
-        if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) continue;
-        const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-        if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
+        if (!kineticPairPassesBroadphase(physIdA, physIdB)) continue;
         if (write !== i) {
             pairs.physIdA[write] = physIdA;
             pairs.physIdB[write] = physIdB;
@@ -3394,9 +3401,7 @@ export function patchKineticPairsForBodies(spatialFrame, pairs, bodies) {
             const physIdB = neighborEids[offset + j];
             const key = pairPhysKey(physIdA, physIdB);
             if (hasPairHash(key)) continue;
-            if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) continue;
-            const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
+            if (!kineticPairPassesBroadphase(physIdA, physIdB)) continue;
             if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) {
                 for (let k = 0; k < seenCount; k++) seenPrimary[seenPrimaryIds[k]] = 0;
@@ -3420,13 +3425,12 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
     const neighborEids = slab.spatialNeighborEids;
     for (let i = 0; i < slab.activePhysCount; i++) {
         const physIdA = slab.activePhysIds[i];
-        const offset = slab.spatialNeighborOffset[physIdA];
         const neighborCount = slab.spatialNeighborCount[physIdA];
+        if (!neighborCount) continue;
+        const offset = slab.spatialNeighborOffset[physIdA];
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[offset + j];
-            if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) continue;
-            const overlaps = pairBroadphaseOverlapSlab(physIdA, physIdB);
-            if (!allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps)) continue;
+            if (!kineticPairPassesBroadphase(physIdA, physIdB)) continue;
             if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;
             const idx = pairs.count++;
@@ -3614,6 +3618,7 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         ENGINE_F32[o + 2] = ex + half;
         ENGINE_F32[o + 1] = ey - half;
         ENGINE_F32[o + 3] = ey + half;
+        padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, o, eg.maxInsertedExtent);
         PORTAL_TICK.grid = grid;
         PORTAL_TICK.spatialFrame = spatialFrame;
         PORTAL_TICK.exitIdx = exitIdx;
@@ -3621,7 +3626,7 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         PORTAL_TICK.exitCy = ey;
         PORTAL_TICK.tx = grid.gridCenterXByIdx(entryIdx);
         PORTAL_TICK.ty = grid.gridCenterYByIdx(entryIdx);
-        eg.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, null, ++eg.queryGen, portalTeleportHandler);
+        eg.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, null, ++eg.queryGen, portalTeleportHandler);
     }
 }
 export function runKineticPhysics(tick, dt, hooks) {

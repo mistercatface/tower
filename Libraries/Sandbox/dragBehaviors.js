@@ -260,22 +260,26 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             dy = ty - ENGINE_F32[G_WY];
         }
         const dist = Math.hypot(dx, dy);
+        const spinBase = prop.spinMotor ? Math.abs(prop.spinMotor) : 0;
         if (dist < rollConfig.stopRadius) {
-            if (prop.spinMotor) prop.spinMotorDrive = prop.spinMotor;
+            if (spinBase) prop.spinMotorDrive = (prop.spinMotorSign ?? 1) * spinBase;
             decelerateRoll(prop, rollConfig);
             return;
         }
         const power = computeLaunchPower(dist, grabConfig);
         if (power <= 0) {
-            if (prop.spinMotor) prop.spinMotorDrive = prop.spinMotor;
+            if (spinBase) prop.spinMotorDrive = (prop.spinMotorSign ?? 1) * spinBase;
             decelerateRoll(prop, rollConfig);
             return;
         }
         const ratio = power / grabConfig.maxPower;
         steerRollToward(prop, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
         if (prop.strategy?.rolls) return;
-        if (prop.spinMotor) {
-            prop.spinMotorDrive = prop.spinMotor * (1 + ratio * SPIN_MOTOR_PULL_GAIN);
+        if (spinBase) {
+            // +w is clockwise; prefer CW when dragging north (-dy), CCW when dragging south.
+            const dirSign = dy !== 0 ? Math.sign(-dy) : Math.sign(dx) || 1;
+            prop.spinMotorSign = dirSign;
+            prop.spinMotorDrive = dirSign * spinBase * (1 + ratio * SPIN_MOTOR_PULL_GAIN);
             return;
         }
         grabDragAnchorWorld(prop, run);

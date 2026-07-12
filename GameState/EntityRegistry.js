@@ -1,7 +1,7 @@
 import { pruneKineticConstraintsForBody, resolveBodyRadius, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHashF32, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, ensureGrowI32, pickWorldPoly } from "../Core/engineMemory.js";
+import { aabbHashF32, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, pickWorldPoly } from "../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
 import { entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
@@ -341,10 +341,12 @@ export class EntityArena {
         const queryGen = ++this._candidateQueryGen;
         const scratch = this._candidateEids;
         this._ensureCandidateCap(256);
-        let n = spatialFrame.collectEntityEidsInBoundsF32(buf, o, scratch, 0, scratch.length);
+        const padO = ENGINE_BOUNDS_BASE + B_PAD;
+        padAabbF32(ENGINE_F32, padO, buf, o, spatialFrame.entityGrid.maxInsertedExtent);
+        let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, padO, scratch, 0, scratch.length);
         while (n < 0) {
             this._ensureCandidateCap(this._candidateEids.length * 2);
-            n = spatialFrame.collectEntityEidsInBoundsF32(buf, o, this._candidateEids, 0, this._candidateEids.length);
+            n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, padO, this._candidateEids, 0, this._candidateEids.length);
         }
         const eidBuf = this._candidateEids;
         this._candidateCount = 0;

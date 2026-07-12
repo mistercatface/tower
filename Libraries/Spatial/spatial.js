@@ -1651,11 +1651,10 @@ export class EntityGrid {
     }
     forEachInBoundsF32(buf, o, exclude, queryGen, fn) {
         const stamp = queryGen || (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
-        const pad = this.maxInsertedExtent;
-        const minCol = Math.max(0, Math.floor((buf[o] - pad - this.minX) / this.cellSize));
-        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] + pad - this.minX) / this.cellSize));
-        const minRow = Math.max(0, Math.floor((buf[o + 1] - pad - this.minY) / this.cellSize));
-        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] + pad - this.minY) / this.cellSize));
+        const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
+        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] - this.minX) / this.cellSize));
+        const minRow = Math.max(0, Math.floor((buf[o + 1] - this.minY) / this.cellSize));
+        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] - this.minY) / this.cellSize));
         if (minCol > maxCol || minRow > maxRow) return;
         const cellHead = this.cellHead;
         const entityNext = this.entityNext;
@@ -1717,11 +1716,10 @@ export class EntityGrid {
         const stamp = (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
         this.queryGen = stamp;
         let write = 0;
-        const pad = this.maxInsertedExtent;
-        const minCol = Math.max(0, Math.floor((buf[o] - pad - this.minX) / this.cellSize));
-        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] + pad - this.minX) / this.cellSize));
-        const minRow = Math.max(0, Math.floor((buf[o + 1] - pad - this.minY) / this.cellSize));
-        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] + pad - this.minY) / this.cellSize));
+        const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
+        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] - this.minX) / this.cellSize));
+        const minRow = Math.max(0, Math.floor((buf[o + 1] - this.minY) / this.cellSize));
+        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] - this.minY) / this.cellSize));
         if (minCol > maxCol || minRow > maxRow) return 0;
         const cellHead = this.cellHead;
         const entityNext = this.entityNext;
