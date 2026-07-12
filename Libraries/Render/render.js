@@ -1,7 +1,7 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isFaceTowardViewer, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveWallSurfaceProfileId, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabb } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, scaleAtHeight } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, HIT_TEST_CIRCLE } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
@@ -1457,7 +1457,7 @@ function computeWallFaceSubdivInto(row, settings, viewport) {
     slab.alphaBandMax[row] = alphaBandMax;
     return row;
 }
-function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, row, viewport, boundsBuf, boundsO) {
+function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, row, viewport) {
     const slab = wallFaceDrawMemoSlab;
     const canvas = slab.handles[row].canvases[0];
     const capHeight = slab.capHeight[row];
@@ -1489,7 +1489,7 @@ function blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, row, viewport, boun
             computeFaceCornerElevatedInto(rSubdiv, 2, u1, v0, botBuf, botO, topBuf, topO);
             computeFaceCornerElevatedInto(rSubdiv, 4, u1, v1, botBuf, botO, topBuf, topO);
             computeFaceCornerElevatedInto(rSubdiv, 6, u0, v1, botBuf, botO, topBuf, topO);
-            if (!flatQuadOverlapAabbF32(rSubdiv[0], rSubdiv[1], rSubdiv[2], rSubdiv[3], rSubdiv[4], rSubdiv[5], rSubdiv[6], rSubdiv[7], boundsBuf, boundsO)) continue;
+            if (!flatQuadOverlapAabbF32(rSubdiv[0], rSubdiv[1], rSubdiv[2], rSubdiv[3], rSubdiv[4], rSubdiv[5], rSubdiv[6], rSubdiv[7], viewBoundsBuf, VIEW_TIER_CHUNKS)) continue;
             drawImageQuadWithBaseTransformScalars(ctx, canvas, u0 * canvas.width, sy0, u1 * canvas.width, sy1, rSubdiv[0], rSubdiv[1], rSubdiv[2], rSubdiv[3], rSubdiv[4], rSubdiv[5], rSubdiv[6], rSubdiv[7], baseTransform.a, baseTransform.b, baseTransform.c, baseTransform.d, baseTransform.e, baseTransform.f);
         }
     }
@@ -1519,7 +1519,7 @@ function drawFaceTextureScalars(ctx, x1, y1, x2, y2, botBuf, botO, topBuf, topO,
         ctx.fill();
         return;
     }
-    blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, subdivRow, viewport, viewBoundsBuf, VIEW_TIER_CHUNKS);
+    blitWallFaceSubdiv(ctx, botBuf, botO, topBuf, topO, subdivRow, viewport);
 }
 export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state, face) {
     const { wallHeight, wallBaseZ } = face;
@@ -1702,7 +1702,6 @@ export function createConveyorDraw(options = {}) {
 }
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 const match3d = (p) => p.strategy?.renderMode === PROP_RENDER_MODE_3D;
-const THREE_D_QUERY_OPTIONS = { filterId: "3d", match: match3d };
 function bindWallFaceScratchFlat(scratch, kind, baseIndex) {
     scratch.atlasFaceId = undefined;
     if (kind === DRAW_KIND_RAIL) {
@@ -1739,8 +1738,8 @@ function prepareWallChunkPropTextures(state, prop) {
     prop._wallChunkTextures = textures;
     prop._wallChunkTextureReady = ready;
 }
-export function queryPropIdsInView(entityRegistry, spatialFrame, { tierO = VIEW_TIER_PROPS, hitTest = "circle", match = null, filterId = "overlay" } = {}) {
-    return entityRegistry.queryViewIds({ boundsBuf: viewBoundsBuf, boundsO: tierO, kinds: ["worldProp"], filterId, match, hitTest }, spatialFrame);
+export function queryPropIdsInView(entityRegistry, spatialFrame, tierO = VIEW_TIER_PROPS, hitTest = HIT_TEST_CIRCLE, filterId = "overlay", match = null) {
+    return entityRegistry.queryViewTier(spatialFrame, tierO, hitTest, filterId, match);
 }
 export class WorldSceneRenderer {
     constructor() {
@@ -1748,7 +1747,7 @@ export class WorldSceneRenderer {
         this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     _appendVisible3dProps(state, viewport) {
-        const packed = queryPropIdsInView(state.entityRegistry, state.spatialFrame, THREE_D_QUERY_OPTIONS);
+        const packed = queryPropIdsInView(state.entityRegistry, state.spatialFrame, VIEW_TIER_PROPS, HIT_TEST_CIRCLE, "3d", match3d);
         const ids = packed.ids;
         for (let i = 0; i < packed.count; i++) {
             const eid = ids[i];

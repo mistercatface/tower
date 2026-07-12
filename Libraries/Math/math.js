@@ -1,4 +1,4 @@
-import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, MAX_OUTLINE_VERTS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_CLOSEST_X, M_OUT_CLOSEST_Y, M_OUT_CLOSEST_T, M_OUT_CX, M_OUT_CY, M_OUT_AREA, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, M_OUT_VX, M_OUT_VY, M_OUT_VZ, MAX_OUTLINE_VERTS, HIT_TEST_CENTER, HIT_TEST_AABB } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE } from "../../Core/engineEnums.js";
 export function deterministicUnitRandom(seed) {
     let h = seed | 0;
@@ -664,8 +664,8 @@ export function distanceToAabbF32(px, py, buf, o) {
     return Math.sqrt(distanceSqToAabbF32(px, py, buf, o));
 }
 export function entityIntersectsAabbF32(ref, buf, o, hitTest) {
-    if (hitTest === "center") return pointInAabbF32(ref.x, ref.y, buf, o);
-    if (hitTest === "aabb") {
+    if (hitTest === HIT_TEST_CENTER) return pointInAabbF32(ref.x, ref.y, buf, o);
+    if (hitTest === HIT_TEST_AABB) {
         const aabb = ref.aabb;
         if (!aabb) return false;
         return aabb.minX <= buf[o + 2] && aabb.maxX >= buf[o] && aabb.minY <= buf[o + 3] && aabb.maxY >= buf[o + 1];

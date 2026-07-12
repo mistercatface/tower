@@ -52,7 +52,7 @@ Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch
 - Viewport zoom/position APIs call `recomputeViewBounds`; never store tiers on Viewport. Use `circleInViewBounds` for visibility (not `viewport.circleInBounds`).
 - Never put camera tiers in `ENGINE_F32` Bounds bank (`B_*` are ephemeral scratch only).
 - Viewport screen/world mapping is `(buf, o, …)` only (`screenToWorldF32` / `worldToScreenF32`) — **no** `return { x, y }`.
-- View → registry queries use `queryViewIds` / F32 spatial collect; do not reintroduce `BRIDGE_AABB` on that path.
+- View → registry queries use `queryViewTier` / positional `queryPropIdsInView(…, tierO, hitTest, filterId, match)` for camera; scratch AABB uses `queryInAabbF32(…, buf, o, …)`. Hit tests are `HIT_TEST_*` numbers. No criteria/`opts` bags. Do not reintroduce `BRIDGE_AABB` on that path.
 - Zoom/position changes go through `setZoom` / `setPosition` / `snapTo` / `follow` so bounds recompute.
 - Tests/harnesses that mock a viewport without a real `Viewport` must call `recomputeViewBounds` when visibility matters — no production branches for Node.
 

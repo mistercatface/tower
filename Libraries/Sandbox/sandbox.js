@@ -3,7 +3,7 @@ import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, resolveBodyRadius, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
-import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, HIT_TEST_CIRCLE } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
@@ -2394,7 +2394,7 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));
-        const packed = queryPropIdsInView(state.entityRegistry, spatialFrame, { tierO: VIEW_TIER_CHUNKS, filterId: "selectedOverlay", match: (prop) => selectedIds.has(prop.id) });
+        const packed = queryPropIdsInView(state.entityRegistry, spatialFrame, VIEW_TIER_CHUNKS, HIT_TEST_CIRCLE, "selectedOverlay", (prop) => selectedIds.has(prop.id));
         visibleSelectedProps = [];
         for (let i = 0; i < packed.count; i++) {
             const prop = state.entityRegistry.getRef(packed.ids[i]);
@@ -2927,7 +2927,7 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         onBoxSelect() {
             const o = ENGINE_BOUNDS_BASE + B_TMP;
             const filter = session.getSelectionTagFilter();
-            const props = state.entityRegistry.queryInAabbStrictF32(ENGINE_F32, o, { kinds: ["worldProp"], hitTest: "circle", match: (prop) => entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter) });
+            const props = state.entityRegistry.queryInAabbStrictF32(ENGINE_F32, o, HIT_TEST_CIRCLE, (prop) => entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter));
             selectPropIds(props.map((prop) => prop.id));
         },
     });
