@@ -132,6 +132,7 @@ const OVERLAY_FLAG_DASH = 2;
 const OVERLAY_FLAG_ARROWHEAD = 4;
 const OVERLAY_FLAG_GLOW = 8;
 const OVERLAY_FLAG_LINECAP_ROUND = 16;
+const OVERLAY_FLAG_HUE = 32;
 const OVERLAY_F_STRIDE = 12;
 const OVERLAY_F_G0 = 0;
 const OVERLAY_F_G1 = 1;
@@ -143,9 +144,22 @@ const OVERLAY_F_DASH_B = 6;
 const OVERLAY_F_WORLD_SPAN = 7;
 const OVERLAY_F_ANCHOR_X = 8;
 const OVERLAY_F_ANCHOR_Y = 9;
-const OVERLAY_F_EXTRA0 = 10;
+const OVERLAY_F_HUE = 10;
 const OVERLAY_F_EXTRA1 = 11;
 const OVERLAY_INIT_CAP = 128;
+function packOverlayRgba(r, g, b, a01) {
+    const a = a01 <= 0 ? 0 : a01 >= 1 ? 255 : (a01 * 255 + 0.5) | 0;
+    return ((a << 24) | (r << 16) | (g << 8) | b) >>> 0;
+}
+function cssFromOverlayRgba(packed) {
+    if (!packed) return null;
+    const a = (packed >>> 24) & 255;
+    const r = (packed >>> 16) & 255;
+    const g = (packed >>> 8) & 255;
+    const b = packed & 255;
+    if (a === 255) return "rgb(" + r + "," + g + "," + b + ")";
+    return "rgba(" + r + "," + g + "," + b + "," + (a / 255).toFixed(3) + ")";
+}
 export const OVERLAY_STYLE_SELECTION_RING = 0;
 export const OVERLAY_STYLE_FLOOR_CELL = 1;
 export const OVERLAY_STYLE_VOXEL_CELL = 2;
@@ -162,14 +176,78 @@ export const OVERLAY_STYLE_PATH_FLOW_DEBUG = 12;
 export const OVERLAY_STYLE_PATH_HPA_DEBUG = 13;
 export const OVERLAY_STYLE_PATH_DEBUG_NODE_FLOW = 14;
 export const OVERLAY_STYLE_PATH_DEBUG_NODE_HPA = 15;
-const OVERLAY_STYLE_STROKE = ["rgba(255, 252, 245, 0.32)", "rgba(120, 200, 255, 0.75)", "rgba(255, 152, 0, 0.85)", "rgba(255, 252, 245, 0.32)", "rgba(255, 152, 0, 0.9)", "rgba(0, 188, 212, 0.55)", "rgba(0, 188, 212, 0.85)", "rgba(0, 188, 212, 0.85)", "rgba(76, 175, 80, 0.65)", "rgba(156, 39, 176, 0.65)", "rgba(0, 188, 212, 0.65)", "rgba(0, 188, 212, 0.85)", "#4caf50", "#00e5ff", "#4caf50", "#00e5ff"];
-const OVERLAY_STYLE_FILL = [null, "rgba(120, 200, 255, 0.1)", "rgba(255, 152, 0, 0.12)", "rgba(255, 252, 245, 0.05)", null, null, null, null, null, null, null, "rgba(0, 188, 212, 0.85)", null, null, "#4caf50", "#00e5ff"];
-const OVERLAY_STYLE_LINE_WIDTH = new Float32Array([1, 1, 1, 1, 3, 1.5, 2, 2, 2.5, 2.5, 3, 1, 4, 4, 1, 1]);
-const OVERLAY_STYLE_DASH_A = new Float32Array([4, 4, 4, 4, NaN, 4, NaN, NaN, NaN, NaN, 8, NaN, NaN, NaN, NaN, NaN]);
-const OVERLAY_STYLE_DASH_B = new Float32Array([4, 3, 3, 4, NaN, 4, NaN, NaN, NaN, NaN, 6, NaN, NaN, NaN, NaN, NaN]);
-const OVERLAY_STYLE_NODE_R = new Float32Array([0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 10, 0, 0, 6, 6]);
+export const OVERLAY_STYLE_DRAG_BASE = 16;
+export const OVERLAY_STYLE_DRAG_GRAB_LINE = 16;
+export const OVERLAY_STYLE_DRAG_GRAB_DOT_A = 17;
+export const OVERLAY_STYLE_DRAG_GRAB_DOT_B = 18;
+export const OVERLAY_STYLE_DRAG_BAND = 19;
+export const OVERLAY_STYLE_DRAG_PULL_LINE = 20;
+export const OVERLAY_STYLE_DRAG_PULL_DOT = 21;
+export const OVERLAY_STYLE_DRAG_START_RING = 22;
+export const OVERLAY_STYLE_DRAG_START_DOT = 23;
+export const OVERLAY_STYLE_DRAG_RUBBER = 24;
+export const OVERLAY_STYLE_DRAG_ANCHOR = 25;
+export const OVERLAY_STYLE_DRAG_AIM = 26;
+export const OVERLAY_STYLE_COUNT = 27;
+const OVERLAY_STYLE_STROKE_RGBA = new Uint32Array([packOverlayRgba(255, 252, 245, 0.32), packOverlayRgba(120, 200, 255, 0.75), packOverlayRgba(255, 152, 0, 0.85), packOverlayRgba(255, 252, 245, 0.32), packOverlayRgba(255, 152, 0, 0.9), packOverlayRgba(0, 188, 212, 0.55), packOverlayRgba(0, 188, 212, 0.85), packOverlayRgba(0, 188, 212, 0.85), packOverlayRgba(76, 175, 80, 0.65), packOverlayRgba(156, 39, 176, 0.65), packOverlayRgba(0, 188, 212, 0.65), packOverlayRgba(255, 255, 255, 1), packOverlayRgba(76, 175, 80, 1), packOverlayRgba(0, 229, 255, 1), packOverlayRgba(255, 255, 255, 1), packOverlayRgba(255, 255, 255, 1), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const OVERLAY_STYLE_FILL_RGBA = new Uint32Array([0, packOverlayRgba(120, 200, 255, 0.1), packOverlayRgba(255, 152, 0, 0.12), packOverlayRgba(255, 252, 245, 0.05), 0, 0, 0, 0, 0, 0, 0, packOverlayRgba(0, 188, 212, 0.85), 0, 0, packOverlayRgba(76, 175, 80, 1), packOverlayRgba(0, 229, 255, 1), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+const OVERLAY_STYLE_LINE_WIDTH = new Float32Array([1, 1, 1, 1, 3, 1.5, 2, 2, 2.5, 2.5, 3, 1, 4, 4, 1, 1, 1.5, 1.5, 1.5, 1, 1, 1.5, 1.5, 1, 2, 2, 3]);
+const OVERLAY_STYLE_DASH_A = new Float32Array([4, 4, 4, 4, NaN, 4, NaN, NaN, NaN, NaN, 8, NaN, NaN, NaN, NaN, NaN, 3, NaN, NaN, 4, 3, NaN, NaN, NaN, 6, NaN, NaN]);
+const OVERLAY_STYLE_DASH_B = new Float32Array([4, 3, 3, 4, NaN, 4, NaN, NaN, NaN, NaN, 6, NaN, NaN, NaN, NaN, NaN, 3, NaN, NaN, 4, 3, NaN, NaN, NaN, 4, NaN, NaN]);
+const OVERLAY_STYLE_NODE_R = new Float32Array([0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 10, 0, 0, 6, 6, 0, 3, 4, 0, 0, 4, 5, 1.5, 0, 7, 0]);
+const OVERLAY_STYLE_STROKE_CSS = new Array(OVERLAY_STYLE_COUNT);
+const OVERLAY_STYLE_FILL_CSS = new Array(OVERLAY_STYLE_COUNT);
+for (let si = 0; si < OVERLAY_STYLE_COUNT; si++) {
+    OVERLAY_STYLE_STROKE_CSS[si] = cssFromOverlayRgba(OVERLAY_STYLE_STROKE_RGBA[si]);
+    OVERLAY_STYLE_FILL_CSS[si] = cssFromOverlayRgba(OVERLAY_STYLE_FILL_RGBA[si]);
+}
+const OVERLAY_HUE_STEP = 5;
+const OVERLAY_HUE_COUNT = 72;
+const OVERLAY_DRAG_HUE_RECIPE = [
+    { sS: 90, sL: 55, sA: 0.35, fA: 0 },
+    { sS: 90, sL: 55, sA: 0.85, fS: 90, fL: 55, fA: 0.45 },
+    { sS: 90, sL: 55, sA: 0.85, fS: 90, fL: 55, fA: 0.35 },
+    { sS: 90, sL: 55, sA: 0.15, fA: 0 },
+    { sS: 90, sL: 55, sA: 0.12, fA: 0 },
+    { sS: 90, sL: 55, sA: 0.85, fS: 90, fL: 55, fA: 0.35 },
+    { sS: 90, sL: 55, sA: 0.4, fA: 0 },
+    { sS: 90, sL: 55, sA: 0.65, fS: 90, fL: 55, fA: 0.65 },
+    { sS: 90, sL: 55, sA: 0.4, fA: 0 },
+    { sS: 100, sL: 60, sA: 0.85, fA: 0 },
+    { sS: 100, sL: 50, sA: 1, fA: 0 },
+];
+const OVERLAY_DRAG_STROKE_CSS = new Array(OVERLAY_DRAG_HUE_RECIPE.length);
+const OVERLAY_DRAG_FILL_CSS = new Array(OVERLAY_DRAG_HUE_RECIPE.length);
+const OVERLAY_DRAG_GLOW_CSS = new Array(OVERLAY_HUE_COUNT);
+for (let ri = 0; ri < OVERLAY_DRAG_HUE_RECIPE.length; ri++) {
+    const recipe = OVERLAY_DRAG_HUE_RECIPE[ri];
+    const strokes = new Array(OVERLAY_HUE_COUNT);
+    const fills = new Array(OVERLAY_HUE_COUNT);
+    for (let hi = 0; hi < OVERLAY_HUE_COUNT; hi++) {
+        const h = hi * OVERLAY_HUE_STEP;
+        strokes[hi] = recipe.sA >= 1 ? "hsl(" + h + ", " + recipe.sS + "%, " + recipe.sL + "%)" : "hsla(" + h + ", " + recipe.sS + "%, " + recipe.sL + "%, " + recipe.sA + ")";
+        fills[hi] = recipe.fA > 0 ? "hsla(" + h + ", " + recipe.fS + "%, " + recipe.fL + "%, " + recipe.fA + ")" : null;
+    }
+    OVERLAY_DRAG_STROKE_CSS[ri] = strokes;
+    OVERLAY_DRAG_FILL_CSS[ri] = fills;
+}
+for (let hi = 0; hi < OVERLAY_HUE_COUNT; hi++) OVERLAY_DRAG_GLOW_CSS[hi] = "hsla(" + hi * OVERLAY_HUE_STEP + ", 100%, 50%, 0.6)";
+function overlayHueIndex(hue) {
+    const h = ((hue % 360) + 360) % 360;
+    return ((h / OVERLAY_HUE_STEP + 0.5) | 0) % OVERLAY_HUE_COUNT;
+}
+function overlayStrokeCss(slab, i) {
+    const styleId = slab.styleId[i];
+    if (slab.flags[i] & OVERLAY_FLAG_HUE) return OVERLAY_DRAG_STROKE_CSS[styleId - OVERLAY_STYLE_DRAG_BASE][overlayHueIndex(slab.f[i * OVERLAY_F_STRIDE + OVERLAY_F_HUE])];
+    return OVERLAY_STYLE_STROKE_CSS[styleId];
+}
+function overlayFillCss(slab, i) {
+    const styleId = slab.styleId[i];
+    if (slab.flags[i] & OVERLAY_FLAG_HUE) return OVERLAY_DRAG_FILL_CSS[styleId - OVERLAY_STYLE_DRAG_BASE][overlayHueIndex(slab.f[i * OVERLAY_F_STRIDE + OVERLAY_F_HUE])];
+    return OVERLAY_STYLE_FILL_CSS[styleId];
+}
 function createOverlayCommandSlab(initialCap = OVERLAY_INIT_CAP) {
-    return { count: 0, kind: new Uint8Array(initialCap), flags: new Uint8Array(initialCap), f: new Float32Array(initialCap * OVERLAY_F_STRIDE), polyBase: new Int32Array(initialCap), polyCount: new Int32Array(initialCap), cacheRenderKey: new Int32Array(initialCap), cacheCustomKey: new Int32Array(initialCap), stroke: new Array(initialCap), fill: new Array(initialCap), poly: new GrowF32(256) };
+    return { count: 0, kind: new Uint8Array(initialCap), flags: new Uint8Array(initialCap), styleId: new Uint8Array(initialCap), f: new Float32Array(initialCap * OVERLAY_F_STRIDE), polyBase: new Int32Array(initialCap), polyCount: new Int32Array(initialCap), cacheRenderKey: new Int32Array(initialCap), cacheCustomKey: new Int32Array(initialCap), poly: new GrowF32(256) };
 }
 export const overlayCommandSlab = createOverlayCommandSlab();
 function ensureOverlayCmdCap(slab, need) {
@@ -181,6 +259,9 @@ function ensureOverlayCmdCap(slab, need) {
     const flags = new Uint8Array(next);
     flags.set(slab.flags);
     slab.flags = flags;
+    const styleId = new Uint8Array(next);
+    styleId.set(slab.styleId);
+    slab.styleId = styleId;
     const f = new Float32Array(next * OVERLAY_F_STRIDE);
     f.set(slab.f);
     slab.f = f;
@@ -196,10 +277,6 @@ function ensureOverlayCmdCap(slab, need) {
     const cacheCustomKey = new Int32Array(next);
     cacheCustomKey.set(slab.cacheCustomKey);
     slab.cacheCustomKey = cacheCustomKey;
-    while (slab.stroke.length < next) {
-        slab.stroke.push(null);
-        slab.fill.push(null);
-    }
 }
 export function clearOverlayCommands(slab = overlayCommandSlab) {
     slab.count = 0;
@@ -209,12 +286,11 @@ function allocOverlayCmd(slab) {
     ensureOverlayCmdCap(slab, slab.count + 1);
     const i = slab.count++;
     slab.flags[i] = 0;
+    slab.styleId[i] = 0;
     slab.polyBase[i] = -1;
     slab.polyCount[i] = 0;
     slab.cacheRenderKey[i] = 0;
     slab.cacheCustomKey[i] = 0;
-    slab.stroke[i] = null;
-    slab.fill[i] = null;
     const b = i * OVERLAY_F_STRIDE;
     for (let k = 0; k < OVERLAY_F_STRIDE; k++) slab.f[b + k] = 0;
     return i;
@@ -222,16 +298,19 @@ function allocOverlayCmd(slab) {
 function overlayGlyphSpan(r, lineWidth = 1, extra = 0) {
     return r * 2 + lineWidth + extra;
 }
-function applyOverlayStyle(slab, i, styleId) {
+function applyOverlayStyle(slab, i, styleId, hue = NaN) {
+    slab.styleId[i] = styleId;
     const b = i * OVERLAY_F_STRIDE;
-    slab.stroke[i] = OVERLAY_STYLE_STROKE[styleId];
-    slab.fill[i] = OVERLAY_STYLE_FILL[styleId];
     slab.f[b + OVERLAY_F_LINE_WIDTH] = OVERLAY_STYLE_LINE_WIDTH[styleId];
     const dashA = OVERLAY_STYLE_DASH_A[styleId];
     if (Number.isFinite(dashA)) {
         slab.flags[i] |= OVERLAY_FLAG_DASH;
         slab.f[b + OVERLAY_F_DASH_A] = dashA;
         slab.f[b + OVERLAY_F_DASH_B] = OVERLAY_STYLE_DASH_B[styleId];
+    }
+    if (Number.isFinite(hue)) {
+        slab.flags[i] |= OVERLAY_FLAG_HUE;
+        slab.f[b + OVERLAY_F_HUE] = hue;
     }
 }
 function setOverlayCache(slab, i, renderKey, customKey, worldSpan, anchorX, anchorY) {
@@ -252,15 +331,15 @@ export function writeOverlayPolyXY(slab, x, y) {
     poly.buf[poly.used++] = x;
     poly.buf[poly.used++] = y;
 }
-export function stampOverlayPolyline(slab, polyBase, pathLen, styleId) {
+export function stampOverlayPolyline(slab, polyBase, pathLen, styleId, hue = NaN) {
     const i = allocOverlayCmd(slab);
     slab.kind[i] = OVERLAY_CMD_POLYLINE;
     slab.polyBase[i] = polyBase;
     slab.polyCount[i] = pathLen;
-    applyOverlayStyle(slab, i, styleId);
+    applyOverlayStyle(slab, i, styleId, hue);
     return i;
 }
-export function stampOverlaySegment(slab, x0, y0, x1, y1, styleId) {
+export function stampOverlaySegment(slab, x0, y0, x1, y1, styleId, hue = NaN) {
     const i = allocOverlayCmd(slab);
     slab.kind[i] = OVERLAY_CMD_SEGMENT;
     const b = i * OVERLAY_F_STRIDE;
@@ -268,30 +347,30 @@ export function stampOverlaySegment(slab, x0, y0, x1, y1, styleId) {
     slab.f[b + OVERLAY_F_G1] = y0;
     slab.f[b + OVERLAY_F_G2] = x1;
     slab.f[b + OVERLAY_F_G3] = y1;
-    applyOverlayStyle(slab, i, styleId);
+    applyOverlayStyle(slab, i, styleId, hue);
     return i;
 }
-export function stampOverlayCircleStroke(slab, cx, cy, r, styleId) {
+export function stampOverlayCircleStroke(slab, cx, cy, r, styleId, hue = NaN) {
     const i = allocOverlayCmd(slab);
     slab.kind[i] = OVERLAY_CMD_CIRCLE_STROKE;
     const b = i * OVERLAY_F_STRIDE;
     slab.f[b + OVERLAY_F_G0] = cx;
     slab.f[b + OVERLAY_F_G1] = cy;
     slab.f[b + OVERLAY_F_G2] = r;
-    applyOverlayStyle(slab, i, styleId);
+    applyOverlayStyle(slab, i, styleId, hue);
     return i;
 }
-export function stampOverlayCircleFillStroke(slab, cx, cy, r, styleId) {
+export function stampOverlayCircleFillStroke(slab, cx, cy, r, styleId, hue = NaN) {
     const i = allocOverlayCmd(slab);
     slab.kind[i] = OVERLAY_CMD_CIRCLE_FILL_STROKE;
     const b = i * OVERLAY_F_STRIDE;
     slab.f[b + OVERLAY_F_G0] = cx;
     slab.f[b + OVERLAY_F_G1] = cy;
     slab.f[b + OVERLAY_F_G2] = r;
-    applyOverlayStyle(slab, i, styleId);
+    applyOverlayStyle(slab, i, styleId, hue);
     return i;
 }
-export function stampOverlayAabb(slab, minX, minY, maxX, maxY, styleId) {
+export function stampOverlayAabb(slab, minX, minY, maxX, maxY, styleId, hue = NaN) {
     const i = allocOverlayCmd(slab);
     slab.kind[i] = OVERLAY_CMD_AABB;
     const b = i * OVERLAY_F_STRIDE;
@@ -299,7 +378,7 @@ export function stampOverlayAabb(slab, minX, minY, maxX, maxY, styleId) {
     slab.f[b + OVERLAY_F_G1] = minY;
     slab.f[b + OVERLAY_F_G2] = maxX;
     slab.f[b + OVERLAY_F_G3] = maxY;
-    applyOverlayStyle(slab, i, styleId);
+    applyOverlayStyle(slab, i, styleId, hue);
     return i;
 }
 export function stampSelectionRing(slab, cx, cy, r) {
@@ -330,8 +409,7 @@ export function stampPathDirect(slab, x0, y0, x1, y1, visual) {
     }
     stampOverlaySegment(slab, x0, y0, x1, y1, OVERLAY_STYLE_PATH_DIRECT_DEBUG);
     const i = stampOverlayCircleFillStroke(slab, x1, y1, OVERLAY_STYLE_NODE_R[OVERLAY_STYLE_PATH_DIRECT_DEST], OVERLAY_STYLE_PATH_DIRECT_DEST);
-    slab.stroke[i] = "#fff";
-    setOverlayCache(slab, i, OVERLAY_RENDER_KEY_PATH_DESTINATION, mixHash4(quantizeOverlayRadius(10), hashString("rgba(0, 188, 212, 0.85)"), 0, 0), overlayGlyphSpan(10, 1), x1, y1);
+    setOverlayCache(slab, i, OVERLAY_RENDER_KEY_PATH_DESTINATION, mixHash4(quantizeOverlayRadius(10), OVERLAY_STYLE_PATH_DIRECT_DEST, 0, 0), overlayGlyphSpan(10, 1), x1, y1);
 }
 export function stampPathPolyline(slab, polyBase, pathLen, mode, visual) {
     if (pathLen < 1) return;
@@ -356,63 +434,16 @@ export function stampPathPolyline(slab, polyBase, pathLen, mode, visual) {
 }
 function stampPathDebugNodes(slab, polyBase, pathLen, styleId) {
     const r = OVERLAY_STYLE_NODE_R[styleId];
-    const fill = OVERLAY_STYLE_FILL[styleId];
-    const customKey = mixHash4(quantizeOverlayRadius(r), hashString(fill), 0, 0);
+    const customKey = mixHash4(quantizeOverlayRadius(r), styleId, 0, 0);
     for (let n = 0; n < pathLen; n++) {
         const o = polyBase + n * 2;
         const cx = slab.poly.buf[o];
         const cy = slab.poly.buf[o + 1];
         const i = stampOverlayCircleFillStroke(slab, cx, cy, r, styleId);
-        slab.stroke[i] = "#fff";
         setOverlayCache(slab, i, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, customKey, overlayGlyphSpan(r, 1), cx, cy);
     }
 }
-export function stampOverlaySegmentStroke(slab, x0, y0, x1, y1, stroke, lineWidth, dashA = NaN, dashB = NaN) {
-    const i = allocOverlayCmd(slab);
-    slab.kind[i] = OVERLAY_CMD_SEGMENT;
-    const b = i * OVERLAY_F_STRIDE;
-    slab.f[b + OVERLAY_F_G0] = x0;
-    slab.f[b + OVERLAY_F_G1] = y0;
-    slab.f[b + OVERLAY_F_G2] = x1;
-    slab.f[b + OVERLAY_F_G3] = y1;
-    slab.f[b + OVERLAY_F_LINE_WIDTH] = lineWidth;
-    slab.stroke[i] = stroke;
-    if (Number.isFinite(dashA)) {
-        slab.flags[i] |= OVERLAY_FLAG_DASH;
-        slab.f[b + OVERLAY_F_DASH_A] = dashA;
-        slab.f[b + OVERLAY_F_DASH_B] = Number.isFinite(dashB) ? dashB : 0;
-    }
-    return i;
-}
-export function stampOverlayCircleStrokeColor(slab, cx, cy, r, stroke, lineWidth, dashA = NaN, dashB = NaN) {
-    const i = allocOverlayCmd(slab);
-    slab.kind[i] = OVERLAY_CMD_CIRCLE_STROKE;
-    const b = i * OVERLAY_F_STRIDE;
-    slab.f[b + OVERLAY_F_G0] = cx;
-    slab.f[b + OVERLAY_F_G1] = cy;
-    slab.f[b + OVERLAY_F_G2] = r;
-    slab.f[b + OVERLAY_F_LINE_WIDTH] = lineWidth;
-    slab.stroke[i] = stroke;
-    if (Number.isFinite(dashA)) {
-        slab.flags[i] |= OVERLAY_FLAG_DASH;
-        slab.f[b + OVERLAY_F_DASH_A] = dashA;
-        slab.f[b + OVERLAY_F_DASH_B] = Number.isFinite(dashB) ? dashB : 0;
-    }
-    return i;
-}
-export function stampOverlayCircleFillStrokeColor(slab, cx, cy, r, fill, stroke, lineWidth) {
-    const i = allocOverlayCmd(slab);
-    slab.kind[i] = OVERLAY_CMD_CIRCLE_FILL_STROKE;
-    const b = i * OVERLAY_F_STRIDE;
-    slab.f[b + OVERLAY_F_G0] = cx;
-    slab.f[b + OVERLAY_F_G1] = cy;
-    slab.f[b + OVERLAY_F_G2] = r;
-    slab.f[b + OVERLAY_F_LINE_WIDTH] = lineWidth;
-    slab.fill[i] = fill;
-    slab.stroke[i] = stroke;
-    return i;
-}
-export function stampOverlayAimSegment(slab, x1, y1, x2, y2, color, glowHue) {
+export function stampOverlayAimSegment(slab, x1, y1, x2, y2, hue) {
     const i = allocOverlayCmd(slab);
     slab.kind[i] = OVERLAY_CMD_AIM_SEGMENT;
     const b = i * OVERLAY_F_STRIDE;
@@ -420,9 +451,7 @@ export function stampOverlayAimSegment(slab, x1, y1, x2, y2, color, glowHue) {
     slab.f[b + OVERLAY_F_G1] = y1;
     slab.f[b + OVERLAY_F_G2] = x2;
     slab.f[b + OVERLAY_F_G3] = y2;
-    slab.f[b + OVERLAY_F_LINE_WIDTH] = 3;
-    slab.f[b + OVERLAY_F_DASH_A] = glowHue;
-    slab.stroke[i] = color;
+    applyOverlayStyle(slab, i, OVERLAY_STYLE_DRAG_AIM, hue);
     slab.flags[i] |= OVERLAY_FLAG_ARROWHEAD | OVERLAY_FLAG_GLOW;
     return i;
 }
@@ -468,8 +497,10 @@ function applyOverlayDash(ctx, slab, i) {
 function bakeOverlayCommandAt(ctx, anchorX, anchorY, slab, i) {
     const kind = slab.kind[i];
     const b = i * OVERLAY_F_STRIDE;
+    const stroke = overlayStrokeCss(slab, i);
+    const fill = overlayFillCss(slab, i);
     if (kind === OVERLAY_CMD_CIRCLE_STROKE) {
-        ctx.strokeStyle = slab.stroke[i];
+        ctx.strokeStyle = stroke;
         ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
         const dashed = applyOverlayDash(ctx, slab, i);
         strokeCircle(ctx, anchorX, anchorY, slab.f[b + OVERLAY_F_G2]);
@@ -477,8 +508,8 @@ function bakeOverlayCommandAt(ctx, anchorX, anchorY, slab, i) {
         return;
     }
     if (kind === OVERLAY_CMD_CIRCLE_FILL_STROKE) {
-        ctx.fillStyle = slab.fill[i];
-        ctx.strokeStyle = slab.stroke[i] ?? "#fff";
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = stroke;
         ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
         fillStrokeCircle(ctx, anchorX, anchorY, slab.f[b + OVERLAY_F_G2]);
         return;
@@ -489,7 +520,7 @@ function bakeOverlayCommandAt(ctx, anchorX, anchorY, slab, i) {
         const minX = anchorX - w * 0.5;
         const minY = anchorY - h * 0.5;
         const dashed = slab.flags[i] & OVERLAY_FLAG_DASH;
-        drawAabbStyle(ctx, minX, minY, minX + w, minY + h, slab.fill[i], slab.stroke[i], slab.f[b + OVERLAY_F_LINE_WIDTH], dashed ? slab.f[b + OVERLAY_F_DASH_A] : NaN, dashed ? slab.f[b + OVERLAY_F_DASH_B] : NaN);
+        drawAabbStyle(ctx, minX, minY, minX + w, minY + h, fill, stroke, slab.f[b + OVERLAY_F_LINE_WIDTH], dashed ? slab.f[b + OVERLAY_F_DASH_A] : NaN, dashed ? slab.f[b + OVERLAY_F_DASH_B] : NaN);
     }
 }
 function drawAimSegmentAt(ctx, slab, i) {
@@ -498,15 +529,14 @@ function drawAimSegmentAt(ctx, slab, i) {
     const y1 = slab.f[b + OVERLAY_F_G1];
     const x2 = slab.f[b + OVERLAY_F_G2];
     const y2 = slab.f[b + OVERLAY_F_G3];
-    const color = slab.stroke[i];
+    const color = overlayStrokeCss(slab, i);
     const lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
-    const glowHue = slab.f[b + OVERLAY_F_DASH_A];
     const dx = x2 - x1;
     const dy = y2 - y1;
     if (lengthXY(dx, dy) < 0.5) return;
     ctx.save();
     if (slab.flags[i] & OVERLAY_FLAG_GLOW) {
-        ctx.shadowColor = `hsla(${glowHue}, 100%, 50%, 0.6)`;
+        ctx.shadowColor = OVERLAY_DRAG_GLOW_CSS[overlayHueIndex(slab.f[b + OVERLAY_F_HUE])];
         ctx.shadowBlur = 8;
     }
     ctx.strokeStyle = color;
@@ -532,13 +562,15 @@ export function drawOverlayCommands(ctx, slab, viewport) {
             drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, slab.cacheRenderKey[i], slab.cacheCustomKey[i], worldSpan, (bakeCtx, bakeAnchorX, bakeAnchorY) => bakeOverlayCommandAt(bakeCtx, bakeAnchorX, bakeAnchorY, slab, i));
             continue;
         }
+        const stroke = overlayStrokeCss(slab, i);
+        const fill = overlayFillCss(slab, i);
         if (kind === OVERLAY_CMD_AABB) {
             const dashed = slab.flags[i] & OVERLAY_FLAG_DASH;
-            drawAabbStyle(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab.f[b + OVERLAY_F_G2], slab.f[b + OVERLAY_F_G3], slab.fill[i], slab.stroke[i], slab.f[b + OVERLAY_F_LINE_WIDTH], dashed ? slab.f[b + OVERLAY_F_DASH_A] : NaN, dashed ? slab.f[b + OVERLAY_F_DASH_B] : NaN);
+            drawAabbStyle(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab.f[b + OVERLAY_F_G2], slab.f[b + OVERLAY_F_G3], fill, stroke, slab.f[b + OVERLAY_F_LINE_WIDTH], dashed ? slab.f[b + OVERLAY_F_DASH_A] : NaN, dashed ? slab.f[b + OVERLAY_F_DASH_B] : NaN);
             continue;
         }
         if (kind === OVERLAY_CMD_CIRCLE_STROKE) {
-            ctx.strokeStyle = slab.stroke[i];
+            ctx.strokeStyle = stroke;
             ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
             const dashed = applyOverlayDash(ctx, slab, i);
             strokeCircle(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab.f[b + OVERLAY_F_G2]);
@@ -546,14 +578,14 @@ export function drawOverlayCommands(ctx, slab, viewport) {
             continue;
         }
         if (kind === OVERLAY_CMD_CIRCLE_FILL_STROKE) {
-            ctx.fillStyle = slab.fill[i];
-            ctx.strokeStyle = slab.stroke[i] ?? "#fff";
+            ctx.fillStyle = fill;
+            ctx.strokeStyle = stroke;
             ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
             fillStrokeCircle(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab.f[b + OVERLAY_F_G2]);
             continue;
         }
         if (kind === OVERLAY_CMD_SEGMENT) {
-            ctx.strokeStyle = slab.stroke[i];
+            ctx.strokeStyle = stroke;
             ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
             if (slab.flags[i] & OVERLAY_FLAG_LINECAP_ROUND) ctx.lineCap = "round";
             const dashed = applyOverlayDash(ctx, slab, i);
@@ -563,7 +595,7 @@ export function drawOverlayCommands(ctx, slab, viewport) {
             continue;
         }
         if (kind === OVERLAY_CMD_POLYLINE) {
-            ctx.strokeStyle = slab.stroke[i];
+            ctx.strokeStyle = stroke;
             ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
             const dashed = applyOverlayDash(ctx, slab, i);
             strokeOpenPolylineF32(ctx, slab.poly.buf, slab.polyBase[i], slab.polyCount[i]);

@@ -4,10 +4,9 @@ import { issue, rel } from "../audit-shared.mjs";
 const bannedBagRe = /\bwallFaceScratch\b|\bsWallFaceColors\b|\bsWallBackFaceColors\b|\bsWallTopColors\b|\bsWallDrawOpts\b|\bsPrismOpts\b|\bSPHERE_PENDING_FILL\b|\bWALL_CHUNK_FALLBACK\b|\bpendingFill\b|\bWALL_FACE_ATLAS_SOLID\b|\bsWallBucketLookup\b|\bsGridStampHalfExtents\b|\bsGridStampStage\b/;
 const overlayStringKeyRe = /`(?:r|d|cs|pd|pah|fda|we|gch)\$\{/;
 const beltStripStringRe = /`p\$\{/;
-const overlayBagApiRe = /\boverlayPolyline\s*\(|\boverlayAabb\s*\(|\boverlaySegment\s*\(|\boverlayAimSegment\s*\(|\boverlayCircleStroke\s*\(|\boverlayCircleFillStroke\s*\(|\boverlayCachedSelectionRing\s*\(|\boverlayGridCellHighlight\s*\(|\bpathNodes\b|\bstrokeOpenPolyline\s*\(|\bgetPathOverlay\b|\bbuildSabPathOverlayFromProgress\b|\bappendPathOverlayCommands\s*\(|\bgetDragLaunchPreview\b|\bappendOverlayAabb\s*\(|\bappendOverlaySegment\s*\(|\bappendSelectionOverlayCommands\s*\(\s*\w+\s*,\s*\{|\bpathF32\s*:|\bstampMarqueeAabb\b|\bstampRailEdgeSegment\b|\bappendGridEdgeOverlayCommand\b|\bappendMarqueeOverlayCommands\b|\bbuildDragLaunchAimLineContext\b|\bdragLaunchAimLineContextForState\b|\bgetMoveTargetWorld\b|\bcreateGroundNavBehavior\b|\bDIRECT_GROUND_NAV_CONFIG\b|\bFLOW_GROUND_NAV_CONFIG\b|\bHPA_GROUND_NAV_CONFIG\b|\bbuildHpaGroundNavPathSettings\b|\bselectionRingRadius\b|\bcreateDragLaunchInteraction\b/;
-
-
-
+const overlayBagApiRe = /\boverlayPolyline\s*\(|\boverlayAabb\s*\(|\boverlaySegment\s*\(|\boverlayAimSegment\s*\(|\boverlayCircleStroke\s*\(|\boverlayCircleFillStroke\s*\(|\boverlayCachedSelectionRing\s*\(|\boverlayGridCellHighlight\s*\(|\bpathNodes\b|\bstrokeOpenPolyline\s*\(|\bgetPathOverlay\b|\bbuildSabPathOverlayFromProgress\b|\bappendPathOverlayCommands\s*\(|\bgetDragLaunchPreview\b|\bappendOverlayAabb\s*\(|\bappendOverlaySegment\s*\(|\bappendSelectionOverlayCommands\s*\(\s*\w+\s*,\s*\{|\bpathF32\s*:|\bstampMarqueeAabb\b|\bstampRailEdgeSegment\b|\bappendGridEdgeOverlayCommand\b|\bappendMarqueeOverlayCommands\b|\bbuildDragLaunchAimLineContext\b|\bdragLaunchAimLineContextForState\b|\bgetMoveTargetWorld\b|\bcreateGroundNavBehavior\b|\bDIRECT_GROUND_NAV_CONFIG\b|\bFLOW_GROUND_NAV_CONFIG\b|\bHPA_GROUND_NAV_CONFIG\b|\bbuildHpaGroundNavPathSettings\b|\bselectionRingRadius\b|\bcreateDragLaunchInteraction\b|\bstampOverlaySegmentStroke\b|\bstampOverlayCircleStrokeColor\b|\bstampOverlayCircleFillStrokeColor\b/;
+const overlayHslaTemplateRe = /`hsla\(\$\{|`hsl\(\$\{/;
+const overlayStrokeFillColumnRe = /\bstroke:\s*new Array\(|\bfill:\s*new Array\(/;
 export const id = "render-bags";
 export const description = "Render/Canvas/Spatial typed diet — no face bags, pending fills, string overlay/stamp keys, bag overlay cmds, or wall-bucket bags";
 export const severity = "fail";
@@ -36,6 +35,12 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if ((inRender || inSandbox || inNav || inCanvas) && overlayBagApiRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if ((inRender || inSandbox) && overlayHslaTemplateRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inRender && overlayStrokeFillColumnRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inSpatial && beltStripStringRe.test(line)) {

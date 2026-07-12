@@ -4,7 +4,7 @@ import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
-import { stampOverlayAimSegment, stampOverlayCircleFillStrokeColor, stampOverlayCircleStrokeColor, stampOverlaySegmentStroke } from "../Render/render.js";
+import { stampOverlayAimSegment, stampOverlayCircleFillStroke, stampOverlayCircleStroke, stampOverlaySegment, OVERLAY_STYLE_DRAG_GRAB_LINE, OVERLAY_STYLE_DRAG_GRAB_DOT_A, OVERLAY_STYLE_DRAG_GRAB_DOT_B, OVERLAY_STYLE_DRAG_BAND, OVERLAY_STYLE_DRAG_PULL_LINE, OVERLAY_STYLE_DRAG_PULL_DOT, OVERLAY_STYLE_DRAG_START_RING, OVERLAY_STYLE_DRAG_START_DOT, OVERLAY_STYLE_DRAG_RUBBER, OVERLAY_STYLE_DRAG_ANCHOR } from "../Render/render.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineEnums.js";
 export const GRAB_DRAG_BEHAVIOR_ID = "grabDrag";
 export const DRAG_LAUNCH_BEHAVIOR_ID = "dragLaunch";
@@ -329,9 +329,9 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             const dist = Math.hypot(tx - ax, ty - ay);
             const ratio = resolveDragLaunchPullRatio(dist, grabConfig);
             const hue = hueFromPullRatio(ratio);
-            stampOverlaySegmentStroke(slab, ax, ay, tx, ty, `hsla(${hue}, 90%, 55%, 0.35)`, 1.5, 3, 3);
-            stampOverlayCircleFillStrokeColor(slab, ax, ay, 3, `hsla(${hue}, 90%, 55%, 0.45)`, `hsla(${hue}, 90%, 55%, 0.85)`, 1.5);
-            stampOverlayCircleFillStrokeColor(slab, tx, ty, 4, `hsla(${hue}, 90%, 55%, 0.35)`, `hsla(${hue}, 90%, 55%, 0.85)`, 1.5);
+            stampOverlaySegment(slab, ax, ay, tx, ty, OVERLAY_STYLE_DRAG_GRAB_LINE, hue);
+            stampOverlayCircleFillStroke(slab, ax, ay, 3, OVERLAY_STYLE_DRAG_GRAB_DOT_A, hue);
+            stampOverlayCircleFillStroke(slab, tx, ty, 4, OVERLAY_STYLE_DRAG_GRAB_DOT_B, hue);
         },
         reset() {
             propRuns.clear();
@@ -347,19 +347,19 @@ export function appendDragLaunchOverlayCommands(slab, aim, prop, obstacleGrid) {
     const startX = aim.startX ?? aim.anchorX;
     const startY = aim.startY ?? aim.anchorY;
     const maxFingerDrag = config.maxPull / config.pullScale;
-    stampOverlayCircleStrokeColor(slab, startX, startY, maxFingerDrag, `hsla(${hue}, 90%, 55%, 0.15)`, 1, 4, 4);
+    stampOverlayCircleStroke(slab, startX, startY, maxFingerDrag, OVERLAY_STYLE_DRAG_BAND, hue);
     if (aim.pullX != null && aim.pullY != null) {
-        stampOverlaySegmentStroke(slab, startX, startY, aim.pullX, aim.pullY, `hsla(${hue}, 90%, 55%, 0.12)`, 1, 3, 3);
-        stampOverlayCircleFillStrokeColor(slab, aim.pullX, aim.pullY, 4, `hsla(${hue}, 90%, 55%, 0.35)`, `hsla(${hue}, 90%, 55%, 0.85)`, 1.5);
+        stampOverlaySegment(slab, startX, startY, aim.pullX, aim.pullY, OVERLAY_STYLE_DRAG_PULL_LINE, hue);
+        stampOverlayCircleFillStroke(slab, aim.pullX, aim.pullY, 4, OVERLAY_STYLE_DRAG_PULL_DOT, hue);
     }
     if (Math.hypot(startX - aim.anchorX, startY - aim.anchorY) > 0.1) {
-        stampOverlayCircleStrokeColor(slab, startX, startY, 5, `hsla(${hue}, 90%, 55%, 0.4)`, 1.5);
-        stampOverlayCircleFillStrokeColor(slab, startX, startY, 1.5, `hsla(${hue}, 90%, 55%, 0.65)`, `hsla(${hue}, 90%, 55%, 0.65)`, 1);
+        stampOverlayCircleStroke(slab, startX, startY, 5, OVERLAY_STYLE_DRAG_START_RING, hue);
+        stampOverlayCircleFillStroke(slab, startX, startY, 1.5, OVERLAY_STYLE_DRAG_START_DOT, hue);
     }
-    stampOverlaySegmentStroke(slab, aim.previewPullX, aim.previewPullY, aim.anchorX, aim.anchorY, `hsla(${hue}, 90%, 55%, 0.4)`, 2, 6, 4);
-    stampOverlayCircleStrokeColor(slab, aim.anchorX, aim.anchorY, 7, `hsla(${hue}, 100%, 60%, 0.85)`, 2);
+    stampOverlaySegment(slab, aim.previewPullX, aim.previewPullY, aim.anchorX, aim.anchorY, OVERLAY_STYLE_DRAG_RUBBER, hue);
+    stampOverlayCircleStroke(slab, aim.anchorX, aim.anchorY, 7, OVERLAY_STYLE_DRAG_ANCHOR, hue);
     if (aim.power <= 0) return;
     if (!getDragLaunchAimLine(aim, prop, obstacleGrid)) return;
     const aimO = ENGINE_BOUNDS_BASE + B_TMP;
-    stampOverlayAimSegment(slab, ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], `hsl(${hue}, 100%, 50%)`, hue);
+    stampOverlayAimSegment(slab, ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], hue);
 }
