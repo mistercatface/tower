@@ -1,4 +1,4 @@
-import { SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_ALL, BLEND_MODE_ADD, BLEND_MODE_REPLACE, COORD_SPACE_EVAL } from "../../../Core/engineEnums.js";;
 export default {
     "warp": {
         "frequency": 0.0025,
@@ -29,7 +29,7 @@ export default {
     "motifs": [
         {
             "type": "fractalCracks",
-            "coordinateSpace": "eval",
+            "coordinateSpace": COORD_SPACE_EVAL,
             "frequency": 0.05,
             "octaves": 4,
             "threshold": 0.65,
@@ -44,8 +44,7 @@ export default {
                 -5
             ],
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "add",
-            "opacity": 1
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "hexGrid",
@@ -72,8 +71,7 @@ export default {
             ],
             "bevelFalloff": 0.1,
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "replace",
-            "opacity": 1
+            "blendMode": BLEND_MODE_REPLACE
         },
         {
             "type": "filterHSV",
@@ -81,8 +79,7 @@ export default {
             "saturation": 0.5,
             "value": 1,
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "replace",
-            "opacity": 1
+            "blendMode": BLEND_MODE_REPLACE
         }
     ]
 };

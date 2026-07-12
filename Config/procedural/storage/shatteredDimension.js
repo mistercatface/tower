@@ -1,3 +1,4 @@
+import { BLEND_MODE_SCREEN, BLEND_MODE_REPLACE } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.005, amplitude: 10, octaves: 2, sampleOffset: [500, 100] },
     palette: { base: [10, 5, 20], floorBase: [8, 4, 15], wallBase: [15, 8, 30] },
@@ -10,10 +11,9 @@ export default {
             threshold: 0.6,
             peak: 18,
             tint: [5, 1, 8],
-            blendMode: "screen",
-            opacity: 0.9
+            blendMode: BLEND_MODE_SCREEN
         },
-        { type: "filterHSV", hueShift: 0, saturation: 1.5, value: 1.2, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", hueShift: 0, saturation: 1.5, value: 1.2, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

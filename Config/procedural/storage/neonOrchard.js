@@ -1,4 +1,4 @@
-import { SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_ALL, BLEND_MODE_MULTIPLY, BLEND_MODE_ADD, BLEND_MODE_SCREEN, BLEND_MODE_REPLACE, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";;
 export default {
     warp: { frequency: 0.006, amplitude: 8, octaves: 2, sampleOffset: [200, 100] },
     palette: { base: [4, 8, 24], floorBase: [2, 3, 12], wallBase: [4, 6, 18] },
@@ -15,19 +15,17 @@ export default {
             highlightPeak: 6,
             shadowPeak: -4,
             cellVariation: 1,
-            blendMode: "multiply",
-            opacity: 0.9
+            blendMode: BLEND_MODE_MULTIPLY
         },
         {
             type: "concentricRings",
             surfaceMask: SURFACE_MASK_FLOOR,
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             frequency: 0.025,
             ringWidth: 0.08,
             peak: 18,
             tint: [0.1, 0.5, 2.5],
-            blendMode: "add",
-            opacity: 0.85
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "wallHorizontalBevel",
@@ -39,21 +37,19 @@ export default {
             coreWidth: 0.2,
             corePeak: 20,
             coreTint: [2.2, 2.0, 0.2],
-            blendMode: "add",
-            opacity: 0.9
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "starburst",
             surfaceMask: SURFACE_MASK_ALL,
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             gridSize: 64,
             density: 0.25,
             radius: 20,
             spikes: 8,
             peak: 24,
             tint: [2.0, 1.8, 0.2],
-            blendMode: "screen",
-            opacity: 0.8
+            blendMode: BLEND_MODE_SCREEN
         },
         {
             type: "wallLighting",
@@ -61,10 +57,9 @@ export default {
             power: 1.3,
             topDarken: 24,
             coolBias: 1.08,
-            blendMode: "multiply",
-            opacity: 1
+            blendMode: BLEND_MODE_MULTIPLY
         },
-        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.7, value: 1.0, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.7, value: 1.0, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

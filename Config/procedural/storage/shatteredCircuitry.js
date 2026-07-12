@@ -1,4 +1,4 @@
-import { SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_ALL, BLEND_MODE_ADD, BLEND_MODE_REPLACE, COORD_SPACE_EVAL } from "../../../Core/engineEnums.js";;
 export default {
     "warp": {
         "frequency": 0.01,
@@ -29,7 +29,7 @@ export default {
     "motifs": [
         {
             "type": "fractalCracks",
-            "coordinateSpace": "eval",
+            "coordinateSpace": COORD_SPACE_EVAL,
             "frequency": 0.036,
             "octaves": 3,
             "threshold": 0.59,
@@ -44,8 +44,7 @@ export default {
                 2.6
             ],
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "add",
-            "opacity": 1
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "filterHSV",
@@ -53,12 +52,11 @@ export default {
             "saturation": 5,
             "value": 1.6,
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "add",
-            "opacity": 1
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "fractalCracks",
-            "coordinateSpace": "eval",
+            "coordinateSpace": COORD_SPACE_EVAL,
             "frequency": 0.007,
             "octaves": 1,
             "threshold": 0.53,
@@ -73,8 +71,7 @@ export default {
                 5
             ],
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "replace",
-            "opacity": 1
+            "blendMode": BLEND_MODE_REPLACE
         },
         {
             "type": "filterHSV",
@@ -82,16 +79,14 @@ export default {
             "saturation": 5,
             "value": 0,
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "add",
-            "opacity": 1
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "filterLevels",
             "blackPoint": 0,
             "whitePoint": 194,
             "gamma": 0.2,
-            "blendMode": "replace",
-            "opacity": 1,
+            "blendMode": BLEND_MODE_REPLACE,
             "surfaceMask": SURFACE_MASK_ALL
         }
     ]

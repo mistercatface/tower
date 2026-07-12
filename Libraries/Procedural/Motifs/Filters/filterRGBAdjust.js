@@ -1,10 +1,11 @@
+import { BLEND_MODE_REPLACE } from "../../../../Core/engineEnums.js";
 import { clampByte } from "../../../Color/colorMath.js";
 import { BLEND_OPTIONS } from "../../util/blend.js";
 import { RF_R, RF_G, RF_B } from "../../util/motifUtilities.js";
 export const filterRGBAdjustMotif = {
     metadata: {
         label: "Filter: RGB Adjust",
-        defaults: { type: "filterRGBAdjust", rMult: 1, gMult: 1, bMult: 1, rOffset: 0, gOffset: 0, bOffset: 0, blendMode: "replace" },
+        defaults: { type: "filterRGBAdjust", rMult: 1, gMult: 1, bMult: 1, rOffset: 0, gOffset: 0, bOffset: 0, blendMode: BLEND_MODE_REPLACE },
         fields: [
             { path: "rMult", label: "R Multiplier", min: 0, max: 5, step: 0.1 },
             { path: "gMult", label: "G Multiplier", min: 0, max: 5, step: 0.1 },
@@ -13,8 +14,7 @@ export const filterRGBAdjustMotif = {
             { path: "gOffset", label: "G Offset", min: -255, max: 255, step: 1 },
             { path: "bOffset", label: "B Offset", min: -255, max: 255, step: 1 },
             { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const rMult = config.rMult ?? 1;
         const gMult = config.gMult ?? 1;
@@ -25,5 +25,4 @@ export const filterRGBAdjustMotif = {
         rf[ro + RF_R] = clampByte(rf[ro + RF_R] * rMult + rOffset);
         rf[ro + RF_G] = clampByte(rf[ro + RF_G] * gMult + gOffset);
         rf[ro + RF_B] = clampByte(rf[ro + RF_B] * bMult + bOffset);
-    },
-};
+    }};

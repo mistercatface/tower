@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, BLEND_MODE_REPLACE, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.004, amplitude: 12, octaves: 2, sampleOffset: [200, 50] },
     palette: { base: [6, 12, 22], floorBase: [4, 10, 18], wallBase: [10, 18, 32] },
@@ -5,16 +6,15 @@ export default {
         { type: "baseMetal", structure: { frequency: 0.003, octaves: 2, rgbDelta: [1, 2, 5] }, grain: { frequency: 0.25, octaves: 1, amplitude: 0.4 } },
         {
             type: "concentricRings",
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             frequency: 0.02,
             ringWidth: 0.08,
             peak: 10,
             offset: [0, 0],
             tint: [0.2, 0.9, 1.4],
-            blendMode: "add",
-            opacity: 0.75
+            blendMode: BLEND_MODE_ADD
         },
-        { type: "filterHSV", hueShift: 0, saturation: 1.4, value: 1.1, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", hueShift: 0, saturation: 1.4, value: 1.1, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

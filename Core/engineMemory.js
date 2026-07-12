@@ -3,13 +3,15 @@ import { MAX_ENTITIES } from "./engineLimits.js";
 /** Shared Float32 scratch.
  * Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575, Compound 576–831.
  * PHYS: +0…78 P_* scratch, +79…84 G_* grab, +85…92 P_WALL_VERTS, +93…100 P_WALL_NORMS, +101…127 reserved.
- * Note: P_VEC_C+2/+3 aliases P_VEC_D (legacy overlap — leave values).
- * FRAC: +0…33 F_OUT_/F_VEC_/F_EDGE_, +34 F_SHATTER_SEEDS (+57 for 12 shards), +58…63 reserved.
- * ENGINE_U8: R_FACE_VISIBLE at 0…MAX_PRISM_FACES-1; compound hit marks share low U8.
+ * Note: P_AABB_C is 4 floats at PHYS+4; P_VEC_C is the same base (+0/+1 only for 2-vecs).
+ * P_VEC_D is PHYS+6 and aliases P_AABB_C+2/+3 — do not use P_VEC_D while an AABB occupies P_AABB_C.
+ * PHYS +35…+38 reserved (between P_OUT_SOLVE_REST and P_OUT_SWEEP_T).
+ * FRAC +11…+12 reserved (between F_OUT_MOTION_W and F_OUT_REMNANT).
+ * ENGINE_U8: U8_FACE_VISIBLE at 0…MAX_PRISM_FACES-1; compound hit marks share low U8.
  * ENGINE_I32: I_SPRITE_KEY_* sprite cache key scratch.
  * viewBoundsBuf: session camera SoA (not ENGINE_F32 Bounds bank) — VIEW_TIER_* offsets.
  * All ENGINE_F32 bank slot consts live here; Libraries may keep subarray views only.
- * Modes (WALL_FACE_*, PRIMITIVE_PHYSICS_ROW_*) live in engineEnums.js.
+ * Modes (WALL_FACE_*, SURFACE_MASK_*, BLEND_MODE_*, COORD_SPACE_*, …) live in engineEnums.js.
  */
 export const ENGINE_F32 = new Float32Array(832);
 export const ENGINE_U8 = new Uint8Array(256);
@@ -44,6 +46,7 @@ export const M_OUT_VZ = ENGINE_MATH_BASE + 23;
 export const P_VEC_A = ENGINE_PHYS_BASE;
 export const P_VEC_B = ENGINE_PHYS_BASE + 2;
 export const P_VEC_C = ENGINE_PHYS_BASE + 4;
+export const P_AABB_C = ENGINE_PHYS_BASE + 4;
 export const P_VEC_D = ENGINE_PHYS_BASE + 6;
 export const P_AABB_A = ENGINE_PHYS_BASE + 8;
 export const P_OUT_MASS_AREA = ENGINE_PHYS_BASE + 16;
@@ -65,6 +68,7 @@ export const P_OUT_DIST_DIST = ENGINE_PHYS_BASE + 31;
 export const P_OUT_SOLVE_ITERS = ENGINE_PHYS_BASE + 32;
 export const P_OUT_SOLVE_IMPULSE = ENGINE_PHYS_BASE + 33;
 export const P_OUT_SOLVE_REST = ENGINE_PHYS_BASE + 34;
+// PHYS +35…+38 reserved
 export const P_OUT_SWEEP_T = ENGINE_PHYS_BASE + 39;
 export const P_OUT_SWEEP_X = ENGINE_PHYS_BASE + 40;
 export const P_OUT_SWEEP_Y = ENGINE_PHYS_BASE + 41;
@@ -93,6 +97,7 @@ export const F_OUT_DEBRIS_COUNT = ENGINE_FRAC_BASE + 7;
 export const F_OUT_MOTION_VX = ENGINE_FRAC_BASE + 8;
 export const F_OUT_MOTION_VY = ENGINE_FRAC_BASE + 9;
 export const F_OUT_MOTION_W = ENGINE_FRAC_BASE + 10;
+// FRAC +11…+12 reserved
 export const F_OUT_REMNANT = ENGINE_FRAC_BASE + 13;
 export const F_VEC_A = ENGINE_FRAC_BASE + 14;
 export const F_OUT_ORIGIN_X = ENGINE_FRAC_BASE + 22;
@@ -121,7 +126,7 @@ export const S_EDGE_P2Y = ENGINE_SPATIAL_BASE + 19;
 export const N_OUT_XY = ENGINE_NAV_BASE;
 export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
 export const N_OUT_STEER = ENGINE_NAV_BASE + 4;
-// --- Bounds B_* (relative offsets into ENGINE_BOUNDS_BASE) ---
+// --- Bounds B_* (relative offsets only — always index as ENGINE_F32[ENGINE_BOUNDS_BASE + B_*]) ---
 export const B_QUERY = 0;
 export const B_CELL = 4;
 export const B_FOOTPRINT = 8;
@@ -143,7 +148,7 @@ export const R_SPRITE_DRAW_W = ENGINE_RENDER_BASE + 63;
 export const R_SPRITE_DRAW_H = ENGINE_RENDER_BASE + 64;
 export const R_SPRITE_FRAME_COUNT = ENGINE_RENDER_BASE + 65;
 export const R_SPRITE_FRAME_WIDTH = ENGINE_RENDER_BASE + 66;
-export const R_FACE_VISIBLE = 0;
+export const U8_FACE_VISIBLE = 0;
 export const MAX_PRISM_FACES = 64;
 export const MAX_OUTLINE_VERTS = 64;
 // --- Compound ---

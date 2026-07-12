@@ -1,4 +1,4 @@
-import { SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_ALL, BLEND_MODE_ADD, BLEND_MODE_MULTIPLY, BLEND_MODE_REPLACE, COORD_SPACE_EVAL, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";;
 export default {
     warp: { frequency: 0.007, amplitude: 12, octaves: 2, sampleOffset: [400, 300] },
     palette: { base: [15, 8, 2], floorBase: [8, 4, 1], wallBase: [16, 6, 2] },
@@ -7,26 +7,24 @@ export default {
         {
             type: "stainBlotch",
             surfaceMask: SURFACE_MASK_FLOOR,
-            coordinateSpace: "eval",
+            coordinateSpace: COORD_SPACE_EVAL,
             frequency: 0.02,
             threshold: 0.4,
             peak: 8,
             tint: [-3.5, -2, -1],
             octaves: 2,
-            opacity: 0.7,
-            blendMode: "add"
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "topoContours",
             surfaceMask: SURFACE_MASK_FLOOR,
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             frequency: 0.015,
             bands: 8,
             thickness: 0.12,
             peak: 12,
             tint: [2.0, 1.0, 0.1],
-            blendMode: "add",
-            opacity: 0.7
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "wallHorizontalBevel",
@@ -38,13 +36,12 @@ export default {
             coreWidth: 0.3,
             corePeak: 22,
             coreTint: [2.8, 1.2, 0.1],
-            blendMode: "add",
-            opacity: 0.95
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "circuitLattice",
             surfaceMask: SURFACE_MASK_ALL,
-            coordinateSpace: "eval",
+            coordinateSpace: COORD_SPACE_EVAL,
             frequency: 0.018,
             angle: 0.25,
             ridgeThreshold: 0.08,
@@ -52,8 +49,7 @@ export default {
             intersectionPeak: 26,
             tint: [0.2, 2.0, 0.4],
             intersectionTint: [0.5, 2.5, 0.6],
-            blendMode: "add",
-            opacity: 0.85
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "wallLighting",
@@ -61,10 +57,9 @@ export default {
             power: 1.4,
             topDarken: 22,
             coolBias: 1.02,
-            blendMode: "multiply",
-            opacity: 1
+            blendMode: BLEND_MODE_MULTIPLY
         },
-        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.6, value: 1.0, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.6, value: 1.0, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

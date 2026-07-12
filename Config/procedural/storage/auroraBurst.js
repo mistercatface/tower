@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, BLEND_MODE_SCREEN, BLEND_MODE_REPLACE, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.005, amplitude: 16, octaves: 2, sampleOffset: [600, 200] },
     palette: { base: [8, 6, 20], floorBase: [6, 5, 16], wallBase: [14, 10, 34] },
@@ -5,29 +6,27 @@ export default {
         { type: "baseMetal", structure: { frequency: 0.003, octaves: 2, rgbDelta: [2, 1, 6] }, grain: { frequency: 0.15, octaves: 1, amplitude: 0.3 } },
         {
             type: "topoContours",
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             frequency: 0.015,
             octaves: 2,
             bands: 10,
             thickness: 0.15,
             peak: 8,
             tint: [0.3, 0.8, 1.5],
-            blendMode: "add",
-            opacity: 0.55
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "starburst",
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             gridSize: 64,
             density: 0.2,
             radius: 22,
             spikes: 6,
             peak: 10,
             tint: [1.4, 0.4, 1.8],
-            blendMode: "screen",
-            opacity: 0.8
+            blendMode: BLEND_MODE_SCREEN
         },
-        { type: "filterHSV", hueShift: 0, saturation: 1.7, value: 1.15, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", hueShift: 0, saturation: 1.7, value: 1.15, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

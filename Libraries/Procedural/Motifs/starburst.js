@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
  * Radial starbursts on a sparse grid. When domain-warped, they tear and smear into plasma flows or biological spores.
@@ -5,7 +6,7 @@ import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtili
 export const starburstMotif = {
     metadata: {
         label: "Starburst nodes",
-        defaults: { type: "starburst", coordinateSpace: "warped", gridSize: 64, density: 0.25, radius: 28, spikes: 8, peak: 12, tint: [1.5, 0.5, 0.2], blendMode: "add" },
+        defaults: { type: "starburst", coordinateSpace: COORD_SPACE_WARPED, gridSize: 64, density: 0.25, radius: 28, spikes: 8, peak: 12, tint: [1.5, 0.5, 0.2], blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "gridSize", label: "Grid size", min: 16, max: 128, step: 4 },
             { path: "density", label: "Density", min: 0.05, max: 1.0, step: 0.05 },
@@ -15,8 +16,7 @@ export const starburstMotif = {
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const x = sampleCoordX(sf, config.coordinateSpace);
         const y = sampleCoordY(sf, config.coordinateSpace);
@@ -49,5 +49,4 @@ export const starburstMotif = {
         const spikeIntensity = spikeShape * distFalloff * (config.peak * 0.6);
         const intensity = Math.max(coreIntensity, spikeIntensity);
         if (intensity > 0) applyTint(rf, ro, intensity, config.tint ?? [1, 1, 1]);
-    },
-};
+    }};

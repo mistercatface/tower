@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 import { rotateXYIntoF32 } from "../../Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
 import { sampleCoordX, sampleCoordY, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
@@ -7,15 +8,14 @@ import { sampleCoordX, sampleCoordY, applyTint, sampleRidged2D } from "../util/m
 export const circuitLatticeMotif = {
     metadata: {
         label: "Circuit lattice",
-        defaults: { type: "circuitLattice", coordinateSpace: "warped", frequency: 0.016, octaves: 2, angle: 0.15, offset: [0, 0], ridgeThreshold: 0.11, peak: 10, tint: [0.4, 0.5, 0.9], intersectionThreshold: 0.12, intersectionPeak: 12, intersectionTint: [0.5, 1.2, 1.8], blendMode: "add" },
+        defaults: { type: "circuitLattice", coordinateSpace: COORD_SPACE_WARPED, frequency: 0.016, octaves: 2, angle: 0.15, offset: [0, 0], ridgeThreshold: 0.11, peak: 10, tint: [0.4, 0.5, 0.9], intersectionThreshold: 0.12, intersectionPeak: 12, intersectionTint: [0.5, 1.2, 1.8], blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.04, step: 0.001 },
             { path: "angle", label: "Angle", min: 0, max: 1.57, step: 0.05 },
             { path: "ridgeThreshold", label: "Vein threshold", min: 0.05, max: 0.25, step: 0.01 },
             { path: "peak", label: "Vein peak", min: 0, max: 20, step: 1 },
             { path: "intersectionPeak", label: "Cross peak", min: 0, max: 20, step: 1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const x = sampleCoordX(sf, config.coordinateSpace);
         const y = sampleCoordY(sf, config.coordinateSpace);
@@ -53,5 +53,4 @@ export const circuitLatticeMotif = {
             const variation = noise.sample2D(x * interior.frequency, y * interior.frequency, interior.octaves ?? 1);
             applyTint(rf, ro, variation * interior.amplitude, interior.tint);
         }
-    },
-};
+    }};

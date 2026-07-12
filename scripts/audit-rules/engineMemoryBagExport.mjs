@@ -7,7 +7,7 @@ const ALLOWED_BAG_EXPORTS = new Set(["kineticDynamicSlab", "kineticStaticSlab", 
 const bagExportRe = /^export const (\w+)\s*=\s*\{/gm;
 const xyBagRe = /^export const (\w+)\s*=\s*\{\s*(?:x|y|minX|col)\s*:/gm;
 const bagFactoryRe = /^export function create\w*(?:Point|Vec|Aabb|Bounds)\s*\(\s*\)\s*\{\s*return\s*\{/gm;
-const bannedModeExportRe = /^export const (WALL_FACE_ATLAS_\w+|WALL_FACE_SUBDIV_NONE|PRIMITIVE_PHYSICS_ROW_\w+|PRIMITIVE_PHYSICS_ROWS)\s*=/gm;
+const bannedModeExportRe = /^export const (WALL_FACE_ATLAS_\w+|WALL_FACE_SUBDIV_NONE|PRIMITIVE_PHYSICS_ROW_\w+|PRIMITIVE_PHYSICS_ROWS|SURFACE_MASK_\w+|BLEND_MODE_\w+|COORD_SPACE_\w+|TRANSLATE_MODE_\w+)\s*=/gm;
 
 export const id = "engine-memory-bag-export";
 export const description = "New object-bag exports from Core/engineMemory.js (XY/AABB fail; unknown SoA bags warn)";

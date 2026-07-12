@@ -1,7 +1,7 @@
 import { traceAabbRect, fillCircle, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, OVERLAY_RENDER_KEY, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, R_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
@@ -12,6 +12,7 @@ import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js"
 import propCatalog from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision, SS_POINTS } from "../WorldSurface/worldSurface.js";
 import { propShapeFootprintId } from "../Props/props.js";
+const WALL_ATLAS_WRAP = new Float32Array(4);
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rSubdiv = ENGINE_F32.subarray(R_SUBDIV, R_SUBDIV + 8);
@@ -19,7 +20,7 @@ const rCapCorners = ENGINE_F32.subarray(R_CAP_CORNERS, R_CAP_CORNERS + 8);
 const rCapUv = ENGINE_F32.subarray(R_CAP_UV, R_CAP_UV + 8);
 const rCapSrc = ENGINE_F32.subarray(R_CAP_SRC, R_CAP_SRC + 8);
 const rChevron = ENGINE_F32.subarray(R_CHEVRON, R_CHEVRON + 12);
-const rFaceVisible = ENGINE_U8.subarray(R_FACE_VISIBLE, R_FACE_VISIBLE + MAX_PRISM_FACES);
+const rFaceVisible = ENGINE_U8.subarray(U8_FACE_VISIBLE, U8_FACE_VISIBLE + MAX_PRISM_FACES);
 /**
  * Draw options for WorldSceneRenderer entry points.
  */
@@ -1426,7 +1427,11 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
     let profileHash = 0;
     if (canUseSideCache && row >= 0) {
         const space = worldSurfaces.surfaceSpace;
-        space.writeWallAtlasWrap(x1, y1, x2, y2);
+        WALL_ATLAS_WRAP[0] = x1;
+        WALL_ATLAS_WRAP[1] = y1;
+        WALL_ATLAS_WRAP[2] = x2;
+        WALL_ATLAS_WRAP[3] = y2;
+        space.writeWallAtlasWrap(WALL_ATLAS_WRAP, 0);
         const key = worldSurfaces.cacheKeys.wallAtlasCacheKey(seed, profileId, wallHeightKey);
         rev = getSurfaceProfileRevision(profileId);
         profileHash = hashSurfaceProfileId(profileId);
@@ -1434,7 +1439,11 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
         if (canvases && slab.atlasRev[row] === rev && slab.atlasSeed[row] === seed && slab.atlasWallHeightKey[row] === wallHeightKey && slab.atlasProfileHash[row] === profileHash && worldSurfaces.surfaceCache.get(key) === canvases) cacheHit = true;
     }
     if (!cacheHit) {
-        worldSurfaces.surfaceSpace.writeWallAtlasWrap(x1, y1, x2, y2);
+        WALL_ATLAS_WRAP[0] = x1;
+        WALL_ATLAS_WRAP[1] = y1;
+        WALL_ATLAS_WRAP[2] = x2;
+        WALL_ATLAS_WRAP[3] = y2;
+        worldSurfaces.surfaceSpace.writeWallAtlasWrap(WALL_ATLAS_WRAP, 0);
         canvases = worldSurfaces.getOrEnsureWallAtlas(profileId, wallCapHeight);
         if (!canvases) return WALL_FACE_ATLAS_MISS;
         if (canUseSideCache && row >= 0) {
@@ -1453,7 +1462,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
         }
     }
     const canvas = canvases[0];
-    if (!canvas || canvas.isPlaceholder) return WALL_FACE_ATLAS_SOLID;
+    if (!canvas) return WALL_FACE_ATLAS_SOLID;
     if (row < 0) {
         syncWallFaceDrawMemoRevision(state.obstacleGrid);
         row = wallFaceMemoGetOrAlloc(wallDrawMemoSlot(face));

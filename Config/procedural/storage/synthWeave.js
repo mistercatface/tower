@@ -1,3 +1,4 @@
+import { BLEND_MODE_COLOR_DODGE, BLEND_MODE_REPLACE, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.007, amplitude: 18, octaves: 3, sampleOffset: [80, 400] },
     palette: { base: [4, 14, 18], floorBase: [3, 11, 15], wallBase: [8, 22, 28] },
@@ -5,15 +6,14 @@ export default {
         { type: "baseMetal", structure: { frequency: 0.002, octaves: 2, rgbDelta: [1, 4, 5] }, grain: { frequency: 0.2, octaves: 1, amplitude: 0.35 } },
         {
             type: "celticWeave",
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             gridSize: 32,
             pipeWidth: 4,
             peak: 10,
             tint: [0.3, 1.1, 1.3],
-            blendMode: "color-dodge",
-            opacity: 0.85
+            blendMode: BLEND_MODE_COLOR_DODGE
         },
-        { type: "filterHSV", hueShift: 0, saturation: 1.4, value: 1.2, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", hueShift: 0, saturation: 1.4, value: 1.2, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

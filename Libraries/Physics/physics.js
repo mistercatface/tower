@@ -18,6 +18,7 @@ import {
     P_VEC_B,
     P_VEC_C,
     P_VEC_D,
+    P_AABB_C,
     P_AABB_A,
     P_OUT_MASS_AREA,
     P_OUT_MASS_CX,
@@ -4176,12 +4177,12 @@ function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
 }
 function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     if (segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY)) return 0;
-    ENGINE_F32[P_VEC_C] = minX;
-    ENGINE_F32[P_VEC_C + 1] = minY;
-    ENGINE_F32[P_VEC_C + 2] = maxX;
-    ENGINE_F32[P_VEC_C + 3] = maxY;
-    const distA = distanceToAabbF32(ax, ay, ENGINE_F32, P_VEC_C);
-    const distB = distanceToAabbF32(bx, by, ENGINE_F32, P_VEC_C);
+    ENGINE_F32[P_AABB_C] = minX;
+    ENGINE_F32[P_AABB_C + 1] = minY;
+    ENGINE_F32[P_AABB_C + 2] = maxX;
+    ENGINE_F32[P_AABB_C + 3] = maxY;
+    const distA = distanceToAabbF32(ax, ay, ENGINE_F32, P_AABB_C);
+    const distB = distanceToAabbF32(bx, by, ENGINE_F32, P_AABB_C);
     let minSq = Math.min(distA * distA, distB * distB, distanceSqToLineSegment(minX, minY, ax, ay, bx, by), distanceSqToLineSegment(maxX, minY, ax, ay, bx, by), distanceSqToLineSegment(maxX, maxY, ax, ay, bx, by), distanceSqToLineSegment(minX, maxY, ax, ay, bx, by));
     return Math.sqrt(minSq);
 }

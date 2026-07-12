@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 import { rotateXYIntoF32 } from "../../Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
 import { distanceToLineSegment } from "../../Math/math.js";
@@ -8,7 +9,7 @@ import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtili
 export const circuitTracesMotif = {
     metadata: {
         label: "Circuit traces",
-        defaults: { type: "circuitTraces", coordinateSpace: "warped", gridSize: 24, lineWidth: 2, density: 0.5, diagDensity: 0.15, peak: 10, tint: [0.9, 0.4, 1.1], padEnabled: true, blendMode: "add" },
+        defaults: { type: "circuitTraces", coordinateSpace: COORD_SPACE_WARPED, gridSize: 24, lineWidth: 2, density: 0.5, diagDensity: 0.15, peak: 10, tint: [0.9, 0.4, 1.1], padEnabled: true, blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "gridSize", label: "Grid size", min: 8, max: 80, step: 2 },
             { path: "lineWidth", label: "Line width", min: 0.5, max: 10, step: 0.5 },
@@ -19,8 +20,7 @@ export const circuitTracesMotif = {
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         let x = sampleCoordX(sf, config.coordinateSpace);
         let y = sampleCoordY(sf, config.coordinateSpace);
@@ -102,5 +102,4 @@ export const circuitTracesMotif = {
             const intensity = Math.max(lineIntensity, padIntensity);
             applyTint(rf, ro, intensity, config.tint ?? [1, 1, 1]);
         }
-    },
-};
+    }};

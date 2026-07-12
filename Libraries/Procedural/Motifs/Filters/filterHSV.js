@@ -1,3 +1,4 @@
+import { BLEND_MODE_REPLACE } from "../../../../Core/engineEnums.js";
 import { clampByte } from "../../../Color/colorMath.js";
 import { RF_R, RF_G, RF_B } from "../../util/motifUtilities.js";
 function rgbToHsv(r, g, b) {
@@ -137,14 +138,13 @@ import { BLEND_OPTIONS } from "../../util/blend.js";
 export const filterHSVMotif = {
     metadata: {
         label: "Filter: HSV Adjust",
-        defaults: { type: "filterHSV", hueShift: 0, saturation: 1, value: 1, blendMode: "replace" },
+        defaults: { type: "filterHSV", hueShift: 0, saturation: 1, value: 1, blendMode: BLEND_MODE_REPLACE },
         fields: [
             { path: "hueShift", label: "Hue Shift", min: -180, max: 180, step: 1 },
             { path: "saturation", label: "Saturation", min: 0, max: 5, step: 0.1 },
             { path: "value", label: "Value (Brightness)", min: 0, max: 5, step: 0.1 },
             { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const [h, s, v] = rgbToHsv(rf[ro + RF_R], rf[ro + RF_G], rf[ro + RF_B]);
         let newH = h + (config.hueShift ?? 0) / 360;
@@ -156,5 +156,4 @@ export const filterHSVMotif = {
         rf[ro + RF_G] = clampByte(ng);
         rf[ro + RF_B] = clampByte(nb);
     },
-    compile: compileFilterHSV,
-};
+    compile: compileFilterHSV};

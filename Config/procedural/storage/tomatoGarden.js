@@ -1,4 +1,4 @@
-import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, BLEND_MODE_ADD, BLEND_MODE_REPLACE, COORD_SPACE_EVAL } from "../../../Core/engineEnums.js";;
 export default {
     "warp": {
         "frequency": 0.004,
@@ -44,13 +44,12 @@ export default {
                 "amplitude": 0.8
             },
             "surfaceMask": SURFACE_MASK_ALL,
-            "blendMode": "add",
-            "opacity": 1
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "stainBlotch",
             "surfaceMask": SURFACE_MASK_ALL,
-            "coordinateSpace": "eval",
+            "coordinateSpace": COORD_SPACE_EVAL,
             "frequency": 0.012,
             "threshold": 0.45,
             "peak": 8,
@@ -64,8 +63,7 @@ export default {
                 -2.2
             ],
             "octaves": 2,
-            "blendMode": "add",
-            "opacity": 0.75
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "deckPlates",
@@ -94,8 +92,7 @@ export default {
                 0.8,
                 0.5
             ],
-            "blendMode": "add",
-            "opacity": 0.9
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "wallHorizontalBevel",
@@ -112,8 +109,7 @@ export default {
                 0.2
             ],
             "snakeStrength": 0,
-            "blendMode": "add",
-            "opacity": 0.8
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "wallLighting",
@@ -121,8 +117,7 @@ export default {
             "power": 1.3,
             "topDarken": 25,
             "coolBias": 1.06,
-            "blendMode": "add",
-            "opacity": 1
+            "blendMode": BLEND_MODE_ADD
         },
         {
             "type": "filterHSV",
@@ -130,8 +125,7 @@ export default {
             "hueShift": -172,
             "saturation": 1.1,
             "value": 0.3,
-            "blendMode": "replace",
-            "opacity": 1
+            "blendMode": BLEND_MODE_REPLACE
         }
     ],
     "animation": {

@@ -159,16 +159,16 @@ export class SurfaceSpatialMap {
     writeViewportChunkKeyRange(i32, keyO, buf, o, obstacleGrid, chunkSizePx) {
         this.writeChunkKeyRange(i32, keyO, buf, o, obstacleGrid.minX, obstacleGrid.minY, chunkSizePx);
     }
-    writeWallAtlasWrap(x1, y1, x2, y2) {
+    writeWallAtlasWrap(buf, o) {
         const surfaceTilePeriodPx = this.settings.surfaceTilePeriodPx;
         const b = this._boundsBank;
-        const o = SS_POINTS;
-        const wx1 = positiveModulo(x1, surfaceTilePeriodPx);
-        const wy1 = positiveModulo(y1, surfaceTilePeriodPx);
-        b[o] = wx1;
-        b[o + 1] = wy1;
-        b[o + 2] = wx1 + (x2 - x1);
-        b[o + 3] = wy1 + (y2 - y1);
+        const dest = SS_POINTS;
+        const wx1 = positiveModulo(buf[o], surfaceTilePeriodPx);
+        const wy1 = positiveModulo(buf[o + 1], surfaceTilePeriodPx);
+        b[dest] = wx1;
+        b[dest + 1] = wy1;
+        b[dest + 2] = wx1 + (buf[o + 2] - buf[o]);
+        b[dest + 3] = wy1 + (buf[o + 3] - buf[o + 1]);
     }
     sampleFlatHorizontal(worldCorners8, obstacleGrid) {
         const chunkSizePx = this.chunkSizePx(obstacleGrid);
@@ -206,10 +206,12 @@ export class SurfaceBitmapCache {
             },
         });
         this._generation = new Map();
+        this._pending = new Set();
         this._globalGeneration = 0;
     }
     _dropEntry(key) {
         this._generation.delete(key);
+        this._pending.delete(key);
     }
     get(key) {
         const value = this.cache.get(key);
@@ -218,6 +220,9 @@ export class SurfaceBitmapCache {
     peek(key) {
         const value = this.cache.peek(key);
         return value === undefined ? null : value;
+    }
+    isPending(key) {
+        return this._pending.has(key);
     }
     _closeOrphanedBitmaps(oldVal, newVal) {
         if (!oldVal) return;
@@ -238,35 +243,36 @@ export class SurfaceBitmapCache {
         const existing = this.peek(key);
         if (existing && existing !== value) this._closeOrphanedBitmaps(existing, value);
         this.cache.set(key, value);
+        this._pending.delete(key);
     }
     delete(key) {
         const existing = this.cache.peek(key);
         if (existing !== undefined) {
             this._closeOrphanedBitmaps(existing, null);
             this.cache.delete(key);
-            this._dropEntry(key);
         }
+        this._dropEntry(key);
     }
     deleteByPrefix(prefix) {
         for (const key of [...this.cache.keys()]) if (key.startsWith(prefix)) this.delete(key);
+        for (const key of [...this._pending]) if (key.startsWith(prefix)) this._dropEntry(key);
     }
     clear() {
         for (const value of this.cache.values()) this._closeOrphanedBitmaps(value, null);
         this.cache.clear();
         this._generation.clear();
+        this._pending.clear();
     }
-    /** True while any cached surface is still waiting on its worker bake. */
     hasPlaceholders() {
-        for (const value of this.cache.values()) if (Array.isArray(value) && value[0]?.isPlaceholder) return true;
-        return false;
+        return this._pending.size > 0;
     }
     getOrStart(key) {
         let canvases = this.get(key);
         if (canvases) return canvases;
-        const placeholder = [{ isPlaceholder: true }];
-        this.set(key, placeholder);
+        if (this._pending.has(key)) return null;
+        this._pending.add(key);
         this._generation.set(key, ++this._globalGeneration);
-        return placeholder;
+        return null;
     }
     isValidGeneration(key, generation) {
         return this._generation.get(key) === generation;
@@ -281,11 +287,10 @@ export class SurfaceBitmapCache {
         }
         if (!bitmaps?.length || !isDrawableBakedSurface(bitmaps[0])) {
             if (bitmaps) for (const b of bitmaps) if (b && typeof b.close === "function") b.close();
+            this._pending.delete(key);
             return;
         }
-        const existing = this.peek(key);
-        if (existing?.[0]?.isPlaceholder === true) this.set(key, bitmaps);
-        else if (existing !== bitmaps) bitmaps.forEach((b) => b.close());
+        this.set(key, bitmaps);
     }
 }
 export const EMPTY_TILE_BAKE_STATS = { queueSize: 0, pendingCount: 0, inFlightDedupeCount: 0, busyWorkers: 0, bakeTiming: { ...EMPTY_BAKE_TIMING_STATS } };
@@ -317,7 +322,7 @@ export class TileSurfaceWorkerClient {
         this.pool.ensureStarted();
         this._started = true;
     }
-    _sendRequest(type, payload, tier = TILE_BAKE_TIER.STATIC) {
+    _sendRequest(type, payload, tier = TILE_BAKE_TIER_STATIC) {
         this._ensureStarted();
         return this._whenWorkersReady(() => this.scheduler.enqueue(type, payload, tier));
     }
@@ -354,10 +359,10 @@ export class TileSurfaceWorkerClient {
         return this._broadcastRequest(TILE_WORKER_MESSAGE.CONFIGURE_BAKE_CONSTANTS, { metricsEnabled: enabled });
     }
     requestGroundChunkBake(payload) {
-        return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, payload, TILE_BAKE_TIER.STATIC);
+        return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK, payload, TILE_BAKE_TIER_STATIC);
     }
     requestWallAtlasBake(payload) {
-        return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS, payload, TILE_BAKE_TIER.STATIC);
+        return this._requestProfileBake(TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS, payload, TILE_BAKE_TIER_STATIC);
     }
     registerRuntimeProfile(profile) {
         registerRuntimeSurfaceProfile(profile);
@@ -414,7 +419,8 @@ export const TileWorkerCoordinator = {
         return requireClient().syncBakeConstants(settings);
     },
 };
-export const TILE_BAKE_TIER = { REGISTRATION: -1, STATIC: 0 };
+export const TILE_BAKE_TIER_REGISTRATION = -1;
+export const TILE_BAKE_TIER_STATIC = 0;
 const FOCUS_RESORT_DIST_SQ = 16 * 16;
 function compareJobs(a, b) {
     if (a.tier !== b.tier) return a.tier - b.tier;
@@ -424,7 +430,7 @@ function profileIdFromPayload(payload) {
     return payload?.profileId ?? payload?.id;
 }
 function dedupeKeyFor(type, payload, tier, getProfileRevision) {
-    if (tier === TILE_BAKE_TIER.REGISTRATION) return null;
+    if (tier === TILE_BAKE_TIER_REGISTRATION) return null;
     const rev = getProfileRevision(profileIdFromPayload(payload));
     if (type === TILE_WORKER_MESSAGE.BAKE_GROUND_CHUNK) return groundChunkWorkerDedupeKey(payload, rev);
     if (type === TILE_WORKER_MESSAGE.BAKE_WALL_ATLAS) return wallAtlasWorkerDedupeKey(payload, rev);
@@ -483,7 +489,7 @@ export class TileBakeScheduler {
     }
     broadcast(type, payload) {
         this.pool.ensureStarted();
-        return Promise.all(Array.from({ length: this.pool.size }, () => this.enqueue(type, payload, TILE_BAKE_TIER.REGISTRATION)));
+        return Promise.all(Array.from({ length: this.pool.size }, () => this.enqueue(type, payload, TILE_BAKE_TIER_REGISTRATION)));
     }
     _jobDistSq(payload) {
         const cx = payload?.centerX ?? this.focusX;
@@ -547,9 +553,8 @@ const sProjectedChunkCorners = new Float32Array(8);
 export function bakePixelsForWorldSpan(worldSpan, surfaceBakeScale) {
     return Math.max(1, Math.round(worldSpan * surfaceBakeScale));
 }
-/** @param {CanvasImageSource & { width?: number, height?: number, isPlaceholder?: boolean } | null | undefined} canvas */
 export function isDrawableBakedSurface(canvas) {
-    if (!canvas || canvas.isPlaceholder) return false;
+    if (!canvas) return false;
     const w = canvas.width;
     const h = canvas.height;
     return Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
@@ -660,17 +665,17 @@ export class BakeSession {
         i[BI_WALL_FACE] = 0;
         i[BI_WALL_CELL] = 1;
     }
-    configureWallFace(p1x, p1y, p2x, p2y, wallHeight, wallWidth, surfaceBakeScale) {
+    configureWallFaceFromSession(wallHeight, wallWidth, surfaceBakeScale) {
+        const f = this._f32;
+        const i = this._i32;
+        const p1x = f[BF_P1X];
+        const p1y = f[BF_P1Y];
+        const p2x = f[BF_P2X];
+        const p2y = f[BF_P2Y];
         const dx = p2x - p1x;
         const dy = p2y - p1y;
         const edgeLen = Math.hypot(dx, dy);
-        const f = this._f32;
-        const i = this._i32;
         f[BF_INV_BAKE_SCALE] = 1 / surfaceBakeScale;
-        f[BF_P1X] = p1x;
-        f[BF_P1Y] = p1y;
-        f[BF_P2X] = p2x;
-        f[BF_P2Y] = p2y;
         f[BF_EDGE_LEN] = edgeLen;
         f[BF_DIR_X] = edgeLen > 0 ? dx / edgeLen : 0;
         f[BF_DIR_Y] = edgeLen > 0 ? dy / edgeLen : 0;
@@ -804,7 +809,12 @@ export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) 
     const { width, height, seed, profileId } = payload;
     const { cellSize, surfaceBakeScale } = getTileWorkerBakeConstants();
     const wallWidth = payload.wallWidth ?? cellSize;
-    bakeSession.configureWallFace(payload.p1x, payload.p1y, payload.p2x, payload.p2y, payload.wallHeight, wallWidth, surfaceBakeScale);
+    const f = bakeSession._f32;
+    f[BF_P1X] = payload.p1x;
+    f[BF_P1Y] = payload.p1y;
+    f[BF_P2X] = payload.p2x;
+    f[BF_P2Y] = payload.p2y;
+    bakeSession.configureWallFaceFromSession(payload.wallHeight, wallWidth, surfaceBakeScale);
     bakeSession.setBakeRect(width, height, 0, 0);
     const canvas = createOffscreenCanvas(width, height);
     paintPixelArea(canvas.getContext("2d"), seed, profileId, bakeSession);
@@ -821,6 +831,7 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
     paintPixelArea(canvas.getContext("2d"), seed, profileId, bakeSession);
     return [canvas];
 }
+const WALL_ATLAS_WRAP = new Float32Array(4);
 const SS_CELL_RECT = new Int32Array(4);
 /**
  * World-aligned horizontal surface chunks (ground z=0, elevated roofs z>0).
@@ -1028,7 +1039,7 @@ export class WorldSurfaceEngine {
         return this.surfaceCache.hasPlaceholders();
     }
     _scheduleBake(key, bakeFn) {
-        const placeholder = this.surfaceCache.getOrStart(key);
+        const pending = this.surfaceCache.getOrStart(key);
         const generation = this.surfaceCache.getCurrentGeneration(key);
         bakeFn()
             .then((bitmaps) => {
@@ -1050,7 +1061,7 @@ export class WorldSurfaceEngine {
                     console.log("retrying bake request");
                 }
             });
-        return placeholder;
+        return pending;
     }
     getGroundChunkCanvas(chunkKey, state, zLevel = 0, useBankChunkSample = false, profileIdOverride = null) {
         const profileId = profileIdOverride ?? this.activeSurfaceProfileId;
@@ -1126,7 +1137,7 @@ export class WorldSurfaceEngine {
         const profileId = resolveSurfaceProfileId(state.obstacleGrid, SURFACE_MATERIAL_OWNER.Chunk, this.activeSurfaceProfileId, 0, chunkKey);
         const canvases = this.getGroundChunkCanvas(chunkKey, state, zLevel, false, profileId);
         const canvas = canvases ? canvases[0] : null;
-        if (!canvas || canvas.isPlaceholder) return false;
+        if (!canvas) return false;
         this._resolvedChunkCanvas = canvas;
         return true;
     }
@@ -1145,7 +1156,7 @@ export class WorldSurfaceEngine {
         });
     }
     getStaticRoofDrawCanvas(chunkKey, zLevel, obstacleGrid, buf, o, roofCanvas, profileId) {
-        if (roofCanvas.isPlaceholder) return roofCanvas;
+        if (!roofCanvas) return null;
         const drawKey = this.cacheKeys.staticRoofDrawKey(chunkKey, profileId, zLevel);
         const maskKey = this.cacheKeys.staticRoofMaskKey(chunkKey, zLevel);
         let maskEntry = this.surfaceCache.get(maskKey);
@@ -1160,7 +1171,7 @@ export class WorldSurfaceEngine {
             this.surfaceCache.delete(drawKey);
         }
         const cached = this.surfaceCache.get(drawKey);
-        if (cached?.[0] && !cached[0].isPlaceholder) return cached[0];
+        if (cached?.[0]) return cached[0];
         const masked = composeDestinationIn(roofCanvas, maskEntry[0]);
         if (!isDrawableBakedSurface(masked)) return null;
         this.surfaceCache.set(drawKey, [masked]);
@@ -1198,7 +1209,7 @@ export class WorldSurfaceEngine {
             if (mode === ELEVATED_CHUNK_ROOF) {
                 const profileId = resolveSurfaceProfileId(obstacleGrid, SURFACE_MATERIAL_OWNER.Chunk, this.activeSurfaceProfileId, 0, chunkKey);
                 const drawCanvas = this.getStaticRoofDrawCanvas(chunkKey, zLevel, obstacleGrid, b, o, this._resolvedChunkCanvas, profileId);
-                if (!drawCanvas || drawCanvas.isPlaceholder) {
+                if (!drawCanvas) {
                     ctx.restore();
                     return;
                 }
@@ -1215,16 +1226,18 @@ export class WorldSurfaceEngine {
     }
     ensureWallChunkProfileTextures(state, profileId, wallHeightPx) {
         const cellSize = this.settings.cellSize;
-        this.surfaceSpace.writeWallAtlasWrap(0, 0, cellSize, 0);
+        WALL_ATLAS_WRAP[0] = 0;
+        WALL_ATLAS_WRAP[1] = 0;
+        WALL_ATLAS_WRAP[2] = cellSize;
+        WALL_ATLAS_WRAP[3] = 0;
+        this.surfaceSpace.writeWallAtlasWrap(WALL_ATLAS_WRAP, 0);
         const sideCanvases = this.getOrEnsureWallAtlas(profileId, wallHeightPx);
         const sideCanvas = sideCanvases?.[0] ?? null;
         const chunkKey = this.surfaceSpace.sampleWallChunkTexture(cellSize);
         const capCanvasEntry = this.getGroundChunkCanvas(chunkKey, state, 1, true, profileId);
         const capCanvas = capCanvasEntry?.[0] ?? null;
-        const sideReady = sideCanvas && !sideCanvas.isPlaceholder;
-        const capReady = capCanvas && !capCanvas.isPlaceholder;
         this._wallChunkSideCanvas = sideCanvas;
         this._wallChunkCapCanvas = capCanvas;
-        this._wallChunkReady = !!(sideReady && capReady);
+        this._wallChunkReady = !!(sideCanvas && capCanvas);
     }
 }

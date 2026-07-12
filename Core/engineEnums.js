@@ -2,11 +2,11 @@ export const CONSTRAINT_TYPE_DISTANCE = 0;
 export const CONSTRAINT_TYPE_ANGLE = 1;
 // Constraint
 //
-// Shape
+// Shape (physics) — not the same as PROP_PRIMITIVE_* catalog ids
 export const SHAPE_TYPE_CIRCLE = 1;
 export const SHAPE_TYPE_POLYGON = 2;
 //
-// Prop
+// Prop (catalog / draw) — PROP_PRIMITIVE_* ≠ SHAPE_TYPE_*
 export const PROP_PRIMITIVE_SPHERE = 1;
 export const PROP_PRIMITIVE_POLYGON = 2;
 export const PROP_PRIMITIVE_COUNT = 3;
@@ -49,6 +49,28 @@ export const SURFACE_MASK_FLOOR = 1;
 export const SURFACE_MASK_WALL = 2;
 export const SURFACE_MASK_WALL_FACE = 3;
 export const SURFACE_MASK_WALL_CELL = 4;
+export const SURFACE_MASK_COUNT = 5;
+//
+// Surface motif blend (profile motif.blendMode)
+export const BLEND_MODE_REPLACE = 0;
+export const BLEND_MODE_ADD = 1;
+export const BLEND_MODE_MULTIPLY = 2;
+export const BLEND_MODE_SCREEN = 3;
+export const BLEND_MODE_OVERLAY = 4;
+export const BLEND_MODE_HARD_LIGHT = 5;
+export const BLEND_MODE_SOFT_LIGHT = 6;
+export const BLEND_MODE_COLOR_DODGE = 7;
+export const BLEND_MODE_COLOR_BURN = 8;
+export const BLEND_MODE_DIFFERENCE = 9;
+export const BLEND_MODE_COUNT = 10;
+//
+// Surface sample coordinate space
+export const COORD_SPACE_EVAL = 0;
+export const COORD_SPACE_WARPED = 1;
+//
+// Motif translate coordinate mode
+export const TRANSLATE_MODE_EVAL_AND_WARPED = 0;
+export const TRANSLATE_MODE_EVAL_ONLY = 1;
 //
 export const SPRITE_CACHE_FLAG_LIVE = 1;
 export const SPRITE_CACHE_FLAG_BITMAP = 2;
@@ -68,7 +90,9 @@ export const ROLL_DRIVE_NONE = -1;
 export const ROLL_DRIVE_THRUST = 0;
 export const ROLL_DRIVE_BRAKE = 1;
 //
-// Nav / overlay debug
+// Nav / overlay debug — four parallel ladders (do not conflate):
+// PATH_OVERLAY_MODE_* = path overlay draw; EDITOR_NAV_MODE_* = editor toolbar;
+// SANDBOX_PATH_VISUAL_* = sandbox path viz; NAV_PATH_DEBUG_* = HPA debug filter.
 export const PATH_OVERLAY_MODE_DIRECT = 0;
 export const PATH_OVERLAY_MODE_FLOW = 1;
 export const PATH_OVERLAY_MODE_HPA = 2;

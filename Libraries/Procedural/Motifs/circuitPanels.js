@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
  * 3D-beveled panel plate aligned with the warped starburst grid cells.
@@ -5,7 +6,7 @@ import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtili
 export const circuitPanelsMotif = {
     metadata: {
         label: "Circuit panels",
-        defaults: { type: "circuitPanels", coordinateSpace: "warped", gridSize: 16, density: 0.35, cellVariation: 4, groutWidth: 0.06, groutPeak: -10, groutTint: [1, 1, 1], bevelWidth: 0.05, highlightPeak: 8, shadowPeak: -6, bevelTint: [1, 1, 1], sunkenDarken: 6, sunkenShadowPeak: -5, sunkenHighlightPeak: 4, rivetRadius: 0.12, rivetSpacing: 0.18, rivetPeak: 6, rivetTint: [1.5, 1.5, 2.0], blendMode: "add" },
+        defaults: { type: "circuitPanels", coordinateSpace: COORD_SPACE_WARPED, gridSize: 16, density: 0.35, cellVariation: 4, groutWidth: 0.06, groutPeak: -10, groutTint: [1, 1, 1], bevelWidth: 0.05, highlightPeak: 8, shadowPeak: -6, bevelTint: [1, 1, 1], sunkenDarken: 6, sunkenShadowPeak: -5, sunkenHighlightPeak: 4, rivetRadius: 0.12, rivetSpacing: 0.18, rivetPeak: 6, rivetTint: [1.5, 1.5, 2.0], blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "gridSize", label: "Grid size", min: 8, max: 64, step: 1 },
             { path: "density", label: "Density", min: 0.05, max: 1.0, step: 0.05 },
@@ -21,8 +22,7 @@ export const circuitPanelsMotif = {
             { path: "rivetRadius", label: "Rivet radius", min: 0.02, max: 0.25, step: 0.01 },
             { path: "rivetSpacing", label: "Rivet spacing", min: 0.05, max: 0.35, step: 0.01 },
             { path: "rivetPeak", label: "Rivet peak", min: 0, max: 20, step: 1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const x = sampleCoordX(sf, config.coordinateSpace ?? "warped");
         const y = sampleCoordY(sf, config.coordinateSpace ?? "warped");
@@ -94,5 +94,4 @@ export const circuitPanelsMotif = {
                 }
             }
         }
-    },
-};
+    }};

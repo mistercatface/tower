@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 import { sampleCoordX, sampleCoordY, applyTint } from "../util/motifUtilities.js";
 /**
  * Topographical contour lines based on noise. When warped, looks like terraced armor plating or holographic fingerprint ridges.
@@ -5,7 +6,7 @@ import { sampleCoordX, sampleCoordY, applyTint } from "../util/motifUtilities.js
 export const topoContoursMotif = {
     metadata: {
         label: "Topo contours",
-        defaults: { type: "topoContours", coordinateSpace: "warped", frequency: 0.015, octaves: 2, bands: 10, thickness: 0.15, peak: 8, tint: [0.2, 0.7, 1.2], blendMode: "add" },
+        defaults: { type: "topoContours", coordinateSpace: COORD_SPACE_WARPED, frequency: 0.015, octaves: 2, bands: 10, thickness: 0.15, peak: 8, tint: [0.2, 0.7, 1.2], blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.05, step: 0.001 },
             { path: "bands", label: "Bands", min: 1, max: 30, step: 1 },
@@ -14,8 +15,7 @@ export const topoContoursMotif = {
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const x = sampleCoordX(sf, config.coordinateSpace);
         const y = sampleCoordY(sf, config.coordinateSpace);
@@ -28,5 +28,4 @@ export const topoContoursMotif = {
             const intensity = (1.0 - distToBand / thickness) * config.peak;
             applyTint(rf, ro, intensity, config.tint ?? [1, 1, 1]);
         }
-    },
-};
+    }};

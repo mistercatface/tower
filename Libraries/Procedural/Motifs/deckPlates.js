@@ -1,3 +1,4 @@
+import { BLEND_MODE_MULTIPLY } from "../../../Core/engineEnums.js";
 import { SF_EVAL_X, SF_EVAL_Y, applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
 function plateMetrics(sf, config) {
     const cell = config.cellWorldSize;
@@ -84,7 +85,7 @@ function compileDeckPlates(config) {
 export const deckPlatesMotif = {
     metadata: {
         label: "Deck plates",
-        defaults: { type: "deckPlates", cellWorldSize: 16, plateCells: 2, plateRows: 2, groutWidth: 0.045, groutPeak: 11, groutTint: [-6, -6, -5], plateVariation: 3, jitterOffset: [0, 0], rivetSpacing: 16, rivetInset: 4, rivetRadius: 0.018, rivetPeak: 5, rivetTint: [2, 4, 5], blendMode: "multiply" },
+        defaults: { type: "deckPlates", cellWorldSize: 16, plateCells: 2, plateRows: 2, groutWidth: 0.045, groutPeak: 11, groutTint: [-6, -6, -5], plateVariation: 3, jitterOffset: [0, 0], rivetSpacing: 16, rivetInset: 4, rivetRadius: 0.018, rivetPeak: 5, rivetTint: [2, 4, 5], blendMode: BLEND_MODE_MULTIPLY },
         fields: [
             { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
             { path: "plateCells", label: "Plate cells (W)", min: 1, max: 8, step: 1 },
@@ -96,8 +97,7 @@ export const deckPlatesMotif = {
             { path: "rivetPeak", label: "Rivet peak", min: 0, max: 12, step: 1 },
             { path: "accentWidth", label: "Warm seam (0=off)", min: 0, max: 0.06, step: 0.002 },
             { path: "accentPeak", label: "Seam peak", min: 0, max: 12, step: 1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const { plateCol, plateRow, localX, localY, plateW, plateH, edgeDist } = plateMetrics(sf, config);
         applyPlateFill(rf, ro, plateCol, plateRow, config, noise);
@@ -105,5 +105,4 @@ export const deckPlatesMotif = {
         applyWarmSeamBand(rf, ro, edgeDist, config);
         applyRivets(rf, ro, localX, localY, plateW, plateH, config);
     },
-    compile: compileDeckPlates,
-};
+    compile: compileDeckPlates};

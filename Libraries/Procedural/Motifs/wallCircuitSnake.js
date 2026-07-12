@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD } from "../../../Core/engineEnums.js";
 import { SF_EVAL_X, SF_EVAL_Y, SF_WALL_V, SI_IS_WALL, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Horizontal-ish circuit traces on walls. Uses world eval coords so the base edge
@@ -6,7 +7,7 @@ import { SF_EVAL_X, SF_EVAL_Y, SF_WALL_V, SI_IS_WALL, applyTint, sampleRidged2D 
 export const wallCircuitSnakeMotif = {
     metadata: {
         label: "Wall circuit snake",
-        defaults: { type: "wallCircuitSnake", frequency: 0.022, threshold: 0.22, peak: 12, tint: [1.2, 0.35, 0.1], wiggleAmplitude: 24, octaves: 2, blendMode: "add" },
+        defaults: { type: "wallCircuitSnake", frequency: 0.022, threshold: 0.22, peak: 12, tint: [1.2, 0.35, 0.1], wiggleAmplitude: 24, octaves: 2, blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.05, step: 0.001 },
             { path: "threshold", label: "Threshold", min: 0.05, max: 0.4, step: 0.01 },

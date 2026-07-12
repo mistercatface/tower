@@ -1,4 +1,4 @@
-import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, BLEND_MODE_ADD, BLEND_MODE_MULTIPLY, BLEND_MODE_REPLACE, COORD_SPACE_EVAL, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";;
 export default {
     warp: { frequency: 0.004, amplitude: 5, octaves: 2, sampleOffset: [200, 200] },
     palette: { base: [14, 10, 8], floorBase: [10, 8, 6], wallBase: [4, 4, 4] },
@@ -7,15 +7,14 @@ export default {
         {
             type: "stainBlotch",
             surfaceMask: SURFACE_MASK_ALL,
-            coordinateSpace: "eval",
+            coordinateSpace: COORD_SPACE_EVAL,
             frequency: 0.012,
             threshold: 0.45,
             peak: 8,
             offset: [50, 50],
             tint: [-3.0, -2.6, -2.2], // Dark rust/grime stains
             octaves: 2,
-            opacity: 0.75,
-            blendMode: "add"
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "deckPlates",
@@ -33,8 +32,7 @@ export default {
             rivetRadius: 0.018,
             rivetPeak: 8,
             rivetTint: [1.2, 0.8, 0.5],
-            blendMode: "multiply",
-            opacity: 0.9
+            blendMode: BLEND_MODE_MULTIPLY
         },
         {
             type: "wallHorizontalBevel",
@@ -47,13 +45,12 @@ export default {
             corePeak: 15,
             coreTint: [1.8, 0.8, 0.2], // Glowing flickering orange electrical line
             snakeStrength: 0,
-            blendMode: "add",
-            opacity: 0.8
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "circuitTraces",
             surfaceMask: SURFACE_MASK_ALL,
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             gridSize: 32,
             lineWidth: 1.5,
             density: 0.45,
@@ -61,8 +58,7 @@ export default {
             peak: 25,
             tint: [2.2, 0.8, 0.2], // Glowing copper circuits
             padEnabled: true,
-            blendMode: "add",
-            opacity: 0.85
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "wallLighting",
@@ -70,10 +66,9 @@ export default {
             power: 1.3,
             topDarken: 25, // Heavily darken top of walls
             coolBias: 1.06,
-            blendMode: "multiply",
-            opacity: 1
+            blendMode: BLEND_MODE_MULTIPLY
         },
-        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.4, value: 0.85, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", surfaceMask: SURFACE_MASK_ALL, hueShift: 0, saturation: 1.4, value: 0.85, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

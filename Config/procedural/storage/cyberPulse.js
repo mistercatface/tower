@@ -1,3 +1,4 @@
+import { BLEND_MODE_SCREEN, BLEND_MODE_ADD, BLEND_MODE_REPLACE, COORD_SPACE_EVAL } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.003, amplitude: 5, octaves: 2, sampleOffset: [100, 100] },
     palette: { base: [0, 0, 0], floorBase: [0, 0, 0], wallBase: [2, 2, 2] },
@@ -13,8 +14,7 @@ export default {
             highlightPeak: 0,
             shadowPeak: 0,
             cellVariation: 0,
-            blendMode: "screen",
-            opacity: 1
+            blendMode: BLEND_MODE_SCREEN
         },
         {
             type: "translate",
@@ -24,7 +24,7 @@ export default {
         },
         {
             type: "circuitTraces",
-            coordinateSpace: "eval",
+            coordinateSpace: COORD_SPACE_EVAL,
             gridSize: 64,
             lineWidth: 2.0,
             density: 0.85,
@@ -32,10 +32,9 @@ export default {
             peak: 25,
             tint: [25, 0, 20],
             padEnabled: false,
-            blendMode: "add",
-            opacity: 1
+            blendMode: BLEND_MODE_ADD
         },
-        { type: "filterHSV", hueShift: 0, saturation: 2.0, value: 1.5, blendMode: "replace", opacity: 1 }
+        { type: "filterHSV", hueShift: 0, saturation: 2.0, value: 1.5, blendMode: BLEND_MODE_REPLACE}
     ],
     animation: {
         stages: [

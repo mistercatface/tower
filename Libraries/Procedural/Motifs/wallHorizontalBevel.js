@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD } from "../../../Core/engineEnums.js";
 import { SF_WALL_U, SF_WALL_V, SF_SEED, SI_IS_WALL, applyTint } from "../util/motifUtilities.js";
 function snakeOffset(wallU, bandIndex, seed, config, spacing, noise) {
     const wobble = noise.sample2D(wallU * (config.snakeAlong ?? 2.5) + seed * 0.001, bandIndex * 0.41, config.snakeOctaves ?? 2);
@@ -10,18 +11,7 @@ function snakeOffset(wallU, bandIndex, seed, config, spacing, noise) {
 export const wallHorizontalBevelMotif = {
     metadata: {
         label: "Wall panel ribs",
-        defaults: {
-            type: "wallHorizontalBevel",
-            bands: 8,
-            ribFill: 0.55,
-            highlightPeak: 8,
-            shadowPeak: 10,
-            coreWidth: 0.2,
-            corePeak: 6,
-            coreTint: [0.4, 1.0, 1.6],
-            snakeStrength: 0.25,
-            blendMode: "add",
-        },
+        defaults: { type: "wallHorizontalBevel", bands: 8, ribFill: 0.55, highlightPeak: 8, shadowPeak: 10, coreWidth: 0.2, corePeak: 6, coreTint: [0.4, 1.0, 1.6], snakeStrength: 0.25, blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "bands", label: "Band count", min: 3, max: 16, step: 1 },
             { path: "ribFill", label: "Rib fill", min: 0.2, max: 0.9, step: 0.05 },

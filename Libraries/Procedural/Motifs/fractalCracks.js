@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, COORD_SPACE_EVAL } from "../../../Core/engineEnums.js";
 import { sampleCoordX, sampleCoordY, applyTint } from "../util/motifUtilities.js";
 function fbmRidged(x, y, octaves, noise) {
     let sum = 0;
@@ -17,7 +18,7 @@ function fbmRidged(x, y, octaves, noise) {
 export const fractalCracksMotif = {
     metadata: {
         label: "Fractal cracks",
-        defaults: { type: "fractalCracks", coordinateSpace: "eval", frequency: 0.01, octaves: 3, threshold: 0.7, peak: 10, offset: [0, 0], tint: [1, 1, 1], blendMode: "add" },
+        defaults: { type: "fractalCracks", coordinateSpace: COORD_SPACE_EVAL, frequency: 0.01, octaves: 3, threshold: 0.7, peak: 10, offset: [0, 0], tint: [1, 1, 1], blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "frequency", label: "Frequency", min: 0.005, max: 0.05, step: 0.001 },
             { path: "octaves", label: "Octaves", min: 1, max: 6, step: 1 },
@@ -26,8 +27,7 @@ export const fractalCracksMotif = {
             { path: "tint.0", label: "Tint R", min: -5, max: 5, step: 0.1 },
             { path: "tint.1", label: "Tint G", min: -5, max: 5, step: 0.1 },
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const x = sampleCoordX(sf, config.coordinateSpace);
         const y = sampleCoordY(sf, config.coordinateSpace);
@@ -42,5 +42,4 @@ export const fractalCracksMotif = {
         // Apply edge smoothstep
         t = t * t * (3 - 2 * t);
         applyTint(rf, ro, -t * (config.peak ?? 10), config.tint ?? [1, 1, 1]);
-    },
-};
+    }};

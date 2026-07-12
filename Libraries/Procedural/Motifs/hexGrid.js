@@ -1,3 +1,4 @@
+import { BLEND_MODE_MULTIPLY } from "../../../Core/engineEnums.js";
 import { SF_EVAL_X, SF_EVAL_Y, applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
 const SQRT3 = Math.sqrt(3);
 /** Flat-top hex: circumradius `size` (center to vertex). */
@@ -71,7 +72,7 @@ function applyCellFill(rf, ro, q, r, config, noise) {
 export const hexGridMotif = {
     metadata: {
         label: "Hex grid",
-        defaults: { type: "hexGrid", cellWorldSize: 16, groutWidth: 0.08, groutPeak: 12, groutTint: [5, 2, -3], cellVariation: 2, jitterOffset: [0, 0], bevelWidth: 0.0, highlightPeak: 8, shadowPeak: -6, bevelTint: [1, 1, 1], blendMode: "multiply" },
+        defaults: { type: "hexGrid", cellWorldSize: 16, groutWidth: 0.08, groutPeak: 12, groutTint: [5, 2, -3], cellVariation: 2, jitterOffset: [0, 0], bevelWidth: 0.0, highlightPeak: 8, shadowPeak: -6, bevelTint: [1, 1, 1], blendMode: BLEND_MODE_MULTIPLY },
         fields: [
             { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
             { path: "groutWidth", label: "Grout width", min: 0.02, max: 0.2, step: 0.005 },
@@ -85,13 +86,11 @@ export const hexGridMotif = {
             { path: "cellVariation", label: "Cell jitter", min: 0, max: 8, step: 0.5 },
             { path: "bevelCurve", label: "Bevel Curve", options: ["linear", "smooth", "steep"] },
             { path: "bevelFalloff", label: "Falloff", min: 0.1, max: 4.0, step: 0.1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         const { q, r, edgeDist, lx, ly } = hexMetrics(sf, config);
         applyCellFill(rf, ro, q, r, config, noise);
         applyBevel(rf, ro, lx, ly, edgeDist, config);
         applyGroutBand(rf, ro, edgeDist, config, { groutWidth: 0.08, groutPeak: 12, groutTint: [4, 2, -2] });
         applyWarmSeamBand(rf, ro, edgeDist, config);
-    },
-};
+    }};

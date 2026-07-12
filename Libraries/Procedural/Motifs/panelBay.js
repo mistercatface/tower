@@ -1,4 +1,4 @@
-import { SURFACE_MASK_WALL_FACE } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_WALL_FACE, BLEND_MODE_ADD } from "../../../Core/engineEnums.js";;
 import { SF_WALL_U, SF_WALL_V, SI_IS_WALL, applyTint } from "../util/motifUtilities.js";
 /**
  * Recessed module bays on wall faces (wallU/wallV). Reads as layered tech panels top-down.
@@ -6,15 +6,14 @@ import { SF_WALL_U, SF_WALL_V, SI_IS_WALL, applyTint } from "../util/motifUtilit
 export const panelBayMotif = {
     metadata: {
         label: "Panel bays (wall face)",
-        defaults: { type: "panelBay", rows: 5, cols: 2, inset: 0.16, frameWidth: 0.07, highlightPeak: 4, shadowPeak: 5, rimPeak: 5, interiorDarken: 5, surfaceMask: SURFACE_MASK_WALL_FACE, blendMode: "add" },
+        defaults: { type: "panelBay", rows: 5, cols: 2, inset: 0.16, frameWidth: 0.07, highlightPeak: 4, shadowPeak: 5, rimPeak: 5, interiorDarken: 5, surfaceMask: SURFACE_MASK_WALL_FACE, blendMode: BLEND_MODE_ADD },
         fields: [
             { path: "rows", label: "Rows", min: 2, max: 12, step: 1 },
             { path: "cols", label: "Cols", min: 1, max: 6, step: 1 },
             { path: "inset", label: "Bay inset", min: 0.05, max: 0.3, step: 0.01 },
             { path: "interiorDarken", label: "Interior dark", min: 0, max: 14, step: 1 },
             { path: "rimPeak", label: "Rim glow", min: 0, max: 12, step: 1 },
-        ],
-    },
+        ]},
     apply(sf, si, rf, ro, config, noise) {
         if (!si[SI_IS_WALL]) return;
         const rows = config.rows ?? 5;
@@ -46,5 +45,4 @@ export const panelBayMotif = {
         const sh = config.shadowPeak ?? 6;
         if (localV < 0.5) applyTint(rf, ro, bevelSq * hi, [1, 1, config.coolBias ?? 1.04]);
         else applyTint(rf, ro, -bevelSq * sh, [1, 1, config.coolBias ?? 1.04]);
-    },
-};
+    }};

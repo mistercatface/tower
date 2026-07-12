@@ -1,3 +1,4 @@
+import { BLEND_MODE_ADD, BLEND_MODE_COLOR_DODGE, BLEND_MODE_REPLACE, COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 export default {
     warp: { frequency: 0.005, amplitude: 8, octaves: 2, sampleOffset: [100, 100] },
     palette: { base: [10, 10, 20], floorBase: [8, 8, 16], wallBase: [12, 12, 24] },
@@ -13,12 +14,11 @@ export default {
             highlightPeak: 6,
             shadowPeak: -4,
             cellVariation: 1,
-            blendMode: "add",
-            opacity: 0.8
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "circuitTraces",
-            coordinateSpace: "warped",
+            coordinateSpace: COORD_SPACE_WARPED,
             gridSize: 24,
             lineWidth: 2.5,
             density: 0.6,
@@ -26,16 +26,14 @@ export default {
             peak: 12,
             tint: [0.5, 4, 8],
             padEnabled: true,
-            blendMode: "color-dodge",
-            opacity: 1
+            blendMode: BLEND_MODE_COLOR_DODGE
         },
         {
             type: "filterHSV",
             hueShift: 0,
             saturation: 1.5,
             value: 1.1,
-            blendMode: "replace",
-            opacity: 1
+            blendMode: BLEND_MODE_REPLACE
         }
     ],
     animation: {
@@ -46,8 +44,6 @@ export default {
                 tracks: [
                     { targetPath: "motifs[2].gridSize", startValue: 12, endValue: 48, easing: "easeInOutQuad" },
                     { targetPath: "motifs[3].hueShift", startValue: 0, endValue: 360, easing: "linear" },
-                ],
-            },
-        ],
-    }
+                ]},
+        ]}
 };

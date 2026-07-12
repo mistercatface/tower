@@ -39,7 +39,8 @@ describe("surface tile cutoff", () => {
 
     it("wraps wall atlas samples to the same surface period", () => {
         const surfaceSpace = createSurfaceSpace();
-        surfaceSpace.writeWallAtlasWrap(512, 0, 528, 0);
+        const wrap = new Float32Array([512, 0, 528, 0]);
+        surfaceSpace.writeWallAtlasWrap(wrap, 0);
         const b = surfaceSpace._boundsBank;
         const o = SS_POINTS;
         assert.equal(b[o], 0);
@@ -73,14 +74,14 @@ describe("world surface retry and cooldown", () => {
         };
         
         try {
-            // First attempt: should fail and set cooldown
+            // First attempt: pending bake returns null
             const result1 = engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
-            assert.ok(result1[0].isPlaceholder, "Should initially return a placeholder");
+            assert.equal(result1, null, "Should initially return null while bake is pending");
             
             // Wait for promise microtasks to resolve the failure
             await new Promise(resolve => setTimeout(resolve, 0));
             
-            // Check that placeholder is evicted (should return null if on cooldown)
+            // Check that pending is cleared (should return null if on cooldown)
             const result2 = engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
             assert.equal(result2, null, "Should return null when on cooldown");
             
@@ -91,13 +92,13 @@ describe("world surface retry and cooldown", () => {
             // Try again: should re-attempt bake (callCount increments)
             shouldFail = false;
             const result3 = engine.getGroundChunkCanvas(packChunkKey(0, 0), mockState, 0, null, "test_profile");
-            assert.ok(result3[0].isPlaceholder, "Should return placeholder again on retry");
+            assert.equal(result3, null, "Should return null again while retry bake is pending");
             
             await new Promise(resolve => setTimeout(resolve, 0));
             
-            // Verify bake resolved successfully and no longer has placeholder
+            // Verify bake resolved successfully
             const finalCanvas = engine.surfaceCache.get(key);
-            assert.ok(finalCanvas && !finalCanvas[0].isPlaceholder, "Should now be the resolved canvas");
+            assert.ok(finalCanvas && finalCanvas[0] && finalCanvas[0].width > 0, "Should now be the resolved canvas");
             assert.equal(callCount, 2, "Should have called bake function exactly twice");
         } finally {
             TileWorkerCoordinator.requestGroundChunkBake = originalRequest;

@@ -1,4 +1,5 @@
 import { clampByte } from "../../Color/colorMath.js";
+import { COORD_SPACE_WARPED } from "../../../Core/engineEnums.js";
 export const SF_EVAL_X = 0;
 export const SF_EVAL_Y = 1;
 export const SF_LOOKUP_X = 2;
@@ -13,10 +14,10 @@ export const RF_R = 0;
 export const RF_G = 1;
 export const RF_B = 2;
 export function sampleCoordX(sf, coordinateSpace) {
-    return coordinateSpace === "warped" ? sf[SF_LOOKUP_X] : sf[SF_EVAL_X];
+    return coordinateSpace === COORD_SPACE_WARPED ? sf[SF_LOOKUP_X] : sf[SF_EVAL_X];
 }
 export function sampleCoordY(sf, coordinateSpace) {
-    return coordinateSpace === "warped" ? sf[SF_LOOKUP_Y] : sf[SF_EVAL_Y];
+    return coordinateSpace === COORD_SPACE_WARPED ? sf[SF_LOOKUP_Y] : sf[SF_EVAL_Y];
 }
 export function applyTint(rf, ro, intensity, tint) {
     rf[ro + RF_R] = clampByte(rf[ro + RF_R] + intensity * tint[0]);

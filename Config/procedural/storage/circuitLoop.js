@@ -1,4 +1,4 @@
-import { SURFACE_MASK_ALL } from "../../../Core/engineEnums.js";
+import { SURFACE_MASK_ALL, BLEND_MODE_ADD, BLEND_MODE_REPLACE, COORD_SPACE_EVAL } from "../../../Core/engineEnums.js";;
 export default {
     warp: { frequency: 0.005, amplitude: 2, octaves: 1, sampleOffset: [0, 0] },
     palette: { base: [10, 10, 12], floorBase: [8, 8, 10], wallBase: [6, 6, 8] },
@@ -11,7 +11,7 @@ export default {
         {
             type: "circuitTraces",
             surfaceMask: SURFACE_MASK_ALL,
-            coordinateSpace: "eval",
+            coordinateSpace: COORD_SPACE_EVAL,
             gridSize: 32,
             lineWidth: 2,
             density: 0.6,
@@ -20,8 +20,7 @@ export default {
             angle: 0,
             tint: [0.0, 2.5, 3.0], // Neon cyan/blue circuitry
             padEnabled: true,
-            blendMode: "add",
-            opacity: 0.9
+            blendMode: BLEND_MODE_ADD
         },
         {
             type: "filterHSV",
@@ -29,8 +28,7 @@ export default {
             hueShift: 0,
             saturation: 1.2,
             value: 0.9,
-            blendMode: "replace",
-            opacity: 1
+            blendMode: BLEND_MODE_REPLACE
         }
     ],
     animation: {

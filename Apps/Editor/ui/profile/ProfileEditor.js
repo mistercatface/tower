@@ -7,7 +7,7 @@ import { renderPipelineListUi } from "../../../../Libraries/UI/pipelineListUi.js
 import { renderSchemaFields } from "../../../../Libraries/UI/renderSchemaFields.js";
 import { appendEditorSubhead } from "../../../../Libraries/UI/paramFields.js";
 import { mirrorEasingForReversedStage } from "../../../../Libraries/Math/math.js";
-import { SURFACE_MASK_ALL } from "../../../../Core/engineEnums.js";
+import { SURFACE_MASK_ALL, BLEND_MODE_ADD } from "../../../../Core/engineEnums.js";
 import { BLEND_OPTIONS, EASING_OPTIONS, LAYER_OPTIONS, MOTIF_TYPES, PALETTE_FIELDS, WARP_FIELDS, getAnimatableMotifFields, isContextMotif } from "./profileSchema.js";
 export const RUNTIME_LAB_PROFILE_ID = "__labA__";
 let editorState = null;
@@ -28,9 +28,8 @@ function motifsFromProfile(profile) {
     if (!profile.motifs) return rows;
     for (const motif of profile.motifs) {
         const config = deepClone(motif);
-        const blendMode = config.blendMode ?? "add";
+        const blendMode = config.blendMode ?? BLEND_MODE_ADD;
         delete config.blendMode;
-        delete config.opacity;
         rows.push({ id: `m${nextMotifId++}`, enabled: motif.enabled !== false, surfaceMask: motif.surfaceMask ?? SURFACE_MASK_ALL, blendMode, config });
     }
     return rows;
@@ -60,7 +59,7 @@ export function buildProfileFromEditor(state = editorState) {
         delete config.enabled;
         if (!isContextMotif(config.type)) {
             config.surfaceMask = row.surfaceMask;
-            config.blendMode = row.blendMode ?? "add";
+            config.blendMode = row.blendMode ?? BLEND_MODE_ADD;
         }
         profile.motifs.push(config);
     }
@@ -112,13 +111,13 @@ function renderMotifList(container) {
             setFormFieldName(blendSel, `${pipelineRowId(row)}_blend`);
             for (const mode of BLEND_OPTIONS) {
                 const o = document.createElement("option");
-                o.value = mode;
-                o.textContent = mode;
-                if (mode === (row.blendMode ?? "add")) o.selected = true;
+                o.value = String(mode.id);
+                o.textContent = mode.label;
+                if (mode.id === (row.blendMode ?? BLEND_MODE_ADD)) o.selected = true;
                 blendSel.appendChild(o);
             }
             blendSel.addEventListener("change", (e) => {
-                row.blendMode = /** @type {HTMLSelectElement} */ (e.target).value;
+                row.blendMode = Number(e.target.value);
                 notifyChange();
             });
             blendSel.addEventListener("click", (e) => e.stopPropagation());
@@ -177,7 +176,7 @@ function renderMotifParams(container) {
     renderSchemaFields(
         container,
         row.config,
-        schema.fields.filter((field) => field.path !== "blendMode" && field.path !== "opacity"),
+        schema.fields.filter((field) => field.path !== "blendMode"),
         () => notifyChange(),
     );
 }
@@ -210,7 +209,7 @@ export function initProfileEditor({ onChange }) {
         const type = addSelect.value;
         const schema = MOTIF_TYPES[type];
         if (!schema || !editorState) return;
-        const row = { id: `m${nextMotifId++}`, enabled: true, surfaceMask: SURFACE_MASK_ALL, blendMode: "add", config: deepClone(schema.defaults) };
+        const row = { id: `m${nextMotifId++}`, enabled: true, surfaceMask: SURFACE_MASK_ALL, blendMode: BLEND_MODE_ADD, config: deepClone(schema.defaults) };
         editorState.motifs.push(row);
         selectMotifById(row.id);
         notifyChange();

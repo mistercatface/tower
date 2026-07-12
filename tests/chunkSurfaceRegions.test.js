@@ -39,7 +39,7 @@ describe("chunk surface regions", () => {
         const originalGetGround = engine.getGroundChunkCanvas.bind(engine);
         engine.getGroundChunkCanvas = (chunkKey, stateArg, zLevel, boundsSample, profileIdOverride) => {
             captured.push({ chunkKey, profileIdOverride, zLevel });
-            return [{ isPlaceholder: true }];
+            return null;
         };
         engine._drawState = state;
         engine._fillDrawableGroundChunkCanvas(packChunkKey(1, 0), 0);

@@ -1,20 +1,21 @@
-const sWarpOut = { x: 0, y: 0 };
-export function writeDomainWarp(evalX, evalY, warp, lookupX, lookupY, index, noise) {
-    warpPointInto(sWarpOut, evalX, evalY, warp, noise);
-    lookupX[index] = sWarpOut.x;
-    lookupY[index] = sWarpOut.y;
-}
-export function warpPointInto(out, evalX, evalY, warp, noise) {
+const WARP_XY = new Float32Array(2);
+
+export function warpPointInto(outF32, o, evalX, evalY, warp, noise) {
     if (!warp || (warp.amplitude ?? 0) === 0) {
-        out.x = evalX;
-        out.y = evalY;
-        return out;
+        outF32[o] = evalX;
+        outF32[o + 1] = evalY;
+        return;
     }
     const [offX, offY] = warp.sampleOffset ?? [0, 0];
     const freq = warp.frequency ?? 0;
     const amp = warp.amplitude ?? 0;
     const oct = warp.octaves ?? 1;
-    out.x = evalX + noise.sample2D(evalX * freq, evalY * freq, oct) * amp;
-    out.y = evalY + noise.sample2D((evalX + offX) * freq, (evalY + offY) * freq, oct) * amp;
-    return out;
+    outF32[o] = evalX + noise.sample2D(evalX * freq, evalY * freq, oct) * amp;
+    outF32[o + 1] = evalY + noise.sample2D((evalX + offX) * freq, (evalY + offY) * freq, oct) * amp;
+}
+
+export function writeDomainWarp(evalX, evalY, warp, lookupX, lookupY, index, noise) {
+    warpPointInto(WARP_XY, 0, evalX, evalY, warp, noise);
+    lookupX[index] = WARP_XY[0];
+    lookupY[index] = WARP_XY[1];
 }
