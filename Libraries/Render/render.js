@@ -3,7 +3,7 @@ import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, entityRefs, GrowF32 } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
-import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
+import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, collectRailWallBoxesInAabbF32, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { VOXEL_FACE_CX, VOXEL_FACE_CY, VOXEL_FACE_OUT_X, VOXEL_FACE_OUT_Y, VOXEL_FACE_X1, VOXEL_FACE_Y1, VOXEL_FACE_X2, VOXEL_FACE_Y2, VOXEL_FACE_WALL_HEIGHT, VOXEL_FACE_WALL_BASE_Z, VOXEL_FACE_WALL_CAP_HEIGHT, VOXEL_FACE_GRID_SIDE, VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE, RAIL_BOX_MIN_X, RAIL_BOX_MAX_X, RAIL_BOX_MIN_Y, RAIL_BOX_MAX_Y, RAIL_BOX_INNER_P1X, RAIL_BOX_INNER_P1Y, RAIL_BOX_INNER_P2X, RAIL_BOX_INNER_P2Y, RAIL_BOX_OUTER_P1X, RAIL_BOX_OUTER_P1Y, RAIL_BOX_OUTER_P2X, RAIL_BOX_OUTER_P2Y, RAIL_BOX_INWARD_X, RAIL_BOX_INWARD_Y, RAIL_BOX_CX, RAIL_BOX_CY, RAIL_BOX_WALL_CAP_HEIGHT, RAIL_BOX_WALL_HEIGHT, RAIL_BOX_WALL_BASE_Z, RAIL_BOX_GRID_SIDE, RAIL_BOX_GRID_IDX, RAIL_BOX_STRIDE } from "../World/wallGridStride.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
@@ -321,28 +321,6 @@ export function stampVoxelCellHighlight(slab, minX, minY, maxX, maxY, cellSize) 
     setOverlayCache(slab, i, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, mixHash4(cellSize | 0, hashString("voxel"), 2, 0), Math.max(w, h), (minX + maxX) * 0.5, (minY + maxY) * 0.5);
     return i;
 }
-export function stampMarqueeAabb(slab, minX, minY, maxX, maxY) {
-    const i = allocOverlayCmd(slab);
-    slab.kind[i] = OVERLAY_CMD_AABB;
-    const b = i * OVERLAY_F_STRIDE;
-    slab.f[b + OVERLAY_F_G0] = minX;
-    slab.f[b + OVERLAY_F_G1] = minY;
-    slab.f[b + OVERLAY_F_G2] = maxX;
-    slab.f[b + OVERLAY_F_G3] = maxY;
-    applyOverlayStyle(slab, i, OVERLAY_STYLE_MARQUEE);
-    return i;
-}
-export function stampRailEdgeSegment(slab, x0, y0, x1, y1) {
-    const i = allocOverlayCmd(slab);
-    slab.kind[i] = OVERLAY_CMD_SEGMENT;
-    const b = i * OVERLAY_F_STRIDE;
-    slab.f[b + OVERLAY_F_G0] = x0;
-    slab.f[b + OVERLAY_F_G1] = y0;
-    slab.f[b + OVERLAY_F_G2] = x1;
-    slab.f[b + OVERLAY_F_G3] = y1;
-    applyOverlayStyle(slab, i, OVERLAY_STYLE_RAIL_EDGE);
-    return i;
-}
 export function stampPathDirect(slab, x0, y0, x1, y1, visual) {
     if (visual === SANDBOX_PATH_VISUAL_NORMAL) {
         stampOverlaySegment(slab, x0, y0, x1, y1, OVERLAY_STYLE_PATH_DIRECT_DASH);
@@ -505,27 +483,6 @@ function bakeOverlayCommandAt(ctx, anchorX, anchorY, slab, i) {
         fillStrokeCircle(ctx, anchorX, anchorY, slab.f[b + OVERLAY_F_G2]);
         return;
     }
-    if (kind === OVERLAY_CMD_ARROW_HEAD) {
-        drawArrowHeadAt(ctx, anchorX, anchorY, slab.f[b + OVERLAY_F_G2], slab.f[b + OVERLAY_F_G3], slab.fill[i], slab.f[b + OVERLAY_F_LINE_WIDTH] || 9, slab.f[b + OVERLAY_F_DASH_A] || 6);
-        return;
-    }
-    if (kind === OVERLAY_CMD_DIRECTION_ARROW) {
-        const dirX = slab.f[b + OVERLAY_F_G2];
-        const dirY = slab.f[b + OVERLAY_F_G3];
-        const pad = slab.f[b + OVERLAY_F_DASH_A];
-        const len = slab.f[b + OVERLAY_F_DASH_B];
-        const headLen = slab.f[b + OVERLAY_F_EXTRA0] || 9;
-        const headWidth = slab.f[b + OVERLAY_F_EXTRA1] || 6;
-        const startX = anchorX + dirX * pad;
-        const startY = anchorY + dirY * pad;
-        const tipX = startX + dirX * len;
-        const tipY = startY + dirY * len;
-        ctx.strokeStyle = slab.stroke[i];
-        ctx.lineWidth = slab.f[b + OVERLAY_F_LINE_WIDTH];
-        strokeSegment(ctx, startX, startY, tipX, tipY);
-        drawArrowHeadAt(ctx, tipX, tipY, dirX, dirY, slab.stroke[i], headLen, headWidth);
-        return;
-    }
     if (kind === OVERLAY_CMD_AABB) {
         const w = slab.f[b + OVERLAY_F_G2] - slab.f[b + OVERLAY_F_G0];
         const h = slab.f[b + OVERLAY_F_G3] - slab.f[b + OVERLAY_F_G1];
@@ -611,14 +568,6 @@ export function drawOverlayCommands(ctx, slab, viewport) {
             const dashed = applyOverlayDash(ctx, slab, i);
             strokeOpenPolylineF32(ctx, slab.poly.buf, slab.polyBase[i], slab.polyCount[i]);
             if (dashed) ctx.setLineDash([]);
-            continue;
-        }
-        if (kind === OVERLAY_CMD_ARROW_HEAD) {
-            drawArrowHeadAt(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab.f[b + OVERLAY_F_G2], slab.f[b + OVERLAY_F_G3], slab.fill[i], slab.f[b + OVERLAY_F_LINE_WIDTH] || 9, slab.f[b + OVERLAY_F_DASH_A] || 6);
-            continue;
-        }
-        if (kind === OVERLAY_CMD_DIRECTION_ARROW) {
-            bakeOverlayCommandAt(ctx, slab.f[b + OVERLAY_F_G0], slab.f[b + OVERLAY_F_G1], slab, i);
             continue;
         }
         if (kind === OVERLAY_CMD_AIM_SEGMENT) drawAimSegmentAt(ctx, slab, i);

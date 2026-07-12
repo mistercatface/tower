@@ -1,9 +1,9 @@
 import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
-import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, appendGridEdgeOverlayCommand, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
+import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, cellEdgeEndpointsIdx, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
-import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
@@ -13,7 +13,7 @@ import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, 
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
-import { overlayCommandSlab, clearOverlayCommands, beginOverlayPoly, writeOverlayPolyXY, stampPathDirect, stampPathPolyline, stampSelectionRing, stampFloorCellHighlight, stampVoxelCellHighlight, stampMarqueeAabb } from "../Render/render.js";
+import { overlayCommandSlab, clearOverlayCommands, beginOverlayPoly, writeOverlayPolyXY, stampPathDirect, stampPathPolyline, stampSelectionRing, stampFloorCellHighlight, stampVoxelCellHighlight, stampOverlayAabb, stampOverlaySegment, OVERLAY_STYLE_MARQUEE, OVERLAY_STYLE_RAIL_EDGE } from "../Render/render.js";
 import { serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
@@ -1637,171 +1637,43 @@ export function groundNavArrivedAtTarget(prop, targetWorld, targetCellIdx, grid,
     const dist = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
     return dist <= stopRadius && (!targetOnBelt || onBelt);
 }
-export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
+const hpaPathSettingsScratch = Object.create(null);
+function prepareHpaGroundNavPathSettings(state, prop, stopRadius) {
     const hpaNav = physicsSettings.groundNavHpa;
-    return { ...state.nav.settings, pathWaypointArrival: Math.max(hpaNav.pathWaypointArrivalMin, prop.radius * hpaNav.pathWaypointArrivalRadiusFactor), arrivalDistance: stopRadius };
+    Object.assign(hpaPathSettingsScratch, state.nav.settings);
+    hpaPathSettingsScratch.pathWaypointArrival = Math.max(hpaNav.pathWaypointArrivalMin, prop.radius * hpaNav.pathWaypointArrivalRadiusFactor);
+    hpaPathSettingsScratch.arrivalDistance = stopRadius;
+    return hpaPathSettingsScratch;
 }
-export function driveGroundNav({ prop, targetWorld, nav, state, dtMs, pathSettings }) {
+export function driveGroundNav(prop, targetX, targetY, nav, state, dtMs, pathSettings) {
     const grid = state.obstacleGrid;
-    snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, targetWorld.x, targetWorld.y);
+    snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, prop.x, prop.y, targetX, targetY);
     const steerX = ENGINE_F32[N_OUT_XY];
     const steerY = ENGINE_F32[N_OUT_XY + 1];
-    const { hasSteering, replanReason } = nav.update(prop, steerX, steerY, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
-    return { vx: hasSteering ? ENGINE_F32[N_OUT_STEER] : 0, vy: hasSteering ? ENGINE_F32[N_OUT_STEER + 1] : 0, desiredSpeed: hasSteering ? ENGINE_F32[N_OUT_STEER + 2] : null, hasSteering, replanReason };
+    const out = nav.update(prop, steerX, steerY, state, dtMs, pathSettings, applyGroundNavSandboxReplan);
+    if (!out.hasSteering) {
+        ENGINE_F32[N_OUT_STEER] = 0;
+        ENGINE_F32[N_OUT_STEER + 1] = 0;
+        ENGINE_F32[N_OUT_STEER + 2] = 0;
+        return false;
+    }
+    return true;
 }
 function computeFlowFieldSteering(prop, targetX, targetY, flowFieldGrid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
     if (!flowField) return false;
     return sampleFlowDirection(ENGINE_F32, N_OUT_FLOW, prop.x, prop.y, flowField, flowFieldGrid.frame);
 }
-function createGroundNavBehavior(state, config) {
-    const { id, initRun, applyMoveTarget, tickSteering } = config;
-    const propRuns = new Map();
-    const activeRunIds = [];
-    const markRunActive = (propId, run) => {
-        if (!run.targetWorld) return;
-        if (activeRunIds.indexOf(propId) === -1) activeRunIds.push(propId);
-    };
-    const markRunInactive = (propId) => {
-        const index = activeRunIds.indexOf(propId);
-        if (index >= 0) activeRunIds.splice(index, 1);
-    };
-    const getRun = (prop) => {
-        let run = propRuns.get(prop.id);
-        if (!run) {
-            run = initRun(state);
-            propRuns.set(prop.id, run);
-        }
-        return run;
-    };
-    const clearRun = (prop, run) => {
-        config.clearRunTarget(state, run);
-        markRunInactive(prop.id);
-    };
-    const behavior = {
-        id,
-        onPointerDown(prop, world) {
-            const run = getRun(prop);
-            if ("dragging" in run) run.dragging = true;
-            if ("moveTargetActive" in run) run.moveTargetActive = false;
-            applyMoveTarget(state, run, world, prop, true);
-            markRunActive(prop.id, run);
-            return true;
-        },
-        onPointerMove(prop, world) {
-            const run = getRun(prop);
-            if ("dragging" in run && !run.dragging) return;
-            if (!run.targetWorld) return;
-            applyMoveTarget(state, run, world, prop, false);
-        },
-        onPointerUp(prop) {
-            const run = getRun(prop);
-            if ("dragging" in run) run.dragging = false;
-            if ("moveTargetActive" in run && !run.moveTargetActive) {
-                clearGroundRollDrive(prop);
-                clearRun(prop, run);
-            }
-        },
-        setMoveTarget(prop, world) {
-            const run = getRun(prop);
-            if ("dragging" in run) run.dragging = false;
-            if ("moveTargetActive" in run) run.moveTargetActive = true;
-            applyMoveTarget(state, run, world, prop, true);
-            markRunActive(prop.id, run);
-        },
-        updateMoveTarget(prop, world) {
-            const run = getRun(prop);
-            if ("moveTargetActive" in run && !run.moveTargetActive) return;
-            if (!run.targetWorld) return;
-            applyMoveTarget(state, run, world, prop, false);
-        },
-        tick(prop, dt) {
-            tickSteering(state, prop, getRun(prop), dt);
-        },
-        tickWorld(dt) {
-            for (let i = activeRunIds.length - 1; i >= 0; i--) {
-                const propId = activeRunIds[i];
-                const prop = state.entityRegistry.getLive(propId);
-                if (!prop) {
-                    propRuns.delete(propId);
-                    activeRunIds.splice(i, 1);
-                    continue;
-                }
-                const run = propRuns.get(propId);
-                if (!run?.targetWorld) {
-                    activeRunIds.splice(i, 1);
-                    continue;
-                }
-                tickSteering(state, prop, run, dt);
-                if (!run.targetWorld) activeRunIds.splice(i, 1);
-            }
-        },
-        appendPathOverlay(slab, prop, visual) {
-            const run = propRuns.get(prop.id);
-            config.appendPathOverlay(slab, state, prop, run, visual);
-        },
-        getMoveTargetWorld(prop) {
-            const run = propRuns.get(prop.id);
-            return run?.targetWorld ?? null;
-        },
-        reset() {
-            config.onReset(state, propRuns);
-            activeRunIds.length = 0;
-        },
-    };
-    if (config.hasMoveTarget) behavior.hasMoveTarget = (prop) => config.hasMoveTarget(getRun(prop));
-    if (config.clearMoveTarget) behavior.clearMoveTarget = (prop) => config.clearMoveTarget(state, prop, getRun, (run) => clearRun(prop, run));
-    if (config.getTargetCellIdx) behavior.getTargetCellIdx = (prop) => config.getTargetCellIdx(state, getRun(prop));
-    if (config.needsNavRetry) behavior.needsNavRetry = (prop) => config.needsNavRetry(getRun(prop));
-    if (config.replanMoveTarget) behavior.replanMoveTarget = (prop) => config.replanMoveTarget(state, getRun(prop), prop);
-    if (config.getLocomotionStatus) behavior.getLocomotionStatus = (prop) => config.getLocomotionStatus(getRun(prop));
-    return behavior;
+function ensureTargetWorld(run) {
+    if (!run.targetWorld) run.targetWorld = { x: 0, y: 0 };
+    return run.targetWorld;
 }
-const DIRECT_GROUND_NAV_CONFIG = {
-    id: DIRECT_GROUND_NAV_BEHAVIOR_ID,
-    initRun() {
-        return { targetWorld: null, dragging: false, moveTargetActive: false };
-    },
-    applyMoveTarget(state, run, world) {
-        run.targetWorld = { x: world.x, y: world.y };
-    },
-    clearRunTarget(state, run) {
-        run.targetWorld = null;
-        run.dragging = false;
-        run.moveTargetActive = false;
-    },
-    hasMoveTarget(run) {
-        return run.moveTargetActive && run.targetWorld != null;
-    },
-    clearMoveTarget(state, prop, getRun, clearRun) {
-        clearGroundRollDrive(prop);
-        clearRun(getRun(prop));
-    },
-    tickSteering(state, prop, run) {
-        if (!run.targetWorld || (!run.dragging && !run.moveTargetActive)) return;
-        const config = getKineticRollConfig(prop);
-        const dx = run.targetWorld.x - prop.x;
-        const dy = run.targetWorld.y - prop.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < config.stopRadius) {
-            if (run.moveTargetActive) {
-                clearGroundRollDrive(prop);
-                DIRECT_GROUND_NAV_CONFIG.clearRunTarget(state, run);
-                return;
-            }
-            decelerateRoll(prop, config);
-            return;
-        }
-        steerRollToward(prop, dx / dist, dy / dist, config);
-    },
-    appendPathOverlay(slab, state, prop, run, visual) {
-        if (!run?.targetWorld || (!run.dragging && !run.moveTargetActive)) return;
-        stampPathDirect(slab, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y, visual);
-    },
-    onReset(state, propRuns) {
-        propRuns.clear();
-    },
-};
+function writeMoveTargetFromRunInto(buf, o, run) {
+    if (!run?.targetWorld) return false;
+    buf[o] = run.targetWorld.x;
+    buf[o + 1] = run.targetWorld.y;
+    return true;
+}
 export function writeFlowFieldPathInto(slab, startX, startY, targetX, targetY, flowFieldGrid, grid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
     const used0 = slab.poly.used;
@@ -1839,25 +1711,168 @@ export function writeFlowFieldPathInto(slab, startX, startY, targetX, targetY, f
     writeOverlayPolyXY(slab, targetX, targetY);
     return (slab.poly.used - used0) >> 1;
 }
-const FLOW_GROUND_NAV_CONFIG = {
-    id: FLOW_GROUND_NAV_BEHAVIOR_ID,
-    initRun() {
-        return { targetWorld: null, dragging: false, lastTopologyKey: "" };
-    },
-    applyMoveTarget(state, run, world, prop) {
-        snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, state.obstacleGrid, world.x, world.y);
-        if (!run.targetWorld) run.targetWorld = { x: 0, y: 0 };
-        run.targetWorld.x = ENGINE_F32[N_OUT_XY];
-        run.targetWorld.y = ENGINE_F32[N_OUT_XY + 1];
-        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
-        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
-    },
-    clearRunTarget(state, run) {
+export function createDirectGroundNavBehavior(state) {
+    const propRuns = new Map();
+    const activeRunIds = [];
+    const markActive = (propId, run) => {
+        if (!run.targetWorld) return;
+        if (activeRunIds.indexOf(propId) === -1) activeRunIds.push(propId);
+    };
+    const markInactive = (propId) => {
+        const index = activeRunIds.indexOf(propId);
+        if (index >= 0) activeRunIds.splice(index, 1);
+    };
+    const getRun = (prop) => {
+        let run = propRuns.get(prop.id);
+        if (!run) {
+            run = { targetWorld: null, dragging: false, moveTargetActive: false };
+            propRuns.set(prop.id, run);
+        }
+        return run;
+    };
+    const clearRunTarget = (run) => {
+        run.targetWorld = null;
+        run.dragging = false;
+        run.moveTargetActive = false;
+    };
+    const applyMoveTargetXY = (run, x, y) => {
+        const tw = ensureTargetWorld(run);
+        tw.x = x;
+        tw.y = y;
+    };
+    const tickSteering = (prop, run) => {
+        if (!run.targetWorld || (!run.dragging && !run.moveTargetActive)) return;
+        const config = getKineticRollConfig(prop);
+        const dx = run.targetWorld.x - prop.x;
+        const dy = run.targetWorld.y - prop.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < config.stopRadius) {
+            if (run.moveTargetActive) {
+                clearGroundRollDrive(prop);
+                clearRunTarget(run);
+                return;
+            }
+            decelerateRoll(prop, config);
+            return;
+        }
+        steerRollToward(prop, dx / dist, dy / dist, config);
+    };
+    return {
+        id: DIRECT_GROUND_NAV_BEHAVIOR_ID,
+        onPointerDown(prop, world) {
+            const run = getRun(prop);
+            run.dragging = true;
+            run.moveTargetActive = false;
+            applyMoveTargetXY(run, world.x, world.y);
+            markActive(prop.id, run);
+            return true;
+        },
+        onPointerMove(prop, world) {
+            const run = getRun(prop);
+            if (!run.dragging) return;
+            if (!run.targetWorld) return;
+            applyMoveTargetXY(run, world.x, world.y);
+        },
+        onPointerUp(prop) {
+            const run = getRun(prop);
+            run.dragging = false;
+            if (!run.moveTargetActive) {
+                clearGroundRollDrive(prop);
+                clearRunTarget(run);
+                markInactive(prop.id);
+            }
+        },
+        setMoveTarget(prop, x, y) {
+            const run = getRun(prop);
+            run.dragging = false;
+            run.moveTargetActive = true;
+            applyMoveTargetXY(run, x, y);
+            markActive(prop.id, run);
+        },
+        updateMoveTarget(prop, x, y) {
+            const run = getRun(prop);
+            if (!run.moveTargetActive) return;
+            if (!run.targetWorld) return;
+            applyMoveTargetXY(run, x, y);
+        },
+        hasMoveTarget(prop) {
+            const run = getRun(prop);
+            return run.moveTargetActive && run.targetWorld != null;
+        },
+        clearMoveTarget(prop) {
+            clearGroundRollDrive(prop);
+            const run = getRun(prop);
+            clearRunTarget(run);
+            markInactive(prop.id);
+        },
+        writeMoveTargetWorldInto(buf, o, prop) {
+            return writeMoveTargetFromRunInto(buf, o, propRuns.get(prop.id));
+        },
+        tick(prop, dt) {
+            tickSteering(prop, getRun(prop));
+        },
+        tickWorld(dt) {
+            for (let i = activeRunIds.length - 1; i >= 0; i--) {
+                const propId = activeRunIds[i];
+                const prop = state.entityRegistry.getLive(propId);
+                if (!prop) {
+                    propRuns.delete(propId);
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                const run = propRuns.get(propId);
+                if (!run?.targetWorld) {
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                tickSteering(prop, run);
+                if (!run.targetWorld) activeRunIds.splice(i, 1);
+            }
+        },
+        appendPathOverlay(slab, prop, visual) {
+            const run = propRuns.get(prop.id);
+            if (!run?.targetWorld || (!run.dragging && !run.moveTargetActive)) return;
+            stampPathDirect(slab, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y, visual);
+        },
+        reset() {
+            propRuns.clear();
+            activeRunIds.length = 0;
+        },
+    };
+}
+export function createFlowGroundNavBehavior(state) {
+    const propRuns = new Map();
+    const activeRunIds = [];
+    const markActive = (propId, run) => {
+        if (!run.targetWorld) return;
+        if (activeRunIds.indexOf(propId) === -1) activeRunIds.push(propId);
+    };
+    const markInactive = (propId) => {
+        const index = activeRunIds.indexOf(propId);
+        if (index >= 0) activeRunIds.splice(index, 1);
+    };
+    const getRun = (prop) => {
+        let run = propRuns.get(prop.id);
+        if (!run) {
+            run = { targetWorld: null, dragging: false, lastTopologyKey: "" };
+            propRuns.set(prop.id, run);
+        }
+        return run;
+    };
+    const clearRunTarget = (run) => {
         run.targetWorld = null;
         run.dragging = false;
         run.lastTopologyKey = "";
-    },
-    tickSteering(state, prop, run) {
+    };
+    const applyMoveTargetXY = (run, x, y, prop) => {
+        snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, state.obstacleGrid, x, y);
+        const tw = ensureTargetWorld(run);
+        tw.x = ENGINE_F32[N_OUT_XY];
+        tw.y = ENGINE_F32[N_OUT_XY + 1];
+        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, tw.x, tw.y);
+        state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
+    };
+    const tickSteering = (prop, run) => {
         if (!run.targetWorld) return;
         const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
         snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
@@ -1873,93 +1888,229 @@ const FLOW_GROUND_NAV_CONFIG = {
         const distToTarget = Math.hypot(steerX - prop.x, steerY - prop.y);
         if (distToTarget <= config.stopRadius) {
             clearGroundRollDrive(prop);
-            FLOW_GROUND_NAV_CONFIG.clearRunTarget(state, run);
+            clearRunTarget(run);
             return;
         }
         if (!computeFlowFieldSteering(prop, steerX, steerY, flowFieldGrid)) return;
         steerRollToward(prop, ENGINE_F32[N_OUT_FLOW], ENGINE_F32[N_OUT_FLOW + 1], config);
-    },
-    appendPathOverlay(slab, state, prop, run, visual) {
-        if (!run?.targetWorld) return;
-        snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
-        const polyBase = beginOverlayPoly(slab);
-        const pathLen = writeFlowFieldPathInto(slab, prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.flowFieldGrid, state.obstacleGrid);
-        stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_FLOW, visual);
-    },
-    onReset(state, propRuns) {
-        propRuns.clear();
-    },
-};
-const HPA_GROUND_NAV_CONFIG = {
-    id: HPA_GROUND_NAV_BEHAVIOR_ID,
-    initRun() {
-        return { targetWorld: null, targetCellIdx: null, dragging: false, hpaNav: new HpaNavSession() };
-    },
-    applyMoveTarget(state, run, world, prop, forceReset) {
-        const grid = state.obstacleGrid;
-        const nextIdx = snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, grid, world.x, world.y);
-        const cellChanged = nextIdx !== run.targetCellIdx;
-        if (!run.targetWorld) run.targetWorld = { x: 0, y: 0 };
-        run.targetWorld.x = ENGINE_F32[N_OUT_XY];
-        run.targetWorld.y = ENGINE_F32[N_OUT_XY + 1];
-        run.targetCellIdx = nextIdx === -1 ? null : nextIdx;
-        if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
-    },
-    clearRunTarget(state, run) {
+    };
+    return {
+        id: FLOW_GROUND_NAV_BEHAVIOR_ID,
+        onPointerDown(prop, world) {
+            const run = getRun(prop);
+            run.dragging = true;
+            applyMoveTargetXY(run, world.x, world.y, prop);
+            markActive(prop.id, run);
+            return true;
+        },
+        onPointerMove(prop, world) {
+            const run = getRun(prop);
+            if (!run.dragging) return;
+            if (!run.targetWorld) return;
+            applyMoveTargetXY(run, world.x, world.y, prop);
+        },
+        onPointerUp(prop) {
+            const run = getRun(prop);
+            run.dragging = false;
+        },
+        setMoveTarget(prop, x, y) {
+            const run = getRun(prop);
+            run.dragging = false;
+            applyMoveTargetXY(run, x, y, prop);
+            markActive(prop.id, run);
+        },
+        updateMoveTarget(prop, x, y) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return;
+            applyMoveTargetXY(run, x, y, prop);
+        },
+        hasMoveTarget(prop) {
+            return getRun(prop).targetWorld != null;
+        },
+        clearMoveTarget(prop) {
+            clearGroundRollDrive(prop);
+            const run = getRun(prop);
+            clearRunTarget(run);
+            markInactive(prop.id);
+        },
+        writeMoveTargetWorldInto(buf, o, prop) {
+            return writeMoveTargetFromRunInto(buf, o, propRuns.get(prop.id));
+        },
+        tick(prop, dt) {
+            tickSteering(prop, getRun(prop));
+        },
+        tickWorld(dt) {
+            for (let i = activeRunIds.length - 1; i >= 0; i--) {
+                const propId = activeRunIds[i];
+                const prop = state.entityRegistry.getLive(propId);
+                if (!prop) {
+                    propRuns.delete(propId);
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                const run = propRuns.get(propId);
+                if (!run?.targetWorld) {
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                tickSteering(prop, run);
+                if (!run.targetWorld) activeRunIds.splice(i, 1);
+            }
+        },
+        appendPathOverlay(slab, prop, visual) {
+            const run = propRuns.get(prop.id);
+            if (!run?.targetWorld) return;
+            snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
+            const polyBase = beginOverlayPoly(slab);
+            const pathLen = writeFlowFieldPathInto(slab, prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.flowFieldGrid, state.obstacleGrid);
+            stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_FLOW, visual);
+        },
+        reset() {
+            propRuns.clear();
+            activeRunIds.length = 0;
+        },
+    };
+}
+export function createHpaGroundNavBehavior(state) {
+    const propRuns = new Map();
+    const activeRunIds = [];
+    const markActive = (propId, run) => {
+        if (!run.targetWorld) return;
+        if (activeRunIds.indexOf(propId) === -1) activeRunIds.push(propId);
+    };
+    const markInactive = (propId) => {
+        const index = activeRunIds.indexOf(propId);
+        if (index >= 0) activeRunIds.splice(index, 1);
+    };
+    const getRun = (prop) => {
+        let run = propRuns.get(prop.id);
+        if (!run) {
+            run = { targetWorld: null, targetCellIdx: null, dragging: false, hpaNav: new HpaNavSession() };
+            propRuns.set(prop.id, run);
+        }
+        return run;
+    };
+    const clearRunTarget = (run) => {
         run.targetWorld = null;
         run.targetCellIdx = null;
         run.dragging = false;
         run.hpaNav.reset(state);
-    },
-    hasMoveTarget(run) {
-        return run.targetWorld != null;
-    },
-    clearMoveTarget(state, prop, getRun, clearRun) {
-        clearGroundRollDrive(prop);
-        clearRun(getRun(prop));
-    },
-    tickSteering(state, prop, run, dtMs) {
+    };
+    const applyMoveTargetXY = (run, x, y, prop, forceReset) => {
+        const grid = state.obstacleGrid;
+        const nextIdx = snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, grid, x, y);
+        const cellChanged = nextIdx !== run.targetCellIdx;
+        const tw = ensureTargetWorld(run);
+        tw.x = ENGINE_F32[N_OUT_XY];
+        tw.y = ENGINE_F32[N_OUT_XY + 1];
+        run.targetCellIdx = nextIdx === -1 ? null : nextIdx;
+        if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
+    };
+    const tickSteering = (prop, run, dtMs) => {
         if (!run.targetWorld) return;
         const grid = state.obstacleGrid;
         const config = getKineticRollConfig(prop, { stopRadius: physicsSettings.groundNavHpa.stopRadius });
         if (groundNavArrivedAtTarget(prop, run.targetWorld, run.targetCellIdx, grid, config.stopRadius)) {
             clearGroundRollDrive(prop);
-            HPA_GROUND_NAV_CONFIG.clearRunTarget(state, run);
+            clearRunTarget(run);
             return;
         }
-        const { vx, vy, hasSteering, desiredSpeed } = driveGroundNav({ prop, targetWorld: run.targetWorld, nav: run.hpaNav, state, dtMs, pathSettings: buildHpaGroundNavPathSettings(state, prop, config.stopRadius) });
-        if (!hasSteering) return;
-        if (vx === 0 && vy === 0) return;
-        steerRollToward(prop, vx, vy, config, desiredSpeed);
-    },
-    getTargetCellIdx(state, run) {
-        return run.targetCellIdx;
-    },
-    needsNavRetry(run) {
-        if (!run.targetWorld) return true;
-        if (run.hpaNav.isRoutePending()) return false;
-        return !navHasPath(run.hpaNav.navState);
-    },
-    replanMoveTarget(state, run, prop) {
-        if (!run.targetWorld) return;
-        run.hpaNav.replan(prop, run.targetWorld.x, run.targetWorld.y, state, REPLAN_PRIORITY_TARGET);
-    },
-    getLocomotionStatus(run) {
-        const nav = run.hpaNav.navState;
-        return { hasRoute: navHasPath(nav), replanPending: run.hpaNav.isRoutePending(), stuckFrames: nav.stuckFrames, pathLen: nav.pathLen };
-    },
-    appendPathOverlay(slab, state, prop, run, visual) {
-        if (!run?.targetWorld) return;
-        const nav = run.hpaNav.navState;
-        const polyBase = beginOverlayPoly(slab);
-        const pathLen = nav.pathLen > 0 && nav.pathSlot >= 0 ? writeSabPathOverlayInto(slab.poly, prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, nav.pathProgressIdx, state.obstacleGrid) : 0;
-        stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_HPA, visual);
-    },
-    onReset(state, propRuns) {
-        propRuns.forEach((run) => run.hpaNav.reset(state));
-        propRuns.clear();
-    },
-};
+        if (!driveGroundNav(prop, run.targetWorld.x, run.targetWorld.y, run.hpaNav, state, dtMs, prepareHpaGroundNavPathSettings(state, prop, config.stopRadius))) return;
+        if (ENGINE_F32[N_OUT_STEER] === 0 && ENGINE_F32[N_OUT_STEER + 1] === 0) return;
+        steerRollToward(prop, ENGINE_F32[N_OUT_STEER], ENGINE_F32[N_OUT_STEER + 1], config, ENGINE_F32[N_OUT_STEER + 2]);
+    };
+    return {
+        id: HPA_GROUND_NAV_BEHAVIOR_ID,
+        onPointerDown(prop, world) {
+            const run = getRun(prop);
+            run.dragging = true;
+            applyMoveTargetXY(run, world.x, world.y, prop, true);
+            markActive(prop.id, run);
+            return true;
+        },
+        onPointerMove(prop, world) {
+            const run = getRun(prop);
+            if (!run.dragging) return;
+            if (!run.targetWorld) return;
+            applyMoveTargetXY(run, world.x, world.y, prop, false);
+        },
+        onPointerUp(prop) {
+            const run = getRun(prop);
+            run.dragging = false;
+        },
+        setMoveTarget(prop, x, y) {
+            const run = getRun(prop);
+            run.dragging = false;
+            applyMoveTargetXY(run, x, y, prop, true);
+            markActive(prop.id, run);
+        },
+        updateMoveTarget(prop, x, y) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return;
+            applyMoveTargetXY(run, x, y, prop, false);
+        },
+        hasMoveTarget(prop) {
+            return getRun(prop).targetWorld != null;
+        },
+        clearMoveTarget(prop) {
+            clearGroundRollDrive(prop);
+            const run = getRun(prop);
+            clearRunTarget(run);
+            markInactive(prop.id);
+        },
+        getTargetCellIdx(prop) {
+            return getRun(prop).targetCellIdx;
+        },
+        needsNavRetry(prop) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return true;
+            if (run.hpaNav.isRoutePending()) return false;
+            return !navHasPath(run.hpaNav.navState);
+        },
+        replanMoveTarget(prop) {
+            const run = getRun(prop);
+            if (!run.targetWorld) return;
+            run.hpaNav.replan(prop, run.targetWorld.x, run.targetWorld.y, state, REPLAN_PRIORITY_TARGET);
+        },
+        writeMoveTargetWorldInto(buf, o, prop) {
+            return writeMoveTargetFromRunInto(buf, o, propRuns.get(prop.id));
+        },
+        tick(prop, dt) {
+            tickSteering(prop, getRun(prop), dt);
+        },
+        tickWorld(dt) {
+            for (let i = activeRunIds.length - 1; i >= 0; i--) {
+                const propId = activeRunIds[i];
+                const prop = state.entityRegistry.getLive(propId);
+                if (!prop) {
+                    propRuns.delete(propId);
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                const run = propRuns.get(propId);
+                if (!run?.targetWorld) {
+                    activeRunIds.splice(i, 1);
+                    continue;
+                }
+                tickSteering(prop, run, dt);
+                if (!run.targetWorld) activeRunIds.splice(i, 1);
+            }
+        },
+        appendPathOverlay(slab, prop, visual) {
+            const run = propRuns.get(prop.id);
+            if (!run?.targetWorld) return;
+            const nav = run.hpaNav.navState;
+            const polyBase = beginOverlayPoly(slab);
+            const pathLen = nav.pathLen > 0 && nav.pathSlot >= 0 ? writeSabPathOverlayInto(slab.poly, prop.x, prop.y, state.nav.worker, nav.pathSlot, nav.pathLen, nav.pathProgressIdx, state.obstacleGrid) : 0;
+            stampPathPolyline(slab, polyBase, pathLen, PATH_OVERLAY_MODE_HPA, visual);
+        },
+        reset() {
+            propRuns.forEach((run) => run.hpaNav.reset(state));
+            propRuns.clear();
+            activeRunIds.length = 0;
+        },
+    };
+}
 export const GROUND_NAV_SELECTION_MOVE_IDS = [HPA_GROUND_NAV_BEHAVIOR_ID, FLOW_GROUND_NAV_BEHAVIOR_ID];
 export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     let count = 0;
@@ -1972,7 +2123,7 @@ export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     }
     return count;
 }
-export function issueGroundNavToSelection(state, { propIds, behaviorId, world, behaviorById, entityMeta }) {
+export function issueGroundNavToSelection(state, propIds, behaviorId, worldX, worldY, behaviorById, entityMeta) {
     const behavior = behaviorById.get(behaviorId);
     if (!behavior?.setMoveTarget) return 0;
     let moved = 0;
@@ -1982,22 +2133,22 @@ export function issueGroundNavToSelection(state, { propIds, behaviorId, world, b
         if (!sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]))) continue;
         if (!isChainSteeringTarget(state, entityMeta, prop.id)) continue;
         entityMeta.setActiveBehaviorId(prop.id, behaviorId);
-        behavior.setMoveTarget(prop, world);
+        behavior.setMoveTarget(prop, worldX, worldY);
         moved++;
     }
     return moved;
 }
-export function buildGroundNavSelectionMenuActions({ propIds, world, navCount, issueGroundNav }) {
+export function buildGroundNavSelectionMenuActions(propIds, worldX, worldY, navCount, issueGroundNav) {
     if (navCount === 0) return [];
     const actions = [];
     for (let i = 0; i < GROUND_NAV_SELECTION_MOVE_IDS.length; i++) {
         const behaviorId = GROUND_NAV_SELECTION_MOVE_IDS[i];
-        actions.push({ label: `${getSandboxBehaviorLabel(behaviorId)} (${navCount})`, onClick: () => issueGroundNav({ propIds, behaviorId, world }) });
+        actions.push({ label: `${getSandboxBehaviorLabel(behaviorId)} (${navCount})`, onClick: () => issueGroundNav(propIds, behaviorId, worldX, worldY) });
     }
     return actions;
 }
 export function createDefaultSandboxBehaviors(state) {
-    return [...createDragLaunchBehaviors(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createGroundNavBehavior(state, DIRECT_GROUND_NAV_CONFIG), createGroundNavBehavior(state, HPA_GROUND_NAV_CONFIG), createGroundNavBehavior(state, FLOW_GROUND_NAV_CONFIG)];
+    return [...createDragLaunchBehaviors(state), createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS), createDirectGroundNavBehavior(state), createHpaGroundNavBehavior(state), createFlowGroundNavBehavior(state)];
 }
 /**
  * @param {import("../Viewport/Viewport.js").Viewport} viewport
@@ -2112,37 +2263,6 @@ export class FollowCamera {
     }
 }
 const SELECTION_RING_PAD = 4;
-function selectionRingRadius(prop) {
-    const base = prop.radius;
-    return base + SELECTION_RING_PAD;
-}
-export function appendSelectionOverlayCommands(slab, selectedProps, showRings, selectedFloorIdx, selectedVoxelIdx, railIdx, railSide, grid) {
-    if (!showRings) return;
-    for (let i = 0; i < selectedProps.length; i++) {
-        const prop = selectedProps[i];
-        stampSelectionRing(slab, prop.x, prop.y, selectionRingRadius(prop));
-    }
-    if (selectedFloorIdx != null && grid) {
-        const x = grid.gridCenterXByIdx(selectedFloorIdx);
-        const y = grid.gridCenterYByIdx(selectedFloorIdx);
-        const o = ENGINE_BOUNDS_BASE + B_TMP;
-        centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
-        stampFloorCellHighlight(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid.cellSize);
-    }
-    if (selectedVoxelIdx != null && grid) {
-        const x = grid.gridCenterXByIdx(selectedVoxelIdx);
-        const y = grid.gridCenterYByIdx(selectedVoxelIdx);
-        const o = ENGINE_BOUNDS_BASE + B_TMP;
-        centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
-        stampVoxelCellHighlight(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid.cellSize);
-    }
-    if (railIdx >= 0 && grid) appendGridEdgeOverlayCommand(slab, grid, railIdx, railSide);
-}
-export function appendMarqueeOverlayCommands(slab, marqueeActive) {
-    if (!marqueeActive) return;
-    const o = ENGINE_BOUNDS_BASE + B_TMP;
-    stampMarqueeAabb(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3]);
-}
 export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
     let groundNav = null;
@@ -2157,14 +2277,15 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
             getCanvas().setPointerCapture(e.pointerId);
         },
         startGroundNav(move, world, e) {
-            move.behavior.setMoveTarget(move.prop, world);
+            move.behavior.setMoveTarget(move.prop, world.x, world.y);
             groundNav = { prop: move.prop, behavior: move.behavior };
             getCanvas().setPointerCapture(e.pointerId);
         },
         capturesPointerMove: () => groundNav != null || interactionBehavior != null,
         onPointerMove(_world, e) {
             if (groundNav) {
-                groundNav.behavior.updateMoveTarget(groundNav.prop, clientToWorld(e.clientX, e.clientY));
+                const w = clientToWorld(e.clientX, e.clientY);
+                groundNav.behavior.updateMoveTarget(groundNav.prop, w.x, w.y);
                 return;
             }
             if (!interactionBehavior) return;
@@ -2178,7 +2299,8 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
                 const nav = groundNav;
                 groundNav = null;
                 releasePointerCapture(getCanvas(), e);
-                nav.behavior.updateMoveTarget(nav.prop, clientToWorld(e.clientX, e.clientY));
+                const w = clientToWorld(e.clientX, e.clientY);
+                nav.behavior.updateMoveTarget(nav.prop, w.x, w.y);
                 session.sync();
                 return true;
             }
@@ -2224,8 +2346,8 @@ export function createSandboxDeletePointerTool(state, session) {
 }
 export function createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued }) {
     const menu = createContextMenu();
-    const issueGroundNav = ({ propIds, behaviorId, world }) => {
-        const moved = issueGroundNavToSelection(state, { propIds, behaviorId, world, behaviorById, entityMeta: entityMeta() });
+    const issueGroundNav = (propIds, behaviorId, worldX, worldY) => {
+        const moved = issueGroundNavToSelection(state, propIds, behaviorId, worldX, worldY, behaviorById, entityMeta());
         if (moved > 0) onIssued?.();
         return moved;
     };
@@ -2238,7 +2360,7 @@ export function createSandboxGroundNavContextMenu(state, session, { behaviorById
             const propIds = selectionPropIds(sel);
             if (propIds.length === 0) return false;
             const navCount = countNavPropsInSelection(state, propIds, entityMeta());
-            const items = buildGroundNavSelectionMenuActions({ propIds, world, navCount, issueGroundNav });
+            const items = buildGroundNavSelectionMenuActions(propIds, world.x, world.y, navCount, issueGroundNav);
             if (items.length === 0) return false;
             menu.open(clientX, clientY, items);
             return true;
@@ -2401,8 +2523,35 @@ export function buildSandboxOverlayCommands(state, session, spatialFrame, marque
     }
     const railIdx = sel?.kind === "rail" ? sel.idx : -1;
     const railSide = sel?.kind === "rail" ? sel.side : -1;
-    appendSelectionOverlayCommands(slab, visibleSelectedProps, state.editor.showSelectionRings, sel?.kind === "floor" ? sel.idx : null, sel?.kind === "voxel" ? sel.idx : null, railIdx, railSide, state.obstacleGrid);
-    appendMarqueeOverlayCommands(slab, marqueeActive);
+    const grid = state.obstacleGrid;
+    if (state.editor.showSelectionRings) {
+        for (let i = 0; i < visibleSelectedProps.length; i++) {
+            const prop = visibleSelectedProps[i];
+            stampSelectionRing(slab, prop.x, prop.y, prop.radius + SELECTION_RING_PAD);
+        }
+        if (sel?.kind === "floor" && grid) {
+            const x = grid.gridCenterXByIdx(sel.idx);
+            const y = grid.gridCenterYByIdx(sel.idx);
+            const o = ENGINE_BOUNDS_BASE + B_TMP;
+            centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
+            stampFloorCellHighlight(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid.cellSize);
+        }
+        if (sel?.kind === "voxel" && grid) {
+            const x = grid.gridCenterXByIdx(sel.idx);
+            const y = grid.gridCenterYByIdx(sel.idx);
+            const o = ENGINE_BOUNDS_BASE + B_TMP;
+            centeredAabbF32(ENGINE_F32, o, x, y, grid.cellSize, grid.cellSize);
+            stampVoxelCellHighlight(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], grid.cellSize);
+        }
+        if (railIdx >= 0 && grid) {
+            cellEdgeEndpointsIdx(grid, railIdx, railSide, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X, 0);
+            stampOverlaySegment(slab, ENGINE_F32[S_EDGE_P1X], ENGINE_F32[S_EDGE_P1Y], ENGINE_F32[S_EDGE_P2X], ENGINE_F32[S_EDGE_P2Y], OVERLAY_STYLE_RAIL_EDGE);
+        }
+    }
+    if (marqueeActive) {
+        const o = ENGINE_BOUNDS_BASE + B_TMP;
+        stampOverlayAabb(slab, ENGINE_F32[o], ENGINE_F32[o + 1], ENGINE_F32[o + 2], ENGINE_F32[o + 3], OVERLAY_STYLE_MARQUEE);
+    }
     state.appLaunch?.session?.appendOverlayCommands?.(slab, state, sel);
     const behavior = resolveBehavior();
     if (selectedProp && behavior?.appendOverlayCommands) behavior.appendOverlayCommands(slab, selectedProp);
@@ -2890,12 +3039,12 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         return { prop, behavior };
     };
     const issueGroundMove = (move, world) => {
-        move.behavior.setMoveTarget(move.prop, world);
+        move.behavior.setMoveTarget(move.prop, world.x, world.y);
     };
     const issueGroundNavToSelected = (behaviorId, world) => {
         const sel = session.getSelection();
         if (sel?.kind !== "prop") return 0;
-        const moved = issueGroundNavToSelection(state, { propIds: selectionPropIds(sel), behaviorId, world, behaviorById, entityMeta: entityMeta() });
+        const moved = issueGroundNavToSelection(state, selectionPropIds(sel), behaviorId, world.x, world.y, behaviorById, entityMeta());
         if (moved > 0) session.sync();
         return moved;
     };

@@ -9,7 +9,7 @@ import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { getMapGenBoundsCenterWorldF32, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
 import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
-import { ENGINE_F32, M_VEC_A, recomputeViewBounds } from "../Core/engineMemory.js";
+import { ENGINE_F32, M_VEC_A, N_OUT_XY, recomputeViewBounds } from "../Core/engineMemory.js";
 import { EDITOR_NAV_MODE_HPA, EDITOR_NAV_MODE_FLOW } from "../Core/engineEnums.js";
 
 const CELLS_PER_CHUNK = 16;
@@ -181,7 +181,7 @@ describe("snake game launch actions", () => {
 
         // Set a target on the old behavior
         const hpaBehavior = state.sandbox.behaviorById.get("rollToCursorHpa");
-        hpaBehavior.setMoveTarget(boid, { x: 100, y: 120 });
+        hpaBehavior.setMoveTarget(boid, 100, 120);
         
         // Verify current state
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorHpa");
@@ -195,9 +195,8 @@ describe("snake game launch actions", () => {
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), "rollToCursorFlow");
         
         const flowBehavior = state.sandbox.behaviorById.get("rollToCursorFlow");
-        const target = flowBehavior.getMoveTargetWorld(boid);
-        assert.ok(target);
-        assert.equal(target.x, 104);
-        assert.equal(target.y, 120);
+        assert.ok(flowBehavior.writeMoveTargetWorldInto(ENGINE_F32, N_OUT_XY, boid));
+        assert.equal(ENGINE_F32[N_OUT_XY], 104);
+        assert.equal(ENGINE_F32[N_OUT_XY + 1], 120);
     });
 });

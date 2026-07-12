@@ -86,26 +86,21 @@ export function writeDragLaunchPreviewInto(aim, config) {
     return true;
 }
 export function releaseDragLaunch(aim, config) {
-    if (!aim?.active) return null;
-    if (!resolveDragAimPhysicsInto(aim, config) || aim.drag < config.minDrag || aim.shotNx == null || aim.shotNy == null) return null;
+    if (!aim?.active) return false;
+    if (!resolveDragAimPhysicsInto(aim, config) || aim.drag < config.minDrag || aim.shotNx == null || aim.shotNy == null) return false;
     const power = computeLaunchPower(aim.drag, config);
-    if (power <= 0) return null;
-    return { anchorX: aim.anchorX, anchorY: aim.anchorY, nx: aim.shotNx, ny: aim.shotNy, power };
+    if (power <= 0) return false;
+    aim.power = power;
+    return true;
 }
 function dragLaunchMaxRayDist(obstacleGrid) {
     if (obstacleGrid?.minX != null) return Math.hypot(obstacleGrid.maxX - obstacleGrid.minX, obstacleGrid.maxY - obstacleGrid.minY) * 1.25;
     return 2400;
 }
-export function buildDragLaunchAimLineContext(prop, state) {
-    if (!state || !prop) return null;
-    const grid = state.obstacleGrid;
-    const maxRayDist = dragLaunchMaxRayDist(grid);
-    return { prop, radius: prop.radius, maxRayDist, obstacleGrid: grid };
-}
-export function getDragLaunchAimLine(aim, aimLineContext) {
-    if (!aim || aim.power <= 0 || !aimLineContext) return false;
-    const travelDist = estimateRollingTravelDistance(aim.power, aimLineContext.prop?.strategy ?? {});
-    return computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, aim.anchorX, aim.anchorY, aimLineContext.radius, aim.shotNx, aim.shotNy, travelDist, aimLineContext.maxRayDist, aimLineContext.obstacleGrid);
+export function getDragLaunchAimLine(aim, prop, obstacleGrid) {
+    if (!aim || aim.power <= 0 || !prop) return false;
+    const travelDist = estimateRollingTravelDistance(aim.power, prop.strategy ?? {});
+    return computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, aim.anchorX, aim.anchorY, prop.radius, aim.shotNx, aim.shotNy, travelDist, dragLaunchMaxRayDist(obstacleGrid), obstacleGrid);
 }
 export function applyDragLaunchVelocity(body, nx, ny, power) {
     body.vx = nx * power;
@@ -115,46 +110,6 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
         body.angularVelocity = (power / r) * 0.12;
     }
     wakeKineticBody(body);
-}
-export function dragLaunchAimLineContextForState(state) {
-    return (prop) => buildDragLaunchAimLineContext(prop, state);
-}
-export function createDragLaunchInteraction(spec) {
-    let aim = null;
-    const buildCtx = spec.buildAimLineContext ?? (() => null);
-    const resolveLine = spec.resolveAimLine ?? getDragLaunchAimLine;
-    return {
-        id: spec.id,
-        onPointerDown(prop, world, _e) {
-            if (spec.canStart && !spec.canStart(prop, world)) return false;
-            wakeKineticBody(prop);
-            aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
-            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfigFromSize(prop.radius));
-            return true;
-        },
-        onPointerMove(prop, world, _e) {
-            if (!aim?.active) return;
-            if (spec.canStart && !spec.canStart(prop, world)) {
-                aim = null;
-                return;
-            }
-            updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfigFromSize(prop.radius));
-        },
-        onPointerUp(prop, _e) {
-            if (!aim?.active) return;
-            const shot = releaseDragLaunch(aim, resolveDragLaunchConfigFromSize(prop.radius));
-            aim = null;
-            if (!shot) return;
-            applyDragLaunchVelocity(prop, shot.nx, shot.ny, shot.power);
-        },
-        appendOverlayCommands(slab, prop) {
-            if (!aim?.active) return;
-            appendDragLaunchOverlayCommands(slab, aim, prop, buildCtx(prop), resolveLine);
-        },
-        reset() {
-            aim = null;
-        },
-    };
 }
 export const DEFAULT_DRAG_INTERACTION_MODE = DRAG_LAUNCH_BEHAVIOR_ID;
 export function normalizeDragInteractionMode(mode) {
@@ -186,17 +141,49 @@ export function resolveDragInteractionBehavior(prop, state, behaviorById) {
     return behaviorId ? (behaviorById.get(behaviorId) ?? null) : null;
 }
 export function createDragLaunchBehaviors(state) {
+    let aim = null;
+    const canStart = (prop) => {
+        if (!propSupportsDragInteraction(prop)) return false;
+        const grid = state.obstacleGrid;
+        return !(grid && FloorBelt.isEntityOnBelt(grid, prop.x, prop.y));
+    };
     return [
-        createDragLaunchInteraction({
+        {
             id: DRAG_LAUNCH_BEHAVIOR_ID,
-            buildAimLineContext: dragLaunchAimLineContextForState(state),
-            resolveAimLine: getDragLaunchAimLine,
-            canStart: (prop) => {
-                if (!propSupportsDragInteraction(prop)) return false;
-                const grid = state?.obstacleGrid;
-                return !(grid && FloorBelt.isEntityOnBelt(grid, prop.x, prop.y));
+            onPointerDown(prop, world, _e) {
+                if (!canStart(prop, world)) return false;
+                wakeKineticBody(prop);
+                aim = createDragLaunchAim(prop.x, prop.y, world.x, world.y);
+                updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfigFromSize(prop.radius));
+                return true;
             },
-        }),
+            onPointerMove(prop, world, _e) {
+                if (!aim?.active) return;
+                if (!canStart(prop, world)) {
+                    aim = null;
+                    return;
+                }
+                updateDragLaunchAim(aim, world.x, world.y, resolveDragLaunchConfigFromSize(prop.radius));
+            },
+            onPointerUp(prop, _e) {
+                if (!aim?.active) return;
+                const config = resolveDragLaunchConfigFromSize(prop.radius);
+                const ok = releaseDragLaunch(aim, config);
+                const nx = aim.shotNx;
+                const ny = aim.shotNy;
+                const power = aim.power;
+                aim = null;
+                if (!ok) return;
+                applyDragLaunchVelocity(prop, nx, ny, power);
+            },
+            appendOverlayCommands(slab, prop) {
+                if (!aim?.active) return;
+                appendDragLaunchOverlayCommands(slab, aim, prop, state.obstacleGrid);
+            },
+            reset() {
+                aim = null;
+            },
+        },
     ];
 }
 function resolveGrabDragAnchor(prop, world) {
@@ -352,7 +339,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         },
     };
 }
-export function appendDragLaunchOverlayCommands(slab, aim, prop, aimLineContext = null, resolveAimLine = getDragLaunchAimLine) {
+export function appendDragLaunchOverlayCommands(slab, aim, prop, obstacleGrid) {
     const config = resolveDragLaunchConfigFromSize(prop.radius);
     if (!writeDragLaunchPreviewInto(aim, config)) return;
     const ratio = config.maxPower > config.minPower ? Math.max(0, Math.min(1, (aim.power - config.minPower) / (config.maxPower - config.minPower))) : 0;
@@ -372,7 +359,7 @@ export function appendDragLaunchOverlayCommands(slab, aim, prop, aimLineContext 
     stampOverlaySegmentStroke(slab, aim.previewPullX, aim.previewPullY, aim.anchorX, aim.anchorY, `hsla(${hue}, 90%, 55%, 0.4)`, 2, 6, 4);
     stampOverlayCircleStrokeColor(slab, aim.anchorX, aim.anchorY, 7, `hsla(${hue}, 100%, 60%, 0.85)`, 2);
     if (aim.power <= 0) return;
-    if (!resolveAimLine(aim, aimLineContext)) return;
+    if (!getDragLaunchAimLine(aim, prop, obstacleGrid)) return;
     const aimO = ENGINE_BOUNDS_BASE + B_TMP;
     stampOverlayAimSegment(slab, ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], `hsl(${hue}, 100%, 50%)`, hue);
 }

@@ -9,6 +9,7 @@ import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRe
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { dragInteractionModeLabel, toggleDragInteractionMode } from "../../../Libraries/Sandbox/dragBehaviors.js";
 import { EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA } from "../../../Core/engineEnums.js";
+import { ENGINE_F32, N_OUT_XY } from "../../../Core/engineMemory.js";
 function syncDragInteractionModeUi(state) {
     const btn = document.getElementById("dragInteractionModeBtn");
     if (btn) btn.textContent = dragInteractionModeLabel(state.sandbox.dragInteractionMode);
@@ -265,10 +266,12 @@ export function setEditorNavMode(state, mode) {
             const oldBehavior = behaviorById?.get(currentBehaviorId);
             const nextBehavior = behaviorById?.get(nextBehaviorId);
             if (oldBehavior && nextBehavior) {
-                const targetWorld = oldBehavior.getMoveTargetWorld?.(boid) ?? null;
+                const hasTarget = oldBehavior.writeMoveTargetWorldInto?.(ENGINE_F32, N_OUT_XY, boid) === true;
+                const tx = ENGINE_F32[N_OUT_XY];
+                const ty = ENGINE_F32[N_OUT_XY + 1];
                 if (oldBehavior.clearMoveTarget) oldBehavior.clearMoveTarget(boid);
                 entityMeta.setActiveBehaviorId(boid.id, nextBehaviorId);
-                if (targetWorld) nextBehavior.setMoveTarget(boid, targetWorld);
+                if (hasTarget) nextBehavior.setMoveTarget(boid, tx, ty);
             }
         }
     }

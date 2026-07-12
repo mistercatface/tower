@@ -108,6 +108,9 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - Spatial wall-candidate lookup: typed I32 columns (no `sWallBucketLookup` bag); `setBoundary(grid, idx, side, cap, thickness)`.
 - Aim/ray: `castSteppedCircleRay` writes F32/I32 outs + bare hit enum — no `{ hit, x, y, dist }` / string hit kinds.
 - Overlay commands: write-into `overlayCommandSlab` poly arena (`beginOverlayPoly` / `writeOverlayPolyXY` / `stampOverlay*` + `OVERLAY_STYLE_*`); `behavior.appendPathOverlay(slab, prop, visual)` — no PathOverlayData / `getPathOverlay` / scratch→copy, no per-call stroke/fill/dash scalar lists on public stamps.
+- No style-only domain stamp wrappers (`stampMarqueeAabb` / `stampRailEdgeSegment`) — call `stampOverlay*` + `OVERLAY_STYLE_*` at the site. No `appendGridEdgeOverlayCommand` / `appendMarqueeOverlayCommands` / `selectionRingRadius` passthroughs.
+- Ground nav: `createDirectGroundNavBehavior` / `createFlowGroundNavBehavior` / `createHpaGroundNavBehavior` own runs — no `createGroundNavBehavior` + `*_GROUND_NAV_CONFIG` table. `setMoveTarget(prop, x, y)` + `writeMoveTargetWorldInto(buf, o, prop)`; no `getMoveTargetWorld` bag. `driveGroundNav` writes `N_OUT_STEER` (boolean); path settings via module scratch — no options/return bags.
+- Drag aim line: `getDragLaunchAimLine(aim, prop, obstacleGrid)` — no aim-line context bag / `createDragLaunchInteraction` injection.
 
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:
 `npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.
