@@ -3,62 +3,75 @@ import { sandboxReplanReason, sandboxReplanAllowed } from "../Libraries/Sandbox/
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { recomputeViewBounds } from "../Core/engineMemory.js";
+import { recomputeViewBounds, entityX, entityY, entityR } from "../Core/engineMemory.js";
 const navSettings = { stuckReplanFrames: 20, stuckMoveThreshold: 1.5 };
+const EID = 1;
+
+function stampPose(x, y, r = 2) {
+    entityX[EID] = x;
+    entityY[EID] = y;
+    entityR[EID] = r;
+}
 
 describe("hpa ground nav replan policy", () => {
     it("evaluates epoch replan due when path topology lags grid", () => {
         recomputeViewBounds(0, 0, 1e6, 1e6);
+        stampPose(0, 0);
         const nav = createNavState();
         nav.pathLen = 10; // give it a path so it doesn't trigger noPath
         nav.pathSlot = 1;
         const manager = new PathReplanManager(nav);
         const state = { nav: { settings: navSettings, topologyKey: () => "key-b" }, viewport: {} };
         nav.topologyKey = "key-a";
-        assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "epoch");
-        
+        assert.equal(manager.evaluate(EID, state, false).reason, "epoch");
+
         nav.topologyKey = "key-b";
-        assert.equal(manager.evaluate({x:0,y:0}, state, false).shouldReplan, false);
+        assert.equal(manager.evaluate(EID, state, false).shouldReplan, false);
     });
 
     it("evaluates idlePathReplanReason correctly", () => {
         recomputeViewBounds(0, 0, 1e6, 1e6);
+        stampPose(0, 0);
         const nav = createNavState();
         const manager = new PathReplanManager(nav);
         const state = { nav: { settings: navSettings, topologyKey: () => nav.topologyKey }, viewport: {} };
-        
-        assert.equal(manager.evaluate({x:0,y:0}, state, false).reason, "noPath");
-        assert.equal(manager.evaluate({x:0,y:0}, state, true).shouldReplan, false);
+
+        assert.equal(manager.evaluate(EID, state, false).reason, "noPath");
+        assert.equal(manager.evaluate(EID, state, true).shouldReplan, false);
     });
 
     it("trackNavStuck accumulates when the body barely moves", () => {
+        stampPose(10, 10);
         const nav = createNavState();
         const manager = new PathReplanManager(nav);
-        for (let i = 0; i < 25; i++) manager.trackStuck({x: 10, y: 10}, false, false, navSettings.stuckMoveThreshold);
+        for (let i = 0; i < 25; i++) manager.trackStuck(EID, false, false, navSettings.stuckMoveThreshold);
         assert.ok(nav.stuckFrames > navSettings.stuckReplanFrames);
-        manager.trackStuck({x: 20, y: 20}, false, false, navSettings.stuckMoveThreshold);
+        stampPose(20, 20);
+        manager.trackStuck(EID, false, false, navSettings.stuckMoveThreshold);
         assert.equal(nav.stuckFrames, 0);
     });
 
     it("evaluates offPath correctly", () => {
         recomputeViewBounds(0, 0, 1e6, 1e6);
+        stampPose(10, 10);
         const nav = createNavState();
         nav.pathLen = 3;
         nav.pathSlot = 0;
         nav.lastOffPathReplan = 0;
         const manager = new PathReplanManager(nav);
         const state = { nav: { settings: navSettings }, viewport: {} };
-        
+
         manager.updateClock(250);
-        manager.trackStuck({x:10,y:10}, false, false, 0); // stuck frames = 1. softReplan requires > 10
-        for (let i = 0; i < 15; i++) manager.trackStuck({x:10,y:10}, false, false, 2); // 15 stuck frames
-        
-        assert.equal(manager.evaluateOffPath(true, {x:0,y:0}, state).reason, "offPath");
-        
+        manager.trackStuck(EID, false, false, 0); // stuck frames = 1. softReplan requires > 10
+        for (let i = 0; i < 15; i++) manager.trackStuck(EID, false, false, 2); // 15 stuck frames
+
+        stampPose(0, 0);
+        assert.equal(manager.evaluateOffPath(true, EID, state).reason, "offPath");
+
         manager.updateClock(10);
-        assert.equal(manager.evaluateOffPath(true, {x:0,y:0}, state).shouldReplan, false);
+        assert.equal(manager.evaluateOffPath(true, EID, state).shouldReplan, false);
     });
 
     it("sandboxReplanReason and sandboxReplanAllowed gate off-screen idle replans", () => {
@@ -82,6 +95,7 @@ describe("hpa ground nav replan policy", () => {
     });
     it("keeps committed off-path routes while the agent is still making progress", () => {
         recomputeViewBounds(0, 0, 1e6, 1e6);
+        stampPose(16, 160, 2);
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 16 * 16, 16 * 16);
         let replans = 0;
@@ -112,16 +126,15 @@ describe("hpa ground nav replan policy", () => {
         };
         const session = new HpaNavSession();
         Object.assign(session.navState, { pathSlot: 0, pathLen: 2, topologyKey: "", lastOffPathReplan: -999 });
-        const prop = { x: 16, y: 160, radius: 2 };
         const targetIdx = 5 + 4 * grid.cols;
         const targetX = grid.gridCenterXByIdx(targetIdx);
         const targetY = grid.gridCenterYByIdx(targetIdx);
         const pathSettings = { pathWaypointArrival: 1, arrivalDistance: 4, pathOffPathDistance: 4 };
 
-        session.update(prop, targetX, targetY, state, 300, pathSettings);
+        session.update(EID, targetX, targetY, state, 300, pathSettings);
         assert.equal(replans, 0);
 
-        for (let i = 0; i < 5; i++) session.update(prop, targetX, targetY, state, 300, pathSettings);
+        for (let i = 0; i < 5; i++) session.update(EID, targetX, targetY, state, 300, pathSettings);
         assert.equal(replans, 1);
     });
     it("records accepted route diagnostics when a path result is applied", () => {

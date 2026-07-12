@@ -181,7 +181,7 @@ describe("snake game launch actions", () => {
 
         // Set a target on the old behavior
         const hpaBehavior = state.sandbox.behaviorById.get(SANDBOX_BEHAVIOR_GROUND_HPA);
-        hpaBehavior.setMoveTarget(boid, 100, 120);
+        hpaBehavior.setMoveTarget(boid._physId, 100, 120);
         
         // Verify current state
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), SANDBOX_BEHAVIOR_GROUND_HPA);
@@ -195,7 +195,7 @@ describe("snake game launch actions", () => {
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(boid.id), SANDBOX_BEHAVIOR_GROUND_FLOW);
         
         const flowBehavior = state.sandbox.behaviorById.get(SANDBOX_BEHAVIOR_GROUND_FLOW);
-        assert.ok(flowBehavior.writeMoveTargetWorldInto(ENGINE_F32, N_OUT_XY, boid));
+        assert.ok(flowBehavior.writeMoveTargetWorldInto(ENGINE_F32, N_OUT_XY, boid._physId));
         assert.equal(ENGINE_F32[N_OUT_XY], 104);
         assert.equal(ENGINE_F32[N_OUT_XY + 1], 120);
     });

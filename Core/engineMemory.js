@@ -388,7 +388,7 @@ kineticDynamicSlab.rollDriveDirX.fill(0);
 kineticDynamicSlab.rollDriveDirY.fill(0);
 kineticDynamicSlab.rollDriveAccel.fill(0);
 kineticDynamicSlab.rollDriveMaxSpeed.fill(0);
-export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES) };
+export const kineticStaticSlab = { mass: new Float32Array(MAX_PHYS_BODIES), invMass: new Float32Array(MAX_PHYS_BODIES), invI: new Float32Array(MAX_PHYS_BODIES), entityId: new Int32Array(MAX_PHYS_BODIES), restitution: new Float32Array(MAX_PHYS_BODIES), friction: new Float32Array(MAX_PHYS_BODIES), physicsRow: new Uint8Array(MAX_PHYS_BODIES) };
 export const primitivePhysics = { density: new Float32Array([0.007958, 1.5 / 256]), dragFriction: new Float32Array([4, 8]), wallRestitution: new Float32Array([0.35, 0.15]), wallFriction: new Float32Array([0.4, 0.8]) };
 export const kineticConstraintStore = { count: 0, id: new Int32Array(MAX_KINETIC_CONSTRAINTS), type: new Uint8Array(MAX_KINETIC_CONSTRAINTS), bodyAId: new Int32Array(MAX_KINETIC_CONSTRAINTS), bodyBId: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdA: new Int32Array(MAX_KINETIC_CONSTRAINTS), physIdB: new Int32Array(MAX_KINETIC_CONSTRAINTS), anchorAx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorAy: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBx: new Float32Array(MAX_KINETIC_CONSTRAINTS), anchorBy: new Float32Array(MAX_KINETIC_CONSTRAINTS), restLength: new Float32Array(MAX_KINETIC_CONSTRAINTS), referenceAngle: new Float32Array(MAX_KINETIC_CONSTRAINTS), accumulatedImpulse: new Float32Array(MAX_KINETIC_CONSTRAINTS) }; // persistent constraint rows
 export const kineticConstraintSlab = {
@@ -608,23 +608,23 @@ export function createGroundNavRunSlab(capacity = GROUND_NAV_RUN_INIT) {
     const cap = Math.max(1, capacity | 0);
     const freeSlots = new Int32Array(cap);
     const sessions = new Array(cap);
-    const propId = new Int32Array(cap);
+    const eid = new Int32Array(cap);
     const targetCellIdx = new Int32Array(cap);
     const lastEpoch = new Int32Array(cap * GRID_NAV_EPOCH_COUNT);
     for (let i = 0; i < cap; i++) {
         freeSlots[i] = cap - 1 - i;
         sessions[i] = null;
-        propId[i] = -1;
+        eid[i] = -1;
         targetCellIdx[i] = -1;
     }
     lastEpoch.fill(-1);
-    return { capacity: cap, used: 0, freeSlots, freeCount: cap, propId, targetX: new Float32Array(cap), targetY: new Float32Array(cap), flags: new Uint8Array(cap), targetCellIdx, lastEpoch, sessions };
+    return { capacity: cap, used: 0, freeSlots, freeCount: cap, eid, targetX: new Float32Array(cap), targetY: new Float32Array(cap), flags: new Uint8Array(cap), targetCellIdx, lastEpoch, sessions };
 }
 export function ensureGroundNavRunCapacity(slab, minCap) {
     if (slab.capacity >= minCap) return;
     const cap = Math.max(minCap, slab.capacity * 2);
     const prevCap = slab.capacity;
-    ensureGrowI32(slab, "propId", cap, slab.used);
+    ensureGrowI32(slab, "eid", cap, slab.used);
     ensureGrowF32(slab, "targetX", cap, slab.used);
     ensureGrowF32(slab, "targetY", cap, slab.used);
     ensureGrowU8(slab, "flags", cap, slab.used);
@@ -633,7 +633,7 @@ export function ensureGroundNavRunCapacity(slab, minCap) {
     ensureGrowI32(slab, "freeSlots", slab.freeCount + (cap - prevCap), slab.freeCount);
     while (slab.sessions.length < cap) slab.sessions.push(null);
     for (let i = prevCap; i < cap; i++) {
-        slab.propId[i] = -1;
+        slab.eid[i] = -1;
         slab.targetCellIdx[i] = -1;
         slab.flags[i] = 0;
         slab.freeSlots[slab.freeCount++] = i;
@@ -642,10 +642,10 @@ export function ensureGroundNavRunCapacity(slab, minCap) {
     slab.lastEpoch.fill(-1, epochBase, cap * GRID_NAV_EPOCH_COUNT);
     slab.capacity = cap;
 }
-export function allocGroundNavRunSlot(slab, propId) {
+export function allocGroundNavRunSlot(slab, eid) {
     if (slab.freeCount === 0) ensureGroundNavRunCapacity(slab, slab.capacity + 1);
     const slot = slab.freeSlots[--slab.freeCount];
-    slab.propId[slot] = propId;
+    slab.eid[slot] = eid;
     slab.targetX[slot] = 0;
     slab.targetY[slot] = 0;
     slab.flags[slot] = 0;
@@ -657,7 +657,7 @@ export function allocGroundNavRunSlot(slab, propId) {
     return slot;
 }
 export function freeGroundNavRunSlot(slab, slot) {
-    slab.propId[slot] = -1;
+    slab.eid[slot] = -1;
     slab.flags[slot] = 0;
     slab.targetCellIdx[slot] = -1;
     slab.sessions[slot] = null;
@@ -665,7 +665,7 @@ export function freeGroundNavRunSlot(slab, slot) {
 }
 export function clearGroundNavRunSlab(slab) {
     for (let i = 0; i < slab.capacity; i++) {
-        slab.propId[i] = -1;
+        slab.eid[i] = -1;
         slab.flags[i] = 0;
         slab.targetCellIdx[i] = -1;
         slab.sessions[i] = null;

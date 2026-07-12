@@ -266,12 +266,12 @@ export function setEditorNavMode(state, mode) {
             const oldBehavior = behaviorById?.get(currentBehaviorId);
             const nextBehavior = behaviorById?.get(nextBehaviorId);
             if (oldBehavior && nextBehavior) {
-                const hasTarget = oldBehavior.writeMoveTargetWorldInto?.(ENGINE_F32, N_OUT_XY, boid) === true;
+                const hasTarget = oldBehavior.writeMoveTargetWorldInto?.(ENGINE_F32, N_OUT_XY, boid._physId) === true;
                 const tx = ENGINE_F32[N_OUT_XY];
                 const ty = ENGINE_F32[N_OUT_XY + 1];
-                if (oldBehavior.clearMoveTarget) oldBehavior.clearMoveTarget(boid);
+                if (oldBehavior.clearMoveTarget) oldBehavior.clearMoveTarget(boid._physId);
                 entityMeta.setActiveBehaviorId(boid.id, nextBehaviorId);
-                if (hasTarget) nextBehavior.setMoveTarget(boid, tx, ty);
+                if (hasTarget) nextBehavior.setMoveTarget(boid._physId, tx, ty);
             }
         }
     }

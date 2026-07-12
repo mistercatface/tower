@@ -119,7 +119,7 @@ describe("drag interaction mode", () => {
         pointerEvent("pointerup", 64, 64);
         pointerEvent("pointerdown", 100, 100, 2);
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), SANDBOX_BEHAVIOR_GROUND_HPA);
-        assert.ok(hpaBehavior.hasMoveTarget(prop));
+        assert.ok(hpaBehavior.hasMoveTarget(prop._physId));
 
         controller.destroy();
     });
@@ -140,21 +140,21 @@ describe("drag interaction mode", () => {
 
         assert.equal(controller.session.getSelectedProp()?.id, prop.id);
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), SANDBOX_BEHAVIOR_GROUND_HPA);
-        assert.ok(hpaBehavior.hasMoveTarget(prop));
-        assert.equal(hpaBehavior.getTargetCellIdx(prop), worldIdxAtCell(state.obstacleGrid, 22, 22));
+        assert.ok(hpaBehavior.hasMoveTarget(prop._physId));
+        assert.equal(hpaBehavior.getTargetCellIdx(prop._physId), worldIdxAtCell(state.obstacleGrid, 22, 22));
 
         const cellIdx2 = worldIdxAtCell(state.obstacleGrid, 23, 23);
         state.obstacleGrid.writeFloorCell(cellIdx2, BeltPacked.defaultForSpawn("floor_belt"));
         eventListeners.pointerdown({ button: 0, clientX: 116, clientY: 116, detail: 1, pointerId: 1, preventDefault() {}, stopPropagation() {} });
         eventListeners.pointerup({ clientX: 116, clientY: 116, pointerId: 1, preventDefault() {}, stopPropagation() {} });
-        assert.equal(hpaBehavior.getTargetCellIdx(prop), worldIdxAtCell(state.obstacleGrid, 22, 22));
+        assert.equal(hpaBehavior.getTargetCellIdx(prop._physId), worldIdxAtCell(state.obstacleGrid, 22, 22));
         assert.notEqual(controller.session.getSelectedProp()?.id, prop.id);
 
         controller.session.select({ kind: "prop", ids: [prop.id] });
         eventListeners.pointerdown({ button: 0, clientX: 64, clientY: 64, detail: 1, pointerId: 1, preventDefault() {}, stopPropagation() {} });
 
         assert.equal(state.sandbox.entityMeta.getActiveBehaviorId(prop.id), null);
-        assert.equal(hpaBehavior.hasMoveTarget(prop), false);
+        assert.equal(hpaBehavior.hasMoveTarget(prop._physId), false);
         assert.equal(dragBehavior.onPointerDown(prop, { x: 64, y: 64 }), true);
         controller.destroy();
     });

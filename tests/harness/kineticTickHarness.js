@@ -186,6 +186,7 @@ export function assignPhysIdWithPose(body, physId) {
     kineticDynamicSlab.sleepFrames[physId] = sleepFrames;
     kineticDynamicSlab.rollDriveKind[physId] = ROLL_DRIVE_NONE;
     entityFlags[physId] = worldPropBindFlags(body);
+    if (body.strategy?.physicsRow != null) kineticStaticSlab.physicsRow[physId] = body.strategy.physicsRow;
     if (!body.isKineticDebris) {
         attachPoseAccessors(body);
         attachSleepAccessors(body);

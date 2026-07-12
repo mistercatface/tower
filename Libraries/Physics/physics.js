@@ -247,12 +247,16 @@ export function stampPrimitivePhysics(strategy, row = primitivePhysicsRow(strate
     strategy.physicsRow = row;
     return strategy;
 }
-export function primitiveDragFriction(strategy) {
-    return primitivePhysics.dragFriction[strategy.physicsRow];
+export function primitiveDragFriction(bodyOrStrategy) {
+    const eid = bodyOrStrategy._physId;
+    const row = eid !== undefined && eid !== -1 ? kineticStaticSlab.physicsRow[eid] : bodyOrStrategy.physicsRow;
+    return primitivePhysics.dragFriction[row];
 }
 export function kineticMassFromFootprint(body) {
     const minMass = collisionSettings.material.minMass;
-    const density = primitivePhysics.density[body.strategy.physicsRow];
+    const eid = body._physId;
+    const row = eid !== undefined && eid !== -1 ? kineticStaticSlab.physicsRow[eid] : body.strategy.physicsRow;
+    const density = primitivePhysics.density[row];
     return Math.max(minMass, density * kineticFootprintArea(body));
 }
 export function kineticInertiaFromBody(body) {
@@ -279,6 +283,7 @@ export function normalizeKineticBody(body) {
     if (physId === undefined || physId === -1) return body;
     const slab = kineticStaticSlab;
     const row = strategy.physicsRow;
+    slab.physicsRow[physId] = row;
     const table = primitivePhysics;
     const mass = kineticMassFromFootprint(body);
     slab.mass[physId] = mass;

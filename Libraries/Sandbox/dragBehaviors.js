@@ -83,7 +83,8 @@ function propCanStartDrag(state, prop) {
 }
 function clearGroundNavForProp(state, groundNavBehaviorIds, prop) {
     const byId = state.sandbox.behaviorById;
-    for (const id of groundNavBehaviorIds) byId.get(id).clearMoveTarget(prop);
+    const eid = prop._physId;
+    for (const id of groundNavBehaviorIds) byId.get(id).clearMoveTarget(eid);
     state.sandbox.entityMeta.clearActiveBehaviorId(prop.id);
 }
 export function createDragLaunchBehavior(state) {
@@ -233,7 +234,7 @@ function resolveGrabDragAnchor(prop, world) {
     ENGINE_F32[G_OY] = prop.y - world.y;
 }
 export function createGrabDragBehavior(state, groundNavBehaviorIds) {
-    let grabPropId = -1;
+    let grabEid = -1;
     let targetX = 0;
     let targetY = 0;
     let offsetX = 0;
@@ -241,7 +242,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
     let anchorLocalX = 0;
     let anchorLocalY = 0;
     const clearGrab = () => {
-        grabPropId = -1;
+        grabEid = -1;
     };
     const grabAnchorWorld = (prop) => {
         if ((entityFlags[prop._physId] & ENTITY_FLAG_ROLLS) !== 0) {
@@ -302,7 +303,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
             if (!propCanStartDrag(state, prop)) return false;
             clearGroundNavForProp(state, groundNavBehaviorIds, prop);
             resolveGrabDragAnchor(prop, world);
-            grabPropId = prop.id;
+            grabEid = prop._physId;
             targetX = world.x;
             targetY = world.y;
             offsetX = ENGINE_F32[G_OX];
@@ -313,18 +314,18 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
             return true;
         },
         onPointerMove(prop, world) {
-            if (grabPropId !== prop.id) return;
+            if (grabEid !== prop._physId) return;
             targetX = world.x;
             targetY = world.y;
         },
         onPointerUp(prop) {
-            if (grabPropId !== prop.id) return;
+            if (grabEid !== prop._physId) return;
             clearGroundRollDrive(prop._physId);
             clearGrab();
         },
         tickWorld(dtMs = 16) {
-            if (grabPropId < 0) return;
-            const prop = state.entityRegistry.getLive(grabPropId);
+            if (grabEid < 0) return;
+            const prop = state.entityRegistry.getRef(grabEid);
             if (!prop) {
                 clearGrab();
                 return;
@@ -337,7 +338,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
             tickPull(prop, dtMs);
         },
         appendOverlayCommands(slab, prop) {
-            if (grabPropId !== prop.id) return;
+            if (grabEid !== prop._physId) return;
             const grabConfig = resolveDragLaunchConfigFromSize(prop.radius);
             grabAnchorWorld(prop);
             const ax = ENGINE_F32[G_WX];
