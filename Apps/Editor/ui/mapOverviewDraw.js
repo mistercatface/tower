@@ -50,32 +50,6 @@ const EDGE_HIT_PX = 8;
  * @param {{ moveOnly?: boolean }} [options]
  * @returns {"move" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw" | null}
  */
-export function hitTestRectAabb(sx, sy, bounds, cache, displayW, displayH, options = {}) {
-    const { moveOnly = false } = options;
-    const tl = worldToScreen(bounds.minX, bounds.minY, cache, displayW, displayH);
-    const br = worldToScreen(bounds.maxX, bounds.maxY, cache, displayW, displayH);
-    const left = tl.x;
-    const top = tl.y;
-    const right = br.x;
-    const bottom = br.y;
-    const insideX = sx >= left && sx <= right;
-    const insideY = sy >= top && sy <= bottom;
-    if (!insideX || !insideY) return null;
-    if (moveOnly) return "move";
-    const nearLeft = Math.abs(sx - left) <= EDGE_HIT_PX;
-    const nearRight = Math.abs(sx - right) <= EDGE_HIT_PX;
-    const nearTop = Math.abs(sy - top) <= EDGE_HIT_PX;
-    const nearBottom = Math.abs(sy - bottom) <= EDGE_HIT_PX;
-    if (nearRight && nearBottom) return "resize-se";
-    if (nearLeft && nearBottom) return "resize-sw";
-    if (nearRight && nearTop) return "resize-ne";
-    if (nearLeft && nearTop) return "resize-nw";
-    if (nearRight) return "resize-e";
-    if (nearLeft) return "resize-w";
-    if (nearBottom) return "resize-s";
-    if (nearTop) return "resize-n";
-    return "move";
-}
 export function hitTestRectAabbF32(sx, sy, buf, o, cache, displayW, displayH, options = {}) {
     const { moveOnly = false } = options;
     const tl = worldToScreen(buf[o], buf[o + 1], cache, displayW, displayH);
@@ -110,22 +84,6 @@ export function overviewBoundsCursor(mode) {
     if (mode === "resize-e" || mode === "resize-w") return "ew-resize";
     if (mode === "resize-n" || mode === "resize-s") return "ns-resize";
     return "nwse-resize";
-}
-/** @param {CanvasRenderingContext2D} ctx @param {import("../../../Libraries/Math/Aabb2D.js").Aabb2D} bounds @param {import("../../../Libraries/Render/map/labMapCaches.js").ObstacleOverviewCache} cache @param {number} displayW @param {number} displayH @param {string} strokeStyle @param {number} [lineWidth] @param {number[]} [dash] */
-export function drawWorldBoundsBox(ctx, bounds, cache, displayW, displayH, strokeStyle, lineWidth = 2, dash = null) {
-    const mapW = cache.maxX - cache.minX;
-    const mapH = cache.maxY - cache.minY;
-    if (mapW <= 0 || mapH <= 0) return;
-    const x = ((bounds.minX - cache.minX) / mapW) * displayW;
-    const y = ((bounds.minY - cache.minY) / mapH) * displayH;
-    const w = ((bounds.maxX - bounds.minX) / mapW) * displayW;
-    const h = ((bounds.maxY - bounds.minY) / mapH) * displayH;
-    ctx.save();
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    if (dash) ctx.setLineDash(dash);
-    ctx.strokeRect(x, y, w, h);
-    ctx.restore();
 }
 export function drawWorldBoundsBoxF32(ctx, buf, o, cache, displayW, displayH, strokeStyle, lineWidth = 2, dash = null) {
     const mapW = cache.maxX - cache.minX;

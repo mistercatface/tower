@@ -512,7 +512,6 @@ export function polygonSecondMomentAboutCentroid2D(vertices) {
     }
     return inertia / 12;
 }
-export const EMPTY_AABB = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 export function computeCompoundLocalBoundsF32(buf, o, parts) {
     let minX = Infinity;
     let maxX = -Infinity;
@@ -556,11 +555,6 @@ export function ensureFlatVerts(input) {
     }
     return flat;
 }
-export function scaleFlatVerts(flat, scale) {
-    const count = flat.length;
-    for (let i = 0; i < count; i++) flat[i] *= scale;
-    return flat;
-}
 export function vertCount(flat) {
     return flat.length / 2;
 }
@@ -575,29 +569,11 @@ export function reversePolygonWinding(vertices) {
     }
     return reversed;
 }
-/** @typedef {{ minX: number; minY: number; maxX: number; maxY: number }} Aabb2D */
-/** @typedef {'center' | 'circle' | 'aabb'} AabbEntityHitTest */
-/** @returns {Aabb2D} */
-export function createAabb() {
-    return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-}
 export function emptyAabbF32(buf, o) {
     buf[o] = Infinity;
     buf[o + 1] = Infinity;
     buf[o + 2] = -Infinity;
     buf[o + 3] = -Infinity;
-}
-export function aabbWidth(aabb) {
-    return aabb.maxX - aabb.minX;
-}
-export function aabbHeight(aabb) {
-    return aabb.maxY - aabb.minY;
-}
-export function aabbCenterX(aabb) {
-    return (aabb.minX + aabb.maxX) / 2;
-}
-export function aabbCenterY(aabb) {
-    return (aabb.minY + aabb.maxY) / 2;
 }
 export function growAabbFromCenterF32(buf, o, cx, cy, halfW, halfH) {
     buf[o] = Math.min(buf[o], cx - halfW);
@@ -605,20 +581,11 @@ export function growAabbFromCenterF32(buf, o, cx, cy, halfW, halfH) {
     buf[o + 2] = Math.max(buf[o + 2], cx + halfW);
     buf[o + 3] = Math.max(buf[o + 3], cy + halfH);
 }
-export function pointInAabb(px, py, { minX, minY, maxX, maxY }) {
-    return px >= minX && px <= maxX && py >= minY && py <= maxY;
-}
 export function pointInAabbF32(px, py, buf, o) {
     return px >= buf[o] && px <= buf[o + 2] && py >= buf[o + 1] && py <= buf[o + 3];
 }
-export function aabbOverlap(a, b) {
-    return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
-}
 export function aabbOverlapF32(bufA, oA, bufB, oB) {
     return bufA[oA] <= bufB[oB + 2] && bufA[oA + 2] >= bufB[oB] && bufA[oA + 1] <= bufB[oB + 3] && bufA[oA + 3] >= bufB[oB + 1];
-}
-export function aabbIntersectsScalars(minX, minY, maxX, maxY, box) {
-    return minX <= box.maxX && maxX >= box.minX && minY <= box.maxY && maxY >= box.minY;
 }
 export function circleIntersectsAabbF32(circleX, circleY, radius, buf, o) {
     const half = radius / 2;
@@ -627,12 +594,6 @@ export function circleIntersectsAabbF32(circleX, circleY, radius, buf, o) {
     const maxX = circleX + half;
     const maxY = circleY + half;
     return !(maxX < minX || maxY < minY || minX > buf[o + 2] || maxX < buf[o] || minY > buf[o + 3] || maxY < buf[o + 1]);
-}
-export function aabbContains(outer, inner) {
-    return outer.minX <= inner.minX && outer.minY <= inner.minY && outer.maxX >= inner.maxX && outer.maxY >= inner.maxY;
-}
-export function aabbContainsF32(outBuf, outO, inBuf, inO) {
-    return outBuf[outO] <= inBuf[inO] && outBuf[outO + 1] <= inBuf[inO + 1] && outBuf[outO + 2] >= inBuf[inO + 2] && outBuf[outO + 3] >= inBuf[inO + 3];
 }
 /** Writes minX,minY,maxX,maxY at buf[o..o+3]. */
 export function minCornerAabbF32(buf, o, minX, minY, width, height) {
@@ -679,33 +640,6 @@ export function centerReachAabbF32(buf, o, cx, cy, reach) {
     buf[o + 2] = cx + reach;
     buf[o + 3] = cy + reach;
 }
-export function expandPointsAabbF32(buf, o, pts) {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < pts.length; i += 2) {
-        const x = pts[i];
-        const y = pts[i + 1];
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-    }
-    buf[o] = minX;
-    buf[o + 1] = minY;
-    buf[o + 2] = maxX;
-    buf[o + 3] = maxY;
-}
-/** @param {{ x: number, y: number }} p0 @param {{ x: number, y: number }} p1 @param {{ x: number, y: number }} p2 @param {{ x: number, y: number }} p3 @param {Aabb2D | null | undefined} box */
-export function pointsAabbOverlapAabb(p0, p1, p2, p3, box) {
-    if (!box) return true;
-    const minX = Math.min(p0.x, p1.x, p2.x, p3.x);
-    const maxX = Math.max(p0.x, p1.x, p2.x, p3.x);
-    const minY = Math.min(p0.y, p1.y, p2.y, p3.y);
-    const maxY = Math.max(p0.y, p1.y, p2.y, p3.y);
-    return aabbIntersectsScalars(minX, minY, maxX, maxY, box);
-}
 export function intersectAabbF32(outBuf, outO, aBuf, aO, bBuf, bO) {
     outBuf[outO] = Math.max(aBuf[aO], bBuf[bO]);
     outBuf[outO + 1] = Math.max(aBuf[aO + 1], bBuf[bO + 1]);
@@ -717,13 +651,6 @@ export function intersectAabbOptionalF32(outBuf, outO, aBuf, aO, bBuf, bO) {
     intersectAabbF32(outBuf, outO, aBuf, aO, bBuf, bO);
     return true;
 }
-export function distanceSqToAabb(px, py, minX, minY, maxX, maxY) {
-    const cx = Math.max(minX, Math.min(px, maxX));
-    const cy = Math.max(minY, Math.min(py, maxY));
-    const dx = px - cx;
-    const dy = py - cy;
-    return dx * dx + dy * dy;
-}
 export function distanceSqToAabbF32(px, py, buf, o) {
     const minX = buf[o];
     const minY = buf[o + 1];
@@ -733,25 +660,8 @@ export function distanceSqToAabbF32(px, py, buf, o) {
     const dy = Math.max(0, minY - py, py - maxY);
     return dx * dx + dy * dy;
 }
-export function distanceToAabb(px, py, minX, minY, maxX, maxY) {
-    return Math.sqrt(distanceSqToAabb(px, py, minX, minY, maxX, maxY));
-}
 export function distanceToAabbF32(px, py, buf, o) {
     return Math.sqrt(distanceSqToAabbF32(px, py, buf, o));
-}
-export function circleIntersectsAabb(x, y, radius, { minX, minY, maxX, maxY }) {
-    return distanceSqToAabb(x, y, minX, minY, maxX, maxY) <= radius * radius;
-}
-/** @param {object} ref @param {Aabb2D} bounds @param {AabbEntityHitTest} hitTest */
-export function entityIntersectsAabb(ref, bounds, hitTest) {
-    if (hitTest === "center") return pointInAabb(ref.x, ref.y, bounds);
-    if (hitTest === "aabb") {
-        const aabb = ref.aabb;
-        if (!aabb) return false;
-        return aabbOverlap(aabb, bounds);
-    }
-    const radius = ref.radius ?? 0;
-    return circleIntersectsAabb(ref.x, ref.y, radius, bounds);
 }
 export function entityIntersectsAabbF32(ref, buf, o, hitTest) {
     if (hitTest === "center") return pointInAabbF32(ref.x, ref.y, buf, o);
@@ -765,19 +675,6 @@ export function entityIntersectsAabbF32(ref, buf, o, hitTest) {
 }
 const AABB_HASH_F64 = new Float64Array(4);
 const AABB_HASH_U32 = new Uint32Array(AABB_HASH_F64.buffer);
-/** @param {Aabb2D} bounds @returns {number} uint32 hash of exact float bit patterns */
-export function aabbHash(bounds) {
-    AABB_HASH_F64[0] = bounds.minX;
-    AABB_HASH_F64[1] = bounds.minY;
-    AABB_HASH_F64[2] = bounds.maxX;
-    AABB_HASH_F64[3] = bounds.maxY;
-    let h = AABB_HASH_U32[0];
-    for (let i = 1; i < 8; i++) {
-        h ^= AABB_HASH_U32[i];
-        h = Math.imul(h, 0x1000193);
-    }
-    return h >>> 0;
-}
 export function aabbHashF32(buf, o) {
     AABB_HASH_F64[0] = buf[o];
     AABB_HASH_F64[1] = buf[o + 1];
@@ -810,15 +707,6 @@ export function angleDelta(from, to) {
     while (delta <= -Math.PI) delta += Math.PI * 2;
     while (delta > Math.PI) delta -= Math.PI * 2;
     return delta;
-}
-export function turnAngleTowards(currentAngle, targetAngle, turnSpeed, dt) {
-    const diff = normalizeAngle(targetAngle - currentAngle);
-    const t = Math.min(1, turnSpeed * (dt / 1000));
-    return normalizeAngle(currentAngle + diff * t);
-}
-/** Blend two angles along the shortest arc (radians). */
-export function blendAngle(from, to, t) {
-    return from + angleDelta(from, to) * t;
 }
 /** Map angle to [0, 2π). */
 export function positiveAngle(angle) {
@@ -904,18 +792,6 @@ export const EASING_FUNCTIONS = {
     easeInOutCirc: (t) => (t < 0.5 ? (1 - Math.sqrt(1 - 4 * t * t)) / 2 : (Math.sqrt(1 - Math.pow(-2 * t + 2, 2)) + 1) / 2),
 };
 export const EASING_OPTIONS = Object.keys(EASING_FUNCTIONS);
-/** Perlin smootherstep — C² continuous ease on [0, 1]. */
-export function smootherstep(t) {
-    return t * t * t * (t * (t * 6 - 15) + 10);
-}
-/**
- * Applies a selected easing function by name to a normalized time t.
- * Falls back to linear if the function is not found.
- */
-export function applyEasing(type, t) {
-    const fn = EASING_FUNCTIONS[type] || EASING_FUNCTIONS.linear;
-    return fn(t);
-}
 /**
  * Easing to use after reversing a stage (start/end swapped).
  * easeIn* ↔ easeOut* preserves perceived acceleration; linear and easeInOut* stay
@@ -935,9 +811,6 @@ export function mirrorEasingForReversedStage(type) {
         return mirrored in EASING_FUNCTIONS ? mirrored : easing;
     }
     return easing;
-}
-export function lerp(a, b, t) {
-    return a + (b - a) * t;
 }
 export function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -967,12 +840,6 @@ export function lengthXY(vx, vy) {
 export function speedSqXY(vx, vy) {
     return vx * vx + vy * vy;
 }
-/** Squared distance between two points. */
-export function distSqXY(ax, ay, bx, by) {
-    const dx = ax - bx;
-    const dy = ay - by;
-    return dx * dx + dy * dy;
-}
 export function normalizeXYInto(dx, dy) {
     const len = Math.hypot(dx, dy);
     if (len <= 0) {
@@ -989,41 +856,6 @@ export function normalizeXYInto(dx, dy) {
 export function addXY(body, dx, dy) {
     body.x += dx;
     body.y += dy;
-}
-/** Reflect direction `(dx, dy)` off a surface normal `(nx, ny)`. Writes dx,dy at buf[o..o+1]. */
-export function reflect2Into(buf, o, dx, dy, nx, ny) {
-    const dot = dotXY(dx, dy, nx, ny);
-    buf[o] = dx - 2 * dot * nx;
-    buf[o + 1] = dy - 2 * dot * ny;
-}
-/** @typedef {{ x: number; y: number; z: number }} Vec3 */
-export function vec3(x, y, z) {
-    return { x, y, z };
-}
-export function add(a, b) {
-    return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
-}
-export function sub(a, b) {
-    return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
-}
-export function scale(v, s) {
-    return vec3(v.x * s, v.y * s, v.z * s);
-}
-export function dot(a, b) {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-export function cross(a, b) {
-    return vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
-}
-export function length(v) {
-    return Math.hypot(v.x, v.y, v.z);
-}
-export function distance(a, b) {
-    return length(sub(a, b));
-}
-export function normalize(v) {
-    const len = length(v) || 1;
-    return scale(v, 1 / len);
 }
 /** @param {string} str @returns {number} uint32 FNV-1a hash */
 export function hashString(str) {

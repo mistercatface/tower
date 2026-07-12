@@ -1,4 +1,4 @@
-import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabb, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, aabbContains, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, angleDelta, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32, earClipConvexPartsInto, pointInPolygon } from "../Math/math.js";
+import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabbF32, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, normalizeAngle, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32, earClipConvexPartsInto, pointInPolygon } from "../Math/math.js";
 import {
     ENGINE_F32,
     ENGINE_U8,
@@ -4199,8 +4199,12 @@ function segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
 }
 function minDistanceSegmentToAabb(ax, ay, bx, by, minX, minY, maxX, maxY) {
     if (segmentIntersectsAabb(ax, ay, bx, by, minX, minY, maxX, maxY)) return 0;
-    const distA = distanceToAabb(ax, ay, minX, minY, maxX, maxY);
-    const distB = distanceToAabb(bx, by, minX, minY, maxX, maxY);
+    ENGINE_F32[P_VEC_C] = minX;
+    ENGINE_F32[P_VEC_C + 1] = minY;
+    ENGINE_F32[P_VEC_C + 2] = maxX;
+    ENGINE_F32[P_VEC_C + 3] = maxY;
+    const distA = distanceToAabbF32(ax, ay, ENGINE_F32, P_VEC_C);
+    const distB = distanceToAabbF32(bx, by, ENGINE_F32, P_VEC_C);
     let minSq = Math.min(distA * distA, distB * distB, distanceSqToLineSegment(minX, minY, ax, ay, bx, by), distanceSqToLineSegment(maxX, minY, ax, ay, bx, by), distanceSqToLineSegment(maxX, maxY, ax, ay, bx, by), distanceSqToLineSegment(minX, maxY, ax, ay, bx, by));
     return Math.sqrt(minSq);
 }

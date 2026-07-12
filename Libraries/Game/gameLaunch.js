@@ -3,7 +3,6 @@ import { PortalLink } from "../Spatial/portals.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { spawnPlacedSandboxProp } from "../Sandbox/sandbox.js";
 import { GRAB_DRAG_BEHAVIOR_ID } from "../Sandbox/dragBehaviors.js";
-import { syncLabViewportZoomUi } from "../../Apps/Editor/ui/labViewport.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 import { getNavWalkableCellIndex, filterWalkableCellsInBounds } from "../Navigation/navigation.js";
 import { applyPropBoxFootprint } from "../Props/props.js";
@@ -148,7 +147,6 @@ async function runSnakeLaunch(state, ctx) {
     state.sandbox.entityMeta.setCameraTarget(boid.id, true);
     state.viewport.snapTo(playerX, playerY);
     state.viewport.setZoom(2.0);
-    syncLabViewportZoomUi(state);
     state.editor.lockSelection = true;
 }
 /** @param {object} state @param {object} launcher @param {{ playbackHandlers?: import("../Playback/speedControl.js").PlaybackHandlers }} [launchOptions] */
@@ -193,7 +191,6 @@ async function runFractureLaunch(state, ctx) {
     state.sandbox.entityMeta.setCameraTarget(star.id, true);
     state.viewport.snapTo(star.x, star.y);
     state.viewport.setZoom(2.0);
-    syncLabViewportZoomUi(state);
     state.editor.lockSelection = false;
     state.editor.navMode = EDITOR_NAV_MODE_OFF;
     state.sandbox.dragInteractionMode = GRAB_DRAG_BEHAVIOR_ID;

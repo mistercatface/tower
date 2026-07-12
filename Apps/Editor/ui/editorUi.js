@@ -26,7 +26,7 @@ function bindDragInteractionModeToolbar(state) {
     });
 }
 import { initTileLabWorld } from "../../../Libraries/Spatial/spatial.js";
-import { fitLabStageToView, mountLabViewport, refreshLabSpeed } from "./labViewport.js";
+import { fitLabStageToView, mountLabViewport, refreshLabSpeed, syncLabViewportZoomUi } from "./labViewport.js";
 import { TILELAB_UI_HTML } from "./shellHtml.js";
 import { mountTilelabSandbox } from "../world/tilelabSandbox.js";
 import { bindViewModeControls } from "./viewMode.js";
@@ -212,9 +212,8 @@ export function mountEditorUi(state, { playbackHandlers }) {
         resizeCanvases(state);
         if (state.appLaunch?.launcher && !state.appLaunch.launcher.hideEditor) {
             await runGameLaunch(state, state.appLaunch.launcher, { playbackHandlers });
-            if (state.appLaunch.launcher.defaultPathDebugMode != null) {
-                setLabPathDebugMode(state.appLaunch.launcher.defaultPathDebugMode);
-            }
+            syncLabViewportZoomUi(state);
+            if (state.appLaunch.launcher.defaultPathDebugMode != null) setLabPathDebugMode(state.appLaunch.launcher.defaultPathDebugMode);
         }
         drawLabAndWaitForBakes();
     });

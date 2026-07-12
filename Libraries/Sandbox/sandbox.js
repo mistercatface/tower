@@ -1648,13 +1648,9 @@ export function groundNavArrivedAtTarget(prop, targetWorld, targetCellIdx, grid,
     const dist = Math.hypot(targetWorld.x - prop.x, targetWorld.y - prop.y);
     return dist <= stopRadius && (!targetOnBelt || onBelt);
 }
-const HPA_PATH_SETTINGS_SCRATCH = {};
 export function buildHpaGroundNavPathSettings(state, prop, stopRadius) {
     const hpaNav = physicsSettings.groundNavHpa;
-    const settings = Object.assign(HPA_PATH_SETTINGS_SCRATCH, state.nav.settings);
-    settings.pathWaypointArrival = Math.max(hpaNav.pathWaypointArrivalMin, resolveBodyRadius(prop) * hpaNav.pathWaypointArrivalRadiusFactor);
-    settings.arrivalDistance = stopRadius;
-    return settings;
+    return { ...state.nav.settings, pathWaypointArrival: Math.max(hpaNav.pathWaypointArrivalMin, resolveBodyRadius(prop) * hpaNav.pathWaypointArrivalRadiusFactor), arrivalDistance: stopRadius };
 }
 export function driveGroundNav({ prop, targetWorld, nav, state, dtMs, pathSettings }) {
     const grid = state.obstacleGrid;
@@ -1862,7 +1858,9 @@ const FLOW_GROUND_NAV_CONFIG = {
     },
     applyMoveTarget(state, run, world, prop) {
         snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, state.obstacleGrid, world.x, world.y);
-        run.targetWorld = { x: ENGINE_F32[N_OUT_XY], y: ENGINE_F32[N_OUT_XY + 1] };
+        if (!run.targetWorld) run.targetWorld = { x: 0, y: 0 };
+        run.targetWorld.x = ENGINE_F32[N_OUT_XY];
+        run.targetWorld.y = ENGINE_F32[N_OUT_XY + 1];
         snapNavGoalWorld(ENGINE_F32, N_OUT_XY, state.obstacleGrid, prop.x, prop.y, run.targetWorld.x, run.targetWorld.y);
         state.flowFieldGrid.ensureRollTargetWindow(prop.x, prop.y, ENGINE_F32[N_OUT_XY], ENGINE_F32[N_OUT_XY + 1], state.nav.settings.recenterThreshold);
     },
@@ -1914,7 +1912,9 @@ const HPA_GROUND_NAV_CONFIG = {
         const grid = state.obstacleGrid;
         const nextIdx = snapMoveTargetToCellCenter(ENGINE_F32, N_OUT_XY, grid, world.x, world.y);
         const cellChanged = nextIdx !== run.targetCellIdx;
-        run.targetWorld = { x: ENGINE_F32[N_OUT_XY], y: ENGINE_F32[N_OUT_XY + 1] };
+        if (!run.targetWorld) run.targetWorld = { x: 0, y: 0 };
+        run.targetWorld.x = ENGINE_F32[N_OUT_XY];
+        run.targetWorld.y = ENGINE_F32[N_OUT_XY + 1];
         run.targetCellIdx = nextIdx === -1 ? null : nextIdx;
         if (forceReset || cellChanged) run.hpaNav.markTargetChanged();
     },

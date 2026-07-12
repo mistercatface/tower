@@ -1,6 +1,6 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
-import { CARDINAL_DCOL, CARDINAL_DR, createAabb, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
+import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A, primitiveDragFriction } from "../Physics/physics.js";
@@ -1780,26 +1780,10 @@ export function estimateRollingTravelDistance(v0, strategy) {
  * @property {number} y
  * @property {number} [radius]
  */
-/**
- * Aim arrow segment for a circle shot — stops at the nearest wall or circle target.
- * Same ray model as pool cue-ball preview ({@link castSteppedCircleRay} + {@link rayCircleHitDistance}).
- *
- * @param {{
- *   originX: number,
- *   originY: number,
- *   radius: number,
- *   nx: number,
- *   ny: number,
- *   maxTravelDist: number,
- *   obstacleGrid?: import("../grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
- *   circleTargets?: CircleAimLineTarget[],
- *   maxRayDist?: number,
- * }} options
- * @returns {{ x1: number, y1: number, x2: number, y2: number } | null}
- */
-export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, maxTravelDist, obstacleGrid = null, circleTargets = [], maxRayDist = 2400 }) {
+/** Aim arrow segment for a circle shot — writes x1,y1,x2,y2 at buf[o..o+3]. */
+export function computeCircleAimLineSegmentInto(buf, o, { originX, originY, radius, nx, ny, maxTravelDist, obstacleGrid = null, circleTargets = [], maxRayDist = 2400 }) {
     const len = Math.hypot(nx, ny);
-    if (len < 1e-6) return null;
+    if (len < 1e-6) return false;
     const dx = nx / len;
     const dy = ny / len;
     const angle = Math.atan2(dy, dx);
@@ -1812,7 +1796,11 @@ export function computeCircleAimLineSegment({ originX, originY, radius, nx, ny, 
     const wallHit = castSteppedCircleRay(originX, originY, angle, maxRayDist, radius, { obstacleGrid });
     if (wallHit.dist < stopDist) stopDist = wallHit.dist;
     circleLeadingPoint(originX, originY, radius, dx, dy, P_VEC_A);
-    return { x1: ENGINE_F32[P_VEC_A], y1: ENGINE_F32[P_VEC_A + 1], x2: originX + dx * (stopDist + radius), y2: originY + dy * (stopDist + radius) };
+    buf[o] = ENGINE_F32[P_VEC_A];
+    buf[o + 1] = ENGINE_F32[P_VEC_A + 1];
+    buf[o + 2] = originX + dx * (stopDist + radius);
+    buf[o + 3] = originY + dy * (stopDist + radius);
+    return true;
 }
 // ==========================================
 // 1. Ray Circle Hit Distance (from circleCast.js)
@@ -2786,31 +2774,11 @@ function remapMapGenStampIdx(config, grid, colOffset, rowOffset, oldCols) {
     config.stampedBoundsIdx = grid.worldToIdx(grid.gridCenterX(oldCol + colOffset), grid.gridCenterY(oldRow + rowOffset));
 }
 export function createMapGenBoundsAabbCache() {
-    return { aabb: createAabb(), boundsMode: "", boundsIdx: -1, boundsCols: NaN, boundsRows: NaN, centerIdx: -1, outerRadiusCells: NaN, donutThicknessCells: NaN };
+    return { aabb: new Float32Array(4), boundsMode: "", boundsIdx: -1, boundsCols: NaN, boundsRows: NaN, centerIdx: -1, outerRadiusCells: NaN, donutThicknessCells: NaN };
 }
 export function getInnerRadiusCells(config) {
     if (config.boundsMode !== "donut") return 0;
     return Math.max(0, config.outerRadiusCells - config.donutThicknessCells);
-}
-export function getMapGenBoundsAabbInto(grid, out, config) {
-    const cellSize = grid.cellSize;
-    if (config.boundsMode === "rect") {
-        const minX = grid.gridCenterXByIdx(config.boundsIdx) - cellSize * 0.5;
-        const minY = grid.gridCenterYByIdx(config.boundsIdx) - cellSize * 0.5;
-        out.minX = minX;
-        out.minY = minY;
-        out.maxX = minX + config.boundsCols * cellSize;
-        out.maxY = minY + config.boundsRows * cellSize;
-        return out;
-    }
-    const r = Math.max(1, config.outerRadiusCells) * cellSize;
-    const cx = grid.gridCenterXByIdx(config.centerIdx);
-    const cy = grid.gridCenterYByIdx(config.centerIdx);
-    out.minX = cx - r;
-    out.minY = cy - r;
-    out.maxX = cx + r;
-    out.maxY = cy + r;
-    return out;
 }
 export function getMapGenBoundsAabbF32(grid, buf, o, config) {
     const cellSize = grid.cellSize;
@@ -2922,7 +2890,7 @@ export function refreshMapGenBoundsAabb(grid, cache, config) {
     cache.centerIdx = config.centerIdx;
     cache.outerRadiusCells = config.outerRadiusCells;
     cache.donutThicknessCells = config.donutThicknessCells;
-    getMapGenBoundsAabbInto(grid, cache.aabb, config);
+    getMapGenBoundsAabbF32(grid, cache.aabb, 0, config);
 }
 export function getMapGenBoundsConfig(editor, kind) {
     if (kind === "erase") return editor.eraseConfig;

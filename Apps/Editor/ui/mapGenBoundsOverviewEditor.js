@@ -1,7 +1,7 @@
 import { getInnerRadiusCells, getMapGenBoundsAabbCache, getMapGenBoundsCenterWorldF32, getMapGenBoundsConfig, migrateMapGenBoundsForMode } from "../../../Libraries/Spatial/spatial.js";
 import { VIEW_TIER } from "../../../Libraries/Viewport/ViewBounds.js";
 import { activeMapGenKind } from "./mapOverview.js";
-import { drawWorldBoundsBox, drawWorldCircle, hitTestRectAabb, hitTestRectAabbF32, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
+import { drawWorldCircle, hitTestRectAabbF32, overviewBoundsCursor, screenToWorld, worldToScreen } from "./mapOverviewDraw.js";
 import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
 const EDGE_HIT_PX = 8;
 /** @typedef {"move" | "resize-outer" | "resize-inner" | "resize-e" | "resize-w" | "resize-n" | "resize-s" | "resize-se" | "resize-sw" | "resize-ne" | "resize-nw"} MapGenBoundsDragMode */
@@ -30,7 +30,7 @@ export function drawMapGenBoundsPreview(ctx, grid, config, cache, displayW, disp
  */
 export function hitTestMapGenBounds(sx, sy, grid, config, boundsCache, cache, displayW, displayH) {
     const cellSize = grid.cellSize;
-    if (config.boundsMode === "rect") return hitTestRectAabb(sx, sy, boundsCache.aabb, cache, displayW, displayH);
+    if (config.boundsMode === "rect") return hitTestRectAabbF32(sx, sy, boundsCache.aabb, 0, cache, displayW, displayH);
     getMapGenBoundsCenterWorldF32(ENGINE_F32, M_VEC_A, grid, config);
     const centerS = worldToScreen(ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1], cache, displayW, displayH);
     const distPx = Math.hypot(sx - centerS.x, sy - centerS.y);

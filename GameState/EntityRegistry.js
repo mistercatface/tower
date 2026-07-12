@@ -1,6 +1,6 @@
 import { pruneKineticConstraintsForBody, resolveBodyRadius, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHashF32, entityIntersectsAabb, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
+import { aabbHashF32, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, ensureGrowI32, pickWorldPoly } from "../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
@@ -254,9 +254,6 @@ export class EntityArena {
             if (ref) fn(ref);
         }
     }
-    queryInAabbStrict(bounds, options = {}) {
-        return this._queryInAabb(bounds, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", undefined);
-    }
     queryInAabbStrictF32(buf, o, options = {}) {
         const packed = this._queryIdsInAabbF32(buf, o, options.kinds ?? EMPTY_KINDS, options.match, options.hitTest ?? "center", undefined, undefined);
         return this._materializeIds(packed.ids, packed.count, undefined);
@@ -296,36 +293,12 @@ export class EntityArena {
         this._queryCache.set(cacheKey, makeQueryViewCacheEntryF32(ids, count, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
         return { ids, count };
     }
-    _queryInAabb(bounds, kinds, match, hitTest, filterId) {
-        const packed = this._queryIdsInAabb(bounds, kinds, match, hitTest, filterId);
-        return this._materializeIds(packed.ids, packed.count, filterId);
-    }
     _ensureCandidateCap(n) {
         ensureGrowI32(this, "_candidateEids", n);
     }
     _pushCandidateEid(eid) {
         this._ensureCandidateCap(this._candidateCount + 1);
         this._candidateEids[this._candidateCount++] = eid;
-    }
-    _queryIdsInAabb(bounds, kinds, match, hitTest, filterId) {
-        this._viewQueryDepth++;
-        this._candidateCount = 0;
-        try {
-            this._fillAllLiveWorldPropEids(kinds);
-            const ids = this._borrowIdBuffer(filterId, this._candidateCount);
-            let count = 0;
-            for (let i = 0; i < this._candidateCount; i++) {
-                const eid = this._candidateEids[i];
-                const ref = entitySlotRef(eid);
-                if (!ref || ref.isDead) continue;
-                if (!entityIntersectsAabb(ref, bounds, hitTest)) continue;
-                if (match && !match(ref)) continue;
-                ids[count++] = eid;
-            }
-            return { ids, count };
-        } finally {
-            this._viewQueryDepth--;
-        }
     }
     _queryIdsInAabbF32(buf, o, kinds, match, hitTest, spatialFrame, filterId) {
         this._viewQueryDepth++;

@@ -3,7 +3,7 @@ import { applySquareCanvasResize } from "./squareCanvasResize.js";
 import { EDITOR_CANVAS_DEFAULTS } from "../state.js";
 import { MAP_GEN_OVERLAY_COLORS, getMapGenBoundsAabbCache, getMapGenBoundsConfig, refreshAllMapGenBoundsPreviews } from "../../../Libraries/Spatial/spatial.js";
 import { createMapGenBoundsOverviewEditor, createViewportOverviewEditor, drawMapGenBoundsPreview, mountOverviewBoundsEditors } from "./mapGenBoundsOverviewEditor.js";
-import { drawWorldBoundsBox, drawWorldBoundsBoxF32 } from "./mapOverviewDraw.js";
+import { drawWorldBoundsBoxF32 } from "./mapOverviewDraw.js";
 /** @type {import("../../../Libraries/Canvas/squareCanvasResize.js").SquareCanvasResizeHandle | null} */
 let overviewCanvasResize = null;
 let overviewCtx = null;
@@ -30,7 +30,7 @@ export function activeMapGenKind(state) {
 function paintMapGenBoundsOverlay(ctx, state, kind, cache, displayW, displayH) {
     const config = getMapGenBoundsConfig(state.editor, kind);
     const color = MAP_GEN_OVERLAY_COLORS[kind];
-    if (config.boundsMode === "rect") drawWorldBoundsBox(ctx, getMapGenBoundsAabbCache(state.editor, kind).aabb, cache, displayW, displayH, color, 2);
+    if (config.boundsMode === "rect") drawWorldBoundsBoxF32(ctx, getMapGenBoundsAabbCache(state.editor, kind).aabb, 0, cache, displayW, displayH, color, 2);
     else drawMapGenBoundsPreview(ctx, state.obstacleGrid, config, cache, displayW, displayH, color);
 }
 /** Blit cached map and draw live viewport / generation bounds — not part of the bake. */

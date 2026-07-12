@@ -1,7 +1,7 @@
 import propCatalog from "../../Assets/props/index.js";
 import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
-import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY } from "../../Core/engineMemory.js";
-import { computeCircleAimLineSegment, estimateRollingTravelDistance } from "../Spatial/spatial.js";
+import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP } from "../../Core/engineMemory.js";
+import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, resolveBodyRadius, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
@@ -17,7 +17,6 @@ const REFERENCE_GRAB_INERTIA = (() => {
     const body = { shape: new CircleShape(4), radius: 4, strategy: stampPrimitivePhysics({ isKinetic: true }, PRIMITIVE_PHYSICS_ROW_CIRCLE) };
     return kineticInertiaFromBody(body);
 })();
-const GRAB_ANCHOR_SCRATCH = ENGINE_F32;
 function hueFromPullRatio(ratio) {
     return 180 - ratio * 180;
 }
@@ -100,9 +99,9 @@ export function buildDragLaunchAimLineContext(prop, state) {
     return { prop, radius: prop.radius, maxRayDist };
 }
 export function getDragLaunchAimLine(preview, aimLineContext) {
-    if (!preview || preview.power <= 0 || !aimLineContext) return null;
+    if (!preview || preview.power <= 0 || !aimLineContext) return false;
     const travelDist = estimateRollingTravelDistance(preview.power, aimLineContext.prop?.strategy ?? {});
-    return computeCircleAimLineSegment({ originX: preview.anchorX, originY: preview.anchorY, radius: aimLineContext.radius, nx: preview.nx, ny: preview.ny, maxTravelDist: travelDist, maxRayDist: aimLineContext.maxRayDist });
+    return computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, { originX: preview.anchorX, originY: preview.anchorY, radius: aimLineContext.radius, nx: preview.nx, ny: preview.ny, maxTravelDist: travelDist, maxRayDist: aimLineContext.maxRayDist });
 }
 export function applyDragLaunchVelocity(body, nx, ny, power) {
     body.vx = nx * power;
@@ -201,28 +200,28 @@ function resolveGrabDragAnchor(prop, world) {
     const verts = prop.drawOutline?.length >= 6 ? prop.drawOutline : prop.shape?.vertices;
     if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && verts?.length >= 6) {
         const facing = readEntityFacing(prop);
-        findClosestPolygonBoundaryGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, verts, prop.x, prop.y, facing, world.x, world.y);
-        GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
-        GRAB_ANCHOR_SCRATCH[G_OY] = GRAB_ANCHOR_SCRATCH[G_WY] - world.y;
+        findClosestPolygonBoundaryGrabPointInto(ENGINE_F32, G_WX, verts, prop.x, prop.y, facing, world.x, world.y);
+        ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
+        ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
         return;
     }
     if (asset?.primitive === PROP_PRIMITIVE_SPHERE && asset.physics?.isKinetic !== false) {
         const facing = readEntityFacing(prop);
         const radius = resolveBodyRadius(prop);
-        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.x, prop.y, facing, radius, world.x, world.y);
-        GRAB_ANCHOR_SCRATCH[G_OX] = GRAB_ANCHOR_SCRATCH[G_WX] - world.x;
-        GRAB_ANCHOR_SCRATCH[G_OY] = GRAB_ANCHOR_SCRATCH[G_WY] - world.y;
+        findCircleRimGrabPointInto(ENGINE_F32, G_WX, prop.x, prop.y, facing, radius, world.x, world.y);
+        ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
+        ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
         return;
     }
-    GRAB_ANCHOR_SCRATCH[G_LX] = 0;
-    GRAB_ANCHOR_SCRATCH[G_LY] = 0;
-    GRAB_ANCHOR_SCRATCH[G_OX] = prop.x - world.x;
-    GRAB_ANCHOR_SCRATCH[G_OY] = prop.y - world.y;
+    ENGINE_F32[G_LX] = 0;
+    ENGINE_F32[G_LY] = 0;
+    ENGINE_F32[G_OX] = prop.x - world.x;
+    ENGINE_F32[G_OY] = prop.y - world.y;
 }
 function grabDragAnchorWorld(prop, run) {
     if (prop.strategy?.rolls) {
         const radius = resolveBodyRadius(prop);
-        findCircleRimGrabPointInto(GRAB_ANCHOR_SCRATCH, G_WX, prop.x, prop.y, readEntityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
+        findCircleRimGrabPointInto(ENGINE_F32, G_WX, prop.x, prop.y, readEntityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
         return;
     }
     const angle = readEntityFacing(prop);
@@ -230,8 +229,8 @@ function grabDragAnchorWorld(prop, run) {
     const sin = Math.sin(angle);
     const lx = run.anchorLocalX;
     const ly = run.anchorLocalY;
-    GRAB_ANCHOR_SCRATCH[G_WX] = prop.x + lx * cos - ly * sin;
-    GRAB_ANCHOR_SCRATCH[G_WY] = prop.y + lx * sin + ly * cos;
+    ENGINE_F32[G_WX] = prop.x + lx * cos - ly * sin;
+    ENGINE_F32[G_WY] = prop.y + lx * sin + ly * cos;
 }
 export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
     const propRuns = new Map();
@@ -248,8 +247,8 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             dy = ty - prop.y;
         } else {
             grabDragAnchorWorld(prop, run);
-            dx = tx - GRAB_ANCHOR_SCRATCH[G_WX];
-            dy = ty - GRAB_ANCHOR_SCRATCH[G_WY];
+            dx = tx - ENGINE_F32[G_WX];
+            dy = ty - ENGINE_F32[G_WY];
         }
         const dist = Math.hypot(dx, dy);
         if (dist < rollConfig.stopRadius) {
@@ -265,8 +264,8 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
         steerRollToward(prop, dx / dist, dy / dist, rollConfig, null, rollConfig.accel * (0.5 + ratio), rollConfig.maxSpeed * (0.3 + ratio * 0.7));
         if (prop.strategy?.rolls) return;
         grabDragAnchorWorld(prop, run);
-        const rx = GRAB_ANCHOR_SCRATCH[G_WX] - prop.x;
-        const ry = GRAB_ANCHOR_SCRATCH[G_WY] - prop.y;
+        const rx = ENGINE_F32[G_WX] - prop.x;
+        const ry = ENGINE_F32[G_WY] - prop.y;
         const leverArmSq = rx * rx + ry * ry;
         if (leverArmSq > 0.25) {
             const fx = (dx / dist) * power;
@@ -287,7 +286,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             for (const id of groundNavBehaviorIds) state.sandbox.behaviorById.get(id)?.clearMoveTarget?.(prop);
             state.sandbox.entityMeta.clearActiveBehaviorId(prop.id);
             resolveGrabDragAnchor(prop, world);
-            propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: GRAB_ANCHOR_SCRATCH[G_OX], offsetY: GRAB_ANCHOR_SCRATCH[G_OY], anchorLocalX: GRAB_ANCHOR_SCRATCH[G_LX], anchorLocalY: GRAB_ANCHOR_SCRATCH[G_LY], dragging: true });
+            propRuns.set(prop.id, { targetWorld: { x: world.x, y: world.y }, offsetX: ENGINE_F32[G_OX], offsetY: ENGINE_F32[G_OY], anchorLocalX: ENGINE_F32[G_LX], anchorLocalY: ENGINE_F32[G_LY], dragging: true });
             if (activeRunIds.indexOf(prop.id) === -1) activeRunIds.push(prop.id);
             wakeKineticBody(prop);
             return true;
@@ -332,8 +331,8 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds = []) {
             if (!run?.dragging) return;
             const grabConfig = resolveDragLaunchConfig(prop);
             grabDragAnchorWorld(prop, run);
-            const ax = GRAB_ANCHOR_SCRATCH[G_WX];
-            const ay = GRAB_ANCHOR_SCRATCH[G_WY];
+            const ax = ENGINE_F32[G_WX];
+            const ay = ENGINE_F32[G_WY];
             const tx = run.targetWorld.x + run.offsetX;
             const ty = run.targetWorld.y + run.offsetY;
             const dist = Math.hypot(tx - ax, ty - ay);
@@ -369,7 +368,7 @@ export function appendDragLaunchOverlayCommands(commands, aim, config, aimLineCo
     commands.push(overlaySegment(preview.pullX, preview.pullY, preview.anchorX, preview.anchorY, { stroke: `hsla(${hue}, 90%, 55%, 0.4)`, lineWidth: 2, dash: [6, 4] }));
     commands.push(overlayCircleStroke(preview.anchorX, preview.anchorY, 7, { stroke: `hsla(${hue}, 100%, 60%, 0.85)`, lineWidth: 2 }));
     if (preview.power <= 0) return;
-    const aimLine = resolveAimLine(preview, aimLineContext);
-    if (!aimLine) return;
-    commands.push(overlayAimSegment(aimLine.x1, aimLine.y1, aimLine.x2, aimLine.y2, { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3, glowHue: hue }));
+    if (!resolveAimLine(preview, aimLineContext)) return;
+    const aimO = ENGINE_BOUNDS_BASE + B_TMP;
+    commands.push(overlayAimSegment(ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], { color: `hsl(${hue}, 100%, 50%)`, lineWidth: 3, glowHue: hue }));
 }

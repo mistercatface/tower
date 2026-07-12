@@ -11,6 +11,8 @@ const ALLOWED_BAG_EXPORTS = new Set([
     "kineticPairBuffer",
     "persistedKineticPairBuffer",
     "kineticDebrisSlab",
+    "deferredFractureSlab",
+    "primitivePhysics",
     "pendingWallBreaks",
     "wallSpawnScratch",
     "staticWallSegmentSlab",
