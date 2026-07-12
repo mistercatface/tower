@@ -529,6 +529,7 @@ export class WorldProp {
         if (this.isSleeping) return;
         if (this.strategy.rolls) integratePropMotion(this, dt);
         else applyVelocityDamping(this, dt, primitiveDragFriction(this.strategy));
+        if (this.spinMotor) this.angularVelocity = this.spinMotorDrive ?? this.spinMotor;
         if (this.strategy.orientToMotion) {
             const speed = Math.hypot(this.vx, this.vy);
             if (speed > 0.1) {
