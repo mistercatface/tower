@@ -11,10 +11,9 @@ function shapeOverlapsWall(prop, segId) {
     return satCheckPolygonVsWallSegment(prop.x, prop.y, readEntityFacing(prop), prop.shape, segId);
 }
 function resolveWallUntilClear(prop, segIds, maxPasses = 6) {
-    const wp = prop.strategy?.wallPhysics;
     for (let pass = 0; pass < maxPasses; pass++) {
         if (!shapeOverlapsWall(prop, segIds.buf[0])) return;
-        resolveBodyAgainstWallSegments(prop, prop.shape, segIds, wp?.restitution ?? 0, wp?.friction ?? 0.9);
+        resolveBodyAgainstWallSegments(prop, prop.shape, segIds, prop.strategy.wallRestitution, prop.strategy.wallFriction);
     }
 }
 function bar16x8(x, y, physId) {
@@ -33,7 +32,7 @@ describe("polygon wall resolution", () => {
         const segs = wallSegIds(wall);
         assert.ok(shapeOverlapsWall(bar, wall));
         const hits = createWallHitBuffer();
-        const collided = resolveBodyAgainstWallSegments(bar, bar.shape, segs, bar.strategy.wallPhysics.restitution, bar.strategy.wallPhysics.friction, () => false, hits);
+        const collided = resolveBodyAgainstWallSegments(bar, bar.shape, segs, bar.strategy.wallRestitution, bar.strategy.wallFriction, () => false, hits);
         assert.ok(collided);
         assert.ok(hits.count > 0);
         assert.ok(hits.normalX[0] > 0.9);
@@ -60,7 +59,7 @@ describe("polygon wall resolution", () => {
         bar.vx = -40;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
-        resolveBodyAgainstWallSegments(bar, bar.shape, wallSegIds(wall), bar.strategy.wallPhysics.restitution, bar.strategy.wallPhysics.friction);
+        resolveBodyAgainstWallSegments(bar, bar.shape, wallSegIds(wall), bar.strategy.wallRestitution, bar.strategy.wallFriction);
         assert.ok(bar.vx > -40);
     });
     it("collision pipeline resolves resting polygon at zero linear speed", () => {
@@ -106,8 +105,8 @@ describe("polygon wall resolution", () => {
             bar,
             bar.shape,
             wallSegIds(wall),
-            bar.strategy.wallPhysics.restitution,
-            bar.strategy.wallPhysics.friction,
+            bar.strategy.wallRestitution,
+            bar.strategy.wallFriction,
             (approachDot) => computeWallBreakStrength(560, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength,
             hits,
         );
@@ -128,8 +127,8 @@ describe("polygon wall resolution", () => {
             bar,
             bar.shape,
             wallSegIds(wall),
-            bar.strategy.wallPhysics.restitution,
-            bar.strategy.wallPhysics.friction,
+            bar.strategy.wallRestitution,
+            bar.strategy.wallFriction,
             (approachDot) => computeWallBreakStrength(40, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength,
         );
         assert.ok(!shapeOverlapsWall(bar, wall));

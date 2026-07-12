@@ -15,10 +15,6 @@ import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/Gam
 import propCatalog from "../Assets/props/index.js";
 import { gridSettings } from "../Config/world.js";
 const cacheKeyDeps = { quantizeAngleIndex };
-const polygonVisuals = {
-    colors: { side: "#888", sideShadow: "#666", top: "#aaa" },
-    world: { height: 10 },
-};
 describe("draw shape parity", () => {
     it("hex block shares polygon sim and draw footprint with six vertices", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
@@ -55,7 +51,7 @@ describe("draw shape parity", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
-        const draw = createPolygonPrimitive(polygonVisuals);
+        const draw = createPolygonPrimitive();
         const calls = { beginPath: 0, fill: 0, stroke: 0 };
         const ctx = {
             beginPath() { calls.beginPath++; },
@@ -89,7 +85,7 @@ describe("draw shape parity", () => {
             capCanvas: { width: 128, height: 128 },
         };
         prop._wallChunkTextureReady = true;
-        const draw = createPolygonPrimitive(polygonVisuals);
+        const draw = createPolygonPrimitive();
         const path = [];
         let fills = 0;
         let createPattern = 0;
@@ -133,7 +129,7 @@ describe("draw shape parity", () => {
         applyPropBoxFootprint(prop, 12, 5);
         assert.equal(prop.height, gridSettings.cellSize);
         assert.equal(prop.wallChunkHeightPx, gridSettings.cellSize);
-        const draw = createPolygonPrimitive(polygonVisuals);
+        const draw = createPolygonPrimitive();
         const calls = { fill: 0, stroke: 0 };
         const ctx = {
             beginPath() {},
@@ -211,7 +207,7 @@ describe("draw shape parity", () => {
         assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.height - smallChild.height * 2) < 1e-6);
-        assert.ok(smallChild.height < propCatalog["tri_wedge"].visuals.world.height);
+        assert.ok(smallChild.height < gridSettings.cellSize);
     });
     it("visual attachments expand bake bounds and facing cache keys", () => {
         const right = new WorldProp(0, 0, "boid_triangle", 0);

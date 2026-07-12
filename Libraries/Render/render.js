@@ -6,7 +6,6 @@ import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 import { transformRollVertexInto, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
-import { NEUTRAL_SPHERE_PENDING_FILL } from "../../Assets/props/shared/neutralCoats.js";
 import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, SHAPE_TYPE_CIRCLE } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
@@ -736,7 +735,7 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     const panelCount = Math.max(3, options.panelCount ?? 6);
     const latBands = Math.max(3, options.latBands ?? 5);
     const lonBands = panelCount;
-    const pendingFill = options.pendingFill ?? NEUTRAL_SPHERE_PENDING_FILL;
+    const pendingFill = options.pendingFill ?? SPHERE_PENDING_FILL;
     const textures = options.textures;
     const textured = !!(textures?.ready && textures.capCanvas);
     const qw = prop.rollQw ?? 1;
@@ -762,6 +761,8 @@ export function drawSphere(ctx, prop, viewport, options = {}) {
     drawPass(sSphereFrontOrder, frontN);
 }
 export const DEFAULT_PROP_HEIGHT = 14;
+export const SPHERE_PENDING_FILL = "#9A9A9A";
+export const WALL_CHUNK_FALLBACK_COLORS = { side: "#9E9E9E", sideShadow: "#757575", top: "#BDBDBD", bodyInspect: "#9E9E9E" };
 let sBaseRing = new Float32Array(0);
 let sTopRing = new Float32Array(0);
 function ensurePrismScratch(vertexCount) {
@@ -957,7 +958,7 @@ const sWallBackFaceColors = { shadow: null, mid: null, highlight: null };
 const sWallTopColors = { light: null, mid: null, dark: null };
 const sWallDrawOpts = { height: 0, facing: 0, faceColors: sWallFaceColors, backFaceColors: sWallBackFaceColors, topColors: sWallTopColors, localVerts: null, topHx: null, topHy: null };
 const sWallFlatVerts = new Float32Array(1024);
-function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts, colors, world) {
+function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts, colors) {
     if (!localVerts || localVerts.length < 6) return;
     if (flatPresentation) {
         if (prop._wallChunkTextures?.ready && prop._wallChunkTextures.capCanvas && drawFlatWallChunkCap(ctx, prop, localVerts)) return;
@@ -983,7 +984,7 @@ function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts,
     }
     if (drawWallChunkTextured(ctx, prop, viewport, localVerts)) return;
     const tinted = resolveVisualOverrideColorTree(prop, colors);
-    const height = prop.height ?? world?.height ?? 12;
+    const height = prop.height ?? DEFAULT_PROP_HEIGHT;
     const side = tinted.side;
     const sideShadow = tinted.sideShadow ?? side;
     sWallFaceColors.shadow = sideShadow;
@@ -1002,23 +1003,22 @@ function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts,
     sWallDrawOpts.topHy = null;
     drawExtrudedConvexPolygon(ctx, prop, viewport, sWallDrawOpts);
 }
-export function createWallChunkDraw(visuals) {
-    const { colors, world } = visuals;
+export function createWallChunkDraw() {
     return (ctx, prop, viewport, flatPresentation) => {
         const outline = prop.drawOutline;
         if (outline) {
-            drawWallChunkContour(ctx, prop, viewport, flatPresentation, outline, colors, world);
+            drawWallChunkContour(ctx, prop, viewport, flatPresentation, outline, WALL_CHUNK_FALLBACK_COLORS);
             return;
         }
         const parts = prop.collisionParts;
         if (parts?.length > 1) {
             for (let i = 0; i < parts.length; i++) {
                 const verts = parts[i].vertices;
-                if (verts?.length >= 6) drawWallChunkContour(ctx, prop, viewport, flatPresentation, verts, colors, world);
+                if (verts?.length >= 6) drawWallChunkContour(ctx, prop, viewport, flatPresentation, verts, WALL_CHUNK_FALLBACK_COLORS);
             }
             return;
         }
-        drawWallChunkContour(ctx, prop, viewport, flatPresentation, prop.shape?.vertices, colors, world);
+        drawWallChunkContour(ctx, prop, viewport, flatPresentation, prop.shape?.vertices, WALL_CHUNK_FALLBACK_COLORS);
     };
 }
 function parallelInsertionSort(kinds, baseIndices, depths, refs, start, end) {

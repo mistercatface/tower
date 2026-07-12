@@ -26,6 +26,7 @@ const deletedPassthroughExports = [
     "sandboxAssetDragInteract",
     "assetSupportsDragLaunch",
     "DRAG_LAUNCH_BASELINE",
+    "wallPhysics",
     "applyFractureGeometryToProp",
     "applyChunkGeometryToProp",
     "localBoxOutline",

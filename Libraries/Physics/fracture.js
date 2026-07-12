@@ -5,7 +5,7 @@ import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, clearPendingB
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
-import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey } from "../Props/props.js";
+import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey, resolveAssetPropHeight } from "../Props/props.js";
 import { stampPropVisualOverride } from "../Color/visualOverride.js";
 import { VIEW_TIER } from "../Viewport/ViewBounds.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8, refSpan: 40, sizeForceExp: 1.25 }, default: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
@@ -416,7 +416,7 @@ class KineticDebrisStore {
         body.type = type;
         body.strategy = sharedWorldPropStrategy(type);
         const asset = propCatalog[type];
-        body.height = asset?.visuals?.world?.height ?? 12;
+        body.height = resolveAssetPropHeight(asset);
         body.visualOverride = undefined;
         body.faction = undefined;
         body._cachedStaticKey = undefined;

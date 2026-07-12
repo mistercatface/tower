@@ -28,6 +28,9 @@ import {
     ensureGrowU16,
     kineticDynamicSlab,
     kineticStaticSlab,
+    primitivePhysics,
+    PRIMITIVE_PHYSICS_ROW_CIRCLE,
+    PRIMITIVE_PHYSICS_ROW_POLYGON,
     kineticConstraintSlab,
     kineticConstraintStore,
     kineticContactBuffer,
@@ -75,7 +78,7 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -143,7 +146,7 @@ export const LIBRARY_COLLISION_DEFAULTS = {
     kineticActivity: { movingSpeedSq: 0.25, rotatingSpeedRad: 0.1, neighborQueryPad: { minPad: 2, padScale: 0.5, maxPad: 15 } },
     kineticSleep: { frames: 30 },
     restitution: { rigidBody: 0.15, kineticPair: 0.4 },
-    /** Coulomb pair friction when strategy has no pairFriction / wallPhysics.friction. */
+    /** Coulomb pair friction when slab friction is unset (-1). */
     pairFriction: 0.35,
     /** Prior-frame normal/tangent impulse decay for kinetic contact warm-start. */
     kineticWarmStartDecay: 0.8,
@@ -255,6 +258,20 @@ export function kineticFootprintArea(body) {
 export function kineticDensity(body) {
     return body.strategy?.density ?? collisionSettings.material.densityDefault;
 }
+export function primitivePhysicsRow(assetOrStrategy) {
+    if (assetOrStrategy?.primitive === PROP_PRIMITIVE_SPHERE) return PRIMITIVE_PHYSICS_ROW_CIRCLE;
+    if (assetOrStrategy?.rolls === true) return PRIMITIVE_PHYSICS_ROW_CIRCLE;
+    return PRIMITIVE_PHYSICS_ROW_POLYGON;
+}
+export function stampPrimitivePhysics(strategy, row = primitivePhysicsRow(strategy)) {
+    const table = primitivePhysics;
+    strategy.density = table.density[row];
+    strategy.friction = table.dragFriction[row];
+    strategy.wallRestitution = table.wallRestitution[row];
+    strategy.wallFriction = table.wallFriction[row];
+    delete strategy.wallPhysics;
+    return strategy;
+}
 export function kineticMassFromFootprint(body) {
     const minMass = collisionSettings.material.minMass;
     return Math.max(minMass, kineticDensity(body) * kineticFootprintArea(body));
@@ -291,8 +308,8 @@ export function normalizeKineticBody(body) {
     slab.invMass[physId] = 1 / body.mass;
     slab.invI[physId] = moment ? 1 / moment : 0;
     slab.entityId[physId] = body.id ?? -1;
-    slab.restitution[physId] = strategy.pairRestitution ?? -1;
-    slab.friction[physId] = strategy.pairFriction ?? (strategy.wallPhysics ? strategy.wallPhysics.friction : -1);
+    slab.restitution[physId] = strategy.wallRestitution ?? strategy.pairRestitution ?? -1;
+    slab.friction[physId] = strategy.wallFriction ?? strategy.pairFriction ?? -1;
     return body;
 }
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
@@ -1977,9 +1994,8 @@ export class WallCollisionResolver {
         }
         const physId = entity._physId;
         if (physId === undefined || physId === -1) throw new Error("WallCollisionResolver requires _physId");
-        const wp = entity.strategy?.wallPhysics;
-        const restitution = wp?.restitution ?? 0.0;
-        const friction = wp?.friction ?? 0.9;
+        const restitution = entity.strategy.wallRestitution;
+        const friction = entity.strategy.wallFriction;
         let collided = false;
         const wantHits = shouldBreakWallHit != null;
         const outHits = wantHits ? hits : null;

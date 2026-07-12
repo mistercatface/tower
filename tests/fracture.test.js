@@ -84,9 +84,7 @@ describe("fracture", () => {
         const asset = propCatalog["box"];
         assert.equal(asset.physics.fracture, undefined);
         assert.ok(asset.sandbox.resizableBox);
-        assert.equal(asset.visuals.colors.side != null, true);
-        assert.equal(asset.visuals.colors.top != null, true);
-        assert.equal(asset.visuals.world.height, 7);
+        assert.equal(asset.visuals, undefined);
     });
     it("box polygon draw recipe is flat in 2d and extruded in radial", () => {
         const prop = new WorldProp(0, 0, "box", 0);

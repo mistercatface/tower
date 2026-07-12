@@ -230,7 +230,8 @@ export function mockRollingProp(overrides = {}) {
 }
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
     const strategy = { isKinetic: true, ...options.strategy };
-    if (options.pairFriction != null) strategy.pairFriction = options.pairFriction;
+    if (options.pairFriction != null) strategy.wallFriction = options.pairFriction;
+    if (options.pairRestitution != null) strategy.wallRestitution = options.pairRestitution;
     const shape = options.sharedShape ? new CircleShape(radius) : null;
     const body = {
         id: options.id ?? nextMockKineticCircleId++,
