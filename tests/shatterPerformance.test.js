@@ -5,7 +5,7 @@ import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { createFractureWorld, setupPropForFracture, spawnFractureShards, readImpactFracture } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupPropForFracture, spawnFractureShards } from "./harness/fractureHarness.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
     it("EntityRegistry membershipGen increments once for batch operations", () => {
@@ -40,21 +40,8 @@ describe("Shatter / Debris Performance Fixes", () => {
             world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
         }
 
-        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30));
-        const stores = world.fractureEngine.stores;
-        const f = readImpactFracture(stores);
-        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(
-            prop,
-            stores,
-            f.debrisStart,
-            f.debrisCount,
-            f.originX,
-            f.originY,
-            f.facing,
-            f.impactLocalX,
-            f.impactLocalY,
-            f.impactForce,
-        );
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30, world.fractureEngine));
+        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop);
         assert.ok(spawnedAgain.length >= 2);
 
         for (const body of spawnedAgain) {
@@ -65,6 +52,7 @@ describe("Shatter / Debris Performance Fixes", () => {
     it("KineticSpatialFrame assigns unique monotonic physIds and prevents collision", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
+        const startId = frame._nextPhysId;
 
         const propA = new WorldProp(0, 0, "box", 0);
         const propB = new WorldProp(100, 0, "box", 0);
@@ -73,39 +61,44 @@ describe("Shatter / Debris Performance Fixes", () => {
         world.worldProps.push(propA, propB, propC);
         frame.begin(world);
 
-        assert.equal(frame._nextPhysId, 3);
+        assert.equal(frame._nextPhysId, startId + 3);
+        assert.equal(propA._physId, startId);
+        assert.equal(propB._physId, startId + 1);
+        assert.equal(propC._physId, startId + 2);
 
         const propNew = new WorldProp(300, 0, "box", 0);
         frame.admitKineticProps([propNew], world);
 
-        assert.equal(propNew._physId, 3);
-        assert.equal(frame._nextPhysId, 4);
+        assert.equal(propNew._physId, startId + 3);
+        assert.equal(frame._nextPhysId, startId + 4);
     });
 
     it("begin() keeps physIds stable when membership is unchanged", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
+        const startId = frame._nextPhysId;
         const prop = new WorldProp(0, 0, "box", 0);
         world.worldProps.push(prop);
         frame.begin(world);
-        assert.equal(prop._physId, 0);
+        assert.equal(prop._physId, startId);
         const propB = new WorldProp(100, 0, "box", 0);
         frame.admitKineticProps([propB], world);
-        assert.equal(propB._physId, 1);
+        assert.equal(propB._physId, startId + 1);
         world.worldProps.push(propB);
         frame.begin(world);
-        assert.equal(prop._physId, 0);
-        assert.equal(propB._physId, 1);
+        assert.equal(prop._physId, startId);
+        assert.equal(propB._physId, startId + 1);
     });
 
     it("evict returns physId to free list and scrubs slab on reuse", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
+        const startId = frame._nextPhysId;
         const prop = new WorldProp(0, 0, "box", 0);
         world.worldProps.push(prop);
         frame.begin(world);
         const releasedId = prop._physId;
-        assert.equal(releasedId, 0);
+        assert.equal(releasedId, startId);
         prop.vx = 999;
         const idx = world.worldProps.indexOf(prop);
         if (idx >= 0) world.worldProps.splice(idx, 1);

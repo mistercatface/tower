@@ -10,11 +10,11 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
 }
 import { FRACTURE_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
 import { transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA } from "../Core/engineMemory.js";
+import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y } from "../Core/engineMemory.js";
 import { satCheckCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
 import { PolygonShape } from "../Libraries/Physics/physics.js";
 import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries, readImpactFracture } from "./harness/fractureHarness.js";
+import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
@@ -147,16 +147,17 @@ describe("fracture", () => {
         }
     });
     it("fracturePropOnImpact returns all shards and no parent geometry", () => {
+        const world = createFractureWorld();
         const prop = new WorldProp(50, 50, "box", 0);
         setupPropForFracture(prop, 16, 10, 0);
-        assert.ok(FractureEngine.fracturePropOnImpact(prop, 50, 50, 25));
-        const fracture = readImpactFracture();
-        assert.equal(ENGINE_F32[F_OUT_DEBRIS_START], fracture.debrisStart);
-        assert.equal(ENGINE_F32[F_OUT_DEBRIS_COUNT], fracture.debrisCount);
-        assert.ok(fracture.debrisCount >= 2);
-        assert.ok(materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount).length >= 4);
-        assert.ok(Number.isFinite(fracture.impactLocalX));
-        assert.ok(Number.isFinite(fracture.impactLocalY));
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 50, 50, 25, world.fractureEngine));
+        const stores = world.fractureEngine.stores;
+        const debrisStart = ENGINE_F32[F_OUT_DEBRIS_START];
+        const debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+        assert.ok(debrisCount >= 2);
+        assert.ok(materializeDebrisGeometries(stores, debrisStart, debrisCount).length >= 4);
+        assert.ok(Number.isFinite(ENGINE_F32[F_OUT_IMPACT_LOCAL_X]));
+        assert.ok(Number.isFinite(ENGINE_F32[F_OUT_IMPACT_LOCAL_Y]));
         assert.equal(prop.poxels, undefined);
     });
     it("shatterPolygon outside-hit path builds seeds via ENGINE_F32 centroid Into", () => {
@@ -172,6 +173,7 @@ describe("fracture", () => {
         }
     });
     it("shard fractures again on its actual polygon footprint", () => {
+        const world = createFractureWorld();
         const shards = shatterFootprint(12, 8, 0, 0, 30);
         const big = shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));
         const prop = new WorldProp(0, 0, "box", 0);
@@ -179,9 +181,8 @@ describe("fracture", () => {
         assignPhysIdWithPose(prop, 0);
         FractureEngine.applyPropFractureGeometry(prop, big);
         assert.ok(FractureEngine.canFracturePropSplit(prop));
-        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 25));
-        const fracture = readImpactFracture();
-        const debris = materializeDebrisGeometries(fracture._stores, fracture.debrisStart, fracture.debrisCount);
+        assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 25, world.fractureEngine));
+        const debris = materializeDebrisGeometries(world.fractureEngine.stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
         assert.ok(debris.length >= 2);
         for (const piece of debris) assert.ok(piece.footprintArea < big.footprintArea);
     });

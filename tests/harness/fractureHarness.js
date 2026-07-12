@@ -1,6 +1,6 @@
 import { FractureEngine, moduleStores, seedFractureRand } from "../../Libraries/Physics/fracture.js";
 import { boxLocalFootprint } from "../../Libraries/Math/math.js";
-import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE } from "../../Core/engineMemory.js";
+import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT } from "../../Core/engineMemory.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
@@ -90,37 +90,10 @@ export function shatterFootprint(hx, hy, hitX, hitY, impactForce = 10) {
     return shatterPolygon(boxLocalFootprint(hx, hy), hitX, hitY, impactForce);
 }
 
-export function readImpactFracture(stores = moduleStores) {
-    return {
-        debrisStart: ENGINE_F32[F_OUT_DEBRIS_START],
-        debrisCount: ENGINE_F32[F_OUT_DEBRIS_COUNT],
-        originX: ENGINE_F32[F_OUT_ORIGIN_X],
-        originY: ENGINE_F32[F_OUT_ORIGIN_Y],
-        facing: ENGINE_F32[F_OUT_FACING],
-        impactLocalX: ENGINE_F32[F_OUT_IMPACT_LOCAL_X],
-        impactLocalY: ENGINE_F32[F_OUT_IMPACT_LOCAL_Y],
-        impactForce: ENGINE_F32[F_OUT_IMPACT_FORCE],
-        _stores: stores,
-    };
-}
-
 export function spawnFractureShards(world, prop, impactForce = 30, hitX = 0, hitY = 0) {
     if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce, world.fractureEngine)) return null;
-    const stores = world.fractureEngine.stores;
-    const fracture = readImpactFracture(stores);
-    const shards = world.fractureEngine.debris.spawnShardsFromFracture(
-        prop,
-        stores,
-        fracture.debrisStart,
-        fracture.debrisCount,
-        fracture.originX,
-        fracture.originY,
-        fracture.facing,
-        fracture.impactLocalX,
-        fracture.impactLocalY,
-        fracture.impactForce,
-    );
-    return { fracture, shards };
+    const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop);
+    return { shards };
 }
 
 export function removeEditorPropFromWorld(world, prop) {
