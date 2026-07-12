@@ -28,7 +28,7 @@ describe("grabDrag behavior", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state);
         const kinetic = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 32, y: 32, type: "ball" }));
-        const staticProp = registerGrabDragTestProp(state, { id: 2, x: 48, y: 48, strategy: { isKinetic: false }, isDead: false });
+        const staticProp = registerGrabDragTestProp(state, { id: 2, x: 48, y: 48, radius: 8, shape: new CircleShape(8), strategy: { isKinetic: false }, isDead: false });
         assert.equal(behavior.onPointerDown(kinetic, { x: 32, y: 32 }), true);
         assert.equal(behavior.onPointerDown(staticProp, { x: 48, y: 48 }), false);
     });

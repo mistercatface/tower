@@ -7,7 +7,7 @@ import { createSandboxSession, collectFlatPlacedSandboxPropEntries } from "../Li
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
-import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
+import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 import propCatalog from "../Assets/props/index.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE } from "../Core/engineEnums.js";
 

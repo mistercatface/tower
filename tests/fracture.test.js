@@ -18,7 +18,7 @@ import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawn
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
-import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
+import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 const originalMathRandom = Math.random;
 Math.random = () => 0.5;
 const deterministicRandom = () => 0.5;

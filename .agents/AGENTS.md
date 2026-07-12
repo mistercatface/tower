@@ -52,7 +52,8 @@ Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch
 - Viewport zoom/position APIs call `recomputeViewBounds`; never store tiers on Viewport. Use `circleInViewBounds` for visibility (not `viewport.circleInBounds`).
 - Never put camera tiers in `ENGINE_F32` Bounds bank (`B_*` are ephemeral scratch only).
 - Viewport screen/world mapping is `(buf, o, …)` only (`screenToWorldF32` / `worldToScreenF32`) — **no** `return { x, y }`.
-- View → registry queries return **count**; ids via `borrowedQueryIds(filterId)`. Camera: `queryViewTier` / positional `queryPropIdsInView(…, tierO, hitTest, filterId, match)`. Scratch AABB: `queryInAabbF32(…, buf, o, …)`. Hit tests are eid SoA + `HIT_TEST_CIRCLE` / `HIT_TEST_CENTER` only. No criteria/`opts` bags. Do not reintroduce `BRIDGE_AABB` on that path.
+- View → registry queries return **count**; ids via `borrowedQueryIds(filterId)`. Camera: `queryViewTier(spatialFrame, tierO, filterId, match)`. Scratch AABB: `queryInAabbF32(…, buf, o, …)`. Intersection is circle vs AABB via eid SoA (`entityX`/`entityY`/`entityR`). No criteria/`opts` bags; no `queryPropIdsInView` passthrough. Do not reintroduce `BRIDGE_AABB` on that path.
+- Modes (`SHAPE_TYPE_*`, `DRAW_KIND_*`, …) live in `Core/engineEnums.js`. Slabs and buffer layout offsets (`VIEW_TIER_*`) live in `Core/engineMemory.js`. Do not put semantic modes in `engineMemory`. Editor boot lives under `Apps/Editor/`, not a Core globals module.
 - Zoom/position changes go through `setZoom` / `setPosition` / `snapTo` / `follow` so bounds recompute.
 - Tests/harnesses that mock a viewport without a real `Viewport` must call `recomputeViewBounds` when visibility matters — no production branches for Node.
 

@@ -1,4 +1,3 @@
-import { clearPropSpriteCache } from "../Libraries/Canvas/canvas.js";
 /**
  * Internal bake diameter for radial-elevation props. Target `propPixelSize` applies to small props;
  * larger props automatically bake at full world diameter so nothing is upscaled on blit.
@@ -20,12 +19,6 @@ export function hasEntityPropPixelSize(prop) {
 export function resolvePropPixelSizeForProp(prop) {
     if (hasEntityPropPixelSize(prop)) return prop.strategy.propPixelSize;
     return propPixelSize;
-}
-/** @param {import("./GameDefinitionTypes.js").EngineProfile | null | undefined} definition */
-export function resolvePropPixelSize(definition) {
-    const value = definition?.propPixelSize;
-    if (typeof value === "number" && value > 0) return value;
-    return defaultPropPixelSize;
 }
 /** Quantize zoom for prop bake cache keys — eighth-step buckets. */
 export function quantizePropBakeZoom(zoom) {

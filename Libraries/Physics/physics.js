@@ -78,25 +78,17 @@ import {
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, KINETIC_PAIR_COUNT, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
 export const LIBRARY_PHYSICS_DEFAULTS = { groundNavRoll: { maxSpeed: 180, accel: 600, stopRadius: 6 }, groundNavHpa: { stopRadius: 8, pathWaypointArrivalMin: 12, pathWaypointArrivalRadiusFactor: 1.5 } };
 export const physicsSettings = structuredClone(LIBRARY_PHYSICS_DEFAULTS);
-/** Default collision/render radius when a body omits `radius`. */
-export const LIBRARY_DEFAULT_BODY_RADIUS = 8;
-/** Default offscreen bake diameter for radial-elevation prop sprites. */
-const LIBRARY_DEFAULT_BAKE_PIXEL_SIZE = 32;
-/**
- * @param {{ _baseRadius?: number, radius?: number } | null | undefined} body
- * @param {number} [fallback]
- */
-export function resolveBodyRadius(body, fallback = LIBRARY_DEFAULT_BODY_RADIUS) {
-    if (!body) return fallback;
+export function resolveBodyRadius(body) {
     const shape = body.shape;
-    if (shape && shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return shape.radius;
-    return body._baseRadius ?? body.radius ?? fallback;
+    let r;
+    if (shape && shape.shapeTypeId === SHAPE_TYPE_CIRCLE) r = shape.radius;
+    return body._baseRadius ?? body.radius;
 }
 export const P_VEC_A = ENGINE_PHYS_BASE;
 export const P_VEC_B = ENGINE_PHYS_BASE + 2;

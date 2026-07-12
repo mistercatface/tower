@@ -1,7 +1,7 @@
 import { installGameState } from "../../GameState/GameState.js";
 import { events, requestUiUpdate, Events } from "../../Core/EventSystem.js";
 import { PauseManager } from "../../Libraries/Pause/index.js";
-import { installEditorDefaults } from "../../Core/engineGlobals.js";
+import { installEditorDefaults } from "./installEditorDefaults.js";
 import { adjustSelectedSpeed } from "../../Libraries/Playback/playbackController.js";
 import { kineticSpatial } from "../../Libraries/Spatial/spatial.js";
 import { runKineticPhysics } from "../../Libraries/Physics/physics.js";

@@ -48,6 +48,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "mapGenerationCellBounds",
     "momentOfInertiaFromBody",
     "parseGlassLaunchSizePx",
+    "queryPropIdsInView",
     "radiusAtT",
     "releaseLiveGeomSpan",
     "removeSandboxWorldProp",
@@ -175,7 +176,10 @@ export function collectImports(root, files) {
         let m;
         while ((m = importNamedRe.exec(src))) {
             for (const part of m[1].split(",")) {
-                const name = part.trim().split(/\s+as\s+/)[0].trim();
+                const name = part
+                    .trim()
+                    .split(/\s+as\s+/)[0]
+                    .trim();
                 if (name) records.push({ name, from: m[2], file: relPath, default: false });
             }
         }

@@ -107,7 +107,7 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
     body.vx = nx * power;
     body.vy = ny * power;
     if (body.strategy?.rolls) {
-        const r = body.radius || 8;
+        const r = resolveBodyRadius(body);
         body.angularVelocity = (power / r) * 0.12;
     }
     wakeKineticBody(body);

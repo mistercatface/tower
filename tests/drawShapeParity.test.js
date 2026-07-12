@@ -11,7 +11,7 @@ import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
 import { ATTACH_HEADING_FACING, ATTACH_OFFSET_PARENT_RADIUS, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/props.js";
-import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Core/GamePerspective.js";
+import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 import propCatalog from "../Assets/props/index.js";
 import { gridSettings } from "../Config/world.js";
 const cacheKeyDeps = { quantizeAngleIndex };

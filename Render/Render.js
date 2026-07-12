@@ -6,7 +6,7 @@ import { circleInViewBounds, VIEW_TIER_PROPS } from "../Core/engineMemory.js";
 /**
  * @typedef {object} SimulationSceneHooks
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D) => void} [drawGroundOverlays]
- * @property {import("../Core/GameDefinitionTypes.js").SimulationEffectPass[]} [simulationEffectPasses]
+ * @property {{ zIndex: number, draw: Function }[]} [simulationEffectPasses]
  * @property {(state: object, viewport: object, ctx: CanvasRenderingContext2D, renderer: Renderer) => void} [drawPostSimulation]
  */
 /**

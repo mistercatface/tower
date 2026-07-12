@@ -1,5 +1,7 @@
 import { configureViewBoundsPads, recomputeViewBounds } from "../../Core/engineMemory.js";
 const MIN_WORLD_SPAN = 10;
+export const DEFAULT_CAMERA_HEIGHT = 160;
+export const DEFAULT_PERSPECTIVE_STRENGTH = 0.2;
 /** 2D world camera: pan, zoom, screen/world mapping, elevation projection knobs. */
 export class Viewport {
     constructor(x, y, zoom = 1.0) {
@@ -13,11 +15,13 @@ export class Viewport {
         this.halfW = 0;
         this.halfH = 0;
         this.invZoom = 1;
+        this.cameraHeight = DEFAULT_CAMERA_HEIGHT;
+        this._perspectiveStrengthBase = DEFAULT_PERSPECTIVE_STRENGTH;
         this._recompute();
     }
-    applyPerspectiveConfig(config) {
-        this.cameraHeight = config.cameraHeight;
-        this._perspectiveStrengthBase = config.strength;
+    applyPerspective(cameraHeight, strength) {
+        this.cameraHeight = cameraHeight;
+        this._perspectiveStrengthBase = strength;
         this._recompute();
     }
     configureDrawBounds(viewQueryPadPx, viewPaddingPx) {

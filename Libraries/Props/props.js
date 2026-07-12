@@ -39,9 +39,8 @@ export function createSpherePrimitive(visuals) {
     const pendingFill = v.pendingFill ?? SPHERE_PENDING_FILL;
     const panelCount = v.panelCount ?? 6;
     const latBands = v.latBands ?? 5;
-    const defaultRadius = v.defaultRadius ?? 7;
     return (ctx, prop, viewport, flatPresentation) => {
-        const radius = resolveBodyRadius(prop, defaultRadius);
+        const radius = resolveBodyRadius(prop);
         if (flatPresentation) {
             drawFlatSphereDisc(ctx, prop, radius, pendingFill);
             return;
@@ -718,7 +717,6 @@ queueMicrotask(() => {
         registerPropDrawRecipe(asset);
     }
 });
-/** @type {import("../../Core/GameDefinitionTypes.js").SimulationEffectPass} */
 export const floorEffectPass = {
     zIndex: 10.5,
     draw(state, viewport, ctx) {

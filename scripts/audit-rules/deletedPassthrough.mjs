@@ -16,6 +16,7 @@ export const severity = "fail";
 function shouldScan(relPath) {
     if (MONOLITH_SCAN_ROOTS.includes(relPath)) return true;
     if (relPath.startsWith("GameState/") && relPath.endsWith(".js")) return true;
+    if (relPath.startsWith("Libraries/") && relPath.endsWith(".js")) return true;
     return false;
 }
 
