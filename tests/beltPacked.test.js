@@ -34,9 +34,9 @@ describe("BeltPacked", () => {
         assert.equal(BeltPacked.defaultForSpawn("floor_belt_elbow_right"), BeltPacked.pack(0, 1));
     });
 
-    it("stripKey is table-driven per packed byte", () => {
+    it("stripKey returns the packed int", () => {
         const packed = BeltPacked.pack(3, 1);
-        assert.equal(BeltPacked.stripKey(packed), `p${packed}`);
+        assert.equal(BeltPacked.stripKey(packed), packed);
     });
 
     it("stepSideBetween respects row wrap", () => {

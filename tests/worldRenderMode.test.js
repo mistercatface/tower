@@ -53,8 +53,8 @@ describe("world render mode", () => {
             },
         };
         const viewport = {};
-        renderer.render3D.draw3DBuildings = (_ctx, _state, _viewport, options) => {
-            calls.push(options);
+        renderer.render3D.draw3DBuildings = (_ctx, _state, _viewport, skipWalls, flatProps, radialSpheres) => {
+            calls.push({ skipWalls, flatProps, radialSpheres });
         };
         renderer.applyWorldRenderMode(WORLD_RENDER_MODE_RADIAL_SPHERES);
         renderer.drawWorldSceneStructure(state, viewport);
@@ -68,7 +68,7 @@ describe("world render mode", () => {
         calls.length = 0;
         renderer.applyWorldRenderMode(WORLD_RENDER_MODE_RADIAL);
         renderer.drawWorldSceneStructure(state, viewport);
-        assert.equal(calls[0], undefined);
+        assert.deepEqual(calls[0], { skipWalls: undefined, flatProps: undefined, radialSpheres: undefined });
         assert.equal(calls[1], "roofs");
     });
 });

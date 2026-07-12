@@ -36,7 +36,7 @@ export class Renderer {
     drawWorldSceneStructure(state, viewport) {
         if (this._worldRenderMode === WORLD_RENDER_MODE_FLAT2D || this._worldRenderMode === WORLD_RENDER_MODE_RADIAL_SPHERES) {
             state.worldSurfaces.drawFlatWallRails(this.ctx, state, viewport);
-            this.render3D.draw3DBuildings(this.ctx, state, viewport, { skipWalls: true, flatProps: true, radialSpheres: this._worldRenderMode === WORLD_RENDER_MODE_RADIAL_SPHERES });
+            this.render3D.draw3DBuildings(this.ctx, state, viewport, true, true, this._worldRenderMode === WORLD_RENDER_MODE_RADIAL_SPHERES);
             return;
         }
         this.render3D.draw3DBuildings(this.ctx, state, viewport);

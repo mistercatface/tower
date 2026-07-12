@@ -4243,9 +4243,9 @@ export function findClosestPointOnPathToWall(ax, ay, bx, by, segId) {
     ENGINE_F32[P_OUT_DIST_T] = t;
     ENGINE_F32[P_OUT_DIST_DIST] = distanceToSegment(segId, x, y);
 }
-export function circleIntersectsSegment(circle, segId) {
-    const radiusSq = circle.radius * circle.radius;
-    return distanceSqToSegment(segId, circle.x, circle.y) < radiusSq;
+export function circleIntersectsSegment(x, y, radius, segId) {
+    const radiusSq = radius * radius;
+    return distanceSqToSegment(segId, x, y) < radiusSq;
 }
 /**
  * Closest point on an axis-aligned box boundary (segment-local space).

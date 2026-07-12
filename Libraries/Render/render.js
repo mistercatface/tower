@@ -1,7 +1,7 @@
-import { traceAabbRect, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, getCanvasLineScale, traceCircle } from "../Canvas/canvas.js";
+import { traceAabbRect, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolyline, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, entityRefs } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
 import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_PATH_ARROW_HEAD, OVERLAY_RENDER_KEY_FLOW_DIRECTION_ARROW, OVERLAY_RENDER_KEY_WIRE_ENDPOINT, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, collectRailWallBoxesInAabbF32, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
@@ -62,40 +62,6 @@ const rCapUv = ENGINE_F32.subarray(R_CAP_UV, R_CAP_UV + 8);
 const rCapSrc = ENGINE_F32.subarray(R_CAP_SRC, R_CAP_SRC + 8);
 const rChevron = ENGINE_F32.subarray(R_CHEVRON, R_CHEVRON + 12);
 const rFaceVisible = ENGINE_U8.subarray(U8_FACE_VISIBLE, U8_FACE_VISIBLE + MAX_PRISM_FACES);
-/**
- * Draw options for WorldSceneRenderer entry points.
- */
-/**
- * @typedef {Object} WorldSceneDrawOptions
- * @property {boolean} [textureEnabled]
- * @property {boolean} [skipWalls]
- * @property {boolean} [skipWallCaps]
- */
-export {};
-/**
- * @param {CanvasRenderingContext2D} ctx
- * @param {import("../../Math/Aabb2D.js").Aabb2D} aabb
- * @param {{ fill?: string, stroke?: string, lineWidth?: number, dash?: number[] }} [style]
- */
-export function drawAabbHighlight(ctx, aabb, { fill, stroke, lineWidth = 1, dash } = {}) {
-    const lineScale = getCanvasLineScale(ctx);
-    const { minX, minY, maxX, maxY } = aabb;
-    ctx.save();
-    if (fill) {
-        ctx.fillStyle = fill;
-        ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
-    }
-    if (stroke) {
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineWidth * lineScale;
-        if (dash?.length) ctx.setLineDash(dash.map((segment) => segment * lineScale));
-        ctx.beginPath();
-        traceAabbRect(ctx, minX, minY, maxX, maxY);
-        ctx.stroke();
-        if (dash?.length) ctx.setLineDash([]);
-    }
-    ctx.restore();
-}
 /** Pixels per grid cell in the map overview bake — edges draw on boundaries, not as cell fills. */
 const OVERVIEW_PIXELS_PER_CELL = 4;
 const OVERVIEW_FLOOR_RGB = [12, 14, 18];
@@ -782,22 +748,6 @@ function ensurePrismScratch(vertexCount) {
 function irFaceVisible(viewport, originX, originY, edgeMidX, edgeMidY) {
     return isOutwardFaceTowardViewer(edgeMidX, edgeMidY, edgeMidX - originX, edgeMidY - originY, viewport.x, viewport.y);
 }
-function drawSideFaceFlat(ctx, edgeIndex, count, shadow, mid, highlight) {
-    const ai = edgeIndex * 2;
-    const bi = ((edgeIndex + 1) % count) * 2;
-    const topMidX = (sTopRing[ai] + sTopRing[bi]) * 0.5;
-    const topMidY = (sTopRing[ai + 1] + sTopRing[bi + 1]) * 0.5;
-    const baseMidX = (sBaseRing[ai] + sBaseRing[bi]) * 0.5;
-    const baseMidY = (sBaseRing[ai + 1] + sBaseRing[bi + 1]) * 0.5;
-    const bevel = ctx.createLinearGradient(topMidX, topMidY, baseMidX, baseMidY);
-    bevel.addColorStop(0.0, highlight ?? mid);
-    bevel.addColorStop(0.45, mid);
-    bevel.addColorStop(1.0, shadow);
-    ctx.fillStyle = bevel;
-    ctx.beginPath();
-    traceFlatQuad(ctx, sTopRing[ai], sTopRing[ai + 1], sTopRing[bi], sTopRing[bi + 1], sBaseRing[bi], sBaseRing[bi + 1], sBaseRing[ai], sBaseRing[ai + 1]);
-    ctx.fill();
-}
 function classifyPrismFaces(count, viewport, cx, cy) {
     for (let i = 0; i < count; i++) {
         const ai = i * 2;
@@ -855,84 +805,6 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha) 
         traceClosedFlatPolygon(ctx, sTopRing, count);
         ctx.fill();
     }
-}
-function drawExtrudedPrism(ctx, prop, viewport, localVerts, height, facing, faceShadow, faceMid, faceHighlight, backShadow, backMid, backHighlight, topMid) {
-    const count = localVerts.length / 2;
-    if (count < 3) return;
-    ensurePrismScratch(count);
-    const cx = prop.x;
-    const cy = prop.y;
-    const alpha = resolveElevationAlpha(height, viewport);
-    projectWorldPoint(ENGINE_F32, S_OUT_XY, cx, cy, height, viewport);
-    const topX = ENGINE_F32[S_OUT_XY];
-    const topY = ENGINE_F32[S_OUT_XY + 1];
-    extrudeLocalVertsInto(sBaseRing, sTopRing, localVerts, cx, cy, topX, topY, alpha, facing);
-    classifyPrismFaces(count, viewport, cx, cy);
-    ctx.fillStyle = faceShadow;
-    ctx.beginPath();
-    traceClosedFlatPolygon(ctx, sBaseRing, count);
-    ctx.fill();
-    for (let pass = 0; pass < 2; pass++) {
-        const wantFront = pass === 1;
-        for (let i = 0; i < count; i++) {
-            if ((rFaceVisible[i] === 1) !== wantFront) continue;
-            const shadow = wantFront ? faceShadow : backShadow;
-            const mid = wantFront ? faceMid : backMid;
-            const highlight = wantFront ? faceHighlight : backHighlight;
-            drawSideFaceFlat(ctx, i, count, shadow, mid, highlight);
-        }
-    }
-    ctx.fillStyle = topMid;
-    ctx.beginPath();
-    traceClosedFlatPolygon(ctx, sTopRing, count);
-    ctx.fill();
-}
-const PRISM_F_HEIGHT = 0;
-const PRISM_F_FACING = 1;
-const PRISM_F_TOP_HX = 2;
-const PRISM_F_TOP_HY = 3;
-const PRISM_F_COUNT = 4;
-const PRISM_I_HAS_TOP_EXT = 0;
-const prismF32 = new Float32Array(PRISM_F_COUNT);
-const prismI32 = new Int32Array(1);
-const prismFaceColor = ["", "", ""];
-const prismBackColor = ["", "", ""];
-const prismTopColor = ["", "", ""];
-let prismLocalVerts = null;
-function fillPrismDrawSlots(opts, prop) {
-    prismF32[PRISM_F_HEIGHT] = opts.height ?? DEFAULT_PROP_HEIGHT;
-    prismF32[PRISM_F_FACING] = opts.facing ?? readEntityFacing(prop);
-    prismFaceColor[0] = opts.faceColors.shadow;
-    prismFaceColor[1] = opts.faceColors.mid;
-    prismFaceColor[2] = opts.faceColors.highlight;
-    if (opts.backFaceColors) {
-        prismBackColor[0] = opts.backFaceColors.shadow;
-        prismBackColor[1] = opts.backFaceColors.mid;
-        prismBackColor[2] = opts.backFaceColors.highlight;
-    } else {
-        prismBackColor[0] = prismFaceColor[0];
-        prismBackColor[1] = prismFaceColor[0];
-        prismBackColor[2] = prismFaceColor[1];
-    }
-    prismTopColor[1] = opts.topColors.mid;
-    if (opts.topHx == null || opts.topHy == null) prismI32[PRISM_I_HAS_TOP_EXT] = 0;
-    else {
-        prismI32[PRISM_I_HAS_TOP_EXT] = 1;
-        prismF32[PRISM_F_TOP_HX] = opts.topHx;
-        prismF32[PRISM_F_TOP_HY] = opts.topHy;
-    }
-    prismLocalVerts = opts.localVerts;
-}
-function scalePrismTopExtents(viewport) {
-    if (!prismI32[PRISM_I_HAS_TOP_EXT]) return;
-    const alpha = resolveElevationAlpha(prismF32[PRISM_F_HEIGHT], viewport);
-    prismF32[PRISM_F_TOP_HX] *= 1 + alpha;
-    prismF32[PRISM_F_TOP_HY] *= 1 + alpha;
-}
-export function drawExtrudedConvexPolygon(ctx, prop, viewport, opts) {
-    fillPrismDrawSlots(opts, prop);
-    scalePrismTopExtents(viewport);
-    drawExtrudedPrism(ctx, prop, viewport, prismLocalVerts, prismF32[PRISM_F_HEIGHT], prismF32[PRISM_F_FACING], prismFaceColor[0], prismFaceColor[1], prismFaceColor[2], prismBackColor[0], prismBackColor[1], prismBackColor[2], prismTopColor[1]);
 }
 export function drawWallChunkTextured(ctx, prop, viewport, localVerts) {
     if (!wallChunkPipeline?._wallChunkReady) return false;
@@ -1006,27 +878,27 @@ export function createWallChunkDraw() {
         drawWallChunkContour(ctx, prop, viewport, flatPresentation, prop.shape?.vertices);
     };
 }
-function parallelInsertionSort(kinds, baseIndices, depths, refs, start, end) {
+function parallelInsertionSort(kinds, baseIndices, depths, eids, start, end) {
     for (let i = start + 1; i <= end; i++) {
         const keyKind = kinds[i];
         const keyBaseIndex = baseIndices[i];
         const keyDepth = depths[i];
-        const keyRef = refs[i];
+        const keyEid = eids[i];
         let j = i - 1;
         while (j >= start && depths[j] < keyDepth) {
             kinds[j + 1] = kinds[j];
             baseIndices[j + 1] = baseIndices[j];
             depths[j + 1] = depths[j];
-            refs[j + 1] = refs[j];
+            eids[j + 1] = eids[j];
             j--;
         }
         kinds[j + 1] = keyKind;
         baseIndices[j + 1] = keyBaseIndex;
         depths[j + 1] = keyDepth;
-        refs[j + 1] = keyRef;
+        eids[j + 1] = keyEid;
     }
 }
-function heapify(kinds, baseIndices, depths, refs, n, i) {
+function heapify(kinds, baseIndices, depths, eids, n, i) {
     let root = i;
     while (true) {
         let smallest = root;
@@ -1044,14 +916,14 @@ function heapify(kinds, baseIndices, depths, refs, n, i) {
         const tempDepth = depths[root];
         depths[root] = depths[smallest];
         depths[smallest] = tempDepth;
-        const tempRef = refs[root];
-        refs[root] = refs[smallest];
-        refs[smallest] = tempRef;
+        const tempEid = eids[root];
+        eids[root] = eids[smallest];
+        eids[smallest] = tempEid;
         root = smallest;
     }
 }
-function parallelHeapSort(kinds, baseIndices, depths, refs, n) {
-    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) heapify(kinds, baseIndices, depths, refs, n, i);
+function parallelHeapSort(kinds, baseIndices, depths, eids, n) {
+    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) heapify(kinds, baseIndices, depths, eids, n, i);
     for (let i = n - 1; i > 0; i--) {
         const tempKind = kinds[0];
         kinds[0] = kinds[i];
@@ -1062,10 +934,10 @@ function parallelHeapSort(kinds, baseIndices, depths, refs, n) {
         const tempDepth = depths[0];
         depths[0] = depths[i];
         depths[i] = tempDepth;
-        const tempRef = refs[0];
-        refs[0] = refs[i];
-        refs[i] = tempRef;
-        heapify(kinds, baseIndices, depths, refs, i, 0);
+        const tempEid = eids[0];
+        eids[0] = eids[i];
+        eids[i] = tempEid;
+        heapify(kinds, baseIndices, depths, eids, i, 0);
     }
 }
 export class VisibleDrawQueue {
@@ -1074,7 +946,7 @@ export class VisibleDrawQueue {
         this.kinds = new Uint8Array(initialCapacity);
         this.baseIndices = new Int32Array(initialCapacity);
         this.depths = new Float32Array(initialCapacity);
-        this.refs = new Array(initialCapacity);
+        this.eids = new Int32Array(initialCapacity);
     }
     clear() {
         this.length = 0;
@@ -1091,22 +963,24 @@ export class VisibleDrawQueue {
         const nextDepths = new Float32Array(nextCapacity);
         nextDepths.set(this.depths);
         this.depths = nextDepths;
-        this.refs.length = nextCapacity;
+        const nextEids = new Int32Array(nextCapacity);
+        nextEids.set(this.eids);
+        this.eids = nextEids;
     }
-    push(kind, baseIndex, ref, distSq) {
+    push(kind, baseIndex, eid, distSq) {
         this.ensureCapacity(this.length + 1);
         const i = this.length;
         this.kinds[i] = kind;
         this.baseIndices[i] = baseIndex;
         this.depths[i] = distSq;
-        this.refs[i] = ref;
+        this.eids[i] = eid;
         this.length++;
     }
     sort() {
         const n = this.length;
         if (n <= 1) return;
-        if (n <= 32) parallelInsertionSort(this.kinds, this.baseIndices, this.depths, this.refs, 0, n - 1);
-        else parallelHeapSort(this.kinds, this.baseIndices, this.depths, this.refs, n);
+        if (n <= 32) parallelInsertionSort(this.kinds, this.baseIndices, this.depths, this.eids, 0, n - 1);
+        else parallelHeapSort(this.kinds, this.baseIndices, this.depths, this.eids, n);
     }
 }
 /**
@@ -1149,7 +1023,7 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, outQueue)
         const viewX = cx - viewerX;
         const viewY = cy - viewerY;
         const distSq = viewX * viewX + viewY * viewY;
-        outQueue.push(DRAW_KIND_VOXEL, base, null, distSq);
+        outQueue.push(DRAW_KIND_VOXEL, base, -1, distSq);
     }
 }
 export function getVoxelWallFaceData() {
@@ -1221,7 +1095,7 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, outQu
         const viewX = cx - viewerX;
         const viewY = cy - viewerY;
         const distSq = viewX * viewX + viewY * viewY;
-        outQueue.push(DRAW_KIND_RAIL, base, null, distSq);
+        outQueue.push(DRAW_KIND_RAIL, base, -1, distSq);
     }
 }
 export function getRailWallBoxData() {
@@ -1564,131 +1438,6 @@ export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state) {
     if (!capCanvas) return;
     blitHorizontalCapSampleFlat(ctx, rCapCorners, rCapSrc, capCanvas);
 }
-export function createConveyorDraw(options = {}) {
-    const { turnDirection = null, chevronColors: chevronColorsOverride } = options;
-    const chevronColors = chevronColorsOverride ?? { fill: "#0EA5E9", stroke: "#0284C7" };
-    const beltFill = "#1e1e1e";
-    return (ctx, prop, viewport) => {
-        const hx = prop.halfExtents?.x ?? 8;
-        const hy = prop.halfExtents?.y ?? 8;
-        const lineScale = getCanvasLineScale(ctx);
-        const angle = readEntityFacing(prop);
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        const px = prop.x;
-        const py = prop.y;
-        function writeLocalXY(out, offset, lx, ly) {
-            out[offset] = px + lx * cos - ly * sin;
-            out[offset + 1] = py + lx * sin + ly * cos;
-        }
-        writeLocalXY(rQuadA, 0, -hx, -hy);
-        writeLocalXY(rQuadA, 2, hx, -hy);
-        writeLocalXY(rQuadA, 4, hx, hy);
-        writeLocalXY(rQuadA, 6, -hx, hy);
-        ctx.beginPath();
-        traceClosedFlatPolygon(ctx, rQuadA, 4);
-        ctx.fillStyle = beltFill;
-        ctx.fill();
-        if (!turnDirection) {
-            ctx.save();
-            ctx.beginPath();
-            traceClosedFlatPolygon(ctx, rQuadA, 4);
-            ctx.clip();
-            const speed = 20;
-            const spacing = 8;
-            const timeSec = (prop.ageMs ?? 0) / 1000;
-            const offset = (timeSec * speed) % spacing;
-            ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
-            ctx.lineWidth = 1.0 * lineScale;
-            const numSlats = Math.ceil((hx * 2) / 4) + 2;
-            for (let i = -2; i < numSlats; i++) {
-                const cx = -hx + ((timeSec * speed) % 4) + i * 4;
-                writeLocalXY(rQuadA, 0, cx, -hy);
-                writeLocalXY(rQuadA, 2, cx, hy);
-                ctx.beginPath();
-                ctx.moveTo(rQuadA[0], rQuadA[1]);
-                ctx.lineTo(rQuadA[2], rQuadA[3]);
-                ctx.stroke();
-            }
-            ctx.fillStyle = chevronColors.fill;
-            ctx.strokeStyle = chevronColors.stroke;
-            ctx.lineWidth = 0.5 * lineScale;
-            const numChevrons = Math.ceil((hx * 2) / spacing) + 2;
-            for (let i = -2; i < numChevrons; i++) {
-                const cx = -hx + offset + i * spacing;
-                writeLocalXY(rChevron, 0, cx + 1.5, 0);
-                writeLocalXY(rChevron, 2, cx - 1.2, 3.2);
-                writeLocalXY(rChevron, 4, cx - 0.4, 3.2);
-                writeLocalXY(rChevron, 6, cx + 0.8, 0);
-                writeLocalXY(rChevron, 8, cx - 0.4, -3.2);
-                writeLocalXY(rChevron, 10, cx - 1.2, -3.2);
-                ctx.beginPath();
-                traceClosedFlatPolygon(ctx, rChevron, 6);
-                ctx.fill();
-                ctx.stroke();
-            }
-            ctx.restore();
-            return;
-        }
-        const isLeft = turnDirection === "left";
-        const pivotX = 8;
-        const pivotY = isLeft ? 8 : -8;
-        const startAngle = Math.PI;
-        const dir = isLeft ? 1 : -1;
-        ctx.save();
-        ctx.beginPath();
-        writeLocalXY(rQuadA, 0, -hx, -hy);
-        writeLocalXY(rQuadA, 2, hx, -hy);
-        writeLocalXY(rQuadA, 4, hx, hy);
-        writeLocalXY(rQuadA, 6, -hx, hy);
-        traceClosedFlatPolygon(ctx, rQuadA, 4);
-        ctx.clip();
-        const speed = 20;
-        const spacing = 8;
-        const timeSec = (prop.ageMs ?? 0) / 1000;
-        const totalArcLength = (Math.PI / 2) * 8;
-        const offset = (timeSec * speed) % spacing;
-        ctx.strokeStyle = "rgba(10, 10, 10, 0.4)";
-        ctx.lineWidth = 1.0 * lineScale;
-        const numSlats = Math.ceil(totalArcLength / 4) + 2;
-        for (let i = -1; i < numSlats; i++) {
-            const s = ((timeSec * speed) % 4) + i * 4;
-            if (s < 0 || s > totalArcLength) continue;
-            const A = startAngle + dir * (s / 8);
-            writeLocalXY(rQuadA, 0, pivotX, pivotY);
-            writeLocalXY(rQuadA, 2, pivotX + 25 * Math.cos(A), pivotY + 25 * Math.sin(A));
-            ctx.beginPath();
-            ctx.moveTo(rQuadA[0], rQuadA[1]);
-            ctx.lineTo(rQuadA[2], rQuadA[3]);
-            ctx.stroke();
-        }
-        ctx.fillStyle = chevronColors.fill;
-        ctx.strokeStyle = chevronColors.stroke;
-        ctx.lineWidth = 0.5 * lineScale;
-        const numChevrons = Math.ceil(totalArcLength / spacing) + 2;
-        for (let i = -1; i < numChevrons; i++) {
-            const s = offset + i * spacing;
-            if (s < -2 || s > totalArcLength + 2) continue;
-            const A = startAngle + dir * (s / 8);
-            const tipAngle = A + dir * (1.5 / 8);
-            const wingAngle = A - dir * (1.2 / 8);
-            const innerAngle = A - dir * (0.4 / 8);
-            const innerTipAngle = A + dir * (0.8 / 8);
-            writeLocalXY(rChevron, 0, pivotX + 8 * Math.cos(tipAngle), pivotY + 8 * Math.sin(tipAngle));
-            writeLocalXY(rChevron, 2, pivotX + (8 - 3.2) * Math.cos(wingAngle), pivotY + (8 - 3.2) * Math.sin(wingAngle));
-            writeLocalXY(rChevron, 4, pivotX + (8 - 3.2) * Math.cos(innerAngle), pivotY + (8 - 3.2) * Math.sin(innerAngle));
-            writeLocalXY(rChevron, 6, pivotX + 8 * Math.cos(innerTipAngle), pivotY + 8 * Math.sin(innerTipAngle));
-            writeLocalXY(rChevron, 8, pivotX + (8 + 3.2) * Math.cos(innerAngle), pivotY + (8 + 3.2) * Math.sin(innerAngle));
-            writeLocalXY(rChevron, 10, pivotX + (8 + 3.2) * Math.cos(wingAngle), pivotY + (8 + 3.2) * Math.sin(wingAngle));
-            ctx.beginPath();
-            traceClosedFlatPolygon(ctx, rChevron, 6);
-            ctx.fill();
-            ctx.stroke();
-        }
-        ctx.restore();
-    };
-}
-/** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 const match3d = (p) => p.strategy?.renderMode === PROP_RENDER_MODE_3D;
 function bindWallFaceScratchFlat(kind, baseIndex) {
     if (kind === DRAW_KIND_RAIL) writeWallFaceFromRailBox(getRailWallBoxData(), baseIndex);
@@ -1719,7 +1468,7 @@ export class WorldSceneRenderer {
             const p = state.entityRegistry.getRef(eid);
             if (!p) continue;
             const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
-            this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, p, distSq);
+            this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, eid, distSq);
         }
         state.fractureEngine.debris.appendVisibleProps(this.visibleDrawQueue, viewport, DRAW_KIND_PROP);
     }
@@ -1727,21 +1476,16 @@ export class WorldSceneRenderer {
         collectStaticGridWallDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);
         collectStaticGridEdgeRailDrawables(state.obstacleGrid, viewport, this.visibleDrawQueue);
     }
-    draw3DBuildings(ctx, state, viewport, options = {}) {
+    draw3DBuildings(ctx, state, viewport, skipWalls = false, flatProps = false, radialSpheres = false, skipWallCaps = false) {
         const q = this.visibleDrawQueue;
         q.clear();
         this._appendVisible3dProps(state, viewport);
-        const skipWalls = options.skipWalls === true;
-        const skipWallCaps = options.skipWallCaps === true;
         if (!skipWalls) this._appendVisibleStaticGridWalls(state, viewport);
         q.sort();
-        const flatProps = options.flatProps === true;
-        const radialSpheres = options.radialSpheres === true;
         for (let i = 0; i < q.length; i++) {
             const kind = q.kinds[i];
             const baseIndex = q.baseIndices[i];
-            const ref = q.refs[i];
-            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, ref, viewport, state, flatProps, radialSpheres);
+            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, entityRefs[q.eids[i]], viewport, state, flatProps, radialSpheres);
             else if (kind === DRAW_KIND_VOXEL) {
                 bindWallFaceScratchFlat(DRAW_KIND_VOXEL, baseIndex);
                 drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state);
@@ -1804,8 +1548,8 @@ export class EdgeList {
     }
 }
 export { EDGE_STRIDE };
-export function edgeSegmentOutsideCircle(edge, centerX, centerY, rangeSq) {
-    aabbFromTwoPointsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, edge.x1, edge.y1, edge.x2, edge.y2);
+export function edgeSegmentOutsideCircle(x1, y1, x2, y2, centerX, centerY, rangeSq) {
+    aabbFromTwoPointsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, x1, y1, x2, y2);
     return distanceSqToAabbF32(centerX, centerY, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP) > rangeSq;
 }
 function clampSegmentCoord(a, b, v) {
@@ -1850,15 +1594,12 @@ function ensureOverlayBuffer(width, height) {
     resizeOffscreenCanvas(sOverlayCanvas, width, height);
     return sOverlayCtx;
 }
-function resolveLightZ(obstacleGrid, options) {
-    if (options.lightZ != null) return options.lightZ;
-    const heightCells = options.lightHeightCells ?? LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT;
-    return heightCells * obstacleGrid.cellSize;
+function resolveLightZ(obstacleGrid, lightHeightCells, lightZ) {
+    if (lightZ != null) return lightZ;
+    return lightHeightCells * obstacleGrid.cellSize;
 }
-export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obstacleGrid, options = {}) {
-    const visionTiles = options.visionTiles ?? LOS_SHADOW_VISION_TILES_DEFAULT;
-    const lightZ = resolveLightZ(obstacleGrid, options);
-    const overlayAlpha = options.overlayAlpha ?? LOS_SHADOW_OVERLAY_ALPHA;
+export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obstacleGrid, visionTiles = LOS_SHADOW_VISION_TILES_DEFAULT, lightHeightCells = LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, overlayAlpha = LOS_SHADOW_OVERLAY_ALPHA, lightZ = null) {
+    const resolvedLightZ = resolveLightZ(obstacleGrid, lightHeightCells, lightZ);
     const lightX = viewport.x;
     const lightY = viewport.y;
     const range = visionTiles * obstacleGrid.cellSize;
@@ -1871,18 +1612,18 @@ export function composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obs
     cutOutRadialSoftDisc(overlayCtx, ENGINE_F32[S_OUT_SCREEN], ENGINE_F32[S_OUT_SCREEN + 1], screenRange);
     addMaskPathFill(overlayCtx, `rgba(0,0,0,${overlayAlpha})`, (pathCtx) => {
         let hasShadows = false;
-        forEachLosShadowQuadInRange(sEdgeScratch, lightX, lightY, range, lightZ, viewport, rLosQuad, (flatVerts, vertCount) => {
+        forEachLosShadowQuadInRange(sEdgeScratch, lightX, lightY, range, resolvedLightZ, viewport, rLosQuad, (flatVerts, vertCount) => {
             traceWoundFlatQuad(pathCtx, flatVerts, vertCount);
             hasShadows = true;
         });
         return hasShadows;
     });
 }
-export function drawLosShadowOverlay(ctx, viewport, obstacleGrid, options = {}) {
+export function drawLosShadowOverlay(ctx, viewport, obstacleGrid, visionTiles = LOS_SHADOW_VISION_TILES_DEFAULT, lightHeightCells = LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT, overlayAlpha = LOS_SHADOW_OVERLAY_ALPHA, lightZ = null) {
     const canvasW = ctx.canvas.width;
     const canvasH = ctx.canvas.height;
     const overlayCtx = ensureOverlayBuffer(canvasW, canvasH);
-    composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obstacleGrid, options);
+    composeLosShadowMask(overlayCtx, canvasW, canvasH, viewport, obstacleGrid, visionTiles, lightHeightCells, overlayAlpha, lightZ);
     blitMaskOverlay(ctx, sOverlayCanvas);
 }
 const sRailShadowBoxes = new StrideFloatList(RAIL_BOX_STRIDE);

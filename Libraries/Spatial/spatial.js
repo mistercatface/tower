@@ -1,8 +1,8 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, P_VEC_A, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
-import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineEnums.js";
+import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
+import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
@@ -55,11 +55,11 @@ export class SpatialFrameCore {
         const keyLo = sWallBucketKey[0];
         const keyHi = sWallBucketKey[1];
         const revision = grid.wallGridRevision;
-        lookupWallCandidateBucketInto(sWallBucketLookup, this._wallBuckets, keyLo, keyHi, this.frameId, revision);
-        if (sWallBucketLookup.hit) return sWallBucketLookup.segIds;
-        grid.appendStaticWallSegmentsNearWorld(worldX, worldY, queryRadius, sWallBucketLookup.segIds);
-        commitWallCandidateBucket(this._wallBuckets, sWallBucketLookup.slot, keyLo, keyHi, this.frameId, revision, sWallBucketLookup.segIds);
-        return sWallBucketLookup.segIds;
+        const segIds = lookupWallCandidateBucketInto(sWallBucketHitSlot, this._wallBuckets, keyLo, keyHi, this.frameId, revision);
+        if (sWallBucketHitSlot[0]) return segIds;
+        grid.appendStaticWallSegmentsNearWorld(worldX, worldY, queryRadius, segIds);
+        commitWallCandidateBucket(this._wallBuckets, sWallBucketHitSlot[1], keyLo, keyHi, this.frameId, revision, segIds);
+        return segIds;
     }
     /**
      * @param {{ x: number, y: number, _physId?: number, _gridTileIdx?: number }} entity — mutated
@@ -473,15 +473,15 @@ export function projectWallShadowQuadScreen(buf, o, viewport, lx, ly, lightZ, x1
     buf[o + 7] = ENGINE_F32[S_OUT_SCREEN + 1];
     return 4;
 }
-export function setBoundary(grid, idx, side, spec, bumpRevision = false) {
+export function setBoundary(grid, idx, side, capHeightLevel, thicknessLevel = 1, bumpRevision = false) {
     const cols = grid.cols;
     const rows = grid.rows;
     if (idx < 0 || idx >= cols * rows) return false;
-    if (spec === null || spec.capHeightLevel === 0) {
+    if (capHeightLevel == null || capHeightLevel === 0) {
         clearBoundaryPrimary(grid, idx, side, bumpRevision);
         return true;
     }
-    grid.writeMirroredCellEdge(idx, side, createRailWallEdge(spec.capHeightLevel - neighborFillLevel(grid, idx, side), spec.thicknessLevel ?? 1));
+    grid.writeMirroredCellEdge(idx, side, createRailWallEdge(capHeightLevel - neighborFillLevel(grid, idx, side), thicknessLevel));
     if (bumpRevision) bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
     return true;
 }
@@ -1375,7 +1375,7 @@ export class WorldObstacleGrid {
         return gridBounds;
     }
     stampCellEdge(idx, side, capHeightLevel, thicknessLevel = 1) {
-        setBoundary(this, idx, side, { capHeightLevel, thicknessLevel }, true);
+        setBoundary(this, idx, side, capHeightLevel, thicknessLevel, true);
     }
     clearCellEdges(idx) {
         clearAllBoundariesAtCell(this, idx, false);
@@ -1735,27 +1735,17 @@ export function estimateRollingTravelDistance(v0, strategy) {
     const k = Math.sqrt(b / a);
     return factor * (Math.atan(uMax * k) - Math.atan(uMin * k));
 }
-/**
- * @typedef {object} CircleAimLineTarget
- * @property {number} x
- * @property {number} y
- * @property {number} [radius]
- */
 /** Aim arrow segment for a circle shot — writes x1,y1,x2,y2 at buf[o..o+3]. */
-export function computeCircleAimLineSegmentInto(buf, o, { originX, originY, radius, nx, ny, maxTravelDist, obstacleGrid = null, circleTargets = [], maxRayDist = 2400 }) {
+export function computeCircleAimLineSegmentInto(buf, o, originX, originY, radius, nx, ny, maxTravelDist, maxRayDist = 2400, obstacleGrid = null) {
     const len = Math.hypot(nx, ny);
     if (len < 1e-6) return false;
     const dx = nx / len;
     const dy = ny / len;
     const angle = Math.atan2(dy, dx);
     let stopDist = Math.min(maxRayDist, maxTravelDist);
-    for (const target of circleTargets) {
-        const otherR = target.radius;
-        const t = rayCircleHitDistance(originX, originY, dx, dy, target.x, target.y, radius + otherR);
-        if (t != null && t < stopDist) stopDist = t;
-    }
-    const wallHit = castSteppedCircleRay(originX, originY, angle, maxRayDist, radius, { obstacleGrid });
-    if (wallHit.dist < stopDist) stopDist = wallHit.dist;
+    castSteppedCircleRay(originX, originY, angle, maxRayDist, radius, obstacleGrid);
+    const wallDist = ENGINE_F32[S_OUT_RAY_DIST];
+    if (wallDist < stopDist) stopDist = wallDist;
     circleLeadingPoint(originX, originY, radius, dx, dy, P_VEC_A);
     buf[o] = ENGINE_F32[P_VEC_A];
     buf[o + 1] = ENGINE_F32[P_VEC_A + 1];
@@ -1766,15 +1756,6 @@ export function computeCircleAimLineSegmentInto(buf, o, { originX, originY, radi
 // ==========================================
 // 1. Ray Circle Hit Distance (from circleCast.js)
 // ==========================================
-/**
- * Analytic ray vs stationary circle: earliest center distance equal to combined radii.
- *
- * @param {number} ox @param {number} oy
- * @param {number} dx @param {number} dy — unit direction
- * @param {number} cx @param {number} cy
- * @param {number} hitRadius — sum of both circle radii at contact
- * @returns {number | null}
- */
 export function rayCircleHitDistance(ox, oy, dx, dy, cx, cy, hitRadius) {
     const fx = ox - cx;
     const fy = oy - cy;
@@ -1836,41 +1817,19 @@ export function hasLineOfSight(x1, y1, x2, y2, obstacleGrid, sourceRadius = 0, t
 // ==========================================
 // 4. Stepped Circle Ray Cast (from steppedCircleRayCast.js)
 // ==========================================
-/**
- * First wall segment intersecting a circle (broadphase + precise test).
- * @param {{ x: number, y: number, radius: number }} circle
- * @param {object[]} segments
- * @returns {object | null}
- */
-function findFirstCircleSegmentHit(circle, segIds) {
+function findFirstCircleSegmentHit(cx, cy, radius, segIds) {
     if (!segIds || segIds.used === 0) return -1;
-    const radius = circle.radius;
     const slab = staticWallSegmentSlab;
     for (let i = 0; i < segIds.used; i++) {
         const id = segIds.buf[i];
-        const dx = circle.x - slab.x[id];
-        const dy = circle.y - slab.y[id];
+        const dx = cx - slab.x[id];
+        const dy = cy - slab.y[id];
         const maxDist = radius + slab.size[id] * 0.75;
         if (Math.abs(dx) > maxDist || Math.abs(dy) > maxDist) continue;
-        if (circleIntersectsSegment(circle, id)) return id;
+        if (circleIntersectsSegment(cx, cy, radius, id)) return id;
     }
     return -1;
 }
-/** @typedef {"wall" | "none" | string} SteppedCircleRayHitKind */
-/**
- * @typedef {object} SteppedCircleRayHit
- * @property {SteppedCircleRayHitKind} hit
- * @property {number} x
- * @property {number} y
- * @property {number} dist — center-path distance along the ray at first contact
- * @property {object} [entity]
- */
-/**
- * @typedef {object} SteppedCircleRayCircleTarget
- * @property {object} entity
- * @property {number} [radius]
- * @property {string} [hitKind] — returned as `hit` when struck (default `"circle"`)
- */
 const DEFAULT_STEP = 8;
 function collectCandidateWalls(startX, startY, dx, dy, maxDist, obstacleGrid, queryRadius) {
     if (!obstacleGrid) return EMPTY_WALL_CANDIDATES;
@@ -1878,67 +1837,46 @@ function collectCandidateWalls(startX, startY, dx, dy, maxDist, obstacleGrid, qu
     const endY = startY + dy * maxDist;
     return collectWallSegmentsAlongLine(obstacleGrid, startX, startY, endX, endY, queryRadius);
 }
-function rayCircleHitsWall(rayCircle, candidateWalls) {
-    return findFirstCircleSegmentHit(rayCircle, candidateWalls) >= 0;
+function rayCircleHitsWall(cx, cy, radius, candidateWalls) {
+    return findFirstCircleSegmentHit(cx, cy, radius, candidateWalls) >= 0;
 }
-/**
- * March a circle along a ray in fixed steps; first wall or circle contact wins.
- * Walls back-step to the last free center position; circles use center-distance minus radius.
- *
- * @param {number} startX
- * @param {number} startY
- * @param {number} angle
- * @param {number} maxDist
- * @param {number} radius
- * @param {{
- *   obstacleGrid?: import("../grid/WorldObstacleGrid.js").WorldObstacleGrid | null,
- *   circles?: SteppedCircleRayCircleTarget[],
- *   step?: number,
- * }} [options]
- * @returns {SteppedCircleRayHit}
- */
-export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { obstacleGrid = null, circles = [], step = DEFAULT_STEP, wallQueryRadius = radius } = {}) {
+function writeCircleRayHit(hit, x, y, dist) {
+    ENGINE_I32[I_OUT_RAY_HIT] = hit;
+    ENGINE_F32[S_OUT_RAY_X] = x;
+    ENGINE_F32[S_OUT_RAY_Y] = y;
+    ENGINE_F32[S_OUT_RAY_DIST] = dist;
+}
+/** March a circle along a ray; writes CIRCLE_RAY_HIT_* + x/y/dist into ENGINE_I32/F32 outs. */
+export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, obstacleGrid = null, step = DEFAULT_STEP, wallQueryRadius = radius) {
     let dist = 0;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     let cx = startX;
     let cy = startY;
-    const rayCircle = { x: cx, y: cy, radius };
     const candidateWalls = collectCandidateWalls(startX, startY, dx, dy, maxDist, obstacleGrid, wallQueryRadius);
     while (dist < maxDist) {
         cx += dx * step;
         cy += dy * step;
         dist += step;
-        rayCircle.x = cx;
-        rayCircle.y = cy;
-        if (rayCircleHitsWall(rayCircle, candidateWalls)) {
+        if (rayCircleHitsWall(cx, cy, radius, candidateWalls)) {
             let hitWall = true;
             while (hitWall && dist > 0) {
                 cx -= dx;
                 cy -= dy;
                 dist -= 1;
-                rayCircle.x = cx;
-                rayCircle.y = cy;
-                hitWall = rayCircleHitsWall(rayCircle, candidateWalls);
+                hitWall = rayCircleHitsWall(cx, cy, radius, candidateWalls);
             }
-            return { hit: "wall", x: cx, y: cy, dist };
-        }
-        for (const target of circles) {
-            const entity = target.entity;
-            const entityRadius = target.radius;
-            if (lengthXY(rayCircle.x - entity.x, rayCircle.y - entity.y) >= rayCircle.radius + entityRadius) continue;
-            const distToTarget = Math.hypot(entity.x - startX, entity.y - startY);
-            const exactDist = distToTarget - entityRadius;
-            return { hit: target.hitKind ?? "circle", entity, x: startX + dx * exactDist, y: startY + dy * exactDist, dist: exactDist };
+            writeCircleRayHit(CIRCLE_RAY_HIT_WALL, cx, cy, dist);
+            return;
         }
     }
-    return { hit: "none", x: cx, y: cy, dist };
+    writeCircleRayHit(CIRCLE_RAY_HIT_NONE, cx, cy, dist);
 }
 const MAX_WALL_BUCKETS = 4096;
 const BUCKET_MASK = MAX_WALL_BUCKETS - 1;
 const EMPTY_STAMP = -1;
 const sWallBucketKey = new Int32Array(2);
-const sWallBucketLookup = { hit: false, slot: 0, segIds: null };
+const sWallBucketHitSlot = new Int32Array(2);
 export function wallBucketKeyPartsInto(buf, o, grid, worldX, worldY, queryRadius) {
     const col = grid.worldCol(worldX);
     const row = grid.worldRow(worldY);
@@ -1981,28 +1919,25 @@ export function resetWallCandidateBucketSlab(slab) {
 export function invalidateWallCandidateBucketFrame(slab) {
     slab.frameStamp.fill(EMPTY_STAMP);
 }
-export function lookupWallCandidateBucketInto(result, slab, keyLo, keyHi, frameId, revision) {
+export function lookupWallCandidateBucketInto(outHitSlot, slab, keyLo, keyHi, frameId, revision) {
     let slot = bucketSlotForKey(keyLo, keyHi);
     for (let probe = 0; probe < MAX_WALL_BUCKETS; probe++) {
         const idx = (slot + probe) & BUCKET_MASK;
         const stamp = slab.frameStamp[idx];
         if (stamp === EMPTY_STAMP) {
-            result.hit = false;
-            result.slot = idx;
-            result.segIds = acquireBucketSegIds(slab, idx);
-            return result;
+            outHitSlot[0] = 0;
+            outHitSlot[1] = idx;
+            return acquireBucketSegIds(slab, idx);
         }
         if (slab.keyLo[idx] === keyLo && slab.keyHi[idx] === keyHi) {
             if (slab.revisionStamp[idx] === revision && stamp === frameId) {
-                result.hit = true;
-                result.slot = idx;
-                result.segIds = slab.segIds[idx];
-                return result;
+                outHitSlot[0] = 1;
+                outHitSlot[1] = idx;
+                return slab.segIds[idx];
             }
-            result.hit = false;
-            result.slot = idx;
-            result.segIds = acquireBucketSegIds(slab, idx);
-            return result;
+            outHitSlot[0] = 0;
+            outHitSlot[1] = idx;
+            return acquireBucketSegIds(slab, idx);
         }
     }
     throw new Error("wall candidate bucket slab full");
@@ -2200,7 +2135,7 @@ export function stampRailWallsQuiet(state, railWalls) {
         clearPrimaryBoundaryAt(state, idx, side);
         const heightLevel = clampStampWallHeightLevel(railWalls.data[o + 2], settings);
         const thicknessLevel = railWalls.data[o + 3];
-        setBoundary(grid, idx, side, { capHeightLevel: heightLevel, thicknessLevel });
+        setBoundary(grid, idx, side, heightLevel, thicknessLevel);
         changed = true;
         growCellBoundsIdx(bounds, idx, grid);
     }
@@ -2292,7 +2227,7 @@ export function applyStampedGridWallsFromSnapshot(state, doc) {
         const { idx: docIdx, side, heightLevel, thicknessLevel } = doc.railWalls[i];
         const idx = grid.worldToIdx(doc.origin.minX + (docIdx % doc.cols) * cellSize + half, doc.origin.minY + Math.floor(docIdx / doc.cols) * cellSize + half);
         if (idx < 0 || idx >= grid.grid.length) continue;
-        setBoundary(grid, idx, side, { capHeightLevel: clampStampWallHeightLevel(heightLevel, settings), thicknessLevel });
+        setBoundary(grid, idx, side, clampStampWallHeightLevel(heightLevel, settings), thicknessLevel);
         growCellBoundsIdx(bounds, idx, grid);
     }
     if (isEmptyCellBounds(bounds)) return null;
@@ -2322,7 +2257,7 @@ export function stampRailWallAt(state, idx, side, heightLevel, thicknessLevel) {
     const grid = state.obstacleGrid;
     clearPrimaryBoundaryAt(state, idx, side);
     const level = clampStampWallHeightLevel(heightLevel, state.worldSurfaces.settings);
-    setBoundary(grid, idx, side, { capHeightLevel: level, thicknessLevel }, true);
+    setBoundary(grid, idx, side, level, thicknessLevel, true);
     return commitGridWallAtIdx(state, idx);
 }
 export function clearRailWallAt(state, idx, side) {
@@ -2346,17 +2281,17 @@ export function listPlacedVoxelWalls(grid) {
     return placed;
 }
 export function listPlacedRailWalls(grid) {
-    /** @type {{ col: number, row: number, side: number, heightLevel: number, thicknessLevel: number, label: string }[]} */
     const placed = [];
     const counts = new Map();
     forEachCellEdge(
         grid,
         (idx, side, edge) => {
             const capLevel = railWallCapLevel(edge, neighborFillLevel(grid, idx, side));
-            const key = `${side}:${capLevel}:${edge.thicknessLevel}`;
+            const thicknessLevel = railWallEdgeThicknessLevel(edge);
+            const key = `${side}:${capLevel}:${thicknessLevel}`;
             const index = (counts.get(key) ?? 0) + 1;
             counts.set(key, index);
-            const railObj = { idx, side, heightLevel: capLevel, thicknessLevel: edge.thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` };
+            const railObj = { idx, side, heightLevel: capLevel, thicknessLevel, label: `Rail #${index} · ${formatGridWallEdgeSideLabel(side)} · height ${capLevel}` };
             placed.push(railObj);
         },
         { filter: isRailWallEdge },
@@ -2371,7 +2306,7 @@ export function getRailWallInfo(grid, idx, side) {
     const edge = grid.getCellEdge(idx, side);
     if (!isRailWallEdge(edge)) return null;
     const heightLevel = railWallCapLevel(edge, neighborFillLevel(grid, idx, side));
-    return { idx, side, heightLevel, thicknessLevel: edge.thicknessLevel, sideLabel: formatGridWallEdgeSideLabel(side) };
+    return { idx, side, heightLevel, thicknessLevel: railWallEdgeThicknessLevel(edge), sideLabel: formatGridWallEdgeSideLabel(side) };
 }
 export function clearPrimaryBoundaryAt(state, idx, side, bumpRevision = false) {
     const grid = state.obstacleGrid;
@@ -3052,10 +2987,10 @@ function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, 
         const lc = edgeIdx - lr * h.edgeStride;
         const cellLocalBelow = lr * cols + lc;
         const idxBelow = stampGlobalIdx(originIdx, cellLocalBelow, layoutCols, cols);
-        if (lr < rows && idxBelow >= 0 && idxBelow < grid.grid.length) setBoundary(grid, idxBelow, 0, { capHeightLevel: heightLevel, thicknessLevel });
+        if (lr < rows && idxBelow >= 0 && idxBelow < grid.grid.length) setBoundary(grid, idxBelow, 0, heightLevel, thicknessLevel);
         else if (lr > 0) {
             const idxAbove = stampGlobalIdx(originIdx, (lr - 1) * cols + lc, layoutCols, cols);
-            if (idxAbove >= 0 && idxAbove < grid.grid.length) setBoundary(grid, idxAbove, 2, { capHeightLevel: heightLevel, thicknessLevel });
+            if (idxAbove >= 0 && idxAbove < grid.grid.length) setBoundary(grid, idxAbove, 2, heightLevel, thicknessLevel);
         }
     }
     for (let edgeIdx = 0; edgeIdx < v.edgeCount; edgeIdx++) {
@@ -3063,10 +2998,10 @@ function stampRailCavernEdgesFromCA(grid, config, mapSeed, { openBoundarySides, 
         const lr = (edgeIdx / v.edgeStride) | 0;
         const lc = edgeIdx % v.edgeStride;
         const idxRight = stampGlobalIdx(originIdx, lr * cols + lc, layoutCols, cols);
-        if (lc < cols && idxRight >= 0 && idxRight < grid.grid.length) setBoundary(grid, idxRight, 3, { capHeightLevel: heightLevel, thicknessLevel });
+        if (lc < cols && idxRight >= 0 && idxRight < grid.grid.length) setBoundary(grid, idxRight, 3, heightLevel, thicknessLevel);
         else if (lc > 0) {
             const idxLeft = stampGlobalIdx(originIdx, lr * cols + lc - 1, layoutCols, cols);
-            if (idxLeft >= 0 && idxLeft < grid.grid.length) setBoundary(grid, idxLeft, 1, { capHeightLevel: heightLevel, thicknessLevel });
+            if (idxLeft >= 0 && idxLeft < grid.grid.length) setBoundary(grid, idxLeft, 1, heightLevel, thicknessLevel);
         }
     }
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);

@@ -1,9 +1,9 @@
 import { edgeMirrorSide, edgeNeighborIdx, bumpGridNavEpoch, bumpFloorOccupancyStampDrawRevision, emptyCellBounds, growCellBoundsIdx, isEmptyCellBounds, gridCellLayout, formatGlobalCellIdx, RailWallBatch, collapsePathRevisits, collectCorridorPathPointIndices, addCorridorPathToOccupied, forEachCardinalNeighborIdx, forEachGlobalCellInMapGenBounds, manhattanDistanceIdx, floorOccupancyStampDrawCacheKey } from "./spatial.js";
 import { CorridorPathfinder, createNavGraphView } from "../Navigation/navigation.js";
 import { createSeededRng } from "../Math/math.js";
-import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
+import { BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
 import { readEntityFacing } from "../Physics/physics.js";
-import { GRID_NAV_EPOCH_FLOOR } from "../../Core/engineEnums.js";
+import { GRID_NAV_EPOCH_FLOOR, GRID_STAMP_RENDER_KEY_FLOOR_BELT } from "../../Core/engineEnums.js";
 import { circleInViewBounds, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = Int8Array.from([0, 1, 0, -1]);
@@ -23,7 +23,6 @@ const BELT_RAIL_SIDE0_TABLE = new Int8Array(16);
 const BELT_RAIL_SIDE1_TABLE = new Int8Array(16);
 const BELT_RENDER_KEY_TABLE = new Array(16);
 const BELT_LABEL_TABLE = new Array(16);
-const BELT_STRIP_KEY_TABLE = new Array(16);
 function beltPack(entrySide, exitSide) {
     return entrySide | (exitSide << 2);
 }
@@ -42,7 +41,6 @@ for (let exit = 0; exit < 4; exit++)
         if (di === 0) BELT_RENDER_KEY_TABLE[packed] = "floor_belt_elbow_left";
         else if (di === 1) BELT_RENDER_KEY_TABLE[packed] = "floor_belt";
         else BELT_RENDER_KEY_TABLE[packed] = "floor_belt_elbow_right";
-        BELT_STRIP_KEY_TABLE[packed] = `p${packed}`;
         const exitLabel = ["N", "E", "S", "W"][exit];
         BELT_LABEL_TABLE[packed] = di === 1 ? `Conveyor ${exitLabel}` : di === 0 ? `Conveyor Elbow L ${exitLabel}` : `Conveyor Elbow R ${exitLabel}`;
         let railWrite = 0;
@@ -115,7 +113,7 @@ export class BeltPacked {
         return BELT_LABEL_TABLE[packed];
     }
     static stripKey(packed) {
-        return BELT_STRIP_KEY_TABLE[packed];
+        return packed;
     }
     static railSide0(packed) {
         return BELT_RAIL_SIDE0_TABLE[packed];
@@ -572,8 +570,8 @@ function createFlatConveyorDraw(options = {}) {
     const beltStroke = "#111111";
     const beltFill = "#1e1e1e";
     return (ctx, prop) => {
-        const hx = prop.halfExtents?.x ?? 8;
-        const hy = prop.halfExtents?.y ?? 8;
+        const hx = prop.halfX;
+        const hy = prop.halfY;
         const lineScale = getCanvasLineScale(ctx);
         const angle = readEntityFacing(prop);
         ctx.save();
@@ -698,7 +696,6 @@ export class FloorBeltDrawCache {
         this.uniquePacked = new Uint8Array(12);
         this.uniqueCount = 0;
         this.cellHalf = 0;
-        this.halfExtents = { x: 0, y: 0 };
     }
     static clear(state) {
         if (!state.sandbox) return;
@@ -712,8 +709,6 @@ export class FloorBeltDrawCache {
         if (cache.revision === revision) return cache;
         const cellHalf = grid.cellHalfSize;
         cache.cellHalf = cellHalf;
-        cache.halfExtents.x = cellHalf;
-        cache.halfExtents.y = cellHalf;
         const size = grid.cols * grid.rows;
         let idxList = cache.idx.length >= grid.floorBeltCount ? cache.idx : new Uint32Array(Math.max(grid.floorBeltCount, 8));
         const packedSeen = new Uint8Array(16);
@@ -738,13 +733,12 @@ export class FloorBeltDrawCache {
         cache.idx = idxList;
         cache.count = count;
         cache.uniqueCount = uniqueCount;
-        if (viewport && uniqueCount) warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY.FloorBelt, uniquePacked, uniqueCount, BeltPacked.flowAngle, beltDrawForPacked, BELT_FILMSTRIP_FRAMES);
+        if (viewport && uniqueCount) warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY_FLOOR_BELT, uniquePacked, uniqueCount, BeltPacked.flowAngle, beltDrawForPacked, BELT_FILMSTRIP_FRAMES);
         return cache;
     }
     draw(ctx, viewport, grid) {
         if (!this.count) return;
         const cellHalf = this.cellHalf;
-        const halfExtents = this.halfExtents;
         for (let i = 0; i < this.count; i++) {
             const cellIdx = this.idx[i];
             const x = grid.gridCenterXByIdx(cellIdx);
@@ -752,7 +746,7 @@ export class FloorBeltDrawCache {
             if (!circleInViewBounds(x, y, cellHalf, VIEW_TIER_PROPS)) continue;
             const packed = grid.floorPacked[cellIdx];
             const frameIndex = Math.floor(grid._floorBeltAnimMs[cellIdx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
-            drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.FloorBelt, BeltPacked.stripKey(packed), BeltPacked.flowAngle(packed), beltDrawForPacked(packed), frameIndex, BELT_FILMSTRIP_FRAMES);
+            drawCachedGridStampFilmstripShared(ctx, x, y, cellHalf, viewport, GRID_STAMP_RENDER_KEY_FLOOR_BELT, BeltPacked.stripKey(packed), BeltPacked.flowAngle(packed), beltDrawForPacked(packed), frameIndex, BELT_FILMSTRIP_FRAMES);
         }
     }
 }

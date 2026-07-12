@@ -757,10 +757,10 @@ export function clearPropSpriteCache() {
     gridStampSpriteCacheSlab.clear();
     clearSpriteKeyIntern();
 }
-export const GRID_STAMP_RENDER_KEY = { FloorBelt: "grid_floor_belt", Portal: "grid_portal" };
 export const BELT_FILMSTRIP_FRAMES = 8;
 export const BELT_FRAME_MS = 60;
 const GRID_STAMP_STAGE_PADDING = 40;
+const sGridStampStage = { x: 0, y: 0, facing: 0, radius: 0, ageMs: 0, halfX: 0, halfY: 0 };
 function buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize) {
     let key = BigInt(internSpriteKeyPart(renderKey));
     key = (key << 20n) | BigInt(internSpriteKeyPart(stripKey));
@@ -768,9 +768,9 @@ function buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize) 
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
     return key;
 }
-function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount) {
+function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfX, facing, draw, frameCount) {
     const zoom = viewport.zoom ?? 1;
-    const stageR = halfExtents.x;
+    const stageR = halfX;
     const worldDiameter = stageR * 2;
     const pixelSize = Math.round(worldDiameter * zoom);
     const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
@@ -781,14 +781,17 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfEx
         const anchorY = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
         const canvas = acquireOffscreenCanvas(frameSpan * frameCount, frameSpan);
         const bakeCtx = canvas.getContext("2d");
-        const stageProp = { x: 0, y: 0, facing: quantizeAngle(facing ?? 0, 4), halfExtents, radius: stageR };
+        sGridStampStage.facing = quantizeAngle(facing ?? 0, 4);
+        sGridStampStage.radius = stageR;
+        sGridStampStage.halfX = halfX;
+        sGridStampStage.halfY = halfX;
         for (let f = 0; f < frameCount; f++) {
-            stageProp.ageMs = f * BELT_FRAME_MS;
+            sGridStampStage.ageMs = f * BELT_FRAME_MS;
             bakeCtx.save();
             bakeCtx.translate(f * frameSpan, 0);
             if (bakeScale !== 1) bakeCtx.scale(bakeScale, bakeScale);
             bakeCtx.translate(anchorX, anchorY);
-            draw(bakeCtx, stageProp, viewport);
+            draw(bakeCtx, sGridStampStage, viewport);
             bakeCtx.restore();
         }
         writeSpriteBakeOuts(bakeScale, anchorX, anchorY, frameSpan / bakeScale, frameSpan / bakeScale, frameCount, frameSpan);
@@ -796,20 +799,18 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfEx
     });
 }
 export function warmSharedGridStampFilmstripCache(viewport, cellHalf, renderKey, packedList, packedCount, flowAngleForPacked, drawForPacked, frameCount = BELT_FILMSTRIP_FRAMES) {
-    const halfExtents = { x: cellHalf, y: cellHalf };
     const zoom = viewport.zoom ?? 1;
     for (let i = 0; i < packedCount; i++) {
         const packed = packedList[i];
-        const stripKey = `p${packed}`;
         const facing = flowAngleForPacked(packed);
         const pixelSize = Math.round(cellHalf * 2 * zoom);
-        const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
+        const key = buildSharedGridStampFilmstripKey(renderKey, packed, zoom, pixelSize);
         if (gridStampSpriteCacheSlab.has(key)) continue;
-        getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, drawForPacked(packed), frameCount);
+        getOrBakeSharedGridStampFilmstrip(viewport, renderKey, packed, cellHalf, facing, drawForPacked(packed), frameCount);
     }
 }
-export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfExtents, viewport, renderKey, stripKey, facing, draw, frameIndex, frameCount) {
-    const slot = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfExtents, facing, draw, frameCount);
+export function drawCachedGridStampFilmstripShared(ctx, worldX, worldY, halfX, viewport, renderKey, stripKey, facing, draw, frameIndex, frameCount) {
+    const slot = getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfX, facing, draw, frameCount);
     blitAnchoredSprite(ctx, gridStampSpriteCacheSlab, slot, worldX, worldY, null, frameIndex);
 }
 const OVERLAY_STAGE_PADDING = 6;

@@ -122,6 +122,9 @@ export const S_EDGE_P1X = ENGINE_SPATIAL_BASE + 16;
 export const S_EDGE_P1Y = ENGINE_SPATIAL_BASE + 17;
 export const S_EDGE_P2X = ENGINE_SPATIAL_BASE + 18;
 export const S_EDGE_P2Y = ENGINE_SPATIAL_BASE + 19;
+export const S_OUT_RAY_X = ENGINE_SPATIAL_BASE + 20;
+export const S_OUT_RAY_Y = ENGINE_SPATIAL_BASE + 21;
+export const S_OUT_RAY_DIST = ENGINE_SPATIAL_BASE + 22;
 // --- Nav N_* ---
 export const N_OUT_XY = ENGINE_NAV_BASE;
 export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
@@ -156,6 +159,7 @@ export const P_COMPOUND = ENGINE_COMPOUND_BASE;
 // --- I32 scratch ---
 export const I_SPRITE_KEY_LO = 64;
 export const I_SPRITE_KEY_HI = 65;
+export const I_OUT_RAY_HIT = 66;
 // --- Entity SoA (indexed by physId / entity slot) ---
 export const entityX = new Float32Array(MAX_ENTITIES);
 export const entityY = new Float32Array(MAX_ENTITIES);

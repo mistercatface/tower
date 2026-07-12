@@ -31,7 +31,7 @@ const editorSceneHooks = {
             zIndex: 110,
             draw(state, viewport, ctx) {
                 if (!state.losShadowStrength || !state.obstacleGrid) return;
-                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid, { overlayAlpha: state.losShadowStrength });
+                drawLosShadowOverlay(ctx, viewport, state.obstacleGrid, undefined, undefined, state.losShadowStrength);
             },
         },
         {

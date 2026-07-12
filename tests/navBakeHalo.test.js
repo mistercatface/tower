@@ -14,7 +14,7 @@ describe("nav incremental bake halo", () => {
         const a = 2 * cols + 2; // (col2,row2)
         const b = a + 1; // (col3,row2), east neighbor
         // Rail wall on the east side of A (mirrored onto west side of B).
-        setBoundary(grid, a, 1, { capHeightLevel: 2, thicknessLevel: 1 });
+        setBoundary(grid, a, 1, 2, 1);
 
         const t0 = bakeNavTopologyLocal(grid).navTopology;
         assert.ok(!t0.canStep(a, b), "wall must block A->B");

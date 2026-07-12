@@ -92,12 +92,12 @@ export function buildDragLaunchAimLineContext(prop, state) {
     if (!state || !prop) return null;
     const grid = state.obstacleGrid;
     const maxRayDist = dragLaunchMaxRayDist(grid);
-    return { prop, radius: prop.radius, maxRayDist };
+    return { prop, radius: prop.radius, maxRayDist, obstacleGrid: grid };
 }
 export function getDragLaunchAimLine(preview, aimLineContext) {
     if (!preview || preview.power <= 0 || !aimLineContext) return false;
     const travelDist = estimateRollingTravelDistance(preview.power, aimLineContext.prop?.strategy ?? {});
-    return computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, { originX: preview.anchorX, originY: preview.anchorY, radius: aimLineContext.radius, nx: preview.nx, ny: preview.ny, maxTravelDist: travelDist, maxRayDist: aimLineContext.maxRayDist });
+    return computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, preview.anchorX, preview.anchorY, aimLineContext.radius, preview.nx, preview.ny, travelDist, aimLineContext.maxRayDist, aimLineContext.obstacleGrid);
 }
 export function applyDragLaunchVelocity(body, nx, ny, power) {
     body.vx = nx * power;

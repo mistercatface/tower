@@ -644,7 +644,9 @@ class KineticDebrisStore {
             if (x + radius < minX || x - radius > maxX || y + radius < minY || y - radius > maxY) continue;
             const dx = x - vx;
             const dy = y - vy;
-            drawQueue.push(drawKindProp, 0, body, dx * dx + dy * dy);
+            const eid = body._physId;
+            if (eid === undefined) throw new Error("Kinetic debris missing _physId");
+            drawQueue.push(drawKindProp, 0, eid, dx * dx + dy * dy);
         }
     }
     integrateSpawned(spatialFrame, bodies, dtMs) {

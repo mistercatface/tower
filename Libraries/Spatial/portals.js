@@ -1,8 +1,11 @@
-import { GRID_STAMP_RENDER_KEY, BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache } from "../Canvas/canvas.js";
+import { BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache } from "../Canvas/canvas.js";
 import { forEachCardinalNeighborIdx } from "./spatial.js";
 import { ensureGrowI32, circleInViewBounds, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
+import { GRID_STAMP_RENDER_KEY_PORTAL } from "../../Core/engineEnums.js";
 export const PORTAL_NONE = -1;
-const PORTAL_STRIP_KEYS = ["exit", "entry"];
+const PORTAL_STRIP_EXIT = 0;
+const PORTAL_STRIP_ENTRY = 1;
+const PORTAL_STRIP_KEYS = [PORTAL_STRIP_EXIT, PORTAL_STRIP_ENTRY];
 function bumpFloorNavEpoch(grid) {
     grid.floorNavEpoch = (grid.floorNavEpoch + 1) | 0;
     grid.invalidateNavTopology();
@@ -132,19 +135,19 @@ function portalDrawForPalette(palette) {
 }
 const PORTAL_EXIT_DRAW = portalDrawForPalette(PORTAL_EXIT_PALETTE);
 const PORTAL_ENTRY_DRAW = portalDrawForPalette(PORTAL_ENTRY_PALETTE);
-function portalDrawForStripKey(role) {
-    return role === "exit" ? PORTAL_EXIT_DRAW : PORTAL_ENTRY_DRAW;
+function portalDrawForStripKey(stripKey) {
+    return stripKey === PORTAL_STRIP_EXIT ? PORTAL_EXIT_DRAW : PORTAL_ENTRY_DRAW;
 }
-function drawPortalStamp(ctx, grid, viewport, idx, role, frameIndex, halfExtents) {
+function drawPortalStamp(ctx, grid, viewport, idx, stripKey, frameIndex, halfX) {
     const x = grid.gridCenterXByIdx(idx);
     const y = grid.gridCenterYByIdx(idx);
     if (!circleInViewBounds(x, y, grid.cellHalfSize, VIEW_TIER_PROPS)) return;
-    drawCachedGridStampFilmstripShared(ctx, x, y, halfExtents, viewport, GRID_STAMP_RENDER_KEY.Portal, role, 0, portalDrawForStripKey(role), frameIndex, BELT_FILMSTRIP_FRAMES);
+    drawCachedGridStampFilmstripShared(ctx, x, y, halfX, viewport, GRID_STAMP_RENDER_KEY_PORTAL, stripKey, 0, portalDrawForStripKey(stripKey), frameIndex, BELT_FILMSTRIP_FRAMES);
 }
 export class FloorPortalDrawCache {
     constructor() {
         this.revision = -1;
-        this.halfExtents = { x: 0, y: 0 };
+        this.cellHalf = 0;
     }
     static clear(state) {
         if (!state.sandbox) return;
@@ -158,9 +161,8 @@ export class FloorPortalDrawCache {
         if (cache.revision === revision) return cache;
         cache.revision = revision;
         const cellHalf = grid.cellHalfSize;
-        cache.halfExtents.x = cellHalf;
-        cache.halfExtents.y = cellHalf;
-        if (viewport && grid.activePortalCount > 0) warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY.Portal, PORTAL_STRIP_KEYS, 2, () => 0, portalDrawForStripKey, BELT_FILMSTRIP_FRAMES);
+        cache.cellHalf = cellHalf;
+        if (viewport && grid.activePortalCount > 0) warmSharedGridStampFilmstripCache(viewport, cellHalf, GRID_STAMP_RENDER_KEY_PORTAL, PORTAL_STRIP_KEYS, 2, () => 0, portalDrawForStripKey, BELT_FILMSTRIP_FRAMES);
         return cache;
     }
     draw(ctx, state, grid, viewport) {
@@ -168,10 +170,10 @@ export class FloorPortalDrawCache {
         if (count === 0) return;
         const pairs = grid.activePortalPairs;
         const frameIndex = Math.floor(state.gameTime / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
-        const halfExtents = this.halfExtents;
+        const halfX = this.cellHalf;
         for (let i = 0; i < count; i++) {
-            drawPortalStamp(ctx, grid, viewport, pairs[i * 2], "exit", frameIndex, halfExtents);
-            drawPortalStamp(ctx, grid, viewport, pairs[i * 2 + 1], "entry", frameIndex, halfExtents);
+            drawPortalStamp(ctx, grid, viewport, pairs[i * 2], PORTAL_STRIP_EXIT, frameIndex, halfX);
+            drawPortalStamp(ctx, grid, viewport, pairs[i * 2 + 1], PORTAL_STRIP_ENTRY, frameIndex, halfX);
         }
     }
 }

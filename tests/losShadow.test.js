@@ -160,8 +160,8 @@ describe("collectRailWallShadowEdgesInAabbF32", () => {
 });
 describe("losShadowEdges", () => {
     it("edgeSegmentOutsideCircle rejects segments whose AABB misses the vision disc", () => {
-        assert.equal(edgeSegmentOutsideCircle({ x1: 0, y1: 0, x2: 10, y2: 0 }, 100, 100, 50 * 50), true);
-        assert.equal(edgeSegmentOutsideCircle({ x1: 0, y1: 0, x2: 10, y2: 0 }, 5, 0, 50 * 50), false);
+        assert.equal(edgeSegmentOutsideCircle(0, 0, 10, 0, 100, 100, 50 * 50), true);
+        assert.equal(edgeSegmentOutsideCircle(0, 0, 10, 0, 5, 0, 50 * 50), false);
     });
     it("emits projected roof-anchored shadow quads for edges in range", () => {
         const grid = makeTestObstacleGrid(16, 16);
@@ -183,7 +183,7 @@ describe("composeLosShadowMask", () => {
         stampWallRect(grid, 10, 10, 2, 2);
         const viewport = makeTestViewport(128, 128, 200, 200, 1);
         const mask = createMockCanvas2d(400, 400);
-        composeLosShadowMask(mask, 400, 400, viewport, grid, { visionTiles: 8, lightHeightCells: 1 });
+        composeLosShadowMask(mask, 400, 400, viewport, grid, 8, 1);
         const gcoOps = mask.ops.filter((o) => o.op === "gco").map((o) => o.value);
         assert.ok(gcoOps.includes("destination-out"));
         assert.ok(gcoOps.includes("source-over"));
@@ -197,7 +197,7 @@ describe("drawLosShadowOverlay", () => {
         const grid = makeTestObstacleGrid(32, 32);
         const viewport = makeTestViewport(128, 128);
         const ctx = createMockCanvas2d(400, 400);
-        drawLosShadowOverlay(ctx, viewport, grid, { visionTiles: 8 });
+        drawLosShadowOverlay(ctx, viewport, grid, 8);
         assert.ok(ctx.ops.some((o) => o.op === "drawImage"));
         assert.equal(
             ctx.ops.some((o) => o.op === "gco" && o.value === "destination-out"),

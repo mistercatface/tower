@@ -128,3 +128,9 @@ export const OVERLAY_RENDER_KEY_WIRE_ENDPOINT = 5;
 export const OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT = 6;
 export const OVERLAY_RENDER_KEY_PATH_DEBUG_NODE = 7;
 export const OVERLAY_RENDER_KEY_FLOATING_TEXT = 8;
+// Grid stamp filmstrip sprite-cache families
+export const GRID_STAMP_RENDER_KEY_FLOOR_BELT = 1;
+export const GRID_STAMP_RENDER_KEY_PORTAL = 2;
+// Stepped circle ray hit kinds
+export const CIRCLE_RAY_HIT_NONE = 0;
+export const CIRCLE_RAY_HIT_WALL = 1;

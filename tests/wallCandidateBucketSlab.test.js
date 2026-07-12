@@ -17,69 +17,70 @@ function stampBlockedCell(grid, col, row) {
     grid.grid[worldIdxAtCell(grid, col, row)] = 1;
 }
 
-const sLookup = { hit: false, slot: 0, segments: null };
+const sHitSlot = new Int32Array(2);
 const sKey = new Int32Array(2);
 
 function lookup(slab, keyLo, keyHi, frameId, revision) {
-    return lookupWallCandidateBucketInto(sLookup, slab, keyLo, keyHi, frameId, revision);
+    const segIds = lookupWallCandidateBucketInto(sHitSlot, slab, keyLo, keyHi, frameId, revision);
+    return { hit: sHitSlot[0] !== 0, slot: sHitSlot[1], segIds };
 }
 
 describe("wall candidate bucket slab", () => {
     it("reuses segment arrays on miss instead of allocating fresh buckets", () => {
         const slab = createWallCandidateBucketSlab();
         const first = lookup(slab, 1, 2, 10, 0);
-        const firstSegments = first.segments;
+        const firstSegIds = first.segIds;
         const firstSlot = first.slot;
-        firstSegments.push("wall");
-        commitWallCandidateBucket(slab, firstSlot, 1, 2, 10, 0, firstSegments);
+        firstSegIds.push(1);
+        commitWallCandidateBucket(slab, firstSlot, 1, 2, 10, 0, firstSegIds);
         const stale = lookup(slab, 1, 2, 11, 0);
         assert.equal(stale.hit, false);
-        assert.equal(stale.segments, firstSegments);
-        assert.equal(stale.segments.length, 0);
+        assert.equal(stale.segIds, firstSegIds);
+        assert.equal(stale.segIds.used, 0);
     });
     it("hits same bucket within a frame and revision", () => {
         const slab = createWallCandidateBucketSlab();
         const first = lookup(slab, 100, 3, 7, 2);
-        const firstSegments = first.segments;
-        firstSegments.push("wall");
-        commitWallCandidateBucket(slab, first.slot, 100, 3, 7, 2, firstSegments);
+        const firstSegIds = first.segIds;
+        firstSegIds.push(1);
+        commitWallCandidateBucket(slab, first.slot, 100, 3, 7, 2, firstSegIds);
         const hit = lookup(slab, 100, 3, 7, 2);
         assert.equal(hit.hit, true);
-        assert.equal(hit.segments, firstSegments);
+        assert.equal(hit.segIds, firstSegIds);
     });
     it("restamps stale frame without clearing the slab", () => {
         const slab = createWallCandidateBucketSlab();
         const first = lookup(slab, 100, 3, 4, 2);
-        const firstSegments = first.segments;
-        firstSegments.push("wall");
-        commitWallCandidateBucket(slab, first.slot, 100, 3, 4, 2, firstSegments);
+        const firstSegIds = first.segIds;
+        firstSegIds.push(1);
+        commitWallCandidateBucket(slab, first.slot, 100, 3, 4, 2, firstSegIds);
         const stale = lookup(slab, 100, 3, 5, 2);
         assert.equal(stale.hit, false);
-        assert.equal(stale.segments, firstSegments);
-        assert.equal(stale.segments.length, 0);
+        assert.equal(stale.segIds, firstSegIds);
+        assert.equal(stale.segIds.used, 0);
     });
     it("invalidateWallCandidateBucketFrame recycles slots without releasing segment arrays", () => {
         const slab = createWallCandidateBucketSlab();
         const first = lookup(slab, 100, 3, 4, 2);
-        const firstSegments = first.segments;
+        const firstSegIds = first.segIds;
         const firstSlot = first.slot;
-        firstSegments.push("wall");
-        commitWallCandidateBucket(slab, firstSlot, 100, 3, 4, 2, firstSegments);
+        firstSegIds.push(1);
+        commitWallCandidateBucket(slab, firstSlot, 100, 3, 4, 2, firstSegIds);
         invalidateWallCandidateBucketFrame(slab);
         assert.equal(slab.frameStamp[firstSlot], -1);
-        assert.equal(slab.segments[firstSlot], firstSegments);
-        assert.equal(slab.segmentPool.length, 0);
+        assert.equal(slab.segIds[firstSlot], firstSegIds);
+        assert.equal(slab.segIdPool.length, 0);
     });
     it("reset on revision returns segment arrays to the pool", () => {
         const slab = createWallCandidateBucketSlab();
         const first = lookup(slab, 100, 3, 4, 2);
-        const firstSegments = first.segments;
+        const firstSegIds = first.segIds;
         const firstSlot = first.slot;
-        firstSegments.push("wall");
-        commitWallCandidateBucket(slab, firstSlot, 100, 3, 4, 2, firstSegments);
+        firstSegIds.push(1);
+        commitWallCandidateBucket(slab, firstSlot, 100, 3, 4, 2, firstSegIds);
         resetWallCandidateBucketSlab(slab);
-        assert.equal(slab.segmentPool.length, 1);
-        assert.equal(slab.segmentPool[0], firstSegments);
+        assert.equal(slab.segIdPool.length, 1);
+        assert.equal(slab.segIdPool[0], firstSegIds);
         assert.equal(slab.frameStamp[firstSlot], -1);
     });
     it("SpatialFrameCore caches wall candidates per bucket within a frame", () => {
@@ -92,7 +93,7 @@ describe("wall candidate bucket slab", () => {
         const first = frame.getWallCandidates(entity);
         const second = frame.getWallCandidates(entity);
         assert.equal(first, second);
-        assert.ok(first.length > 0);
+        assert.ok(first.used > 0);
     });
     it("SpatialFrameCore refills buckets on the next frame without Map.clear", () => {
         const grid = new WorldObstacleGrid(16);
@@ -105,7 +106,7 @@ describe("wall candidate bucket slab", () => {
         frame.resetFrame(grid);
         const frameTwo = frame.getWallCandidates(entity);
         assert.equal(frameOne, frameTwo);
-        assert.ok(frameTwo.length > 0);
+        assert.ok(frameTwo.used > 0);
     });
     it("wallBucketKeyPartsInto matches grid cell and pad", () => {
         const grid = new WorldObstacleGrid(16);

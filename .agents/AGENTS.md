@@ -99,8 +99,14 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 
 - Wall face draw state: module `wallFaceF32` / `wallFaceI32` (`WF_*`) via `writeWallFaceScratch` / `writeWallFaceFromRailBox` / `writeWallFaceFromVoxelFace` — no `wallFaceScratch` bags; stride layouts live in `wallGridStride.js` as bare `RAIL_BOX_*` / `VOXEL_FACE_*` ints (cycle-safe vs Spatial→Render).
 - Overlay glyph `customKey` / `OVERLAY_RENDER_KEY_*` are packed numbers (ints / `mixHash4`) — no `` `r${…}` `` template strings / nested key objects.
-- CSS color strings stay only at the canvas `fillStyle` / `strokeStyle` edge (slot arrays for prism/wall chunk colors).
+- Pending surface textures: **skip draw** (sphere / wall-chunk / atlas miss / rail cap) — no gray ball, gray prism, or `floorShadow` solid stand-in.
+- Sphere mesh: fixed `SPHERE_LON_BANDS` / `SPHERE_LAT_BANDS`; `drawSphere(ctx, prop, viewport)` — no options bag.
+- CSS color strings stay only at the canvas `fillStyle` / `strokeStyle` edge.
 - Overlay AABB draw: `drawAabbStyle(ctx, minX, minY, maxX, maxY, …)` — no `{ minX, minY, maxX, maxY }` rebox on bake.
+- `VisibleDrawQueue`: typed `kinds` / `baseIndices` / `depths` + eid column — no object `refs` shuffle.
+- Grid stamps: `GRID_STAMP_RENDER_KEY_*` bare ints; filmstrip strip keys are packed/role ints; half extents as scalars.
+- Spatial wall-candidate lookup: typed I32 columns (no `sWallBucketLookup` bag); `setBoundary(grid, idx, side, cap, thickness)`.
+- Aim/ray: `castSteppedCircleRay` writes F32/I32 outs + bare hit enum — no `{ hit, x, y, dist }` / string hit kinds.
 
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:
 `npm run audit:all` and `node scripts/audit-codebase.mjs --warn Libraries/<area>`.
