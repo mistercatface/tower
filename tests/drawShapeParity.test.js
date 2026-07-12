@@ -13,7 +13,13 @@ import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVis
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 import propCatalog from "../Assets/props/index.js";
 import { gridSettings } from "../Config/world.js";
+import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 const cacheKeyDeps = { quantizeAngleIndex };
+let nextStageEid = 9000;
+function bindStageProp(prop) {
+    assignPhysIdWithPose(prop, nextStageEid++);
+    return prop._physId;
+}
 describe("draw shape parity", () => {
     it("hex block shares polygon sim and draw footprint with six vertices", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
@@ -40,7 +46,8 @@ describe("draw shape parity", () => {
     });
     it("sprite bake stage passes live polygon verts to draw", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
-        const stageProp = getPropStageBakeState(prop);
+        const eid = bindStageProp(prop);
+        const stageProp = getPropStageBakeState(eid);
         assert.equal(stageProp.shape.vertices.length / 2, 6);
         assert.equal(stageProp.shape.vertices[0], prop.shape.vertices[0]);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
@@ -50,6 +57,13 @@ describe("draw shape parity", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
+        prop._wallChunkTextureReady = true;
+        bindWallChunkTexturePipeline({
+            _wallChunkReady: true,
+            _wallChunkCapCanvas: { width: 128, height: 128 },
+            _wallChunkSideCanvas: { width: 128, height: 128 },
+            settings: { surfaceBakeScale: 1, cellSize: 16, cellsPerChunk: 8 },
+        });
         const draw = createWallChunkDraw();
         const calls = { beginPath: 0, fill: 0, stroke: 0 };
         const ctx = {
@@ -60,6 +74,7 @@ describe("draw shape parity", () => {
             moveTo() {},
             lineTo() {},
             closePath() {},
+            createPattern() { return { setTransform() {} }; },
         };
         const viewport = {
             x: 100,
@@ -74,6 +89,7 @@ describe("draw shape parity", () => {
         assert.equal(calls.stroke, 0);
         assert.equal(prop.shape.vertices[2], 12);
         assert.equal(prop.shape.vertices[5], 5);
+        bindWallChunkTexturePipeline(null);
     });
     it("textured flat wall-chunk cap fills live polygon path (not clip+triangle quad)", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
@@ -124,7 +140,7 @@ describe("draw shape parity", () => {
         assert.equal(path[0][1], -8);
         bindWallChunkTexturePipeline(null);
     });
-    it("polygon primitive extrudes in radial without textures as solid pending fill", () => {
+    it("polygon primitive skips radial draw until wall-chunk textures are ready", () => {
         bindWallChunkTexturePipeline(null);
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
@@ -150,7 +166,7 @@ describe("draw shape parity", () => {
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
         draw(ctx, prop, viewport, false);
-        assert.ok(calls.fill > 1);
+        assert.equal(calls.fill, 0);
         assert.equal(calls.stroke, 0);
     });
     it("large footprints use finer sprite facing steps than crate-sized props", () => {
@@ -177,7 +193,7 @@ describe("draw shape parity", () => {
     it("visual attachments resolve from quantized facing", () => {
         const prop = new WorldProp(0, 0, "boid_triangle", 0);
         prop.facing = Math.PI / 2;
-        const stageProp = getPropStageBakeState(prop);
+        const stageProp = getPropStageBakeState(bindStageProp(prop));
         const qHeading = quantizeAngle(prop.facing, resolvePropQuantizeSteps(prop).facing);
         const attachments = resolveVisualAttachmentProps(stageProp);
         assert.equal(attachments.before.length, 0);
@@ -196,8 +212,8 @@ describe("draw shape parity", () => {
         setCirclePropRadius(large, small.radius * 2);
         small.vx = 30;
         large.vx = 30;
-        const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(small)).after[0];
-        const largeChild = resolveVisualAttachmentProps(getPropStageBakeState(large)).after[0];
+        const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(bindStageProp(small))).after[0];
+        const largeChild = resolveVisualAttachmentProps(getPropStageBakeState(bindStageProp(large))).after[0];
         assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
         assert.ok(Math.abs(largeChild.height - smallChild.height * 2) < 1e-6);

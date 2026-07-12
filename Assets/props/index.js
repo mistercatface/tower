@@ -15,5 +15,9 @@ import wall_rail_chunk from "./rail_wall_chunk/railWallChunk.asset.js";
 const catalog = { ball, box, tri_wedge, boid_triangle, snake, hex_block, floor_belt, floor_belt_elbow_left, floor_belt_elbow_right, cross_pinwheel, star_block, gear_block, wall_voxel_chunk, wall_rail_chunk };
 export default catalog;
 let nextRenderKeyId = 1;
-for (const asset of Object.values(catalog)) asset.renderKeyId = nextRenderKeyId++;
+export const propCatalogByRenderKeyId = [];
+for (const asset of Object.values(catalog)) {
+    asset.renderKeyId = nextRenderKeyId++;
+    propCatalogByRenderKeyId[asset.renderKeyId] = asset;
+}
 export const NEXT_RENDER_KEY_ID = nextRenderKeyId;

@@ -9,6 +9,7 @@ import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/Ent
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
 import { getPropStaticKey } from "../Libraries/Canvas/canvas.js";
+import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 
 const spriteCacheKeyDeps = { quantizeAngleIndex };
 
@@ -68,11 +69,12 @@ describe("fracture debris slab spawn", () => {
     it("wall-chunk texture ready flip changes prop static sprite key", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 16, 16);
+        assignPhysIdWithPose(prop, 9100);
         prop._wallChunkTextureReady = false;
-        const pendingKey = getPropStaticKey(prop, "box");
+        const pendingKey = getPropStaticKey(prop._physId, "box");
         const pendingCustom = getWallChunkSpriteCacheKey(prop);
         prop._wallChunkTextureReady = true;
-        const readyKey = getPropStaticKey(prop, "box");
+        const readyKey = getPropStaticKey(prop._physId, "box");
         const readyCustom = getWallChunkSpriteCacheKey(prop);
         assert.notEqual(pendingCustom, readyCustom);
         assert.notEqual(pendingKey, readyKey);

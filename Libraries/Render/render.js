@@ -1,13 +1,13 @@
 import { traceAabbRect, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolylineF32, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, entityRefs, GrowF32 } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, entityX, entityY, entityFlags, entityRenderKeyId, entityRefs, GrowF32 } from "../../Core/engineMemory.js";
 import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js";
-import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
+import { DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, collectRailWallBoxesInAabbF32, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { VOXEL_FACE_CX, VOXEL_FACE_CY, VOXEL_FACE_OUT_X, VOXEL_FACE_OUT_Y, VOXEL_FACE_X1, VOXEL_FACE_Y1, VOXEL_FACE_X2, VOXEL_FACE_Y2, VOXEL_FACE_WALL_HEIGHT, VOXEL_FACE_WALL_BASE_Z, VOXEL_FACE_WALL_CAP_HEIGHT, VOXEL_FACE_GRID_SIDE, VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE, RAIL_BOX_MIN_X, RAIL_BOX_MAX_X, RAIL_BOX_MIN_Y, RAIL_BOX_MAX_Y, RAIL_BOX_INNER_P1X, RAIL_BOX_INNER_P1Y, RAIL_BOX_INNER_P2X, RAIL_BOX_INNER_P2Y, RAIL_BOX_OUTER_P1X, RAIL_BOX_OUTER_P1Y, RAIL_BOX_OUTER_P2X, RAIL_BOX_OUTER_P2Y, RAIL_BOX_INWARD_X, RAIL_BOX_INWARD_Y, RAIL_BOX_CX, RAIL_BOX_CY, RAIL_BOX_WALL_CAP_HEIGHT, RAIL_BOX_WALL_HEIGHT, RAIL_BOX_WALL_BASE_Z, RAIL_BOX_GRID_SIDE, RAIL_BOX_GRID_IDX, RAIL_BOX_STRIDE } from "../World/wallGridStride.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
-import propCatalog from "../../Assets/props/index.js";
+import { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision, SS_POINTS } from "../WorldSurface/worldSurface.js";
 import { propShapeFootprintId } from "../Props/props.js";
 const WALL_ATLAS_FACE_NONE = 0;
@@ -1601,12 +1601,13 @@ export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state) {
     if (!capCanvas) return;
     blitHorizontalCapSampleFlat(ctx, rCapCorners, rCapSrc, capCanvas);
 }
-const match3d = (p) => p.strategy?.renderMode === PROP_RENDER_MODE_3D;
+const match3d = (eid) => (entityFlags[eid] & ENTITY_FLAG_RENDER_3D) !== 0;
 function bindWallFaceScratchFlat(kind, baseIndex) {
     if (kind === DRAW_KIND_RAIL) writeWallFaceFromRailBox(getRailWallBoxData(), baseIndex);
     else if (kind === DRAW_KIND_VOXEL) writeWallFaceFromVoxelFace(getVoxelWallFaceData(), baseIndex);
 }
-function prepareWallChunkPropTextures(state, prop) {
+function prepareWallChunkPropTextures(state, eid) {
+    const prop = entityRefs[eid];
     if (!prop.wallChunkProfileId || !state?.worldSurfaces) return;
     const worldSurfaces = state.worldSurfaces;
     worldSurfaces.ensureWallChunkProfileTextures(state, prop.wallChunkProfileId, prop.wallChunkHeightPx);
@@ -1628,9 +1629,7 @@ export class WorldSceneRenderer {
         const ids = state.entityRegistry.borrowedQueryIds("3d");
         for (let i = 0; i < count; i++) {
             const eid = ids[i];
-            const p = state.entityRegistry.getRef(eid);
-            if (!p) continue;
-            const distSq = (p.x - viewport.x) ** 2 + (p.y - viewport.y) ** 2;
+            const distSq = (entityX[eid] - viewport.x) ** 2 + (entityY[eid] - viewport.y) ** 2;
             this.visibleDrawQueue.push(DRAW_KIND_PROP, 0, eid, distSq);
         }
         state.fractureEngine.debris.appendVisibleProps(this.visibleDrawQueue, viewport, DRAW_KIND_PROP);
@@ -1648,7 +1647,7 @@ export class WorldSceneRenderer {
         for (let i = 0; i < q.length; i++) {
             const kind = q.kinds[i];
             const baseIndex = q.baseIndices[i];
-            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, entityRefs[q.eids[i]], viewport, state, flatProps, radialSpheres);
+            if (kind === DRAW_KIND_PROP) this._drawProp(ctx, q.eids[i], viewport, state, flatProps, radialSpheres);
             else if (kind === DRAW_KIND_VOXEL) {
                 bindWallFaceScratchFlat(DRAW_KIND_VOXEL, baseIndex);
                 drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state);
@@ -1658,24 +1657,13 @@ export class WorldSceneRenderer {
             }
         }
     }
-    _drawProp(ctx, prop, viewport, state, flatProps, radialSpheres) {
-        const hasAlpha = prop.alpha !== undefined && prop.alpha !== 1;
-        const prevAlpha = ctx.globalAlpha;
-        if (hasAlpha) ctx.globalAlpha = prevAlpha * prop.alpha;
-        try {
-            const renderKey = prop.getRender3DKey?.() ?? prop.strategy?.render3DKey;
-            const draw = propCatalog[renderKey]?.drawRecipe;
-            if (!draw) return;
-            prepareWallChunkPropTextures(state, prop);
-            drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, 0, resolvePropFlatPresentation(flatProps, radialSpheres, prop));
-        } finally {
-            if (hasAlpha) ctx.globalAlpha = prevAlpha;
-        }
+    _drawProp(ctx, eid, viewport, state, flatProps, radialSpheres) {
+        const renderKeyId = entityRenderKeyId[eid];
+        const draw = propCatalogByRenderKeyId[renderKeyId]?.drawRecipe;
+        if (!draw) return;
+        const flatPresentation = flatProps && !(radialSpheres && (entityFlags[eid] & ENTITY_FLAG_CIRCLE_SHAPE) !== 0);
+        drawCachedPropSprite(ctx, eid, viewport, renderKeyId, draw, 0, flatPresentation, () => prepareWallChunkPropTextures(state, eid));
     }
-}
-function resolvePropFlatPresentation(flatProps, radialSpheres, prop) {
-    const isSphere = prop.shape?.shapeTypeId === SHAPE_TYPE_CIRCLE;
-    return flatProps && !(radialSpheres && isSphere);
 }
 /** Default omnidirectional vision radius in grid tiles. */
 export const LOS_SHADOW_VISION_TILES_DEFAULT = 16;

@@ -179,6 +179,7 @@ export const entityKind = new Uint8Array(MAX_ENTITIES);
 export const entityFlags = new Uint32Array(MAX_ENTITIES);
 export const entityAlive = new Uint8Array(MAX_ENTITIES);
 export const entityGameId = new Int32Array(MAX_ENTITIES).fill(-1);
+export const entityRenderKeyId = new Uint16Array(MAX_ENTITIES);
 export const entityRefs = new Array(MAX_ENTITIES); // JS body / prop object per slot
 export const entitySpatialGen = new Uint32Array(MAX_ENTITIES);
 export const entityGridTileIdx = new Int32Array(MAX_ENTITIES).fill(-1);

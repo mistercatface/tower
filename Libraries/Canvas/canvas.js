@@ -1,6 +1,6 @@
 ﻿import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
 import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
@@ -673,7 +673,8 @@ function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) 
         if (childDraw) childDraw(ctx, child, viewport, flatPresentation);
     }
 }
-export function getPropStaticKey(prop, renderKey) {
+export function getPropStaticKey(eid, renderKey) {
+    const prop = entityRefs[eid];
     const facing = readEntityFacing(prop);
     const voId = visualOverrideCacheId(prop);
     const attachmentId = getVisualAttachmentSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
@@ -697,15 +698,17 @@ export function getPropStaticKey(prop, renderKey) {
     prop._cachedStaticKey = staticKey;
     return staticKey;
 }
-function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0, flatPresentation = false) {
+function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flatPresentation = false, beforeBake = null) {
+    beforeBake?.();
+    const prop = entityRefs[eid];
     const px = viewport.x;
     const py = viewport.y;
     const zoom = viewport.zoom ?? 1;
-    const dx = prop.x - px;
-    const dy = prop.y - py;
+    const dx = entityX[eid] - px;
+    const dy = entityY[eid] - py;
     const viewStep = resolvePropQuantizeSteps(prop).view;
     const pixelSize = resolvePropPixelSizeForProp(prop);
-    const staticKey = getPropStaticKey(prop, renderKey);
+    const staticKey = getPropStaticKey(eid, renderKey);
     let key = staticKey;
     key = (key << 12n) | BigInt(flatPresentation ? 0 : packQuantizedViewBucket(dx, dy, viewStep));
     key = (key << 16n) | BigInt(animFrame & 0xffff);
@@ -724,12 +727,12 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0, fla
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
         const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d");
-        const stageProp = getPropStageBakeState(prop);
+        const stageProp = getPropStageBakeState(eid);
         stageProp.radius = prop.radius;
         const attachments = resolveVisualAttachmentProps(stageProp);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
-        ctx.translate(anchorX - prop.x, anchorY - prop.y);
+        ctx.translate(anchorX - entityX[eid], anchorY - entityY[eid]);
         drawVisualAttachmentList(ctx, attachments.before, viewport, flatPresentation);
         draw(ctx, stageProp, viewport, flatPresentation);
         drawVisualAttachmentList(ctx, attachments.after, viewport, flatPresentation);
@@ -855,7 +858,8 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
     });
     blitAnchoredSprite(ctx, overlaySpriteCacheSlab, slot, worldX, worldY);
 }
-export function drawCachedPropSprite(ctx, prop, viewport, renderKey, draw, animFrame = 0, flatPresentation = false) {
-    const slot = getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame, flatPresentation);
-    blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, prop.x, prop.y);
+export function drawCachedPropSprite(ctx, eid, viewport, renderKey, draw, animFrame = 0, flatPresentation = false, beforeBake = null) {
+    const slot = getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame, flatPresentation, beforeBake);
+    const alpha = entityRefs[eid].alpha;
+    blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, entityX[eid], entityY[eid], 0, alpha === undefined ? 1 : alpha);
 }

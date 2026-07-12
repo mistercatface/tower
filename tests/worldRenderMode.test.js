@@ -6,7 +6,9 @@ import {
     WORLD_RENDER_MODE_RADIAL,
     WORLD_RENDER_MODE_RADIAL_SPHERES,
     SHAPE_TYPE_CIRCLE,
+    ENTITY_FLAG_CIRCLE_SHAPE,
 } from "../Core/engineEnums.js";
+import { worldPropBindFlags } from "../Core/entitySlots.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { Renderer } from "../Render/Render.js";
 import { createMockCanvas2d } from "./mockCanvas2d.js";
@@ -32,11 +34,13 @@ describe("world render mode", () => {
         const box = new WorldProp(0, 0, "box", 0);
         assert.equal(ball.shape.shapeTypeId, SHAPE_TYPE_CIRCLE);
         assert.notEqual(box.shape.shapeTypeId, SHAPE_TYPE_CIRCLE);
+        assert.ok((worldPropBindFlags(ball) & ENTITY_FLAG_CIRCLE_SHAPE) !== 0);
+        assert.equal(worldPropBindFlags(box) & ENTITY_FLAG_CIRCLE_SHAPE, 0);
         const flatProps = true;
         const radialSpheres = true;
-        const flatFor = (prop) => flatProps && !(radialSpheres && prop.shape.shapeTypeId === SHAPE_TYPE_CIRCLE);
-        assert.equal(flatFor(ball), false);
-        assert.equal(flatFor(box), true);
+        const flatFor = (flags) => flatProps && !(radialSpheres && (flags & ENTITY_FLAG_CIRCLE_SHAPE) !== 0);
+        assert.equal(flatFor(worldPropBindFlags(ball)), false);
+        assert.equal(flatFor(worldPropBindFlags(box)), true);
     });
     it("drawWorldSceneStructure wires flat rails and radialSpheres flag", () => {
         const ctx = createMockCanvas2d(8, 8);

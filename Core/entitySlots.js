@@ -1,6 +1,6 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
-import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION } from "./engineEnums.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab } from "./engineMemory.js";
+import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE, PROP_RENDER_MODE_3D, SHAPE_TYPE_CIRCLE } from "./engineEnums.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRenderKeyId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab } from "./engineMemory.js";
 let nextEid = 0;
 const eidFreeList = [];
 export function allocateEntityEid() {
@@ -25,6 +25,8 @@ export function worldPropBindFlags(ref) {
     if (strategy?.isKinetic) flags |= ENTITY_FLAG_KINETIC;
     if (strategy?.rolls) flags |= ENTITY_FLAG_ROLLS;
     if (strategy?.orientToMotion) flags |= ENTITY_FLAG_ORIENT_TO_MOTION;
+    if ((strategy?.renderMode ?? PROP_RENDER_MODE_3D) === PROP_RENDER_MODE_3D) flags |= ENTITY_FLAG_RENDER_3D;
+    if (ref.shape?.shapeTypeId === SHAPE_TYPE_CIRCLE) flags |= ENTITY_FLAG_CIRCLE_SHAPE;
     return flags;
 }
 export function releaseEntityEid(eid) {
@@ -32,6 +34,7 @@ export function releaseEntityEid(eid) {
     entityKind[eid] = ENTITY_KIND_NONE;
     entityFlags[eid] = 0;
     entityGameId[eid] = -1;
+    entityRenderKeyId[eid] = 0;
     entityR[eid] = 0;
     entityAgeMs[eid] = 0;
     entityRefs[eid] = null;
@@ -47,6 +50,7 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityKind[eid] = kind;
     entityFlags[eid] = flags;
     entityGameId[eid] = gameId;
+    entityRenderKeyId[eid] = ref.strategy?.renderKeyId ?? 0;
     entityX[eid] = x;
     entityY[eid] = y;
     entityVx[eid] = ref._spawnVx ?? ref.vx ?? 0;

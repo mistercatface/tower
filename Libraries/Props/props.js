@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
@@ -90,7 +90,7 @@ export function setCirclePropRadius(prop, radius) {
     wakeKineticBody(prop._physId);
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
-export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: PROP_RENDER_MODE_3D, render3DKey: null, inspectKey: null, rolls: false, orientToMotion: false };
+export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: PROP_RENDER_MODE_3D, render3DKey: null, renderKeyId: 0, inspectKey: null, rolls: false, orientToMotion: false };
 export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
     prop._footprintId = undefined;
@@ -228,15 +228,16 @@ export function getBaseSpriteCacheId(prop, deps) {
     h = Math.imul(h, 16777619);
     return (h >>> 0) & 0xfffff;
 }
-export function getPropStageBakeState(prop) {
+export function getPropStageBakeState(eid) {
+    const prop = entityRefs[eid];
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
     const steps = resolvePropQuantizeSteps(prop);
-    sStageProp.x = prop.x;
-    sStageProp.y = prop.y;
-    sStageProp.radius = prop.radius;
+    sStageProp.x = entityX[eid];
+    sStageProp.y = entityY[eid];
+    sStageProp.radius = entityR[eid];
     sHalfExtents.x = ENGINE_F32[M_VEC_A];
     sHalfExtents.y = ENGINE_F32[M_VEC_A + 1];
-    sStageProp.facing = quantizeAngle(readEntityFacing(prop), steps.facing);
+    sStageProp.facing = quantizeAngle(entityFacing[eid], steps.facing);
     if (prop.strategy?.rolls) {
         quantizeBodyRollQuatF32(prop, steps.facing);
         sStageProp.rollQw = ENGINE_F32[M_OUT_QW];
@@ -257,7 +258,7 @@ export function getPropStageBakeState(prop) {
     sStageProp.height = prop.height;
     sStageProp.visualOverride = prop.visualOverride;
     sStageProp.faction = prop.faction;
-    sStageProp.ageMs = prop.ageMs;
+    sStageProp.ageMs = entityAgeMs[eid];
     sStageProp.id = prop.id;
     sStageProp.wallChunkProfileId = prop.wallChunkProfileId;
     sStageProp.wallChunkHeightPx = prop.wallChunkHeightPx;
@@ -265,7 +266,7 @@ export function getPropStageBakeState(prop) {
 }
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) {
-        const strategy = { ...PROP_STRATEGY_DEFAULTS };
+        const strategy = { ...PROP_STRATEGY_DEFAULTS, renderKeyId: asset?.renderKeyId ?? 0 };
         if (asset?.sandbox?.gridFloorBelt) strategy.isKinetic = false;
         else stampPrimitivePhysics(strategy, primitivePhysicsRow(asset ?? strategy));
         return strategy;
@@ -273,7 +274,7 @@ export function buildWorldPropStrategyFromAsset(asset) {
     const { spawn, renderMode, ...strategy } = asset.physics;
     if (strategy.localFootprint) strategy.localFootprint = new Float32Array(ensureFlatVerts(strategy.localFootprint));
     if (strategy.collisionParts) throw new Error(`${asset.id}: physics.collisionParts is deleted — use localFootprint (concave outlines auto-decompose)`);
-    const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderMode: renderMode ?? PROP_RENDER_MODE_3D, inspectKey: null, ...strategy };
+    const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderKeyId: asset.renderKeyId ?? 0, renderMode: renderMode ?? PROP_RENDER_MODE_3D, inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
     else stampPrimitivePhysics(built, primitivePhysicsRow(asset));
     if (assetUsesWallChunkSurface(asset) && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;

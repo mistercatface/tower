@@ -71,9 +71,9 @@ function kindStringToCode(kind) {
 }
 /**
  * Dense typed entity arena. Slot eid === physId. WorldProp bags live in entityRefs[eid].
- * Bind stamps entityFlags once from strategy (worldPropBindFlags); hot kinetic/rolls gates read flags.
- * getLive(gameId) is the editor/selection edge — prefer getRef(eid) for physics-adjacent code.
- * View queries return count; ids via borrowedQueryIds(filterId).
+ * Bind stamps entityFlags / entityRenderKeyId once from strategy; hot kinetic/rolls/render gates read columns.
+ * getLive(gameId) is the editor/selection edge ? prefer getRef(eid) for physics-adjacent code.
+ * View queries return count; ids via borrowedQueryIds(filterId). Match callbacks take eid.
  */
 export class EntityArena {
     constructor() {
@@ -250,8 +250,7 @@ export class EntityArena {
                 count = 0;
                 for (let i = 0; i < baseCached.count; i++) {
                     const eid = baseCached.ids[i];
-                    const ref = entitySlotRef(eid);
-                    if (ref && match(ref)) ids[count++] = eid;
+                    if (match(eid)) ids[count++] = eid;
                 }
                 this._queryCache.set(cacheKey, this._storeQueryViewCacheEntry(filterId, ids, count, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
                 return count;
@@ -279,10 +278,7 @@ export class EntityArena {
             if (!entityAlive[eid]) continue;
             if ((entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0) continue;
             if (!circleIntersectsAabbF32(entityX[eid], entityY[eid], entityR[eid], buf, o)) continue;
-            if (match) {
-                const ref = entitySlotRef(eid);
-                if (!ref || !match(ref)) continue;
-            }
+            if (match) if (!match(eid)) continue;
             ids[count++] = eid;
         }
         return count;
