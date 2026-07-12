@@ -9,6 +9,8 @@ const overlayHslaTemplateRe = /`hsla\(\$\{|`hsl\(\$\{/;
 const overlayStrokeFillColumnRe = /\bstroke:\s*new Array\(|\bfill:\s*new Array\(/;
 const overlayDashLiteralRe = /setLineDash\(\[/;
 const rollConfigOverrideBagRe = /getKineticRollConfig\s*\([^)]*,\s*\{/;
+const sandboxEnsureTargetWorldRe = /\bensureTargetWorld\b/;
+const sandboxHpaSettingsAssignRe = /Object\.assign\s*\(\s*hpaPathSettingsScratch/;
 export const id = "render-bags";
 export const description = "Render/Canvas/Spatial typed diet — no face bags, pending fills, string overlay/stamp keys, bag overlay cmds, or wall-bucket bags";
 export const severity = "fail";
@@ -50,6 +52,12 @@ export function run(ctx) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if ((inSandbox || inPhysics) && rollConfigOverrideBagRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inSandbox && sandboxEnsureTargetWorldRe.test(line)) {
+                findings.push(issue(id, severity, relPath, line.trim(), i + 1));
+            }
+            if (inSandbox && sandboxHpaSettingsAssignRe.test(line)) {
                 findings.push(issue(id, severity, relPath, line.trim(), i + 1));
             }
             if (inSpatial && beltStripStringRe.test(line)) {

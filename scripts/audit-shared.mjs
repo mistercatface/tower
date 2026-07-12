@@ -35,6 +35,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "createPolygonPrimitive",
     "createSpawnerBehavior",
     "DIRECT_GROUND_NAV_CONFIG",
+    "ensureTargetWorld",
     "entityIntersectsAabbEidF32",
     "expandNavTopologyBakeBounds",
     "F_OUT_POS_X",
