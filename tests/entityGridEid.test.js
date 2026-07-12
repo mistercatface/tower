@@ -17,7 +17,7 @@ const EID_B = 11;
 
 function stampCircle(eid, x, y, r) {
     entityAlive[eid] = 1;
-    entityRefs[eid] = { _physId: eid, _gridTileIdx: -1 };
+    entityRefs[eid] = { _physId: eid };
     entityX[eid] = x;
     entityY[eid] = y;
     entityR[eid] = r;
@@ -56,6 +56,6 @@ describe("entity grid eid", () => {
         const toIdx = entityGridTileIdx[EID_A];
         assert.notEqual(toIdx, fromIdx);
         assert.equal(toIdx, grid._getCellIndex(120, 80));
-        assert.equal(entityRefs[EID_A]._gridTileIdx, toIdx);
+        assert.equal(entityGridTileIdx[EID_A], toIdx);
     });
 });

@@ -1551,8 +1551,6 @@ export class EntityGrid {
         entitySpatialGen[eid] = 0;
         const idx = this._getCellIndex(x, y);
         entityGridTileIdx[eid] = idx;
-        const ref = entityRefs[eid];
-        if (ref) ref._gridTileIdx = idx;
         this._ensureActiveEidCap(this.activeEidCount + 1);
         this.activeEids[this.activeEidCount++] = eid;
         let extent = slabCollisionSpan(eid);
@@ -1565,11 +1563,7 @@ export class EntityGrid {
     }
     remove(eid) {
         const idx = entityGridTileIdx[eid];
-        const ref = entityRefs[eid];
-        if (idx === -1 || idx < 0 || idx >= this.cellHead.length) {
-            if (ref) ref._gridTileIdx = -1;
-            return;
-        }
+        if (idx === -1 || idx < 0 || idx >= this.cellHead.length) return;
         let curr = this.cellHead[idx];
         let prev = -1;
         while (curr !== -1 && curr !== undefined) {
@@ -1583,7 +1577,6 @@ export class EntityGrid {
             curr = this.entityNext[curr];
         }
         entityGridTileIdx[eid] = -1;
-        if (ref) ref._gridTileIdx = -1;
         const active = this.activeEids;
         for (let i = 0; i < this.activeEidCount; i++) {
             if (active[i] !== eid) continue;
