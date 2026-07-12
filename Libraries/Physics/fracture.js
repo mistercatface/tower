@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList, markHitCompoundParts } from "./physics.js";
-import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_POS_X, F_OUT_POS_Y, F_OUT_REMNANT, F_VEC_A, F_VEC_B, F_VEC_C, F_VEC_D, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_POS_X, F_OUT_POS_Y, F_OUT_REMNANT, F_VEC_A, F_VEC_B, F_VEC_C, F_VEC_D, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -525,10 +525,11 @@ class KineticDebrisStore {
             return spawnedScratch;
         }
         const stores = this.engine.stores;
-        const fracture = { debrisStart: ENGINE_F32[F_OUT_DEBRIS_START], debrisCount: ENGINE_F32[F_OUT_DEBRIS_COUNT], originX: ENGINE_F32[F_OUT_ORIGIN_X], originY: ENGINE_F32[F_OUT_ORIGIN_Y], facing: ENGINE_F32[F_OUT_FACING], impactLocalX: ENGINE_F32[F_OUT_IMPACT_LOCAL_X], impactLocalY: ENGINE_F32[F_OUT_IMPACT_LOCAL_Y], impactForce: ENGINE_F32[F_OUT_IMPACT_FORCE] };
-        const spawned = this.spawnShardsFromFracture(parent, fracture, stores);
+        const debrisStart = ENGINE_F32[F_OUT_DEBRIS_START];
+        const debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+        const spawned = this.spawnShardsFromFracture(parent, stores, debrisStart, debrisCount, ENGINE_F32[F_OUT_ORIGIN_X], ENGINE_F32[F_OUT_ORIGIN_Y], ENGINE_F32[F_OUT_FACING], ENGINE_F32[F_OUT_IMPACT_LOCAL_X], ENGINE_F32[F_OUT_IMPACT_LOCAL_Y], ENGINE_F32[F_OUT_IMPACT_FORCE]);
         if (!spawned.length) {
-            releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
+            releaseDebrisGeomHandles(stores, debrisStart, debrisCount);
             stores.debris.reset();
             const body = this.acquireBody(parent.type, parent.x, parent.y, parent.facing);
             body.vx = parent.vx;
@@ -550,12 +551,11 @@ class KineticDebrisStore {
             return spawnedScratch;
         }
         admitKineticPropsBatch(spatialFrame, spawned, this.world);
-        releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
+        releaseDebrisGeomHandles(stores, debrisStart, debrisCount);
         stores.debris.reset();
         return spawned;
     }
-    spawnShardsFromFracture(sourceProp, fracture, stores = moduleStores) {
-        const facing = fracture.facing;
+    spawnShardsFromFracture(sourceProp, stores, debrisStart, debrisCount, originX, originY, facing, impactLocalX, impactLocalY, impactForce) {
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
         FractureEngine._currentPropMotion(sourceProp);
@@ -564,7 +564,7 @@ class KineticDebrisStore {
         const motionW = ENGINE_F32[F_OUT_MOTION_W];
         const fractureBurst = !sourceProp.isKineticDebris && effectiveFracture(sourceProp);
         const burstSalt = fractureBurst ? 991 : 0;
-        if (fractureBurst) seedFractureRand(fracture.originX, fracture.originY, fracture.impactForce, burstSalt);
+        if (fractureBurst) seedFractureRand(originX, originY, impactForce, burstSalt);
         const wallChunkProfileId = sourceProp.wallChunkProfileId;
         const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
         const shardHeight = sourceProp.height;
@@ -573,11 +573,11 @@ class KineticDebrisStore {
         const inheritedFaction = sourceProp.faction;
         const debris = stores.debris;
         spawnedScratch.length = 0;
-        for (let i = fracture.debrisStart; i < fracture.debrisStart + fracture.debrisCount; i++) {
+        for (let i = debrisStart; i < debrisStart + debrisCount; i++) {
             const cx = debris.centroidX[i];
             const cy = debris.centroidY[i];
-            const worldX = fracture.originX + cx * cos - cy * sin;
-            const worldY = fracture.originY + cx * sin + cy * cos;
+            const worldX = originX + cx * cos - cy * sin;
+            const worldY = originY + cx * sin + cy * cos;
             const body = this.acquireBody(shardType, worldX, worldY, facing);
             FractureEngine.applyPropFractureGeometryFromDebris(body, stores, i);
             stores.geom.release(debris.vertHandle[i]);
@@ -594,7 +594,7 @@ class KineticDebrisStore {
                 body.wallChunkHeightPx = wallChunkHeightPx;
             }
             if (shardHeight != null) body.height = shardHeight;
-            if (fractureBurst) FractureEngine._applyShardBurstImpulse(fracture, body, cx, cy);
+            if (fractureBurst) FractureEngine._applyShardBurstImpulse(originX, originY, facing, impactLocalX, impactLocalY, impactForce, body, cx, cy);
             spawnedScratch.push(body);
         }
         for (let i = 0; i < spawnedScratch.length; i++) {
@@ -830,10 +830,11 @@ export class FractureEngine {
     constructor(world) {
         this.world = world;
         this.debris = new KineticDebrisStore(this, world);
-        this.deferredFractures = [];
-        this.deferredFracturesCount = 0;
         const geom = new FractureGeomPool();
         this.stores = { geom, debris: new FractureDebrisStore(geom) };
+    }
+    get deferredFracturesCount() {
+        return deferredFractureSlab.count;
     }
     processKineticContactFractures(tick, contacts) {
         if (contacts.count === 0) return;
@@ -862,30 +863,28 @@ export class FractureEngine {
         this.flushDeferredFractures(tick.world, tick.frame);
     }
     flushDeferredFractures(world, spatialFrame) {
-        const count = this.deferredFracturesCount;
+        const deferred = deferredFractureSlab;
+        const count = deferred.count;
         if (count === 0) return;
         world.entityRegistry.beginMembershipBatch();
         admitScratch.length = 0;
-        const deferredFractures = this.deferredFractures;
         const stores = this.stores;
         try {
             for (let i = 0; i < count; i++) {
-                const item = deferredFractures[i];
-                const prop = item.prop;
+                const prop = deferred.propRef[i];
                 delete prop._pendingEviction;
-                if (!item.remnant)
+                if (!deferred.remnant[i])
                     if (prop.isKineticDebris) this.debris.remove(prop, spatialFrame);
                     else removeWorldPropFromState(world, prop, spatialFrame);
-                const shards = this.debris.spawnShardsFromFracture(prop, item, stores);
+                const shards = this.debris.spawnShardsFromFracture(prop, stores, deferred.debrisStart[i], deferred.debrisCount[i], deferred.originX[i], deferred.originY[i], deferred.facing[i], deferred.impactLocalX[i], deferred.impactLocalY[i], deferred.impactForce[i]);
                 for (let j = 0; j < shards.length; j++) admitScratch.push(shards[j]);
-                releaseDebrisGeomHandles(stores, item.debrisStart, item.debrisCount);
-                item.prop = null;
+                releaseDebrisGeomHandles(stores, deferred.debrisStart[i], deferred.debrisCount[i]);
             }
             admitKineticPropsBatch(spatialFrame, admitScratch, world);
         } finally {
             world.entityRegistry.endMembershipBatch();
             stores.debris.reset();
-            this.deferredFracturesCount = 0;
+            resetDeferredFractureSlab();
             admitScratch.length = 0;
         }
     }
@@ -909,24 +908,20 @@ export class FractureEngine {
         }
     }
     enqueueDeferredFracture(prop) {
-        const deferredFractures = this.deferredFractures;
-        let count = this.deferredFracturesCount;
-        let item = deferredFractures[count];
-        if (!item) {
-            item = { prop: null, debrisStart: 0, debrisCount: 0, originX: 0, originY: 0, impactLocalX: 0, impactLocalY: 0, impactForce: 0, facing: 0, remnant: 0 };
-            deferredFractures[count] = item;
-        }
-        item.prop = prop;
-        item.debrisStart = ENGINE_F32[F_OUT_DEBRIS_START];
-        item.debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
-        item.originX = ENGINE_F32[F_OUT_ORIGIN_X];
-        item.originY = ENGINE_F32[F_OUT_ORIGIN_Y];
-        item.impactLocalX = ENGINE_F32[F_OUT_IMPACT_LOCAL_X];
-        item.impactLocalY = ENGINE_F32[F_OUT_IMPACT_LOCAL_Y];
-        item.impactForce = ENGINE_F32[F_OUT_IMPACT_FORCE];
-        item.facing = ENGINE_F32[F_OUT_FACING];
-        item.remnant = ENGINE_F32[F_OUT_REMNANT] === 1 ? 1 : 0;
-        this.deferredFracturesCount = count + 1;
+        const deferred = deferredFractureSlab;
+        const count = deferred.count;
+        if (count >= MAX_DEFERRED_FRACTURES) throw new Error(`deferredFractureSlab capacity exceeded (${MAX_DEFERRED_FRACTURES})`);
+        deferred.propRef[count] = prop;
+        deferred.debrisStart[count] = ENGINE_F32[F_OUT_DEBRIS_START];
+        deferred.debrisCount[count] = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+        deferred.originX[count] = ENGINE_F32[F_OUT_ORIGIN_X];
+        deferred.originY[count] = ENGINE_F32[F_OUT_ORIGIN_Y];
+        deferred.impactLocalX[count] = ENGINE_F32[F_OUT_IMPACT_LOCAL_X];
+        deferred.impactLocalY[count] = ENGINE_F32[F_OUT_IMPACT_LOCAL_Y];
+        deferred.impactForce[count] = ENGINE_F32[F_OUT_IMPACT_FORCE];
+        deferred.facing[count] = ENGINE_F32[F_OUT_FACING];
+        deferred.remnant[count] = ENGINE_F32[F_OUT_REMNANT] === 1 ? 1 : 0;
+        deferred.count = count + 1;
     }
     static commitFractureResult(world, prop, spatialFrame) {
         if (!spatialFrame) throw new Error("commitFractureResult requires spatial frame");
@@ -935,10 +930,11 @@ export class FractureEngine {
             if (prop.isKineticDebris) world.fractureEngine.debris.remove(prop, spatialFrame);
             else removeWorldPropFromState(world, prop, spatialFrame);
         const stores = world.fractureEngine.stores;
-        const fracture = { debrisStart: ENGINE_F32[F_OUT_DEBRIS_START], debrisCount: ENGINE_F32[F_OUT_DEBRIS_COUNT], originX: ENGINE_F32[F_OUT_ORIGIN_X], originY: ENGINE_F32[F_OUT_ORIGIN_Y], facing: ENGINE_F32[F_OUT_FACING], impactLocalX: ENGINE_F32[F_OUT_IMPACT_LOCAL_X], impactLocalY: ENGINE_F32[F_OUT_IMPACT_LOCAL_Y], impactForce: ENGINE_F32[F_OUT_IMPACT_FORCE], remnant: remnant ? 1 : 0 };
-        const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, fracture, stores);
+        const debrisStart = ENGINE_F32[F_OUT_DEBRIS_START];
+        const debrisCount = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+        const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, stores, debrisStart, debrisCount, ENGINE_F32[F_OUT_ORIGIN_X], ENGINE_F32[F_OUT_ORIGIN_Y], ENGINE_F32[F_OUT_FACING], ENGINE_F32[F_OUT_IMPACT_LOCAL_X], ENGINE_F32[F_OUT_IMPACT_LOCAL_Y], ENGINE_F32[F_OUT_IMPACT_FORCE]);
         admitKineticPropsBatch(spatialFrame, shards, world);
-        releaseDebrisGeomHandles(stores, fracture.debrisStart, fracture.debrisCount);
+        releaseDebrisGeomHandles(stores, debrisStart, debrisCount);
         stores.debris.reset();
         return shards;
     }
@@ -1221,14 +1217,14 @@ export class FractureEngine {
         ENGINE_F32[F_OUT_MOTION_VY] = prop.vy ?? 0;
         ENGINE_F32[F_OUT_MOTION_W] = prop.angularVelocity ?? 0;
     }
-    static _applyShardBurstImpulse(fracture, frag, cx, cy) {
-        const cos = Math.cos(fracture.facing);
-        const sin = Math.sin(fracture.facing);
-        const impactWorldX = fracture.originX + fracture.impactLocalX * cos - fracture.impactLocalY * sin;
-        const impactWorldY = fracture.originY + fracture.impactLocalX * sin + fracture.impactLocalY * cos;
-        const burst = Math.min(FRACTURE_TUNING.burst.maxBurst, FRACTURE_TUNING.burst.baseBurst + fracture.impactForce * FRACTURE_TUNING.burst.burstForceScale);
-        const worldPosX = fracture.originX + cx * cos - cy * sin;
-        const worldPosY = fracture.originY + cx * sin + cy * cos;
+    static _applyShardBurstImpulse(originX, originY, facing, impactLocalX, impactLocalY, impactForce, frag, cx, cy) {
+        const cos = Math.cos(facing);
+        const sin = Math.sin(facing);
+        const impactWorldX = originX + impactLocalX * cos - impactLocalY * sin;
+        const impactWorldY = originY + impactLocalX * sin + impactLocalY * cos;
+        const burst = Math.min(FRACTURE_TUNING.burst.maxBurst, FRACTURE_TUNING.burst.baseBurst + impactForce * FRACTURE_TUNING.burst.burstForceScale);
+        const worldPosX = originX + cx * cos - cy * sin;
+        const worldPosY = originY + cx * sin + cy * cos;
         const dx = worldPosX - impactWorldX;
         const dy = worldPosY - impactWorldY;
         const dist = Math.hypot(dx, dy);

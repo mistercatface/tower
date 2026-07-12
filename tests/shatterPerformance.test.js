@@ -42,7 +42,19 @@ describe("Shatter / Debris Performance Fixes", () => {
 
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30));
         const stores = world.fractureEngine.stores;
-        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, readImpactFracture(stores), stores);
+        const f = readImpactFracture(stores);
+        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(
+            prop,
+            stores,
+            f.debrisStart,
+            f.debrisCount,
+            f.originX,
+            f.originY,
+            f.facing,
+            f.impactLocalX,
+            f.impactLocalY,
+            f.impactForce,
+        );
         assert.ok(spawnedAgain.length >= 2);
 
         for (const body of spawnedAgain) {

@@ -36,7 +36,19 @@ describe("fracture debris slab ownership", () => {
         }
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30, world.fractureEngine));
         const stores = world.fractureEngine.stores;
-        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop, readImpactFracture(stores), stores);
+        const f = readImpactFracture(stores);
+        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(
+            prop,
+            stores,
+            f.debrisStart,
+            f.debrisCount,
+            f.originX,
+            f.originY,
+            f.facing,
+            f.impactLocalX,
+            f.impactLocalY,
+            f.impactForce,
+        );
         for (const body of spawnedAgain) {
             assert.ok(originalBodies.includes(body));
         }

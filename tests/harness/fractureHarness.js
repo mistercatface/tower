@@ -110,7 +110,18 @@ export function spawnFractureShards(world, prop, impactForce = 30, hitX = 0, hit
     if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce, world.fractureEngine)) return null;
     const stores = world.fractureEngine.stores;
     const fracture = readImpactFracture(stores);
-    const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop, fracture, stores);
+    const shards = world.fractureEngine.debris.spawnShardsFromFracture(
+        prop,
+        stores,
+        fracture.debrisStart,
+        fracture.debrisCount,
+        fracture.originX,
+        fracture.originY,
+        fracture.facing,
+        fracture.impactLocalX,
+        fracture.impactLocalY,
+        fracture.impactForce,
+    );
     return { fracture, shards };
 }
 
