@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { findLiveWorldProp } from "../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, SANDBOX_SCENE_SCHEMA_VERSION, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
+import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp, spawnLinkedBallChain } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hueToPickerHex } from "../Libraries/Color/colorMath.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
@@ -41,7 +41,6 @@ describe("sandboxSceneSnapshot physics", () => {
             faction: "alpha",
         });
         const snapshot = collectSandboxSceneSnapshot(state);
-        assert.equal(snapshot.schemaVersion, SANDBOX_SCENE_SCHEMA_VERSION);
         assert.equal(snapshot.props.length, 4);
         assert.equal(snapshot.props[0].type, "boid_triangle");
         assert.equal(snapshot.kineticConstraints.length, 3);

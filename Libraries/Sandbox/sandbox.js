@@ -876,24 +876,13 @@ function dispatchSpawnPlaceableAt(state, worldX, worldY, asset, ctx) {
     return false;
 }
 export const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "voxel", "rail"];
-/**
- * Sandbox scene snapshot — copy/paste JSON for props, stamped grid walls, and floor belts.
- *
- * `schemaVersion` is the live format only. No migration layer, no backwards-compatible
- * loaders, and no compat shims for older JSON yet. When the format changes, bump the
- * version and treat old paste blobs as invalid — save/load is not a stable product
- * boundary until we deliberately add that.
- */
-/** Current snapshot format; bump when fields change (no vN→vN+1 migration code until then). */
-export const SANDBOX_SCENE_SCHEMA_VERSION = 11;
-/** @param {object} state */
+/** Sandbox scene JSON — editor copy/paste for props, stamped walls, and floor belts. */
 export function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
     const meta = state.sandbox.entityMeta;
     const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
     const headProp = findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
     const chainHeadProp = headProp ? (propIdToIndex.get(headProp.id) ?? null) : null;
-    const cellSize = grid.cellSize;
     const voxels = listPlacedVoxelWalls(grid).map(({ idx, heightLevel }) => {
         return { idx, heightLevel };
     });
@@ -904,7 +893,7 @@ export function collectSandboxSceneSnapshot(state) {
         if (!isCanonicalEdgeRepresentativeIdx(grid, idx, side)) continue;
         railWalls.push({ idx, side, heightLevel, thicknessLevel });
     }
-    return { schemaVersion: SANDBOX_SCENE_SCHEMA_VERSION, cellSize: grid.cellSize, origin: { minX: grid.minX, minY: grid.minY }, cols: grid.cols, rows: grid.rows, voxels, railWalls, floorBelts: FloorBelt.listPlacedForSnapshot(grid), props, kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex), chainHeadProp };
+    return { cellSize: grid.cellSize, origin: { minX: grid.minX, minY: grid.minY }, cols: grid.cols, rows: grid.rows, voxels, railWalls, floorBelts: FloorBelt.listPlacedForSnapshot(grid), props, kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex), chainHeadProp };
 }
 /** @param {unknown} raw */
 export function parseSandboxSceneSnapshot(raw) {
@@ -967,8 +956,8 @@ function spawnSnapshotProps(state, doc) {
         const prop = spawnSnapshotProp(state, doc.props[i]);
         if (prop) propRefs[i] = prop;
     }
-    if (doc.schemaVersion >= 11 && doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propRefs);
-    if (doc.schemaVersion >= 11 && doc.chainHeadProp != null) {
+    if (doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propRefs);
+    if (doc.chainHeadProp != null) {
         const headProp = propRefs[doc.chainHeadProp];
         if (headProp) setChainHead(state, state.sandbox.entityMeta, headProp.id);
     }

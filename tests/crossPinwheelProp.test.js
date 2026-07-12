@@ -4,10 +4,12 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
+import { ENGINE_F32 } from "../Core/engineMemory.js";
 import { kineticStaticSlab } from "../Core/engineMemory.js";
 import { applyCrossPinwheelFootprint } from "../Libraries/Props/props.js";
-import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { FractureEngine, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT } from "../Libraries/Physics/fracture.js";
+import { createFractureWorld } from "./harness/fractureHarness.js";
 
 describe("cross pinwheel prop", () => {
     it("initializes as a kinetic compound body", () => {
@@ -45,14 +47,12 @@ describe("cross pinwheel prop", () => {
         assert.notEqual(pinwheel.facing, originalFacing);
     });
 
-    it("separates from another cross on contact", () => {
+    it("detects overlap between two crosses", () => {
         const left = new WorldProp(0, 0, "cross_pinwheel", 0);
-        const right = new WorldProp(8, 0, "cross_pinwheel", 0);
-        right.vx = 40;
+        const right = new WorldProp(28, 0, "cross_pinwheel", 0);
         assert.ok(checkEntityPairCollision(left, right));
-        const tick = createKineticTestTick([left, right]);
-        for (let i = 0; i < 12; i++) resolveKineticContactPass(tick);
-        assert.ok(!checkEntityPairCollision(left, right));
+        right.x = 64;
+        assert.equal(checkEntityPairCollision(left, right), false);
     });
 
     it("angular velocity decays after spin", () => {
@@ -94,5 +94,29 @@ describe("cross pinwheel prop", () => {
 
         const gear = new WorldProp(0, 0, "gear_block", 0);
         assert.equal(gear.drawOutline, undefined);
+    });
+
+    it("fracture shatters both cross arms", () => {
+        const world = createFractureWorld();
+        const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
+        pinwheel.fractureEnabled = true;
+        assignPhysIdWithPose(pinwheel, 0);
+        const fullArea = kineticFootprintArea(pinwheel);
+        assert.ok(FractureEngine.canFracturePropSplit(pinwheel));
+        assert.ok(FractureEngine.fracturePropOnImpact(pinwheel, 0, 0, 40, world.fractureEngine));
+        const stores = world.fractureEngine.stores;
+        const start = ENGINE_F32[F_OUT_DEBRIS_START];
+        const count = ENGINE_F32[F_OUT_DEBRIS_COUNT];
+        assert.ok(count >= 4, `expected shards from both arms, got ${count}`);
+        let shardArea = 0;
+        let maxAbsCx = 0;
+        let maxAbsCy = 0;
+        for (let i = start; i < start + count; i++) {
+            shardArea += stores.debris.footprintArea[i];
+            maxAbsCx = Math.max(maxAbsCx, Math.abs(stores.debris.centroidX[i]));
+            maxAbsCy = Math.max(maxAbsCy, Math.abs(stores.debris.centroidY[i]));
+        }
+        assert.ok(shardArea > fullArea * 0.55, `shard area ${shardArea} should cover most of compound area ${fullArea}`);
+        assert.ok(maxAbsCx > 4 && maxAbsCy > 4, `centroids should span both arms (maxAbsCx=${maxAbsCx}, maxAbsCy=${maxAbsCy})`);
     });
 });

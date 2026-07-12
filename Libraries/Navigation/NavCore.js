@@ -67,21 +67,11 @@ export function gridNavFrameKey(grid) {
 export function gridFrameFromGrid(grid) {
     return { minX: grid.minX, minY: grid.minY, cellSize: grid.cellSize, cols: grid.cols, rows: grid.rows, key: gridNavFrameKey(grid) };
 }
-export function snapshotGridCenterX(frame, col) {
-    return gridCenterXAtOrigin(col, frame.minX, frame.cellSize * 0.5);
-}
-export function snapshotGridCenterY(frame, row) {
-    return gridCenterYAtOrigin(row, frame.minY, frame.cellSize * 0.5);
-}
 export function snapshotWorldToIdx(frame, x, y) {
     const col = worldColAtOrigin(x, frame.minX, frame.cellSize);
     const row = worldRowAtOrigin(y, frame.minY, frame.cellSize);
     if (col < 0 || col >= frame.cols || row < 0 || row >= frame.rows) return -1;
     return row * frame.cols + col;
-}
-export function snapshotGridToWorldIdx(buf, o, frame, idx) {
-    buf[o] = snapshotGridCenterX(frame, idx % frame.cols);
-    buf[o + 1] = snapshotGridCenterY(frame, (idx / frame.cols) | 0);
 }
 // --- NavSearch.js ---
 export class SearchState {

@@ -101,26 +101,6 @@ export class PortalLink {
         return true;
     }
 }
-export class FloorPortal {
-    static listLinksForSnapshot(grid) {
-        const items = [];
-        const pairs = grid.activePortalPairs;
-        const count = grid.activePortalCount;
-        for (let i = 0; i < count; i++) {
-            const item = { exitIdx: pairs[i * 2], entryIdx: pairs[i * 2 + 1] };
-            items.push(item);
-        }
-        return items;
-    }
-    static applyFromSnapshot(grid, links) {
-        grid.portalTargetIdx.fill(PORTAL_NONE);
-        grid.activePortalCount = 0;
-        for (let i = 0; i < links.length; i++) {
-            const link = links[i];
-            PortalLink.setLink(grid, link.exitIdx, link.entryIdx);
-        }
-    }
-}
 const PORTAL_EXIT_PALETTE = { ring: "#ff7a2f", glow: "rgba(255,122,47,0.35)", core: "#ffd9b0" };
 const PORTAL_ENTRY_PALETTE = { ring: "#3fa9ff", glow: "rgba(63,169,255,0.35)", core: "#bfe4ff" };
 function portalDrawForPalette(palette) {

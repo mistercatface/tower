@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
+import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody } from "./physics.js";
 import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
@@ -983,7 +983,17 @@ export class FractureEngine {
         const impactLocalX = dx * cos + dy * sin;
         const impactLocalY = -dx * sin + dy * cos;
         seedFractureRand(worldHitX, worldHitY, impactForce);
-        FractureEngine._shatterPolygonIntoStore(stores, prop.shape.vertices, impactLocalX, impactLocalY, impactForce);
+        const parts = prop.collisionParts;
+        if (parts?.length > 1) {
+            const batchStart = stores.debris.write;
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (part.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
+                FractureEngine._shatterPolygonIntoStore(stores, part.vertices, impactLocalX, impactLocalY, impactForce);
+            }
+            ENGINE_F32[F_OUT_DEBRIS_START] = batchStart;
+            ENGINE_F32[F_OUT_DEBRIS_COUNT] = stores.debris.write - batchStart;
+        } else FractureEngine._shatterPolygonIntoStore(stores, prop.shape.vertices, impactLocalX, impactLocalY, impactForce);
         if (ENGINE_F32[F_OUT_DEBRIS_COUNT] < 2) return false;
         ENGINE_F32[F_OUT_ORIGIN_X] = originX;
         ENGINE_F32[F_OUT_ORIGIN_Y] = originY;
@@ -1027,6 +1037,21 @@ export class FractureEngine {
     }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!effectiveFracture(prop)) return false;
+        const parts = prop.collisionParts;
+        if (parts?.length > 1) {
+            let maxSpan = 0;
+            let refVerts = null;
+            for (let i = 0; i < parts.length; i++) {
+                const shape = parts[i];
+                if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) continue;
+                if (!refVerts) refVerts = shape.vertices;
+                convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
+                maxSpan = Math.max(maxSpan, Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2);
+            }
+            if (!refVerts || maxSpan < minSize) return false;
+            const minArea = FractureEngine.minShardAreaForPolygon(refVerts) * 2;
+            return FractureEngine._fractureFootprintArea(prop) >= minArea;
+        }
         const shape = prop.shape;
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return false;
         convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
@@ -1191,9 +1216,7 @@ export class FractureEngine {
     }
     static _fractureFootprintArea(prop) {
         if (prop.footprintArea != null) return prop.footprintArea;
-        const shape = prop.shape;
-        if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return Math.abs(polygonSignedArea2D(shape.vertices));
-        return 0;
+        return kineticFootprintArea(prop);
     }
     static _propWorldPosition(prop) {
         const physId = prop._physId;
