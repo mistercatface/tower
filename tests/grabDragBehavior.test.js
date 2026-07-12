@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { applyGroundRollDrive, CircleShape } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto, boxLocalFootprint } from "../Libraries/Math/math.js";
-import { createGrabDragBehavior, resolveDragLaunchConfigFromSize } from "../Libraries/Sandbox/dragBehaviors.js";
+import { createGrabDragBehavior, createDragLaunchBehavior, resolveDragLaunchConfigFromSize } from "../Libraries/Sandbox/dragBehaviors.js";
 import { createDefaultSandboxBehaviors, GROUND_NAV_BEHAVIOR_IDS } from "../Libraries/Sandbox/sandbox.js";
 import { ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, SANDBOX_BEHAVIOR_GRAB_DRAG } from "../Core/engineEnums.js";
 import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
@@ -11,6 +11,8 @@ import { createGrabDragTestState, registerGrabDragTestProp } from "./harness/san
 import { mockRollingProp } from "./harness/kineticTickHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { ENGINE_F32, G_WX, G_WY, G_LX, G_LY, kineticDynamicSlab, entityX, entityY } from "../Core/engineMemory.js";
+import { BeltPacked } from "../Libraries/Spatial/belts.js";
+import { clearOverlayCommands, overlayCommandSlab, OVERLAY_STYLE_DRAG_ANCHOR } from "../Libraries/Render/render.js";
 
 describe("grabDrag behavior", () => {
     it("resolveDragLaunchConfigFromSize scales maxPower with prop radius", () => {
@@ -64,6 +66,87 @@ describe("grabDrag behavior", () => {
         assert.ok(kineticDynamicSlab.rollDriveDirX[eid] > 0.9);
         assert.equal(prop.x, 999);
         assert.equal(entityX[eid], 0);
+    });
+
+    it("onPointerDown grab anchor uses entityX/entityY not stale object pose", () => {
+        const state = createGrabDragTestState();
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
+        const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
+        const eid = prop._physId;
+        entityX[eid] = 0;
+        entityY[eid] = 0;
+        Object.defineProperties(prop, {
+            x: { value: 200, writable: true, configurable: true, enumerable: true },
+            y: { value: 0, writable: true, configurable: true, enumerable: true },
+        });
+        assert.ok(behavior.onPointerDown(prop, { x: 8, y: 0 }));
+        behavior.onPointerMove(prop, { x: -50, y: 0 });
+        behavior.tickWorld(16);
+        assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
+        assert.ok(kineticDynamicSlab.rollDriveDirX[eid] < -0.9);
+        assert.equal(prop.x, 200);
+        assert.equal(entityX[eid], 0);
+    });
+
+    it("drag launch aim anchor uses entityX/entityY not stale object pose", () => {
+        const state = createGrabDragTestState();
+        const behavior = createDragLaunchBehavior(state);
+        const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: 0, y: 0, type: "ball" }));
+        const eid = prop._physId;
+        entityX[eid] = 40;
+        entityY[eid] = 10;
+        Object.defineProperties(prop, {
+            x: { value: 999, writable: true, configurable: true, enumerable: true },
+            y: { value: 999, writable: true, configurable: true, enumerable: true },
+        });
+        assert.ok(behavior.onPointerDown(prop, { x: 40, y: 10 }));
+        behavior.onPointerMove(prop, { x: 10, y: 10 });
+        clearOverlayCommands(overlayCommandSlab);
+        behavior.appendOverlayCommands(overlayCommandSlab, prop);
+        const stride = 12;
+        let found = false;
+        for (let i = 0; i < overlayCommandSlab.count; i++) {
+            if (overlayCommandSlab.styleId[i] !== OVERLAY_STYLE_DRAG_ANCHOR) continue;
+            const b = i * stride;
+            assert.equal(overlayCommandSlab.f[b], 40);
+            assert.equal(overlayCommandSlab.f[b + 1], 10);
+            found = true;
+        }
+        assert.ok(found);
+        assert.equal(prop.x, 999);
+    });
+
+    it("tickWorld belt cancel uses entityX/entityY not stale object pose", () => {
+        const state = createGrabDragTestState();
+        const grid = state.obstacleGrid;
+        const beltIdx = worldIdxAtCell(grid, 5, 5);
+        const offIdx = worldIdxAtCell(grid, 8, 8);
+        grid.writeFloorCell(beltIdx, BeltPacked.defaultForSpawn("floor_belt"));
+        const beltX = grid.gridCenterXByIdx(beltIdx);
+        const beltY = grid.gridCenterYByIdx(beltIdx);
+        const offX = grid.gridCenterXByIdx(offIdx);
+        const offY = grid.gridCenterYByIdx(offIdx);
+        const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
+        const prop = registerGrabDragTestProp(state, mockRollingProp({ id: 1, x: offX, y: offY, type: "ball" }));
+        const eid = prop._physId;
+        assert.ok(behavior.onPointerDown(prop, { x: offX, y: offY }));
+        behavior.onPointerMove(prop, { x: offX + 80, y: offY });
+        entityX[eid] = offX;
+        entityY[eid] = offY;
+        Object.defineProperties(prop, {
+            x: { value: beltX, writable: true, configurable: true, enumerable: true },
+            y: { value: beltY, writable: true, configurable: true, enumerable: true },
+        });
+        behavior.tickWorld(16);
+        assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_THRUST);
+        entityX[eid] = beltX;
+        entityY[eid] = beltY;
+        Object.defineProperties(prop, {
+            x: { value: offX, writable: true, configurable: true, enumerable: true },
+            y: { value: offY, writable: true, configurable: true, enumerable: true },
+        });
+        behavior.tickWorld(16);
+        assert.equal(kineticDynamicSlab.rollDriveKind[eid], ROLL_DRIVE_NONE);
     });
 
     it("sustains thrust while cursor stays beyond a wall without snapping through", () => {

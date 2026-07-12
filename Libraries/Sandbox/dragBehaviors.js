@@ -78,7 +78,8 @@ export function resolveDragInteractionBehavior(prop, state, behaviorById) {
 }
 function propCanStartDrag(state, prop) {
     if (!propSupportsDragInteraction(prop)) return false;
-    return !FloorBelt.isEntityOnBelt(state.obstacleGrid, prop.x, prop.y);
+    const eid = prop._physId;
+    return !FloorBelt.isEntityOnBelt(state.obstacleGrid, entityX[eid], entityY[eid]);
 }
 function clearGroundNavForProp(state, groundNavBehaviorIds, prop) {
     const byId = state.sandbox.behaviorById;
@@ -164,8 +165,8 @@ export function createDragLaunchBehavior(state) {
             if (!propCanStartDrag(state, prop)) return false;
             wakeKineticBody(prop._physId);
             aimActive = 1;
-            aimAnchorX = prop.x;
-            aimAnchorY = prop.y;
+            aimAnchorX = entityX[prop._physId];
+            aimAnchorY = entityY[prop._physId];
             aimStartX = world.x;
             aimStartY = world.y;
             aimPullX = world.x;
@@ -211,26 +212,29 @@ export function createDragLaunchBehavior(state) {
     };
 }
 function resolveGrabDragAnchor(prop, world) {
+    const eid = prop._physId;
+    const px = entityX[eid];
+    const py = entityY[eid];
     const asset = propCatalog[prop.type];
     const verts = prop.drawOutline?.length >= 6 ? prop.drawOutline : prop.shape?.vertices;
     if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && verts?.length >= 6) {
         const facing = readEntityFacing(prop);
-        findClosestPolygonBoundaryGrabPointInto(ENGINE_F32, G_WX, verts, prop.x, prop.y, facing, world.x, world.y);
+        findClosestPolygonBoundaryGrabPointInto(ENGINE_F32, G_WX, verts, px, py, facing, world.x, world.y);
         ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
         ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
         return;
     }
     if (asset?.primitive === PROP_PRIMITIVE_SPHERE && asset.physics?.isKinetic !== false) {
         const facing = readEntityFacing(prop);
-        findCircleRimGrabPointInto(ENGINE_F32, G_WX, prop.x, prop.y, facing, prop.radius, world.x, world.y);
+        findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, facing, prop.radius, world.x, world.y);
         ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
         ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
         return;
     }
     ENGINE_F32[G_LX] = 0;
     ENGINE_F32[G_LY] = 0;
-    ENGINE_F32[G_OX] = prop.x - world.x;
-    ENGINE_F32[G_OY] = prop.y - world.y;
+    ENGINE_F32[G_OX] = px - world.x;
+    ENGINE_F32[G_OY] = py - world.y;
 }
 export function createGrabDragBehavior(state, groundNavBehaviorIds) {
     let grabEid = -1;
@@ -335,7 +339,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
                 clearGrab();
                 return;
             }
-            if (FloorBelt.isEntityOnBelt(state.obstacleGrid, prop.x, prop.y)) {
+            if (FloorBelt.isEntityOnBelt(state.obstacleGrid, entityX[grabEid], entityY[grabEid])) {
                 clearGroundRollDrive(prop._physId);
                 clearGrab();
                 return;
