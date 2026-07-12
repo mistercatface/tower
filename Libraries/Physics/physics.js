@@ -3518,31 +3518,36 @@ function applyFloorBeltForces(world, spatialFrame, dtMs) {
     }
 }
 const PORTAL_TICK = { grid: null, spatialFrame: null, exitIdx: -1, exitCx: 0, exitCy: 0, tx: 0, ty: 0 };
-function portalTeleportHandler(body) {
+function portalTeleportHandler(eid) {
     const t = PORTAL_TICK;
     const grid = t.grid;
-    if (grid.worldToIdx(body.x, body.y) !== t.exitIdx) {
-        const r = body.radius;
+    const x = entityX[eid];
+    const y = entityY[eid];
+    if (grid.worldToIdx(x, y) !== t.exitIdx) {
+        const r = slabCollisionSpan(eid);
         const capture = grid.cellHalfSize + r;
-        const dx = body.x - t.exitCx;
-        const dy = body.y - t.exitCy;
+        const dx = x - t.exitCx;
+        const dy = y - t.exitCy;
         if (dx * dx + dy * dy > capture * capture) return;
     }
-    body.x = t.tx;
-    body.y = t.ty;
-    body.vx = 0;
-    body.vy = 0;
-    body.angularVelocity = 0;
-    clearGroundRollDrive(body._physId);
-    if (body._physId !== undefined) snapshotKineticBodySlab([body._physId], 1);
+    entityX[eid] = t.tx;
+    entityY[eid] = t.ty;
+    entityVx[eid] = 0;
+    entityVy[eid] = 0;
+    entityW[eid] = 0;
+    clearGroundRollDrive(eid);
+    snapshotKineticBodySlab([eid], 1);
     const eg = t.spatialFrame.entityGrid;
     if (eg) {
-        eg.remove(body);
-        eg.insert(body);
-        body._neighborsFrameId = -1;
-        body._neighborEidCount = 0;
+        eg.remove(eid);
+        eg.insert(eid);
+        const body = entityRefs[eid];
+        if (body) {
+            body._neighborsFrameId = -1;
+            body._neighborEidCount = 0;
+        }
     }
-    wakeKineticBody(body._physId);
+    wakeKineticBody(eid);
 }
 function applyFloorPortalTeleports(world, spatialFrame) {
     const grid = world.obstacleGrid;
@@ -3569,7 +3574,7 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         PORTAL_TICK.exitCy = ey;
         PORTAL_TICK.tx = grid.gridCenterXByIdx(entryIdx);
         PORTAL_TICK.ty = grid.gridCenterYByIdx(entryIdx);
-        eg.forEachInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, null, ++eg.queryGen, portalTeleportHandler);
+        eg.forEachEidInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, -1, ++eg.queryGen, portalTeleportHandler);
     }
 }
 export function runKineticPhysics(tick, dt, hooks) {

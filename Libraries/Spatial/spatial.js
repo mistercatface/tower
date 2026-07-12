@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entityR, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
 import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction, slabCollisionSpan } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
@@ -69,14 +69,19 @@ export class SpatialFrameCore {
     insertEntity(entity, physId) {
         entity._physId = physId;
         noteEntityEidHighWater(physId);
-        this.entityGrid.insert(entity);
+        entityRefs[physId] = entity;
+        entityAlive[physId] = 1;
+        entityX[physId] = entity.x;
+        entityY[physId] = entity.y;
+        this.entityGrid.insert(physId);
     }
     reindexKineticBodies(bodies) {
         if (!bodies?.length) return;
         for (let i = 0; i < bodies.length; i++) {
             const entity = bodies[i];
-            this.entityGrid.remove(entity);
-            this.entityGrid.insert(entity);
+            const eid = entity._physId;
+            this.entityGrid.remove(eid);
+            this.entityGrid.insert(eid);
             entity._neighborsFrameId = -1;
             entity._neighborEidCount = 0;
         }
@@ -85,11 +90,12 @@ export class SpatialFrameCore {
     }
     ensureNeighborEids(entity) {
         if (entity._neighborsFrameId === this.frameId) return entity._neighborEidCount;
+        const eid = entity._physId;
         ensureGrowI32(entity, "_neighborEids", 16);
-        let count = this.entityGrid.collectNearbyEidsInto(entity, entity._neighborEids, entity._neighborEids.length);
+        let count = this.entityGrid.collectNearbyEidsInto(eid, entity._neighborEids, entity._neighborEids.length);
         while (count < 0) {
             ensureGrowI32(entity, "_neighborEids", entity._neighborEids.length * 2);
-            count = this.entityGrid.collectNearbyEidsInto(entity, entity._neighborEids, entity._neighborEids.length);
+            count = this.entityGrid.collectNearbyEidsInto(eid, entity._neighborEids, entity._neighborEids.length);
         }
         entity._neighborEidCount = count;
         entity._neighborsFrameId = this.frameId;
@@ -1559,37 +1565,30 @@ export class EntityGrid {
     _ensureActiveEidCap(n) {
         ensureGrowI32(this, "activeEids", n);
     }
-    insert(entity) {
-        if (entity._physId === undefined) {
-            console.error("Entity missing _physId", entity);
-            return;
-        }
-        const eid = entity._physId;
-        const x = entity.x;
-        const y = entity.y;
-        entityRefs[eid] = entity;
+    insert(eid) {
+        const x = entityX[eid];
+        const y = entityY[eid];
         entityAlive[eid] = 1;
         entitySpatialGen[eid] = 0;
-        entityX[eid] = x;
-        entityY[eid] = y;
         const idx = this._getCellIndex(x, y);
         entityGridTileIdx[eid] = idx;
-        entity._gridTileIdx = idx;
+        const ref = entityRefs[eid];
+        if (ref) ref._gridTileIdx = idx;
         this._ensureActiveEidCap(this.activeEidCount + 1);
         this.activeEids[this.activeEidCount++] = eid;
-        const extent = entityCollisionSpan(entity);
+        let extent = slabCollisionSpan(eid);
+        if (!(extent > 0)) extent = entityR[eid];
         if (extent > this.maxInsertedExtent) this.maxInsertedExtent = extent;
         if (idx !== -1) {
             this.entityNext[eid] = this.cellHead[idx];
             this.cellHead[idx] = eid;
         } else this.entityNext[eid] = -1;
     }
-    remove(entity) {
-        const eid = entity._physId;
-        if (eid === undefined) return;
+    remove(eid) {
         const idx = entityGridTileIdx[eid];
+        const ref = entityRefs[eid];
         if (idx === -1 || idx < 0 || idx >= this.cellHead.length) {
-            entity._gridTileIdx = -1;
+            if (ref) ref._gridTileIdx = -1;
             return;
         }
         let curr = this.cellHead[idx];
@@ -1605,43 +1604,12 @@ export class EntityGrid {
             curr = this.entityNext[curr];
         }
         entityGridTileIdx[eid] = -1;
-        entity._gridTileIdx = -1;
+        if (ref) ref._gridTileIdx = -1;
         const active = this.activeEids;
         for (let i = 0; i < this.activeEidCount; i++) {
             if (active[i] !== eid) continue;
             active[i] = active[--this.activeEidCount];
             break;
-        }
-    }
-    forEachInBoundsF32(buf, o, exclude, queryGen, fn) {
-        const stamp = queryGen || (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
-        const minCol = Math.max(0, Math.floor((buf[o] - this.minX) / this.cellSize));
-        const maxCol = Math.min(this.cols - 1, Math.floor((buf[o + 2] - this.minX) / this.cellSize));
-        const minRow = Math.max(0, Math.floor((buf[o + 1] - this.minY) / this.cellSize));
-        const maxRow = Math.min(this.rows - 1, Math.floor((buf[o + 3] - this.minY) / this.cellSize));
-        if (minCol > maxCol || minRow > maxRow) return;
-        const cellHead = this.cellHead;
-        const entityNext = this.entityNext;
-        const cols = this.cols;
-        const excludeEid = exclude && exclude._physId !== undefined ? exclude._physId : -1;
-        for (let row = minRow; row <= maxRow; row++) {
-            const rowOffset = row * cols;
-            for (let col = minCol; col <= maxCol; col++) {
-                const cellIdx = rowOffset + col;
-                let curr = cellHead[cellIdx];
-                if (curr === -1) continue;
-                while (curr !== -1) {
-                    if (curr !== excludeEid && entitySpatialGen[curr] !== stamp) {
-                        entitySpatialGen[curr] = stamp;
-                        const other = entityRefs[curr];
-                        if (other) {
-                            other._spatialGen = stamp;
-                            fn(other);
-                        }
-                    }
-                    curr = entityNext[curr];
-                }
-            }
         }
     }
     forEachEidInBoundsF32(buf, o, excludeEid, queryGen, fn) {
@@ -1670,11 +1638,12 @@ export class EntityGrid {
             }
         }
     }
-    collectNearbyEidsInto(entity, outEids, outCap) {
-        const searchRadius = entityCollisionSpan(entity) + this.maxInsertedExtent + neighborQueryPadForExtent(entityCollisionSpan(entity));
-        centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entity.x, entity.y, searchRadius);
-        const excludeEid = entity._physId !== undefined ? entity._physId : -1;
-        return this.collectEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, outEids, 0, outCap, excludeEid);
+    collectNearbyEidsInto(eid, outEids, outCap) {
+        let span = slabCollisionSpan(eid);
+        if (!(span > 0)) span = entityR[eid];
+        const searchRadius = span + this.maxInsertedExtent + neighborQueryPadForExtent(span);
+        centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, entityX[eid], entityY[eid], searchRadius);
+        return this.collectEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, outEids, 0, outCap, eid);
     }
     collectEidsInBoundsF32(buf, o, outEids, outStart, outCap, excludeEid = -1) {
         const stamp = (entityGridQueryGen = (entityGridQueryGen + 1) | 0);
@@ -3231,8 +3200,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
                 bindEntitySlot(prop._physId, kind, prop, prop.id | 0, x, y, entityCollisionSpan(prop), flags);
                 clearWorldPropSpawnPose(prop);
                 if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(prop._physId);
-            } else this.entityGrid.remove(prop);
-            this.entityGrid.insert(prop);
+            } else this.entityGrid.remove(prop._physId);
+            this.entityGrid.insert(prop._physId);
             prop._neighborsFrameId = -1;
             prop._neighborEidCount = 0;
             if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) {
@@ -3324,8 +3293,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const eid = slab.activePhysIds[i];
             const entity = entityRefs[eid];
             if (!entity || entity._physId !== eid) continue;
-            this.entityGrid.remove(entity);
-            this.entityGrid.insert(entity);
+            this.entityGrid.remove(eid);
+            this.entityGrid.insert(eid);
             entity._neighborsFrameId = -1;
             entity._neighborEidCount = 0;
         }
@@ -3335,10 +3304,11 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     reindexKineticBodies(eids, count = eids.length) {
         if (!count) return;
         for (let i = 0; i < count; i++) {
-            const entity = entityRefs[eids[i]];
+            const eid = eids[i];
+            const entity = entityRefs[eid];
             if (!entity) continue;
-            this.entityGrid.remove(entity);
-            this.entityGrid.insert(entity);
+            this.entityGrid.remove(eid);
+            this.entityGrid.insert(eid);
             entity._neighborsFrameId = -1;
             entity._neighborEidCount = 0;
         }
@@ -3358,7 +3328,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         prop._spawnVx = vx;
         prop._spawnVy = vy;
         prop._spawnW = w;
-        this.entityGrid.remove(prop);
+        this.entityGrid.remove(physId);
         const all = this.kineticEids;
         for (let i = this.kineticEidCount - 1; i >= 0; i--)
             if (all[i] === physId) {
