@@ -6,7 +6,45 @@ import { transformRollVertexInto, readEntityFacing } from "../Physics/physics.js
 import { resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { shadeHex } from "../Color/colorMath.js";
 import { PROP_RENDER_MODE_3D, DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_DIRECT, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_DEBUG, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_ARROW_HEAD, OVERLAY_CMD_DIRECTION_ARROW, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_PATH_ARROW_HEAD, OVERLAY_RENDER_KEY_FLOW_DIRECTION_ARROW, OVERLAY_RENDER_KEY_WIRE_ENDPOINT, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, SHAPE_TYPE_CIRCLE, WALL_FACE_ATLAS_MISS, WALL_FACE_ATLAS_SOLID, WALL_FACE_SUBDIV_NONE } from "../../Core/engineEnums.js";
-import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE, collectRailWallBoxesInAabbF32, RAIL_BOX, RAIL_BOX_STRIDE, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import { collectVoxelWallFacesInAabbFlatF32, collectRailWallBoxesInAabbF32, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
+import {
+    VOXEL_FACE_CX,
+    VOXEL_FACE_CY,
+    VOXEL_FACE_OUT_X,
+    VOXEL_FACE_OUT_Y,
+    VOXEL_FACE_X1,
+    VOXEL_FACE_Y1,
+    VOXEL_FACE_X2,
+    VOXEL_FACE_Y2,
+    VOXEL_FACE_WALL_HEIGHT,
+    VOXEL_FACE_WALL_BASE_Z,
+    VOXEL_FACE_WALL_CAP_HEIGHT,
+    VOXEL_FACE_GRID_SIDE,
+    VOXEL_FACE_GRID_IDX,
+    VOXEL_FACE_STRIDE,
+    RAIL_BOX_MIN_X,
+    RAIL_BOX_MAX_X,
+    RAIL_BOX_MIN_Y,
+    RAIL_BOX_MAX_Y,
+    RAIL_BOX_INNER_P1X,
+    RAIL_BOX_INNER_P1Y,
+    RAIL_BOX_INNER_P2X,
+    RAIL_BOX_INNER_P2Y,
+    RAIL_BOX_OUTER_P1X,
+    RAIL_BOX_OUTER_P1Y,
+    RAIL_BOX_OUTER_P2X,
+    RAIL_BOX_OUTER_P2Y,
+    RAIL_BOX_INWARD_X,
+    RAIL_BOX_INWARD_Y,
+    RAIL_BOX_CX,
+    RAIL_BOX_CY,
+    RAIL_BOX_WALL_CAP_HEIGHT,
+    RAIL_BOX_WALL_HEIGHT,
+    RAIL_BOX_WALL_BASE_Z,
+    RAIL_BOX_GRID_SIDE,
+    RAIL_BOX_GRID_IDX,
+    RAIL_BOX_STRIDE,
+} from "../World/wallGridStride.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { gameWorldSurfaceSettings } from "../../Render/WorldSurfaceBootstrap.js";
 import propCatalog from "../../Assets/props/index.js";
@@ -37,6 +75,24 @@ export function writeWallFaceScratch(wallHeight, wallBaseZ, wallCapHeight, gridS
     wallFaceI32[WF_I_GRID_IDX] = gridIdx;
     wallFaceI32[WF_I_IS_EDGE_RAIL] = isEdgeRail ? 1 : 0;
     wallFaceI32[WF_I_ATLAS_FACE_KIND] = atlasFaceKind;
+}
+function writeWallFaceFromRailBox(d, b) {
+    wallFaceF32[WF_F_WALL_HEIGHT] = d[b + RAIL_BOX_WALL_HEIGHT];
+    wallFaceF32[WF_F_WALL_BASE_Z] = d[b + RAIL_BOX_WALL_BASE_Z];
+    wallFaceF32[WF_F_WALL_CAP_HEIGHT] = d[b + RAIL_BOX_WALL_CAP_HEIGHT];
+    wallFaceI32[WF_I_GRID_SIDE] = d[b + RAIL_BOX_GRID_SIDE];
+    wallFaceI32[WF_I_GRID_IDX] = d[b + RAIL_BOX_GRID_IDX];
+    wallFaceI32[WF_I_IS_EDGE_RAIL] = 1;
+    wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_NONE;
+}
+function writeWallFaceFromVoxelFace(d, b) {
+    wallFaceF32[WF_F_WALL_HEIGHT] = d[b + VOXEL_FACE_WALL_HEIGHT];
+    wallFaceF32[WF_F_WALL_BASE_Z] = d[b + VOXEL_FACE_WALL_BASE_Z];
+    wallFaceF32[WF_F_WALL_CAP_HEIGHT] = d[b + VOXEL_FACE_WALL_CAP_HEIGHT];
+    wallFaceI32[WF_I_GRID_SIDE] = d[b + VOXEL_FACE_GRID_SIDE];
+    wallFaceI32[WF_I_GRID_IDX] = d[b + VOXEL_FACE_GRID_IDX];
+    wallFaceI32[WF_I_IS_EDGE_RAIL] = 0;
+    wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_NONE;
 }
 let flatProjectedVerts = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
 const rQuadA = ENGINE_F32.subarray(R_QUAD_A, R_QUAD_A + 8);
@@ -1185,10 +1241,10 @@ export function collectStaticGridWallDrawables(obstacleGrid, viewport, outQueue)
     const numFaces = faces.length;
     for (let i = 0; i < numFaces; i++) {
         const base = i * VOXEL_FACE_STRIDE;
-        const cx = data[base + VOXEL_FACE.cx];
-        const cy = data[base + VOXEL_FACE.cy];
-        const outX = data[base + VOXEL_FACE.outX];
-        const outY = data[base + VOXEL_FACE.outY];
+        const cx = data[base + VOXEL_FACE_CX];
+        const cy = data[base + VOXEL_FACE_CY];
+        const outX = data[base + VOXEL_FACE_OUT_X];
+        const outY = data[base + VOXEL_FACE_OUT_Y];
         if (!isOutwardFaceTowardViewer(cx, cy, outX, outY, viewerX, viewerY)) continue;
         const viewX = cx - viewerX;
         const viewY = cy - viewerY;
@@ -1201,10 +1257,10 @@ export function getVoxelWallFaceData() {
 }
 export function drawProjectedVoxelWallFaceFlat(ctx, baseIndex, viewport, state) {
     const data = sGeomCache.faces.data;
-    const x1 = data[baseIndex + VOXEL_FACE.x1];
-    const y1 = data[baseIndex + VOXEL_FACE.y1];
-    const x2 = data[baseIndex + VOXEL_FACE.x2];
-    const y2 = data[baseIndex + VOXEL_FACE.y2];
+    const x1 = data[baseIndex + VOXEL_FACE_X1];
+    const y1 = data[baseIndex + VOXEL_FACE_Y1];
+    const x2 = data[baseIndex + VOXEL_FACE_X2];
+    const y2 = data[baseIndex + VOXEL_FACE_Y2];
     drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, state);
 }
 export function invalidateStaticGridWallDrawCache() {
@@ -1213,21 +1269,21 @@ export function invalidateStaticGridWallDrawCache() {
 }
 const sBoxCache = { grid: null, wallGridRevision: -1, boundsMinX: 0, boundsMaxX: 0, boundsMinY: 0, boundsMaxY: 0, gridCols: 0, gridRows: 0, boxes: new StrideFloatList(RAIL_BOX_STRIDE) };
 function railWallBoxTowardViewerFlat(data, base, viewerX, viewerY) {
-    const minX = data[base + RAIL_BOX.minX];
-    const maxX = data[base + RAIL_BOX.maxX];
-    const minY = data[base + RAIL_BOX.minY];
-    const maxY = data[base + RAIL_BOX.maxY];
+    const minX = data[base + RAIL_BOX_MIN_X];
+    const maxX = data[base + RAIL_BOX_MAX_X];
+    const minY = data[base + RAIL_BOX_MIN_Y];
+    const maxY = data[base + RAIL_BOX_MAX_Y];
     if (viewerX >= minX && viewerX <= maxX && viewerY >= minY && viewerY <= maxY) return true;
-    const innerP1x = data[base + RAIL_BOX.innerP1x];
-    const innerP1y = data[base + RAIL_BOX.innerP1y];
-    const innerP2x = data[base + RAIL_BOX.innerP2x];
-    const innerP2y = data[base + RAIL_BOX.innerP2y];
-    const outerP1x = data[base + RAIL_BOX.outerP1x];
-    const outerP1y = data[base + RAIL_BOX.outerP1y];
-    const outerP2x = data[base + RAIL_BOX.outerP2x];
-    const outerP2y = data[base + RAIL_BOX.outerP2y];
-    const inwardX = data[base + RAIL_BOX.inwardX];
-    const inwardY = data[base + RAIL_BOX.inwardY];
+    const innerP1x = data[base + RAIL_BOX_INNER_P1X];
+    const innerP1y = data[base + RAIL_BOX_INNER_P1Y];
+    const innerP2x = data[base + RAIL_BOX_INNER_P2X];
+    const innerP2y = data[base + RAIL_BOX_INNER_P2Y];
+    const outerP1x = data[base + RAIL_BOX_OUTER_P1X];
+    const outerP1y = data[base + RAIL_BOX_OUTER_P1Y];
+    const outerP2x = data[base + RAIL_BOX_OUTER_P2X];
+    const outerP2y = data[base + RAIL_BOX_OUTER_P2Y];
+    const inwardX = data[base + RAIL_BOX_INWARD_X];
+    const inwardY = data[base + RAIL_BOX_INWARD_Y];
     const innerMidX = (innerP1x + innerP2x) * 0.5;
     const innerMidY = (innerP1y + innerP2y) * 0.5;
     const outerMidX = (outerP1x + outerP2x) * 0.5;
@@ -1260,8 +1316,8 @@ export function collectStaticGridEdgeRailDrawables(obstacleGrid, viewport, outQu
     for (let i = 0; i < numBoxes; i++) {
         const base = i * RAIL_BOX_STRIDE;
         if (!railWallBoxTowardViewerFlat(data, base, viewerX, viewerY)) continue;
-        const cx = data[base + RAIL_BOX.cx];
-        const cy = data[base + RAIL_BOX.cy];
+        const cx = data[base + RAIL_BOX_CX];
+        const cy = data[base + RAIL_BOX_CY];
         const viewX = cx - viewerX;
         const viewY = cy - viewerY;
         const distSq = viewX * viewX + viewY * viewY;
@@ -1276,16 +1332,16 @@ export function drawProjectedGridEdgeRailFlat(ctx, baseIndex, viewport, state, s
     const base = baseIndex;
     const viewerX = viewport.x;
     const viewerY = viewport.y;
-    const innerP1x = data[base + RAIL_BOX.innerP1x];
-    const innerP1y = data[base + RAIL_BOX.innerP1y];
-    const innerP2x = data[base + RAIL_BOX.innerP2x];
-    const innerP2y = data[base + RAIL_BOX.innerP2y];
-    const outerP1x = data[base + RAIL_BOX.outerP1x];
-    const outerP1y = data[base + RAIL_BOX.outerP1y];
-    const outerP2x = data[base + RAIL_BOX.outerP2x];
-    const outerP2y = data[base + RAIL_BOX.outerP2y];
-    const inwardX = data[base + RAIL_BOX.inwardX];
-    const inwardY = data[base + RAIL_BOX.inwardY];
+    const innerP1x = data[base + RAIL_BOX_INNER_P1X];
+    const innerP1y = data[base + RAIL_BOX_INNER_P1Y];
+    const innerP2x = data[base + RAIL_BOX_INNER_P2X];
+    const innerP2y = data[base + RAIL_BOX_INNER_P2Y];
+    const outerP1x = data[base + RAIL_BOX_OUTER_P1X];
+    const outerP1y = data[base + RAIL_BOX_OUTER_P1Y];
+    const outerP2x = data[base + RAIL_BOX_OUTER_P2X];
+    const outerP2y = data[base + RAIL_BOX_OUTER_P2Y];
+    const inwardX = data[base + RAIL_BOX_INWARD_X];
+    const inwardY = data[base + RAIL_BOX_INWARD_Y];
     if (isOutwardFaceTowardViewer((innerP1x + innerP2x) * 0.5, (innerP1y + innerP2y) * 0.5, inwardX, inwardY, viewerX, viewerY)) {
         wallFaceI32[WF_I_ATLAS_FACE_KIND] = WALL_ATLAS_FACE_INNER;
         drawProjectedWallFaceScalars(ctx, innerP1x, innerP1y, innerP2x, innerP2y, viewport, state);
@@ -1599,8 +1655,8 @@ export function drawProjectedWallFaceScalars(ctx, x1, y1, x2, y2, viewport, stat
     }
 }
 export function projectRailWallTopCornersIntoFlat(out8, data, base, viewport) {
-    const z = data[base + RAIL_BOX.wallCapHeight];
-    projectWorldQuad(out8, 0, data[base + RAIL_BOX.outerP1x], data[base + RAIL_BOX.outerP1y], data[base + RAIL_BOX.outerP2x], data[base + RAIL_BOX.outerP2y], data[base + RAIL_BOX.innerP2x], data[base + RAIL_BOX.innerP2y], data[base + RAIL_BOX.innerP1x], data[base + RAIL_BOX.innerP1y], z, viewport);
+    const z = data[base + RAIL_BOX_WALL_CAP_HEIGHT];
+    projectWorldQuad(out8, 0, data[base + RAIL_BOX_OUTER_P1X], data[base + RAIL_BOX_OUTER_P1Y], data[base + RAIL_BOX_OUTER_P2X], data[base + RAIL_BOX_OUTER_P2Y], data[base + RAIL_BOX_INNER_P2X], data[base + RAIL_BOX_INNER_P2Y], data[base + RAIL_BOX_INNER_P1X], data[base + RAIL_BOX_INNER_P1Y], z, viewport);
     return out8;
 }
 function fillProjectedCapPolygonFlat(ctx, corners8, fillStyle) {
@@ -1628,7 +1684,7 @@ export function drawProjectedRailWallCapFlat(ctx, data, base, viewport, state) {
         return;
     }
     flatRailWallCapUvCornersIntoFlat(rCapUv, state.obstacleGrid, data, base);
-    const wallCapHeight = data[base + RAIL_BOX.wallCapHeight];
+    const wallCapHeight = data[base + RAIL_BOX_WALL_CAP_HEIGHT];
     const capCanvas = worldSurfaces.fillHorizontalCapDrawSampleIntoFlat(rCapUv, wallCapHeight, state, rCapSrc);
     if (!capCanvas) {
         fillProjectedCapPolygonFlat(ctx, rCapCorners, fillStyle);
@@ -1763,15 +1819,8 @@ export function createConveyorDraw(options = {}) {
 /** @typedef {import("./WorldSceneTypes.js").WorldSceneDrawOptions} WorldSceneDrawOptions */
 const match3d = (p) => p.strategy?.renderMode === PROP_RENDER_MODE_3D;
 function bindWallFaceScratchFlat(kind, baseIndex) {
-    if (kind === DRAW_KIND_RAIL) {
-        const d = getRailWallBoxData();
-        const b = baseIndex;
-        writeWallFaceScratch(d[b + RAIL_BOX.wallHeight], d[b + RAIL_BOX.wallBaseZ], d[b + RAIL_BOX.wallCapHeight], d[b + RAIL_BOX.gridSide], d[b + RAIL_BOX.gridIdx], true);
-    } else if (kind === DRAW_KIND_VOXEL) {
-        const d = getVoxelWallFaceData();
-        const b = baseIndex;
-        writeWallFaceScratch(d[b + VOXEL_FACE.wallHeight], d[b + VOXEL_FACE.wallBaseZ], d[b + VOXEL_FACE.wallCapHeight], d[b + VOXEL_FACE.gridSide], d[b + VOXEL_FACE.gridIdx], false);
-    }
+    if (kind === DRAW_KIND_RAIL) writeWallFaceFromRailBox(getRailWallBoxData(), baseIndex);
+    else if (kind === DRAW_KIND_VOXEL) writeWallFaceFromVoxelFace(getVoxelWallFaceData(), baseIndex);
 }
 function prepareWallChunkPropTextures(state, prop) {
     if (!prop.wallChunkProfileId || !state?.worldSurfaces) return;
@@ -1967,17 +2016,17 @@ export function drawLosShadowOverlay(ctx, viewport, obstacleGrid, options = {}) 
 const sRailShadowBoxes = new StrideFloatList(RAIL_BOX_STRIDE);
 function pushRailWallBoxCapShadowEdges(data, index, out) {
     const base = index * RAIL_BOX_STRIDE;
-    const wallTopZ = data[base + RAIL_BOX.wallCapHeight];
-    const inwardX = data[base + RAIL_BOX.inwardX];
-    const inwardY = data[base + RAIL_BOX.inwardY];
-    const innerP1x = data[base + RAIL_BOX.innerP1x];
-    const innerP1y = data[base + RAIL_BOX.innerP1y];
-    const innerP2x = data[base + RAIL_BOX.innerP2x];
-    const innerP2y = data[base + RAIL_BOX.innerP2y];
-    const outerP1x = data[base + RAIL_BOX.outerP1x];
-    const outerP1y = data[base + RAIL_BOX.outerP1y];
-    const outerP2x = data[base + RAIL_BOX.outerP2x];
-    const outerP2y = data[base + RAIL_BOX.outerP2y];
+    const wallTopZ = data[base + RAIL_BOX_WALL_CAP_HEIGHT];
+    const inwardX = data[base + RAIL_BOX_INWARD_X];
+    const inwardY = data[base + RAIL_BOX_INWARD_Y];
+    const innerP1x = data[base + RAIL_BOX_INNER_P1X];
+    const innerP1y = data[base + RAIL_BOX_INNER_P1Y];
+    const innerP2x = data[base + RAIL_BOX_INNER_P2X];
+    const innerP2y = data[base + RAIL_BOX_INNER_P2Y];
+    const outerP1x = data[base + RAIL_BOX_OUTER_P1X];
+    const outerP1y = data[base + RAIL_BOX_OUTER_P1Y];
+    const outerP2x = data[base + RAIL_BOX_OUTER_P2X];
+    const outerP2y = data[base + RAIL_BOX_OUTER_P2Y];
     out.add(outerP1x, outerP1y, outerP2x, outerP2y, -inwardX, -inwardY, wallTopZ);
     out.add(innerP1x, innerP1y, innerP2x, innerP2y, inwardX, inwardY, wallTopZ);
     const dx = innerP2x - innerP1x;

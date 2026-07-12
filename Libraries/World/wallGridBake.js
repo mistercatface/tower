@@ -4,8 +4,46 @@ import { railWallCapLevel, railWallHeightPx, railWallThicknessPx } from "../Spat
 import { gridSettings } from "../../Config/world.js";
 import { StrideFloatList } from "./StrideFloatList.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_CELL, B_FOOTPRINT, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y } from "../../Core/engineMemory.js";
-export const RAIL_BOX = { chunkKey: 0, gridIdx: 1, gridSide: 2, minX: 3, minY: 4, maxX: 5, maxY: 6, innerP1x: 7, innerP1y: 8, innerP2x: 9, innerP2y: 10, outerP1x: 11, outerP1y: 12, outerP2x: 13, outerP2y: 14, inwardX: 15, inwardY: 16, wallBaseZ: 17, wallHeight: 18, wallCapHeight: 19, edgeThickness: 20, cx: 21, cy: 22 };
-export const RAIL_BOX_STRIDE = 23;
+import {
+    RAIL_BOX_CHUNK_KEY,
+    RAIL_BOX_GRID_IDX,
+    RAIL_BOX_GRID_SIDE,
+    RAIL_BOX_MIN_X,
+    RAIL_BOX_MIN_Y,
+    RAIL_BOX_MAX_X,
+    RAIL_BOX_MAX_Y,
+    RAIL_BOX_INNER_P1X,
+    RAIL_BOX_INNER_P1Y,
+    RAIL_BOX_INNER_P2X,
+    RAIL_BOX_INNER_P2Y,
+    RAIL_BOX_OUTER_P1X,
+    RAIL_BOX_OUTER_P1Y,
+    RAIL_BOX_OUTER_P2X,
+    RAIL_BOX_OUTER_P2Y,
+    RAIL_BOX_INWARD_X,
+    RAIL_BOX_INWARD_Y,
+    RAIL_BOX_WALL_BASE_Z,
+    RAIL_BOX_WALL_HEIGHT,
+    RAIL_BOX_WALL_CAP_HEIGHT,
+    RAIL_BOX_EDGE_THICKNESS,
+    RAIL_BOX_CX,
+    RAIL_BOX_CY,
+    RAIL_BOX_STRIDE,
+    VOXEL_FACE_GRID_IDX,
+    VOXEL_FACE_GRID_SIDE,
+    VOXEL_FACE_X1,
+    VOXEL_FACE_Y1,
+    VOXEL_FACE_X2,
+    VOXEL_FACE_Y2,
+    VOXEL_FACE_WALL_BASE_Z,
+    VOXEL_FACE_WALL_HEIGHT,
+    VOXEL_FACE_WALL_CAP_HEIGHT,
+    VOXEL_FACE_CX,
+    VOXEL_FACE_CY,
+    VOXEL_FACE_OUT_X,
+    VOXEL_FACE_OUT_Y,
+    VOXEL_FACE_STRIDE,
+} from "./wallGridStride.js";
 const CHUNK_CELL_RECT = new Int32Array(4);
 export function voxelWallFaceVisible(neighborCap, faceHeight) {
     if (neighborCap == null) return true;
@@ -70,8 +108,8 @@ export function railWallFootprintAabbF32(buf, o, grid, idx, edge) {
     }
 }
 export function flatRailWallCapUvCornersIntoFlat(out8, grid, data, base) {
-    const idx = data[base + RAIL_BOX.gridIdx];
-    const side = data[base + RAIL_BOX.gridSide];
+    const idx = data[base + RAIL_BOX_GRID_IDX];
+    const side = data[base + RAIL_BOX_GRID_SIDE];
     grid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
     return fillFlatUvFromF32Bounds(out8, ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, side);
 }
@@ -167,30 +205,30 @@ function writeRailWallBoxRecordInto(data, recordIndex, grid, idx, edge) {
     const maxY = ENGINE_F32[ENGINE_BOUNDS_BASE + B_FOOTPRINT + 3];
     railWallSideEndpoints(grid, idx, edge, 0, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X);
     const base = recordIndex * RAIL_BOX_STRIDE;
-    data[base + RAIL_BOX.chunkKey] = cellIdxToChunkKey(idx, grid, gridSettings.minCellsPerChunk);
-    data[base + RAIL_BOX.gridIdx] = idx;
-    data[base + RAIL_BOX.gridSide] = edge;
-    data[base + RAIL_BOX.minX] = minX;
-    data[base + RAIL_BOX.minY] = minY;
-    data[base + RAIL_BOX.maxX] = maxX;
-    data[base + RAIL_BOX.maxY] = maxY;
-    data[base + RAIL_BOX.innerP1x] = ENGINE_F32[S_EDGE_P1X];
-    data[base + RAIL_BOX.innerP1y] = ENGINE_F32[S_EDGE_P1Y];
-    data[base + RAIL_BOX.innerP2x] = ENGINE_F32[S_EDGE_P2X];
-    data[base + RAIL_BOX.innerP2y] = ENGINE_F32[S_EDGE_P2Y];
+    data[base + RAIL_BOX_CHUNK_KEY] = cellIdxToChunkKey(idx, grid, gridSettings.minCellsPerChunk);
+    data[base + RAIL_BOX_GRID_IDX] = idx;
+    data[base + RAIL_BOX_GRID_SIDE] = edge;
+    data[base + RAIL_BOX_MIN_X] = minX;
+    data[base + RAIL_BOX_MIN_Y] = minY;
+    data[base + RAIL_BOX_MAX_X] = maxX;
+    data[base + RAIL_BOX_MAX_Y] = maxY;
+    data[base + RAIL_BOX_INNER_P1X] = ENGINE_F32[S_EDGE_P1X];
+    data[base + RAIL_BOX_INNER_P1Y] = ENGINE_F32[S_EDGE_P1Y];
+    data[base + RAIL_BOX_INNER_P2X] = ENGINE_F32[S_EDGE_P2X];
+    data[base + RAIL_BOX_INNER_P2Y] = ENGINE_F32[S_EDGE_P2Y];
     railWallSideEndpoints(grid, idx, edge, 1, ENGINE_F32, S_EDGE_P1X, S_EDGE_P2X);
-    data[base + RAIL_BOX.outerP1x] = ENGINE_F32[S_EDGE_P1X];
-    data[base + RAIL_BOX.outerP1y] = ENGINE_F32[S_EDGE_P1Y];
-    data[base + RAIL_BOX.outerP2x] = ENGINE_F32[S_EDGE_P2X];
-    data[base + RAIL_BOX.outerP2y] = ENGINE_F32[S_EDGE_P2Y];
-    data[base + RAIL_BOX.inwardX] = -GRID_SIDE_NX[edge];
-    data[base + RAIL_BOX.inwardY] = -GRID_SIDE_NY[edge];
-    data[base + RAIL_BOX.wallBaseZ] = voxelWallFaceBaseZ(neighborCap, edgeHeight);
-    data[base + RAIL_BOX.wallHeight] = edgeHeight - data[base + RAIL_BOX.wallBaseZ];
-    data[base + RAIL_BOX.wallCapHeight] = edgeHeight;
-    data[base + RAIL_BOX.edgeThickness] = railWallThicknessPx(railEdge);
-    data[base + RAIL_BOX.cx] = (minX + maxX) * 0.5;
-    data[base + RAIL_BOX.cy] = (minY + maxY) * 0.5;
+    data[base + RAIL_BOX_OUTER_P1X] = ENGINE_F32[S_EDGE_P1X];
+    data[base + RAIL_BOX_OUTER_P1Y] = ENGINE_F32[S_EDGE_P1Y];
+    data[base + RAIL_BOX_OUTER_P2X] = ENGINE_F32[S_EDGE_P2X];
+    data[base + RAIL_BOX_OUTER_P2Y] = ENGINE_F32[S_EDGE_P2Y];
+    data[base + RAIL_BOX_INWARD_X] = -GRID_SIDE_NX[edge];
+    data[base + RAIL_BOX_INWARD_Y] = -GRID_SIDE_NY[edge];
+    data[base + RAIL_BOX_WALL_BASE_Z] = voxelWallFaceBaseZ(neighborCap, edgeHeight);
+    data[base + RAIL_BOX_WALL_HEIGHT] = edgeHeight - data[base + RAIL_BOX_WALL_BASE_Z];
+    data[base + RAIL_BOX_WALL_CAP_HEIGHT] = edgeHeight;
+    data[base + RAIL_BOX_EDGE_THICKNESS] = railWallThicknessPx(railEdge);
+    data[base + RAIL_BOX_CX] = (minX + maxX) * 0.5;
+    data[base + RAIL_BOX_CY] = (minY + maxY) * 0.5;
     return true;
 }
 function clearWallGridDrawableDrawMemos(drawable) {
@@ -200,82 +238,82 @@ function clearWallGridDrawableDrawMemos(drawable) {
 function extendCollinearRailWallBoxRecord(data, curIndex, nextIndex) {
     const cur = curIndex * RAIL_BOX_STRIDE;
     const next = nextIndex * RAIL_BOX_STRIDE;
-    data[cur + RAIL_BOX.minX] = Math.min(data[cur + RAIL_BOX.minX], data[next + RAIL_BOX.minX]);
-    data[cur + RAIL_BOX.minY] = Math.min(data[cur + RAIL_BOX.minY], data[next + RAIL_BOX.minY]);
-    data[cur + RAIL_BOX.maxX] = Math.max(data[cur + RAIL_BOX.maxX], data[next + RAIL_BOX.maxX]);
-    data[cur + RAIL_BOX.maxY] = Math.max(data[cur + RAIL_BOX.maxY], data[next + RAIL_BOX.maxY]);
-    const edge = data[cur + RAIL_BOX.gridSide];
+    data[cur + RAIL_BOX_MIN_X] = Math.min(data[cur + RAIL_BOX_MIN_X], data[next + RAIL_BOX_MIN_X]);
+    data[cur + RAIL_BOX_MIN_Y] = Math.min(data[cur + RAIL_BOX_MIN_Y], data[next + RAIL_BOX_MIN_Y]);
+    data[cur + RAIL_BOX_MAX_X] = Math.max(data[cur + RAIL_BOX_MAX_X], data[next + RAIL_BOX_MAX_X]);
+    data[cur + RAIL_BOX_MAX_Y] = Math.max(data[cur + RAIL_BOX_MAX_Y], data[next + RAIL_BOX_MAX_Y]);
+    const edge = data[cur + RAIL_BOX_GRID_SIDE];
     if (edge === 0) {
-        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.maxY];
-        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.maxY];
-        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.minY];
-        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX_INNER_P1X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_INNER_P1Y] = data[cur + RAIL_BOX_MAX_Y];
+        data[cur + RAIL_BOX_INNER_P2X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_INNER_P2Y] = data[cur + RAIL_BOX_MAX_Y];
+        data[cur + RAIL_BOX_OUTER_P1X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_OUTER_P1Y] = data[cur + RAIL_BOX_MIN_Y];
+        data[cur + RAIL_BOX_OUTER_P2X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_OUTER_P2Y] = data[cur + RAIL_BOX_MIN_Y];
     } else if (edge === 2) {
-        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.minY];
-        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.minY];
-        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.maxY];
-        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX_INNER_P1X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_INNER_P1Y] = data[cur + RAIL_BOX_MIN_Y];
+        data[cur + RAIL_BOX_INNER_P2X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_INNER_P2Y] = data[cur + RAIL_BOX_MIN_Y];
+        data[cur + RAIL_BOX_OUTER_P1X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_OUTER_P1Y] = data[cur + RAIL_BOX_MAX_Y];
+        data[cur + RAIL_BOX_OUTER_P2X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_OUTER_P2Y] = data[cur + RAIL_BOX_MAX_Y];
     } else if (edge === 1) {
-        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.minY];
-        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.maxY];
-        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.minY];
-        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.maxY];
+        data[cur + RAIL_BOX_INNER_P1X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_INNER_P1Y] = data[cur + RAIL_BOX_MIN_Y];
+        data[cur + RAIL_BOX_INNER_P2X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_INNER_P2Y] = data[cur + RAIL_BOX_MAX_Y];
+        data[cur + RAIL_BOX_OUTER_P1X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_OUTER_P1Y] = data[cur + RAIL_BOX_MIN_Y];
+        data[cur + RAIL_BOX_OUTER_P2X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_OUTER_P2Y] = data[cur + RAIL_BOX_MAX_Y];
     } else {
-        data[cur + RAIL_BOX.innerP1x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.innerP1y] = data[cur + RAIL_BOX.maxY];
-        data[cur + RAIL_BOX.innerP2x] = data[cur + RAIL_BOX.maxX];
-        data[cur + RAIL_BOX.innerP2y] = data[cur + RAIL_BOX.minY];
-        data[cur + RAIL_BOX.outerP1x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.outerP1y] = data[cur + RAIL_BOX.maxY];
-        data[cur + RAIL_BOX.outerP2x] = data[cur + RAIL_BOX.minX];
-        data[cur + RAIL_BOX.outerP2y] = data[cur + RAIL_BOX.minY];
+        data[cur + RAIL_BOX_INNER_P1X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_INNER_P1Y] = data[cur + RAIL_BOX_MAX_Y];
+        data[cur + RAIL_BOX_INNER_P2X] = data[cur + RAIL_BOX_MAX_X];
+        data[cur + RAIL_BOX_INNER_P2Y] = data[cur + RAIL_BOX_MIN_Y];
+        data[cur + RAIL_BOX_OUTER_P1X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_OUTER_P1Y] = data[cur + RAIL_BOX_MAX_Y];
+        data[cur + RAIL_BOX_OUTER_P2X] = data[cur + RAIL_BOX_MIN_X];
+        data[cur + RAIL_BOX_OUTER_P2Y] = data[cur + RAIL_BOX_MIN_Y];
     }
-    data[cur + RAIL_BOX.cx] = (data[cur + RAIL_BOX.minX] + data[cur + RAIL_BOX.maxX]) * 0.5;
-    data[cur + RAIL_BOX.cy] = (data[cur + RAIL_BOX.minY] + data[cur + RAIL_BOX.maxY]) * 0.5;
+    data[cur + RAIL_BOX_CX] = (data[cur + RAIL_BOX_MIN_X] + data[cur + RAIL_BOX_MAX_X]) * 0.5;
+    data[cur + RAIL_BOX_CY] = (data[cur + RAIL_BOX_MIN_Y] + data[cur + RAIL_BOX_MAX_Y]) * 0.5;
 }
 function collinearRailWallBoxRecordsAdjacent(data, aIndex, bIndex, cols) {
     const a = aIndex * RAIL_BOX_STRIDE;
     const b = bIndex * RAIL_BOX_STRIDE;
-    if (data[a + RAIL_BOX.gridSide] !== data[b + RAIL_BOX.gridSide]) return false;
-    if (data[a + RAIL_BOX.wallCapHeight] !== data[b + RAIL_BOX.wallCapHeight] || data[a + RAIL_BOX.wallBaseZ] !== data[b + RAIL_BOX.wallBaseZ] || data[a + RAIL_BOX.edgeThickness] !== data[b + RAIL_BOX.edgeThickness]) return false;
-    if (data[a + RAIL_BOX.inwardX] !== data[b + RAIL_BOX.inwardX] || data[a + RAIL_BOX.inwardY] !== data[b + RAIL_BOX.inwardY]) return false;
-    const aRow = (data[a + RAIL_BOX.gridIdx] / cols) | 0;
-    const aCol = data[a + RAIL_BOX.gridIdx] - aRow * cols;
-    const bRow = (data[b + RAIL_BOX.gridIdx] / cols) | 0;
-    const bCol = data[b + RAIL_BOX.gridIdx] - bRow * cols;
-    if (data[a + RAIL_BOX.gridSide] === 0 || data[a + RAIL_BOX.gridSide] === 2) {
+    if (data[a + RAIL_BOX_GRID_SIDE] !== data[b + RAIL_BOX_GRID_SIDE]) return false;
+    if (data[a + RAIL_BOX_WALL_CAP_HEIGHT] !== data[b + RAIL_BOX_WALL_CAP_HEIGHT] || data[a + RAIL_BOX_WALL_BASE_Z] !== data[b + RAIL_BOX_WALL_BASE_Z] || data[a + RAIL_BOX_EDGE_THICKNESS] !== data[b + RAIL_BOX_EDGE_THICKNESS]) return false;
+    if (data[a + RAIL_BOX_INWARD_X] !== data[b + RAIL_BOX_INWARD_X] || data[a + RAIL_BOX_INWARD_Y] !== data[b + RAIL_BOX_INWARD_Y]) return false;
+    const aRow = (data[a + RAIL_BOX_GRID_IDX] / cols) | 0;
+    const aCol = data[a + RAIL_BOX_GRID_IDX] - aRow * cols;
+    const bRow = (data[b + RAIL_BOX_GRID_IDX] / cols) | 0;
+    const bCol = data[b + RAIL_BOX_GRID_IDX] - bRow * cols;
+    if (data[a + RAIL_BOX_GRID_SIDE] === 0 || data[a + RAIL_BOX_GRID_SIDE] === 2) {
         if (aRow !== bRow) return false;
-        if (data[a + RAIL_BOX.chunkKey] !== data[b + RAIL_BOX.chunkKey]) return false;
+        if (data[a + RAIL_BOX_CHUNK_KEY] !== data[b + RAIL_BOX_CHUNK_KEY]) return false;
         return bCol === aCol + 1;
     }
     if (aCol !== bCol) return false;
-    if (data[a + RAIL_BOX.chunkKey] !== data[b + RAIL_BOX.chunkKey]) return false;
+    if (data[a + RAIL_BOX_CHUNK_KEY] !== data[b + RAIL_BOX_CHUNK_KEY]) return false;
     return bRow === aRow + 1;
 }
 function compareRailWallBoxRecords(data, aIndex, bIndex, cols) {
     const a = aIndex * RAIL_BOX_STRIDE;
     const b = bIndex * RAIL_BOX_STRIDE;
-    if (data[a + RAIL_BOX.gridSide] !== data[b + RAIL_BOX.gridSide]) return data[a + RAIL_BOX.gridSide] - data[b + RAIL_BOX.gridSide];
-    if (data[a + RAIL_BOX.wallCapHeight] !== data[b + RAIL_BOX.wallCapHeight]) return data[a + RAIL_BOX.wallCapHeight] - data[b + RAIL_BOX.wallCapHeight];
-    if (data[a + RAIL_BOX.wallBaseZ] !== data[b + RAIL_BOX.wallBaseZ]) return data[a + RAIL_BOX.wallBaseZ] - data[b + RAIL_BOX.wallBaseZ];
-    if (data[a + RAIL_BOX.edgeThickness] !== data[b + RAIL_BOX.edgeThickness]) return data[a + RAIL_BOX.edgeThickness] - data[b + RAIL_BOX.edgeThickness];
-    const aRow = (data[a + RAIL_BOX.gridIdx] / cols) | 0;
-    const aCol = data[a + RAIL_BOX.gridIdx] - aRow * cols;
-    const bRow = (data[b + RAIL_BOX.gridIdx] / cols) | 0;
-    const bCol = data[b + RAIL_BOX.gridIdx] - bRow * cols;
-    if (data[a + RAIL_BOX.gridSide] === 0 || data[a + RAIL_BOX.gridSide] === 2) {
+    if (data[a + RAIL_BOX_GRID_SIDE] !== data[b + RAIL_BOX_GRID_SIDE]) return data[a + RAIL_BOX_GRID_SIDE] - data[b + RAIL_BOX_GRID_SIDE];
+    if (data[a + RAIL_BOX_WALL_CAP_HEIGHT] !== data[b + RAIL_BOX_WALL_CAP_HEIGHT]) return data[a + RAIL_BOX_WALL_CAP_HEIGHT] - data[b + RAIL_BOX_WALL_CAP_HEIGHT];
+    if (data[a + RAIL_BOX_WALL_BASE_Z] !== data[b + RAIL_BOX_WALL_BASE_Z]) return data[a + RAIL_BOX_WALL_BASE_Z] - data[b + RAIL_BOX_WALL_BASE_Z];
+    if (data[a + RAIL_BOX_EDGE_THICKNESS] !== data[b + RAIL_BOX_EDGE_THICKNESS]) return data[a + RAIL_BOX_EDGE_THICKNESS] - data[b + RAIL_BOX_EDGE_THICKNESS];
+    const aRow = (data[a + RAIL_BOX_GRID_IDX] / cols) | 0;
+    const aCol = data[a + RAIL_BOX_GRID_IDX] - aRow * cols;
+    const bRow = (data[b + RAIL_BOX_GRID_IDX] / cols) | 0;
+    const bCol = data[b + RAIL_BOX_GRID_IDX] - bRow * cols;
+    if (data[a + RAIL_BOX_GRID_SIDE] === 0 || data[a + RAIL_BOX_GRID_SIDE] === 2) {
         if (aRow !== bRow) return aRow - bRow;
         return aCol - bCol;
     }
@@ -308,8 +346,6 @@ function mergeCollinearRailWallBoxRecordsInPlace(list, cols) {
         }
     return write;
 }
-export const VOXEL_FACE = { gridIdx: 0, gridSide: 1, x1: 2, y1: 3, x2: 4, y2: 5, wallBaseZ: 6, wallHeight: 7, wallCapHeight: 8, cx: 9, cy: 10, outX: 11, outY: 12 };
-export const VOXEL_FACE_STRIDE = 13;
 export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     const base = baseIndex * VOXEL_FACE_STRIDE;
     const cols = grid.cols;
@@ -333,19 +369,19 @@ export function writeVoxelWallFaceIntoFlat(data, baseIndex, grid, idx, edge) {
     const ecx = (ENGINE_F32[S_EDGE_P1X] + ENGINE_F32[S_EDGE_P2X]) / 2;
     const ecy = (ENGINE_F32[S_EDGE_P1Y] + ENGINE_F32[S_EDGE_P2Y]) / 2;
     const wallBaseZ = voxelWallFaceBaseZ(neighborCap, faceHeight);
-    data[base + VOXEL_FACE.gridIdx] = idx;
-    data[base + VOXEL_FACE.gridSide] = edge;
-    data[base + VOXEL_FACE.x1] = ENGINE_F32[S_EDGE_P1X];
-    data[base + VOXEL_FACE.y1] = ENGINE_F32[S_EDGE_P1Y];
-    data[base + VOXEL_FACE.x2] = ENGINE_F32[S_EDGE_P2X];
-    data[base + VOXEL_FACE.y2] = ENGINE_F32[S_EDGE_P2Y];
-    data[base + VOXEL_FACE.wallBaseZ] = wallBaseZ;
-    data[base + VOXEL_FACE.wallHeight] = faceHeight - wallBaseZ;
-    data[base + VOXEL_FACE.wallCapHeight] = faceHeight;
-    data[base + VOXEL_FACE.cx] = ecx;
-    data[base + VOXEL_FACE.cy] = ecy;
-    data[base + VOXEL_FACE.outX] = ecx - cx;
-    data[base + VOXEL_FACE.outY] = ecy - cy;
+    data[base + VOXEL_FACE_GRID_IDX] = idx;
+    data[base + VOXEL_FACE_GRID_SIDE] = edge;
+    data[base + VOXEL_FACE_X1] = ENGINE_F32[S_EDGE_P1X];
+    data[base + VOXEL_FACE_Y1] = ENGINE_F32[S_EDGE_P1Y];
+    data[base + VOXEL_FACE_X2] = ENGINE_F32[S_EDGE_P2X];
+    data[base + VOXEL_FACE_Y2] = ENGINE_F32[S_EDGE_P2Y];
+    data[base + VOXEL_FACE_WALL_BASE_Z] = wallBaseZ;
+    data[base + VOXEL_FACE_WALL_HEIGHT] = faceHeight - wallBaseZ;
+    data[base + VOXEL_FACE_WALL_CAP_HEIGHT] = faceHeight;
+    data[base + VOXEL_FACE_CX] = ecx;
+    data[base + VOXEL_FACE_CY] = ecy;
+    data[base + VOXEL_FACE_OUT_X] = ecx - cx;
+    data[base + VOXEL_FACE_OUT_Y] = ecy - cy;
     return true;
 }
 export function collectVoxelWallFacesInAabbFlatF32(grid, buf, o, list) {

@@ -97,7 +97,7 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 
 ### Render dialect
 
-- Wall face draw state: module `wallFaceF32` / `wallFaceI32` (`WF_*`) via `writeWallFaceScratch` — no `wallFaceScratch` bags on `WorldSceneRenderer`.
+- Wall face draw state: module `wallFaceF32` / `wallFaceI32` (`WF_*`) via `writeWallFaceScratch` / `writeWallFaceFromRailBox` / `writeWallFaceFromVoxelFace` — no `wallFaceScratch` bags; stride layouts live in `wallGridStride.js` as bare `RAIL_BOX_*` / `VOXEL_FACE_*` ints (cycle-safe vs Spatial→Render).
 - Overlay glyph `customKey` / `OVERLAY_RENDER_KEY_*` are packed numbers (ints / `mixHash4`) — no `` `r${…}` `` template strings / nested key objects.
 - CSS color strings stay only at the canvas `fillStyle` / `strokeStyle` edge (slot arrays for prism/wall chunk colors).
 - Overlay AABB draw: `drawAabbStyle(ctx, minX, minY, maxX, maxY, …)` — no `{ minX, minY, maxX, maxY }` rebox on bake.

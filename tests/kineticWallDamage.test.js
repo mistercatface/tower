@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
 import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, queueWallHits, resolveKineticWallDamage, classifyWallDamageSegment, packWallDamageKey } from "../Libraries/Physics/fracture.js";
-import { pendingBreakRowForKey } from "../Core/engineMemory.js";
+import { pendingBreakRowForKey, GrowI32, staticWallSegmentSlab, kineticStaticSlab } from "../Core/engineMemory.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
@@ -20,9 +20,9 @@ import { createSandboxSessionState } from "./harness/stateFactories.js";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { kineticIntegrateHooks, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wallSurfaceInvalidateHarness.js";
-import { collectVoxelWallFacesInAabbFlatF32, VOXEL_FACE, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridBake.js";
+import { collectVoxelWallFacesInAabbFlatF32 } from "../Libraries/World/wallGridBake.js";
+import { VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridStride.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
-import { GrowI32, staticWallSegmentSlab } from "../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../Core/engineEnums.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 async function createWallDamageTestState(opts = {}) {
@@ -191,7 +191,8 @@ describe("kinetic wall damage", () => {
         stampVoxel(state.obstacleGrid, 3, 3, 2); // height level 2
         state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
         
-        const entity = { id: 101, type: "box", vx: 560, vy: 0, mass: 1 };
+        const entity = { id: 101, type: "box", vx: 560, vy: 0, mass: 1, _physId: 0 };
+        kineticStaticSlab.mass[0] = 1;
         const wallResolver = {
             hits: wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3), {
                     contactX: 3 * 16 + 8,
@@ -255,7 +256,7 @@ describe("kinetic wall damage", () => {
         const buf = new Float32Array([-100, -100, 100, 100]);
         collectVoxelWallFacesInAabbFlatF32(state.obstacleGrid, buf, 0, list);
         for (let i = 0; i < list.length; i++) {
-            assert.notEqual(list.data[i * VOXEL_FACE_STRIDE + VOXEL_FACE.gridIdx], clearedIdx);
+            assert.notEqual(list.data[i * VOXEL_FACE_STRIDE + VOXEL_FACE_GRID_IDX], clearedIdx);
         }
         terminateWorkerNavigation(state.nav);
     });

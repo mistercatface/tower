@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { collectRailWallBoxesInAabbF32, RAIL_BOX_STRIDE } from "../Libraries/World/wallGridBake.js";
+import { collectRailWallBoxesInAabbF32 } from "../Libraries/World/wallGridBake.js";
+import { RAIL_BOX_STRIDE } from "../Libraries/World/wallGridStride.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
 import { makeTestObstacleGrid, stampRailWallEdge } from "./harness/losShadowHarness.js";
 
