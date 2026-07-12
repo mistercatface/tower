@@ -2394,10 +2394,11 @@ export function buildSandboxOverlayCommands({ state, session, spatialFrame, plac
     let visibleSelectedProps = [];
     if (sel?.kind === "prop") {
         const selectedIds = new Set(selectionPropIds(sel));
-        const packed = queryPropIdsInView(state.entityRegistry, spatialFrame, VIEW_TIER_CHUNKS, HIT_TEST_CIRCLE, "selectedOverlay", (prop) => selectedIds.has(prop.id));
+        const count = queryPropIdsInView(state.entityRegistry, spatialFrame, VIEW_TIER_CHUNKS, HIT_TEST_CIRCLE, "selectedOverlay", (prop) => selectedIds.has(prop.id));
         visibleSelectedProps = [];
-        for (let i = 0; i < packed.count; i++) {
-            const prop = state.entityRegistry.getRef(packed.ids[i]);
+        const ids = state.entityRegistry.borrowedQueryIds("selectedOverlay");
+        for (let i = 0; i < count; i++) {
+            const prop = state.entityRegistry.getRef(ids[i]);
             if (prop) visibleSelectedProps.push(prop);
         }
         for (let i = 0; i < visibleSelectedProps.length; i++) {
@@ -2927,8 +2928,14 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
         onBoxSelect() {
             const o = ENGINE_BOUNDS_BASE + B_TMP;
             const filter = session.getSelectionTagFilter();
-            const props = state.entityRegistry.queryInAabbStrictF32(ENGINE_F32, o, HIT_TEST_CIRCLE, (prop) => entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter));
-            selectPropIds(props.map((prop) => prop.id));
+            const count = state.entityRegistry.queryInAabbF32(null, ENGINE_F32, o, HIT_TEST_CIRCLE, "marquee", (prop) => entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxAssetMatchesTagFilter(propCatalog[prop.type], filter));
+            const eids = state.entityRegistry.borrowedQueryIds("marquee");
+            const ids = [];
+            for (let i = 0; i < count; i++) {
+                const prop = state.entityRegistry.getRef(eids[i]);
+                if (prop) ids.push(prop.id);
+            }
+            selectPropIds(ids);
         },
     });
     const canvasTools = createCanvasToolStack([modifierTool, wallPlaceTool, deletePointerTool, interactTool, gestureTool, marqueeTool], { clientToWorld });

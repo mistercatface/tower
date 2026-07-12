@@ -1044,8 +1044,7 @@ export class WorldSurfaceEngine {
         const payload = this.buildGroundChunkPayload(state, chunkKey, profileId, zLevel, boundsSample);
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
     }
-    getOrEnsureWallAtlasScalars(x1, y1, x2, y2, options) {
-        const { profileId = this.activeSurfaceProfileId, wallHeight = null, cacheObj = null, atlasFaceId = "side" } = options;
+    getOrEnsureWallAtlasScalars(x1, y1, x2, y2, profileId, wallHeight, cacheObj, atlasFaceId) {
         const seed = this.worldSurfaceSeed;
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
         const atlas = this.cacheKeys.wallAtlasKeyScalars(x1, y1, x2, y2, seed, profileId, wallHeightKey);
@@ -1068,8 +1067,8 @@ export class WorldSurfaceEngine {
         }
         return resolved;
     }
-    getOrEnsureWallAtlas(p1, p2, options) {
-        return this.getOrEnsureWallAtlasScalars(p1.x, p1.y, p2.x, p2.y, options);
+    getOrEnsureWallAtlas(p1, p2, profileId, wallHeight, cacheObj, atlasFaceId) {
+        return this.getOrEnsureWallAtlasScalars(p1.x, p1.y, p2.x, p2.y, profileId, wallHeight, cacheObj, atlasFaceId);
     }
     fillHorizontalCapDrawSampleIntoFlat(worldCorners8, zLevel, state, outSrc8) {
         const surfaceBakeScale = this.settings.surfaceBakeScale;
@@ -1227,7 +1226,7 @@ export class WorldSurfaceEngine {
     }
     ensureWallChunkProfileTextures(state, profileId, wallHeightPx) {
         const cellSize = this.settings.cellSize;
-        const sideAtlas = this.getOrEnsureWallAtlas({ x: 0, y: 0 }, { x: cellSize, y: 0 }, { profileId, wallHeight: wallHeightPx });
+        const sideAtlas = this.getOrEnsureWallAtlas({ x: 0, y: 0 }, { x: cellSize, y: 0 }, profileId, wallHeightPx, null, "side");
         const sideCanvas = sideAtlas?.canvases?.[0] ?? null;
         const sample = this.surfaceSpace.wallChunkTextureSample(cellSize);
         const capCanvasEntry = this.getGroundChunkCanvas(sample.chunkKey, state, 1, sample, profileId);

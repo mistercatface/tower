@@ -91,7 +91,6 @@ export const VIEW_TIER_CHUNKS = 12;
 export const VIEW_TIER_COUNT = 4;
 export const VIEW_BOUNDS_PROPS_PAD_PX = 20;
 export const HIT_TEST_CIRCLE = 1;
-export const HIT_TEST_AABB = 2;
 export const HIT_TEST_CENTER = 3;
 export const viewBoundsBuf = new Float32Array(VIEW_TIER_COUNT * 4);
 export const viewBoundsPad = new Float32Array(VIEW_TIER_COUNT);

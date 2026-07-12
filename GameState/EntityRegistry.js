@@ -1,6 +1,6 @@
 import { pruneKineticConstraintsForBody, resolveBodyRadius, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHashF32, entityIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
+import { aabbHashF32, entityIntersectsAabbEidF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, pickWorldPoly, viewBoundsBuf, HIT_TEST_CIRCLE, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef } from "../Libraries/Entity/entitySlots.js";
@@ -65,30 +65,23 @@ function queryViewCacheMatchesF32(entry, spatialGen, membershipGen, buf, o, boun
     if (entry.boundsHash !== boundsHash) return false;
     return entry.minX === buf[o] && entry.minY === buf[o + 1] && entry.maxX === buf[o + 2] && entry.maxY === buf[o + 3];
 }
-function makeQueryViewCacheEntryF32(ids, count, spatialGen, membershipGen, buf, o, boundsHash, filterHash) {
-    return { ids, count, spatialGen, membershipGen, boundsHash, filterHash, minX: buf[o], minY: buf[o + 1], maxX: buf[o + 2], maxY: buf[o + 3] };
-}
-function queryViewCacheKey(spatialGen, membershipGen, boundsHash, filterHash) {
-    return mixHash4(spatialGen, membershipGen, boundsHash, filterHash);
-}
 function kindStringToCode(kind) {
     if (kind === "worldProp") return KIND_CODE_WORLD_PROP;
     return ENTITY_KIND_NONE;
 }
 /**
  * Dense typed entity arena. Slot eid === physId. WorldProp bags live in entityRefs[eid].
- * View queries cache id buffers via queryViewTier / queryInAabbF32.
+ * View queries return count; ids via borrowedQueryIds(filterId).
  */
 export class EntityArena {
     constructor() {
         this.membershipGen = 0;
         this._queryCache = new Map();
-        this._viewQueryDepth = 0;
+        this._cacheEntryByFilterId = Object.create(null);
         this._candidateEids = new Int32Array(256);
         this._candidateCount = 0;
         this._candidateSeenGen = new Uint32Array(MAX_ENTITIES);
         this._candidateQueryGen = 0;
-        this._resultSlotByFilterId = Object.create(null);
         this._idSlotByFilterId = Object.create(null);
         this._gameIdToEid = new Map();
         this._liveEids = new Int32Array(256);
@@ -114,26 +107,29 @@ export class EntityArena {
             return;
         }
     }
-    _borrowQueryResultBuffer(filterId) {
-        if (this._viewQueryDepth > 1) return [];
-        const key = filterId ?? "";
-        let buf = this._resultSlotByFilterId[key];
-        if (!buf) buf = this._resultSlotByFilterId[key] = [];
-        buf.length = 0;
-        return buf;
-    }
     _borrowIdBuffer(filterId, minCap) {
         const key = filterId ?? "";
         ensureGrowI32(this._idSlotByFilterId, key, minCap);
         return this._idSlotByFilterId[key];
     }
-    _materializeIds(ids, count, filterId) {
-        const out = this._borrowQueryResultBuffer(filterId);
-        for (let i = 0; i < count; i++) {
-            const ref = entitySlotRef(ids[i]);
-            if (ref) out.push(ref);
-        }
-        return out;
+    borrowedQueryIds(filterId) {
+        return this._idSlotByFilterId[filterId ?? ""];
+    }
+    _storeQueryViewCacheEntry(filterId, ids, count, spatialGen, membershipGen, buf, o, boundsHash, filterHash) {
+        const key = filterId ?? "";
+        let entry = this._cacheEntryByFilterId[key];
+        if (!entry) entry = this._cacheEntryByFilterId[key] = { ids, count: 0, spatialGen: 0, membershipGen: 0, boundsHash: 0, filterHash: 0, minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        entry.ids = ids;
+        entry.count = count;
+        entry.spatialGen = spatialGen;
+        entry.membershipGen = membershipGen;
+        entry.boundsHash = boundsHash;
+        entry.filterHash = filterHash;
+        entry.minX = buf[o];
+        entry.minY = buf[o + 1];
+        entry.maxX = buf[o + 2];
+        entry.maxY = buf[o + 3];
+        return entry;
     }
     register(kind, ref) {
         if (!ref || ref.id == null) return;
@@ -233,10 +229,6 @@ export class EntityArena {
             if (ref) fn(ref);
         }
     }
-    queryInAabbStrictF32(buf, o, hitTest, match) {
-        const packed = this._queryIdsInAabbF32(buf, o, match, hitTest, undefined, undefined);
-        return this._materializeIds(packed.ids, packed.count, undefined);
-    }
     queryViewTier(spatialFrame, tierO, hitTest, filterId, match) {
         return this._queryViewCached(spatialFrame, viewBoundsBuf, tierO, hitTest, filterId, match);
     }
@@ -247,15 +239,14 @@ export class EntityArena {
         const spatialGen = spatialFrame?.frameId ?? -1;
         const boundsHash = aabbHashF32(buf, o);
         const filterHash = filterQueryHash(hitTest, filterId);
-        const cacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, filterHash);
+        const cacheKey = filterId ?? "";
         const cached = this._queryCache.get(cacheKey);
-        if (queryViewCacheMatchesF32(cached, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash)) return { ids: cached.ids, count: cached.count };
+        if (queryViewCacheMatchesF32(cached, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash)) return cached.count;
         let ids;
         let count;
         if (match && filterId) {
             const baseFilterHash = filterQueryHash(hitTest, "");
-            const baseCacheKey = queryViewCacheKey(spatialGen, this.membershipGen, boundsHash, baseFilterHash);
-            const baseCached = this._queryCache.get(baseCacheKey);
+            const baseCached = this._queryCache.get("");
             if (queryViewCacheMatchesF32(baseCached, spatialGen, this.membershipGen, buf, o, boundsHash, baseFilterHash)) {
                 ids = this._borrowIdBuffer(filterId, baseCached.count);
                 count = 0;
@@ -264,15 +255,14 @@ export class EntityArena {
                     const ref = entitySlotRef(eid);
                     if (ref && match(ref)) ids[count++] = eid;
                 }
-                this._queryCache.set(cacheKey, makeQueryViewCacheEntryF32(ids, count, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
-                return { ids, count };
+                this._queryCache.set(cacheKey, this._storeQueryViewCacheEntry(filterId, ids, count, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
+                return count;
             }
         }
-        const packed = this._queryIdsInAabbF32(buf, o, match, hitTest, spatialFrame, filterId);
-        ids = packed.ids;
-        count = packed.count;
-        this._queryCache.set(cacheKey, makeQueryViewCacheEntryF32(ids, count, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
-        return { ids, count };
+        count = this._queryIdsInAabbF32(buf, o, match, hitTest, spatialFrame, filterId);
+        ids = this.borrowedQueryIds(filterId);
+        this._queryCache.set(cacheKey, this._storeQueryViewCacheEntry(filterId, ids, count, spatialGen, this.membershipGen, buf, o, boundsHash, filterHash));
+        return count;
     }
     _ensureCandidateCap(n) {
         ensureGrowI32(this, "_candidateEids", n);
@@ -282,25 +272,22 @@ export class EntityArena {
         this._candidateEids[this._candidateCount++] = eid;
     }
     _queryIdsInAabbF32(buf, o, match, hitTest, spatialFrame, filterId) {
-        this._viewQueryDepth++;
         this._candidateCount = 0;
-        try {
-            this._fillViewCandidateEidsF32(buf, o, spatialFrame);
-            const ids = this._borrowIdBuffer(filterId, this._candidateCount);
-            let count = 0;
-            for (let i = 0; i < this._candidateCount; i++) {
-                const eid = this._candidateEids[i];
+        this._fillViewCandidateEidsF32(buf, o, spatialFrame);
+        const ids = this._borrowIdBuffer(filterId, this._candidateCount);
+        let count = 0;
+        for (let i = 0; i < this._candidateCount; i++) {
+            const eid = this._candidateEids[i];
+            if (!entityAlive[eid]) continue;
+            if ((entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0) continue;
+            if (!entityIntersectsAabbEidF32(eid, buf, o, hitTest)) continue;
+            if (match) {
                 const ref = entitySlotRef(eid);
-                if (!ref || ref.isDead) continue;
-                if ((entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0) continue;
-                if (!entityIntersectsAabbF32(ref, buf, o, hitTest)) continue;
-                if (match && !match(ref)) continue;
-                ids[count++] = eid;
+                if (!ref || !match(ref)) continue;
             }
-            return { ids, count };
-        } finally {
-            this._viewQueryDepth--;
+            ids[count++] = eid;
         }
+        return count;
     }
     _fillViewCandidateEidsF32(buf, o, spatialFrame) {
         if (spatialFrame && spatialFrame.populatedMembershipGen === this.membershipGen) {
@@ -400,12 +387,13 @@ export function findLiveWorldProp(worldProps, pred) {
 }
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
     centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);
-    const packed = registry.queryInAabbF32(spatialFrame, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, HIT_TEST_CIRCLE, "", null);
+    const count = registry.queryInAabbF32(spatialFrame, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, HIT_TEST_CIRCLE, "", null);
+    const ids = registry.borrowedQueryIds("");
     let best = null;
     let bestDistSq = Infinity;
     const pad = padding;
-    for (let i = 0; i < packed.count; i++) {
-        const eid = packed.ids[i];
+    for (let i = 0; i < count; i++) {
+        const eid = ids[i];
         const dx = entityX[eid] - worldX;
         const dy = entityY[eid] - worldY;
         const distSq = dx * dx + dy * dy;

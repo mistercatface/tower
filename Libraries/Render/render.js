@@ -1414,7 +1414,7 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
         if (stash.profileId === profileId && stash.rev === atlasKey.rev && stash.seed === seed && stash.wallHeightKey === wallHeightKey && worldSurfaces.surfaceCache.get(stash.key) === stash.canvases) cacheHit = true;
     }
     if (!cacheHit) {
-        stash = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, { profileId, wallHeight: wallCapHeight, cacheObj: cacheObj && !cacheObj.isEdgeRail ? cacheObj : null, atlasFaceId: atlasFaceId ?? "side" });
+        stash = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, profileId, wallCapHeight, cacheObj && !cacheObj.isEdgeRail ? cacheObj : null, atlasFaceId ?? "side");
         if (canUseSideCache && stash) wallFaceDrawMemoSlab.handles[row] = stash;
     }
     if (!stash) return WALL_FACE_ATLAS_MISS;
@@ -1747,9 +1747,9 @@ export class WorldSceneRenderer {
         this.wallFaceScratch = { wallHeight: 0, wallBaseZ: 0, wallCapHeight: 0, cacheObj: null, atlasFaceId: undefined, gridSide: 0, gridIdx: 0, isEdgeRail: false };
     }
     _appendVisible3dProps(state, viewport) {
-        const packed = queryPropIdsInView(state.entityRegistry, state.spatialFrame, VIEW_TIER_PROPS, HIT_TEST_CIRCLE, "3d", match3d);
-        const ids = packed.ids;
-        for (let i = 0; i < packed.count; i++) {
+        const count = queryPropIdsInView(state.entityRegistry, state.spatialFrame, VIEW_TIER_PROPS, HIT_TEST_CIRCLE, "3d", match3d);
+        const ids = state.entityRegistry.borrowedQueryIds("3d");
+        for (let i = 0; i < count; i++) {
             const eid = ids[i];
             const p = state.entityRegistry.getRef(eid);
             if (!p) continue;
