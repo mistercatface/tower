@@ -89,6 +89,8 @@ export const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
 export const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2;
 export const MAX_KINETIC_DEBRIS = 4096 * 4;
 export const MAX_PENDING_WALL_BREAKS = 256;
+export const PENDING_BREAK_HASH_CAPACITY = MAX_PENDING_WALL_BREAKS * 2;
+export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1;
 export const MAX_DEFERRED_FRACTURES = 256;
 export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
 export const F_OUT_CENTROID_Y = ENGINE_FRAC_BASE + 1;
@@ -336,26 +338,17 @@ export const pairHashGen = new Int32Array(PAIR_HASH_CAPACITY);
 export const pairHashState = { generation: 1 };
 export const entityNext = new Int32Array(MAX_ENTITIES).fill(-1);
 export const kineticDebrisSlab = { activeCount: 0, ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
-export const deferredFractureSlab = {
-    count: 0,
-    propRef: new Array(MAX_DEFERRED_FRACTURES),
-    debrisStart: new Int32Array(MAX_DEFERRED_FRACTURES),
-    debrisCount: new Int32Array(MAX_DEFERRED_FRACTURES),
-    originX: new Float32Array(MAX_DEFERRED_FRACTURES),
-    originY: new Float32Array(MAX_DEFERRED_FRACTURES),
-    facing: new Float32Array(MAX_DEFERRED_FRACTURES),
-    impactLocalX: new Float32Array(MAX_DEFERRED_FRACTURES),
-    impactLocalY: new Float32Array(MAX_DEFERRED_FRACTURES),
-    impactForce: new Float32Array(MAX_DEFERRED_FRACTURES),
-    remnant: new Uint8Array(MAX_DEFERRED_FRACTURES),
-};
+export const deferredFractureSlab = { count: 0, propRef: new Array(MAX_DEFERRED_FRACTURES), debrisStart: new Int32Array(MAX_DEFERRED_FRACTURES), debrisCount: new Int32Array(MAX_DEFERRED_FRACTURES), originX: new Float32Array(MAX_DEFERRED_FRACTURES), originY: new Float32Array(MAX_DEFERRED_FRACTURES), facing: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalX: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalY: new Float32Array(MAX_DEFERRED_FRACTURES), impactForce: new Float32Array(MAX_DEFERRED_FRACTURES), remnant: new Uint8Array(MAX_DEFERRED_FRACTURES) };
 export function resetDeferredFractureSlab() {
     const slab = deferredFractureSlab;
     const n = slab.count;
     for (let i = 0; i < n; i++) slab.propRef[i] = null;
     slab.count = 0;
 }
-export const pendingWallBreaks = { count: 0, keyToRow: new Map(), kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
+export const pendingWallBreaks = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
+export const pendingBreakHashKeys = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
+export const pendingBreakHashRows = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
+export const pendingBreakHashGen = new Int32Array(PENDING_BREAK_HASH_CAPACITY);
 export const wallSpawnScratch = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), x: new Float32Array(MAX_PENDING_WALL_BREAKS), y: new Float32Array(MAX_PENDING_WALL_BREAKS), angle: new Float32Array(MAX_PENDING_WALL_BREAKS), width: new Float32Array(MAX_PENDING_WALL_BREAKS), height: new Float32Array(MAX_PENDING_WALL_BREAKS), wallHeight: new Float32Array(MAX_PENDING_WALL_BREAKS), profileId: new Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 export const MAX_STATIC_WALL_SEGMENTS = 4096;
 export const staticWallSegmentSlab = { count: 0, x: new Float32Array(MAX_STATIC_WALL_SEGMENTS), y: new Float32Array(MAX_STATIC_WALL_SEGMENTS), angle: new Float32Array(MAX_STATIC_WALL_SEGMENTS), width: new Float32Array(MAX_STATIC_WALL_SEGMENTS), height: new Float32Array(MAX_STATIC_WALL_SEGMENTS), size: new Float32Array(MAX_STATIC_WALL_SEGMENTS), gridIdx: new Int32Array(MAX_STATIC_WALL_SEGMENTS), gridSide: new Uint8Array(MAX_STATIC_WALL_SEGMENTS), flags: new Uint8Array(MAX_STATIC_WALL_SEGMENTS) };

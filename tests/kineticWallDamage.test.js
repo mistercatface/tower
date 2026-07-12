@@ -2,7 +2,7 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
-import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, queueWallHits, resolveKineticWallDamage, classifyWallDamageSegment, packWallDamageKey } from "../Libraries/Physics/fracture.js";
+import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, queueWallHits, resolveKineticWallDamage, classifyWallDamageSegment, packWallDamageKey, pendingBreakRowForKey } from "../Libraries/Physics/fracture.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
@@ -107,7 +107,7 @@ describe("kinetic wall damage", () => {
         };
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
         const voxelKey = packWallDamageKey(0, worldIdxAtCell(state.obstacleGrid, 6, 6), 0);
-        assert.equal(state.gridWallDamage.pending.strength[state.gridWallDamage.pending.keyToRow.get(voxelKey)], 1);
+        assert.equal(state.gridWallDamage.pending.strength[pendingBreakRowForKey(voxelKey)], 1);
         applyPendingWallDamage(state);
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid, 6, 6)));
         assert.equal(state.gridWallDamage.pending.count, 0);
@@ -204,8 +204,8 @@ describe("kinetic wall damage", () => {
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
         
         const pending = state.gridWallDamage.pending;
-        const row = pending.keyToRow.get(packWallDamageKey(0, worldIdxAtCell(state.obstacleGrid, 3, 3), 0));
-        assert.ok(row !== undefined);
+        const row = pendingBreakRowForKey(packWallDamageKey(0, worldIdxAtCell(state.obstacleGrid, 3, 3), 0));
+        assert.ok(row >= 0);
         assert.equal(pending.contactX[row], 3 * 16 + 8);
         assert.equal(pending.normalX[row], 1);
         assert.equal(pending.sourceSpeed[row], 560);
@@ -311,8 +311,8 @@ describe("kinetic wall damage", () => {
         resolveKineticWallDamage(state, entity, wallDebrisTestFrame(), wallResolver);
         
         const pending = state.gridWallDamage.pending;
-        const row = pending.keyToRow.get(packWallDamageKey(1, worldIdxAtCell(state.obstacleGrid, 4, 4), 1, state.obstacleGrid));
-        assert.ok(row !== undefined);
+        const row = pendingBreakRowForKey(packWallDamageKey(1, worldIdxAtCell(state.obstacleGrid, 4, 4), 1, state.obstacleGrid));
+        assert.ok(row >= 0);
         assert.equal(pending.contactY[row], 4 * 16 + 16);
         assert.equal(pending.normalY[row], -1);
         
@@ -390,7 +390,7 @@ describe("kinetic wall damage", () => {
         });
         
         resolveKineticWallDamage(state, ballProp, spatialFrame, resolver);
-        assert.ok(state.gridWallDamage.pending.keyToRow.has(packWallDamageKey(1, worldIdxAtCell(state.obstacleGrid, 4, 4), 1, state.obstacleGrid)));
+        assert.ok(pendingBreakRowForKey(packWallDamageKey(1, worldIdxAtCell(state.obstacleGrid, 4, 4), 1, state.obstacleGrid)) >= 0);
         
         applyPendingWallDamage(state);
         

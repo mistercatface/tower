@@ -67,6 +67,7 @@ import {
     WARM_START_CACHE_MASK,
     PAIR_HASH_CAPACITY,
     staticWallSegmentSlab,
+    MAX_STATIC_WALL_SEGMENTS,
     GrowI32,
     GrowF32,
 } from "../../Core/engineMemory.js";
@@ -1997,13 +1998,12 @@ export class WallCollisionResolver {
 }
 const LINK_CAPSULE_WALL_PASSES = 4;
 const islandLinkWallCandidates = new GrowI32(64);
-const islandLinkWallSegmentSet = new Set();
+const islandLinkWallSegSeen = new Uint8Array(MAX_STATIC_WALL_SEGMENTS);
+let islandLinkWallSegGen = 1;
 const linkFilteredWallCandidates = new GrowI32(32);
 const CONSTRAINT_EDGE_KEY_SCALE = 1_000_000;
-const constraintPhysSyncSeen = new Set();
-const constraintBridgePhysIds = [];
-const orderUniquePhysIds = [];
-const orderOrdered = [];
+const orderUniquePhysIds = new GrowI32(64);
+const orderOrdered = new GrowI32(64);
 const sIslandSessionIndex = new Int32Array(MAX_KINETIC_CONSTRAINTS);
 function constraintBodyAt(physId) {
     const body = entityRefs[physId];
@@ -2014,7 +2014,7 @@ function orderIslandConstraintItems(startIdx, count) {
         for (let i = 0; i < count; i++) orderOrderedIdxs[i] = startIdx + i;
         return;
     }
-    orderUniquePhysIds.length = 0;
+    orderUniquePhysIds.clear();
     for (let i = 0; i < count; i++) {
         const idx = startIdx + i;
         const physA = sIslandPhysA[idx];
@@ -2030,8 +2030,10 @@ function orderIslandConstraintItems(startIdx, count) {
     }
     let startId = null;
     let startPhysId = null;
-    for (let i = 0; i < orderUniquePhysIds.length; i++) {
-        const physId = orderUniquePhysIds[i];
+    const uniqueBuf = orderUniquePhysIds.buf;
+    const uniqueUsed = orderUniquePhysIds.used;
+    for (let i = 0; i < uniqueUsed; i++) {
+        const physId = uniqueBuf[i];
         const body = constraintBodyAt(physId);
         const offset = kineticDynamicSlab.linkNeighborOffset[physId];
         const nCount = kineticDynamicSlab.linkNeighborCount[physId];
@@ -2048,8 +2050,8 @@ function orderIslandConstraintItems(startIdx, count) {
     }
     if (startId == null) {
         let minId = Infinity;
-        for (let i = 0; i < orderUniquePhysIds.length; i++) {
-            const physId = orderUniquePhysIds[i];
+        for (let i = 0; i < uniqueUsed; i++) {
+            const physId = uniqueBuf[i];
             const body = constraintBodyAt(physId);
             if (body.id < minId) {
                 minId = body.id;
@@ -2058,10 +2060,10 @@ function orderIslandConstraintItems(startIdx, count) {
             }
         }
     }
-    orderOrdered.length = 0;
+    orderOrdered.clear();
     orderUsedItems.fill(0, 0, count);
     let currentPhysId = startPhysId;
-    while (orderOrdered.length < count) {
+    while (orderOrdered.used < count) {
         const body = constraintBodyAt(currentPhysId);
         const offset = kineticDynamicSlab.linkNeighborOffset[currentPhysId];
         const nCount = kineticDynamicSlab.linkNeighborCount[currentPhysId];
@@ -2090,8 +2092,9 @@ function orderIslandConstraintItems(startIdx, count) {
         if (!advanced) break;
     }
     for (let i = 0; i < count; i++) if (orderUsedItems[i] === 0) orderOrdered.push(startIdx + i);
-    for (let i = 0; i < orderUniquePhysIds.length; i++) orderSeenPhysIds[orderUniquePhysIds[i]] = 0;
-    for (let i = 0; i < count; i++) orderOrderedIdxs[i] = orderOrdered[i];
+    for (let i = 0; i < uniqueUsed; i++) orderSeenPhysIds[uniqueBuf[i]] = 0;
+    const orderedBuf = orderOrdered.buf;
+    for (let i = 0; i < count; i++) orderOrderedIdxs[i] = orderedBuf[i];
 }
 function circleRadiusFromBody(body) {
     const parts = collisionPartsList(body);
@@ -2162,22 +2165,6 @@ function appendIslandConstraintGroup(slab, count, store) {
     if (addedCount === 0) return;
     slab.groupCounts[slab.groupCount] = addedCount;
     slab.groupCount++;
-}
-function collectActiveConstraintPhysIds(slab, out) {
-    constraintPhysSyncSeen.clear();
-    out.length = 0;
-    for (let i = 0; i < slab.activeCount; i++) {
-        const physIdA = slab.physIdA[i];
-        const physIdB = slab.physIdB[i];
-        if (!constraintPhysSyncSeen.has(physIdA)) {
-            constraintPhysSyncSeen.add(physIdA);
-            out.push(physIdA);
-        }
-        if (!constraintPhysSyncSeen.has(physIdB)) {
-            constraintPhysSyncSeen.add(physIdB);
-            out.push(physIdB);
-        }
-    }
 }
 export function gatherKineticConstraintSlab(tick) {
     const slab = kineticConstraintSlab;
@@ -2284,11 +2271,19 @@ function linkSegmentOverlapsWall(ax, ay, bx, by, capsuleRadius, segId) {
     const sy = slab.y[segId];
     return sx >= minX && sx <= maxX && sy >= minY && sy <= maxY;
 }
+function clearIslandLinkWallSegSeen() {
+    islandLinkWallSegGen++;
+    if (islandLinkWallSegGen > 255) {
+        islandLinkWallSegSeen.fill(0);
+        islandLinkWallSegGen = 1;
+    }
+}
 function mergeWallCandidatesInto(candidates, out) {
+    const gen = islandLinkWallSegGen;
     for (let i = 0; i < candidates.used; i++) {
         const segId = candidates.buf[i];
-        if (islandLinkWallSegmentSet.has(segId)) continue;
-        islandLinkWallSegmentSet.add(segId);
+        if (islandLinkWallSegSeen[segId] === gen) continue;
+        islandLinkWallSegSeen[segId] = gen;
         out.push(segId);
     }
 }
@@ -2299,7 +2294,7 @@ function appendBodyWallCandidates(spatialFrame, body, gatherMark, out) {
 }
 function gatherIslandLinkWallCandidates(spatialFrame, slab, start, count, gatherMark, out) {
     out.clear();
-    islandLinkWallSegmentSet.clear();
+    clearIslandLinkWallSegSeen();
     for (let i = start; i < start + count; i++) {
         appendBodyWallCandidates(spatialFrame, constraintBodyAt(slab.physIdA[i]), gatherMark, out);
         appendBodyWallCandidates(spatialFrame, constraintBodyAt(slab.physIdB[i]), gatherMark, out);
