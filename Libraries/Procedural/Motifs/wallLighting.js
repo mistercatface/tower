@@ -1,4 +1,4 @@
-import { applyTint } from "../util/motifUtilities.js";
+import { SF_WALL_V, SI_IS_WALL, applyTint } from "../util/motifUtilities.js";
 /** Darkens walls toward the top; wallV = 0 at the floor seam, 1 at the top. */
 export const wallLightingMotif = {
     metadata: {
@@ -10,10 +10,10 @@ export const wallLightingMotif = {
             { path: "coolBias", label: "Cool bias", min: 0.8, max: 1.3, step: 0.02 },
         ],
     },
-    apply(sample, rgb, config) {
-        if (!sample.isWall || sample.wallV == null) return;
-        const t = Math.pow(sample.wallV, config.power ?? 1.2);
+    apply(sf, si, rf, ro, config, noise) {
+        if (!si[SI_IS_WALL]) return;
+        const t = Math.pow(sf[SF_WALL_V], config.power ?? 1.2);
         const darken = t * (config.topDarken ?? 14);
-        applyTint(rgb, -darken, [1, 1, config.coolBias ?? 1.05]);
+        applyTint(rf, ro, -darken, [1, 1, config.coolBias ?? 1.05]);
     },
 };

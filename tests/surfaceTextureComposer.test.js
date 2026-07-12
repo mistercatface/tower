@@ -5,24 +5,28 @@ import { deckPlatesMotif } from "../Libraries/Procedural/Motifs/deckPlates.js";
 import { filterHSVMotif } from "../Libraries/Procedural/Motifs/Filters/filterHSV.js";
 import { SeededNoise2D, setNoiseProfileEnabled } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
 import { composeSurfaceImage } from "../Libraries/Procedural/SurfaceTextureComposer.js";
-import { BakeSession } from "../Libraries/WorldSurface/worldSurface.js";
+import { BakeSession, BI_WIDTH, BI_HEIGHT } from "../Libraries/WorldSurface/worldSurface.js";
 
-function makeSamples(width, height) {
+function fillSessionSamples(bakeSession, width, height) {
     const numPixels = width * height;
-    const evalX = new Float32Array(numPixels);
-    const evalY = new Float32Array(numPixels);
-    const lookupX = new Float32Array(numPixels);
-    const lookupY = new Float32Array(numPixels);
+    bakeSession._i32[BI_WIDTH] = width;
+    bakeSession._i32[BI_HEIGHT] = height;
+    bakeSession.evalX = new Float32Array(numPixels);
+    bakeSession.evalY = new Float32Array(numPixels);
+    bakeSession.lookupX = new Float32Array(numPixels);
+    bakeSession.lookupY = new Float32Array(numPixels);
+    bakeSession.wallU = new Float32Array(numPixels);
+    bakeSession.wallV = new Float32Array(numPixels);
     for (let i = 0; i < numPixels; i++) {
-        evalX[i] = i * 0.37;
-        evalY[i] = i * 0.19;
+        bakeSession.evalX[i] = i * 0.37;
+        bakeSession.evalY[i] = i * 0.19;
     }
-    return { width, height, evalX, evalY, lookupX, lookupY, wallU: new Float32Array(numPixels), wallV: new Float32Array(numPixels) };
 }
-function floorBakeSession(noise) {
+function floorBakeSession(noise, width = 4, height = 4) {
     const bakeSession = new BakeSession();
     bakeSession.noiseEvaluator = noise;
     bakeSession.configureFloor(16, 1);
+    fillSessionSamples(bakeSession, width, height);
     return bakeSession;
 }
 
@@ -31,7 +35,6 @@ describe("composeSurfaceImage pass 3", () => {
         setNoiseProfileEnabled(true);
         const noise = new SeededNoise2D(99);
         const bakeSession = floorBakeSession(noise);
-        const samples = makeSamples(4, 4);
         const profile = {
             warp: { frequency: 0.004, amplitude: 5, octaves: 2, sampleOffset: [0, 0] },
             palette: { base: [10, 8, 6], floorBase: [10, 8, 6] },
@@ -41,7 +44,7 @@ describe("composeSurfaceImage pass 3", () => {
             ],
         };
         noise.resetProfile();
-        composeSurfaceImage(samples, profile, 42, bakeSession);
+        composeSurfaceImage(bakeSession, profile, 42);
         assert.equal(noise.profile.calls / 16, 3);
         setNoiseProfileEnabled(false);
     });
@@ -49,7 +52,6 @@ describe("composeSurfaceImage pass 3", () => {
         setNoiseProfileEnabled(true);
         const noise = new SeededNoise2D(99);
         const bakeSession = floorBakeSession(noise);
-        const samples = makeSamples(4, 4);
         const profile = {
             warp: { frequency: 0.004, amplitude: 5, octaves: 2, sampleOffset: [0, 0] },
             palette: { base: [10, 8, 6], floorBase: [10, 8, 6] },
@@ -59,7 +61,7 @@ describe("composeSurfaceImage pass 3", () => {
             ],
         };
         noise.resetProfile();
-        composeSurfaceImage(samples, profile, 42, bakeSession);
+        composeSurfaceImage(bakeSession, profile, 42);
         assert.equal(noise.profile.calls / 16, 4);
         setNoiseProfileEnabled(false);
     });
@@ -67,7 +69,6 @@ describe("composeSurfaceImage pass 3", () => {
         setNoiseProfileEnabled(true);
         const noise = new SeededNoise2D(99);
         const bakeSession = floorBakeSession(noise);
-        const samples = makeSamples(4, 4);
         const profile = {
             palette: { base: [10, 8, 6], floorBase: [10, 8, 6] },
             motifs: [
@@ -76,13 +77,12 @@ describe("composeSurfaceImage pass 3", () => {
             ],
         };
         noise.resetProfile();
-        const rgb = composeSurfaceImage(samples, profile, 42, bakeSession);
+        const rgb = composeSurfaceImage(bakeSession, profile, 42);
         assert.equal(noise.profile.calls / 16, 1);
         assert.equal(rgb.length, 16 * 3);
         setNoiseProfileEnabled(false);
     });
     it("matches fallback output for compiled hot motif runners", () => {
-        const samples = makeSamples(8, 8);
         const profile = {
             palette: { base: [12, 10, 8], floorBase: [12, 10, 8] },
             motifs: [
@@ -107,13 +107,13 @@ describe("composeSurfaceImage pass 3", () => {
                 { type: "filterHSV", hueShift: 15, saturation: 1.4, value: 0.85, blendMode: "replace" },
             ],
         };
-        const compiled = composeSurfaceImage(samples, profile, 42, floorBakeSession(new SeededNoise2D(99)));
+        const compiled = composeSurfaceImage(floorBakeSession(new SeededNoise2D(99), 8, 8), profile, 42);
         const compilers = [baseMetalMotif.compile, deckPlatesMotif.compile, filterHSVMotif.compile];
         delete baseMetalMotif.compile;
         delete deckPlatesMotif.compile;
         delete filterHSVMotif.compile;
         try {
-            const fallback = composeSurfaceImage(samples, profile, 42, floorBakeSession(new SeededNoise2D(99)));
+            const fallback = composeSurfaceImage(floorBakeSession(new SeededNoise2D(99), 8, 8), profile, 42);
             assert.deepEqual(Array.from(compiled), Array.from(fallback));
         } finally {
             baseMetalMotif.compile = compilers[0];

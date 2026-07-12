@@ -1,4 +1,4 @@
-import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
  * Radial starbursts on a sparse grid. When domain-warped, they tear and smear into plasma flows or biological spores.
  */
@@ -17,8 +17,9 @@ export const starburstMotif = {
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
         const gridSize = config.gridSize ?? 64;
         const col = Math.floor(x / gridSize);
         const row = Math.floor(y / gridSize);
@@ -47,6 +48,6 @@ export const starburstMotif = {
         const coreIntensity = Math.pow(distFalloff, 3) * config.peak;
         const spikeIntensity = spikeShape * distFalloff * (config.peak * 0.6);
         const intensity = Math.max(coreIntensity, spikeIntensity);
-        if (intensity > 0) applyTint(rgb, intensity, config.tint ?? [1, 1, 1]);
+        if (intensity > 0) applyTint(rf, ro, intensity, config.tint ?? [1, 1, 1]);
     },
 };

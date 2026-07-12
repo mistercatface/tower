@@ -1,31 +1,46 @@
 import { clampByte } from "../../Color/colorMath.js";
-export function sampleCoords(sample, coordinateSpace) {
-    if (coordinateSpace === "warped") return { x: sample.lookupX, y: sample.lookupY };
-    return { x: sample.evalX, y: sample.evalY };
+export const SF_EVAL_X = 0;
+export const SF_EVAL_Y = 1;
+export const SF_LOOKUP_X = 2;
+export const SF_LOOKUP_Y = 3;
+export const SF_WALL_U = 4;
+export const SF_WALL_V = 5;
+export const SF_SEED = 6;
+export const SF_COUNT = 7;
+export const SI_IS_WALL = 0;
+export const SI_COUNT = 1;
+export const RF_R = 0;
+export const RF_G = 1;
+export const RF_B = 2;
+export function sampleCoordX(sf, coordinateSpace) {
+    return coordinateSpace === "warped" ? sf[SF_LOOKUP_X] : sf[SF_EVAL_X];
 }
-export function applyTint(rgb, intensity, tint) {
-    rgb.r = clampByte(rgb.r + intensity * tint[0]);
-    rgb.g = clampByte(rgb.g + intensity * tint[1]);
-    rgb.b = clampByte(rgb.b + intensity * tint[2]);
+export function sampleCoordY(sf, coordinateSpace) {
+    return coordinateSpace === "warped" ? sf[SF_LOOKUP_Y] : sf[SF_EVAL_Y];
+}
+export function applyTint(rf, ro, intensity, tint) {
+    rf[ro + RF_R] = clampByte(rf[ro + RF_R] + intensity * tint[0]);
+    rf[ro + RF_G] = clampByte(rf[ro + RF_G] + intensity * tint[1]);
+    rf[ro + RF_B] = clampByte(rf[ro + RF_B] + intensity * tint[2]);
 }
 export function sampleRidged2D(noise, x, y, octaves) {
     return Math.abs(noise.sample2D(x, y, octaves));
 }
-export function applyEdgeBandTint(rgb, edgeDist, width, peak, tint) {
+export function applyEdgeBandTint(rf, ro, edgeDist, width, peak, tint) {
     if (edgeDist >= width) return;
-    applyTint(rgb, (1 - edgeDist / width) * peak, tint);
+    applyTint(rf, ro, (1 - edgeDist / width) * peak, tint);
 }
-export function applyGroutBand(rgb, edgeDist, config, defaults = {}) {
-    applyEdgeBandTint(rgb, edgeDist, config.groutWidth ?? defaults.groutWidth ?? 0.08, config.groutPeak ?? defaults.groutPeak ?? 12, config.groutTint ?? defaults.groutTint ?? [4, 2, -2]);
+export function applyGroutBand(rf, ro, edgeDist, config, defaults = {}) {
+    applyEdgeBandTint(rf, ro, edgeDist, config.groutWidth ?? defaults.groutWidth ?? 0.08, config.groutPeak ?? defaults.groutPeak ?? 12, config.groutTint ?? defaults.groutTint ?? [4, 2, -2]);
 }
-export function applyWarmSeamBand(rgb, edgeDist, config, defaults = {}) {
+export function applyWarmSeamBand(rf, ro, edgeDist, config, defaults = {}) {
     const accentW = config.accentWidth;
     if (accentW == null || accentW <= 0) return;
-    applyEdgeBandTint(rgb, edgeDist, accentW, config.accentPeak ?? defaults.accentPeak ?? 5, config.accentTint ?? defaults.accentTint ?? [4, 1, -2]);
+    applyEdgeBandTint(rf, ro, edgeDist, accentW, config.accentPeak ?? defaults.accentPeak ?? 5, config.accentTint ?? defaults.accentTint ?? [4, 1, -2]);
 }
-export function applyCellJitter(rgb, noise, x, y, amplitude, tintScale) {
+export function applyCellJitter(rf, ro, noise, x, y, amplitude, tintScale) {
     const jitter = noise.sample2D(x, y, 1);
-    applyTint(rgb, jitter * amplitude, tintScale);
+    applyTint(rf, ro, jitter * amplitude, tintScale);
 }
 export function hash2(x, y) {
     const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;

@@ -49,6 +49,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "getDragLaunchConfig",
     "getKineticConstraintGraph",
     "getPropRadius",
+    "getOrEnsureWallAtlasScalars",
     "hueToPickerHex",
     "integrateRollOrientation",
     "inverseMassFromBody",

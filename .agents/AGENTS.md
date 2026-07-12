@@ -82,11 +82,12 @@ Legal: SoA slab objects already in `engineMemory` (typed columns + `count`); `Gr
 - Draw/cache path: no XY/AABB return bags; `SurfaceSpatialMap` mutates `_boundsBank` (`SS_POINTS`/`SS_CHUNK`); chunk key range writes into engine `_i32`.
 - World AABB cell walks use `boundsToCellRectInto` only (no allocating `boundsToCellRect` bag).
 - Engine + `BakeSession` numerics live on `_f32` / `_i32` slabs (no parallel named scalar twin fields); object refs (ctx/canvas/grid/state) stay named.
-- Wall atlas: scalars in, memo slab columns + canvas handles out — no `wrappedP1` / `_wallAtlasStashes` bags.
+- Wall atlas: `writeWallAtlasWrap` then `getOrEnsureWallAtlas(profileId, wallHeight)` reading `SS_POINTS` — no `getOrEnsureWallAtlasScalars` / `wrappedP1` bags.
 - Wall-chunk prop textures bind on the engine for the current draw (`_wallChunkSideCanvas` / `_wallChunkCapCanvas` / `_wallChunkReady`); no prop texture bags; scale/chunk size from settings.
-- Bake: configure `BakeSession` (`configureFloor` / `configureRoof` / `configureWallFace`) then `paintPixelArea` — no `paintOptions`/`BakeRequest`/`wallPaintOptions` bags; flat worker payloads only.
+- Bake: `configure*` then `setBakeRect` then `paintPixelArea(ctx, seed, profileId)` — no `paintOptions` bags; `composeSurfaceImage(bakeSession, profile, seed)`.
+- Motif apply: `apply(sf, si, rf, ro, config, noise)` with `SF_*` / `SI_*` / `RF_*` slots from `motifUtilities` — no per-pixel sample/rgb bags.
 - Worker payloads: flat scalars only (`p1x…p2y`); no nested points.
-- Modes (`WALL_FACE_*`, `PRIMITIVE_PHYSICS_ROW_*`) live in `engineEnums`, not `engineMemory`.
+- Modes (`WALL_FACE_*`, `PRIMITIVE_PHYSICS_ROW_*`, `SURFACE_MASK_*`) live in `engineEnums`, not `engineMemory`.
 - Metrics/scheduler Promise records may remain bags (non-hot).
 
 Before adding exports under `Libraries/` or `Core/engineMemory.js`:

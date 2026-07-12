@@ -1,5 +1,6 @@
 import { clampByte } from "../../../Color/colorMath.js";
 import { BLEND_OPTIONS } from "../../util/blend.js";
+import { RF_R, RF_G, RF_B } from "../../util/motifUtilities.js";
 export const filterPosterizeMotif = {
     metadata: {
         label: "Filter: Posterize",
@@ -9,11 +10,11 @@ export const filterPosterizeMotif = {
             { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
         ],
     },
-    apply(sample, rgb, config) {
+    apply(sf, si, rf, ro, config, noise) {
         const bands = Math.max(2, config.bands ?? 4);
         const step = 255 / (bands - 1);
-        rgb.r = clampByte(Math.round(rgb.r / step) * step);
-        rgb.g = clampByte(Math.round(rgb.g / step) * step);
-        rgb.b = clampByte(Math.round(rgb.b / step) * step);
+        rf[ro + RF_R] = clampByte(Math.round(rf[ro + RF_R] / step) * step);
+        rf[ro + RF_G] = clampByte(Math.round(rf[ro + RF_G] / step) * step);
+        rf[ro + RF_B] = clampByte(Math.round(rf[ro + RF_B] / step) * step);
     },
 };

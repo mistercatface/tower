@@ -1,4 +1,4 @@
-import { applyTint } from "../util/motifUtilities.js";
+import { SF_WALL_U, SF_WALL_V, SF_SEED, SI_IS_WALL, applyTint } from "../util/motifUtilities.js";
 function snakeOffset(wallU, bandIndex, seed, config, spacing, noise) {
     const wobble = noise.sample2D(wallU * (config.snakeAlong ?? 2.5) + seed * 0.001, bandIndex * 0.41, config.snakeOctaves ?? 2);
     return (wobble - 0.5) * 2 * (config.snakeStrength ?? 0.35) * spacing;
@@ -30,31 +30,32 @@ export const wallHorizontalBevelMotif = {
             { path: "corePeak", label: "Core glow", min: 0, max: 12, step: 1 },
         ],
     },
-    apply(sample, rgb, config) {
-        if (!sample.isWall || sample.wallU == null || sample.wallV == null) return;
+    apply(sf, si, rf, ro, config, noise) {
+        if (!si[SI_IS_WALL]) return;
         const bandCount = config.bands ?? 10;
         const spacing = 1 / bandCount;
-        const bandIndex = Math.floor(sample.wallV / spacing);
+        const wallV = sf[SF_WALL_V];
+        const bandIndex = Math.floor(wallV / spacing);
         const bandCenter = (bandIndex + 0.5) * spacing;
-        const snake = snakeOffset(sample.wallU, bandIndex, sample.seed, config, spacing, sample.noise);
+        const snake = snakeOffset(sf[SF_WALL_U], bandIndex, sf[SF_SEED], config, spacing, noise);
         const centerV = bandCenter + snake;
         const ribHalf = spacing * (config.ribFill ?? 0.5) * 0.5;
-        const dist = Math.abs(sample.wallV - centerV);
+        const dist = Math.abs(wallV - centerV);
         if (dist >= ribHalf) return;
-        const rel = (sample.wallV - centerV) / ribHalf;
+        const rel = (wallV - centerV) / ribHalf;
         const edge = 1 - Math.abs(rel);
         const bevel = edge * edge;
         if (rel < 0) {
             const peak = config.highlightPeak ?? 9;
-            applyTint(rgb, bevel * peak, [1, 1, config.coolBias ?? 1.05]);
+            applyTint(rf, ro, bevel * peak, [1, 1, config.coolBias ?? 1.05]);
         } else {
             const peak = config.shadowPeak ?? 11;
-            applyTint(rgb, -bevel * peak, [1, 1, config.coolBias ?? 1.05]);
+            applyTint(rf, ro, -bevel * peak, [1, 1, config.coolBias ?? 1.05]);
         }
         const coreWidth = config.coreWidth ?? 0.18;
         if (Math.abs(rel) < coreWidth) {
             const core = (1 - Math.abs(rel) / coreWidth) * (config.corePeak ?? 5);
-            applyTint(rgb, core, config.coreTint ?? [0.3, 1.1, 1.7]);
+            applyTint(rf, ro, core, config.coreTint ?? [0.3, 1.1, 1.7]);
         }
     },
 };

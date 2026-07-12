@@ -1,4 +1,4 @@
-import { sampleCoords, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 export const ridgeLinesMotif = {
     metadata: {
         label: "Ridge lines",
@@ -9,14 +9,15 @@ export const ridgeLinesMotif = {
             { path: "peak", label: "Peak", min: 0, max: 20, step: 1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
         const [offsetX, offsetY] = config.offset ?? [0, 0];
         const nx = (x + offsetX) * config.frequency;
         const ny = (y + offsetY) * config.frequency;
-        const value = config.ridged ? sampleRidged2D(sample.noise, nx, ny, config.octaves) : sample.noise.sample2D(nx, ny, config.octaves);
+        const value = config.ridged ? sampleRidged2D(noise, nx, ny, config.octaves) : noise.sample2D(nx, ny, config.octaves);
         if (value >= config.threshold) return;
         const intensity = (1.0 - value / config.threshold) * config.peak;
-        applyTint(rgb, intensity, config.tint);
+        applyTint(rf, ro, intensity, config.tint);
     },
 };

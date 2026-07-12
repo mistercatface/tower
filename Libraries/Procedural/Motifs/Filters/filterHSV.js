@@ -1,4 +1,5 @@
 import { clampByte } from "../../../Color/colorMath.js";
+import { RF_R, RF_G, RF_B } from "../../util/motifUtilities.js";
 function rgbToHsv(r, g, b) {
     r /= 255;
     g /= 255;
@@ -61,10 +62,10 @@ function compileFilterHSV(config) {
     const hueShift = (config.hueShift ?? 0) / 360;
     const saturation = config.saturation ?? 1;
     const value = config.value ?? 1;
-    return (sample, rgb) => {
-        let r = rgb.r / 255;
-        let g = rgb.g / 255;
-        let b = rgb.b / 255;
+    return (sf, si, rf, ro, noise) => {
+        let r = rf[ro + RF_R] / 255;
+        let g = rf[ro + RF_G] / 255;
+        let b = rf[ro + RF_B] / 255;
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
         let h = 0;
@@ -127,9 +128,9 @@ function compileFilterHSV(config) {
                 b = q;
                 break;
         }
-        rgb.r = clampByte(r * 255);
-        rgb.g = clampByte(g * 255);
-        rgb.b = clampByte(b * 255);
+        rf[ro + RF_R] = clampByte(r * 255);
+        rf[ro + RF_G] = clampByte(g * 255);
+        rf[ro + RF_B] = clampByte(b * 255);
     };
 }
 import { BLEND_OPTIONS } from "../../util/blend.js";
@@ -144,16 +145,16 @@ export const filterHSVMotif = {
             { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
         ],
     },
-    apply(sample, rgb, config) {
-        const [h, s, v] = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    apply(sf, si, rf, ro, config, noise) {
+        const [h, s, v] = rgbToHsv(rf[ro + RF_R], rf[ro + RF_G], rf[ro + RF_B]);
         let newH = h + (config.hueShift ?? 0) / 360;
         newH = newH - Math.floor(newH); // wrap around 0-1
         const newS = Math.max(0, Math.min(1, s * (config.saturation ?? 1)));
         const newV = Math.max(0, Math.min(1, v * (config.value ?? 1)));
         const [nr, ng, nb] = hsvToRgb(newH, newS, newV);
-        rgb.r = clampByte(nr);
-        rgb.g = clampByte(ng);
-        rgb.b = clampByte(nb);
+        rf[ro + RF_R] = clampByte(nr);
+        rf[ro + RF_G] = clampByte(ng);
+        rf[ro + RF_B] = clampByte(nb);
     },
     compile: compileFilterHSV,
 };

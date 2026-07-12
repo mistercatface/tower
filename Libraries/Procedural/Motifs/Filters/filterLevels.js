@@ -1,5 +1,6 @@
 import { clampByte } from "../../../Color/colorMath.js";
 import { BLEND_OPTIONS } from "../../util/blend.js";
+import { RF_R, RF_G, RF_B } from "../../util/motifUtilities.js";
 export const filterLevelsMotif = {
     metadata: {
         label: "Filter: Levels",
@@ -11,7 +12,7 @@ export const filterLevelsMotif = {
             { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
         ],
     },
-    apply(sample, rgb, config) {
+    apply(sf, si, rf, ro, config, noise) {
         const bp = config.blackPoint ?? 0;
         const wp = Math.max(bp + 1, config.whitePoint ?? 255);
         const gamma = config.gamma ?? 1.0;
@@ -21,8 +22,8 @@ export const filterLevelsMotif = {
             if (gamma !== 1.0) norm = Math.pow(norm, 1.0 / gamma);
             return clampByte(norm * 255);
         };
-        rgb.r = process(rgb.r);
-        rgb.g = process(rgb.g);
-        rgb.b = process(rgb.b);
+        rf[ro + RF_R] = process(rf[ro + RF_R]);
+        rf[ro + RF_G] = process(rf[ro + RF_G]);
+        rf[ro + RF_B] = process(rf[ro + RF_B]);
     },
 };

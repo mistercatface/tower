@@ -1,14 +1,5 @@
 import { clampByte } from "../../Color/colorMath.js";
-function structureCoords(sample, structure) {
-    const freqX = structure.frequencyX ?? structure.frequency;
-    const freqY = structure.frequencyY ?? structure.frequency;
-    return { x: sample.evalX * freqX, y: sample.evalY * freqY };
-}
-function grainCoords(sample, grain) {
-    const freqX = grain.frequencyX ?? grain.frequency;
-    const freqY = grain.frequencyY ?? grain.frequency;
-    return { x: sample.evalX * freqX, y: sample.evalY * freqY };
-}
+import { SF_EVAL_X, SF_EVAL_Y, RF_R, RF_G, RF_B } from "../util/motifUtilities.js";
 function compileBaseMetal(config) {
     const { structure, grain } = config;
     const structureFreqX = structure.frequencyX ?? structure.frequency;
@@ -21,15 +12,15 @@ function compileBaseMetal(config) {
     const grainFreqY = grain.frequencyY ?? grain.frequency;
     const grainOctaves = grain.octaves;
     const grainAmplitude = grain.amplitude;
-    return (sample, rgb) => {
-        const structureNoise = sample.noise.sample2D(sample.evalX * structureFreqX, sample.evalY * structureFreqY, structureOctaves);
-        rgb.r = clampByte(rgb.r + structureNoise * structureDeltaR);
-        rgb.g = clampByte(rgb.g + structureNoise * structureDeltaG);
-        rgb.b = clampByte(rgb.b + structureNoise * structureDeltaB);
-        const fineNoise = sample.noise.sample2D(sample.evalX * grainFreqX, sample.evalY * grainFreqY, grainOctaves) * grainAmplitude;
-        rgb.r = clampByte(rgb.r + fineNoise);
-        rgb.g = clampByte(rgb.g + fineNoise);
-        rgb.b = clampByte(rgb.b + fineNoise);
+    return (sf, si, rf, ro, noise) => {
+        const structureNoise = noise.sample2D(sf[SF_EVAL_X] * structureFreqX, sf[SF_EVAL_Y] * structureFreqY, structureOctaves);
+        rf[ro + RF_R] = clampByte(rf[ro + RF_R] + structureNoise * structureDeltaR);
+        rf[ro + RF_G] = clampByte(rf[ro + RF_G] + structureNoise * structureDeltaG);
+        rf[ro + RF_B] = clampByte(rf[ro + RF_B] + structureNoise * structureDeltaB);
+        const fineNoise = noise.sample2D(sf[SF_EVAL_X] * grainFreqX, sf[SF_EVAL_Y] * grainFreqY, grainOctaves) * grainAmplitude;
+        rf[ro + RF_R] = clampByte(rf[ro + RF_R] + fineNoise);
+        rf[ro + RF_G] = clampByte(rf[ro + RF_G] + fineNoise);
+        rf[ro + RF_B] = clampByte(rf[ro + RF_B] + fineNoise);
     };
 }
 export const baseMetalMotif = {
@@ -46,18 +37,20 @@ export const baseMetalMotif = {
             { path: "grain.amplitude", label: "Grain amp", min: 0, max: 6, step: 0.5 },
         ],
     },
-    apply(sample, rgb, config) {
+    apply(sf, si, rf, ro, config, noise) {
         const { structure, grain } = config;
-        const { x: sx, y: sy } = structureCoords(sample, structure);
-        const structureNoise = sample.noise.sample2D(sx, sy, structure.octaves);
-        rgb.r = clampByte(rgb.r + structureNoise * structure.rgbDelta[0]);
-        rgb.g = clampByte(rgb.g + structureNoise * structure.rgbDelta[1]);
-        rgb.b = clampByte(rgb.b + structureNoise * structure.rgbDelta[2]);
-        const { x: gx, y: gy } = grainCoords(sample, grain);
-        const fineNoise = sample.noise.sample2D(gx, gy, grain.octaves) * grain.amplitude;
-        rgb.r = clampByte(rgb.r + fineNoise);
-        rgb.g = clampByte(rgb.g + fineNoise);
-        rgb.b = clampByte(rgb.b + fineNoise);
+        const structureFreqX = structure.frequencyX ?? structure.frequency;
+        const structureFreqY = structure.frequencyY ?? structure.frequency;
+        const structureNoise = noise.sample2D(sf[SF_EVAL_X] * structureFreqX, sf[SF_EVAL_Y] * structureFreqY, structure.octaves);
+        rf[ro + RF_R] = clampByte(rf[ro + RF_R] + structureNoise * structure.rgbDelta[0]);
+        rf[ro + RF_G] = clampByte(rf[ro + RF_G] + structureNoise * structure.rgbDelta[1]);
+        rf[ro + RF_B] = clampByte(rf[ro + RF_B] + structureNoise * structure.rgbDelta[2]);
+        const grainFreqX = grain.frequencyX ?? grain.frequency;
+        const grainFreqY = grain.frequencyY ?? grain.frequency;
+        const fineNoise = noise.sample2D(sf[SF_EVAL_X] * grainFreqX, sf[SF_EVAL_Y] * grainFreqY, grain.octaves) * grain.amplitude;
+        rf[ro + RF_R] = clampByte(rf[ro + RF_R] + fineNoise);
+        rf[ro + RF_G] = clampByte(rf[ro + RF_G] + fineNoise);
+        rf[ro + RF_B] = clampByte(rf[ro + RF_B] + fineNoise);
     },
     compile: compileBaseMetal,
 };

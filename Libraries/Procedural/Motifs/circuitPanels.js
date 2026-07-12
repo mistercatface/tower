@@ -1,32 +1,11 @@
-import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
  * 3D-beveled panel plate aligned with the warped starburst grid cells.
  */
 export const circuitPanelsMotif = {
     metadata: {
         label: "Circuit panels",
-        defaults: {
-            type: "circuitPanels",
-            coordinateSpace: "warped",
-            gridSize: 16,
-            density: 0.35,
-            cellVariation: 4,
-            groutWidth: 0.06,
-            groutPeak: -10,
-            groutTint: [1, 1, 1],
-            bevelWidth: 0.05,
-            highlightPeak: 8,
-            shadowPeak: -6,
-            bevelTint: [1, 1, 1],
-            sunkenDarken: 6,
-            sunkenShadowPeak: -5,
-            sunkenHighlightPeak: 4,
-            rivetRadius: 0.12,
-            rivetSpacing: 0.18,
-            rivetPeak: 6,
-            rivetTint: [1.5, 1.5, 2.0],
-            blendMode: "add",
-        },
+        defaults: { type: "circuitPanels", coordinateSpace: "warped", gridSize: 16, density: 0.35, cellVariation: 4, groutWidth: 0.06, groutPeak: -10, groutTint: [1, 1, 1], bevelWidth: 0.05, highlightPeak: 8, shadowPeak: -6, bevelTint: [1, 1, 1], sunkenDarken: 6, sunkenShadowPeak: -5, sunkenHighlightPeak: 4, rivetRadius: 0.12, rivetSpacing: 0.18, rivetPeak: 6, rivetTint: [1.5, 1.5, 2.0], blendMode: "add" },
         fields: [
             { path: "gridSize", label: "Grid size", min: 8, max: 64, step: 1 },
             { path: "density", label: "Density", min: 0.05, max: 1.0, step: 0.05 },
@@ -44,8 +23,9 @@ export const circuitPanelsMotif = {
             { path: "rivetPeak", label: "Rivet peak", min: 0, max: 20, step: 1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace ?? "warped");
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace ?? "warped");
+        const y = sampleCoordY(sf, config.coordinateSpace ?? "warped");
         const gridSize = config.gridSize ?? 16;
         const col = Math.floor(x / gridSize);
         const row = Math.floor(y / gridSize);
@@ -66,7 +46,7 @@ export const circuitPanelsMotif = {
         if (!isActive)
             // Sunken panels are darker
             delta -= config.sunkenDarken ?? 6;
-        applyTint(rgb, delta, [1, 1, 1]);
+        applyTint(rf, ro, delta, [1, 1, 1]);
         // 4. Panel bevel / border (make it look 3D and panel-like!)
         const groutWidth = config.groutWidth ?? 0.08;
         if (edgeDist < groutWidth) {
@@ -74,7 +54,7 @@ export const circuitPanelsMotif = {
             const t = 1.0 - edgeDist / groutWidth;
             const peak = config.groutPeak ?? -10; // negative peak to darken grout lines
             const tint = config.groutTint ?? [1, 1, 1];
-            applyTint(rgb, t * peak, tint);
+            applyTint(rf, ro, t * peak, tint);
         } else {
             // Draw a subtle inner highlights (inner bevel) just inside the grout line
             const bevelWidth = config.bevelWidth ?? 0.05;
@@ -91,7 +71,7 @@ export const circuitPanelsMotif = {
                     // Sunken/inset panel: top-left is shadow, bottom-right is highlight
                     peak = isTopLeft ? (config.sunkenShadowPeak ?? -5) : (config.sunkenHighlightPeak ?? 4);
                 const tint = config.bevelTint ?? [1, 1, 1];
-                applyTint(rgb, t * peak, tint);
+                applyTint(rf, ro, t * peak, tint);
             }
         }
         // 5. Optional rivet/nodes in the corners of each raised (active) panel
@@ -110,7 +90,7 @@ export const circuitPanelsMotif = {
                 if (rDist < rivetRadius) {
                     const t = (1.0 - rDist / rivetRadius) * (config.rivetPeak ?? 6);
                     const tint = config.rivetTint ?? [1.5, 1.5, 2.0]; // glowing blue/teal rivets
-                    applyTint(rgb, t, tint);
+                    applyTint(rf, ro, t, tint);
                 }
             }
         }

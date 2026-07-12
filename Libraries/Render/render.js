@@ -1434,7 +1434,8 @@ function resolveWallFaceAtlasScalars(x1, y1, x2, y2, state, face) {
         if (canvases && slab.atlasRev[row] === rev && slab.atlasSeed[row] === seed && slab.atlasWallHeightKey[row] === wallHeightKey && slab.atlasProfileHash[row] === profileHash && worldSurfaces.surfaceCache.get(key) === canvases) cacheHit = true;
     }
     if (!cacheHit) {
-        canvases = worldSurfaces.getOrEnsureWallAtlasScalars(x1, y1, x2, y2, profileId, wallCapHeight);
+        worldSurfaces.surfaceSpace.writeWallAtlasWrap(x1, y1, x2, y2);
+        canvases = worldSurfaces.getOrEnsureWallAtlas(profileId, wallCapHeight);
         if (!canvases) return WALL_FACE_ATLAS_MISS;
         if (canUseSideCache && row >= 0) {
             const space = worldSurfaces.surfaceSpace;

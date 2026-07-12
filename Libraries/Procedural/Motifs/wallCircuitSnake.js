@@ -1,4 +1,4 @@
-import { applyTint, sampleRidged2D } from "../util/motifUtilities.js";
+import { SF_EVAL_X, SF_EVAL_Y, SF_WALL_V, SI_IS_WALL, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Horizontal-ish circuit traces on walls. Uses world eval coords so the base edge
  * stays aligned with the floor; wallV is height (0 = floor seam).
@@ -14,17 +14,17 @@ export const wallCircuitSnakeMotif = {
             { path: "wiggleAmplitude", label: "Wiggle", min: 0, max: 48, step: 2 },
         ],
     },
-    apply(sample, rgb, config) {
-        if (!sample.isWall) return;
-        const x = sample.evalX + (config.offset?.[0] ?? 0);
-        const y = sample.evalY + (config.offset?.[1] ?? 0);
-        const wallV = sample.wallV ?? 0;
-        const wiggle = sample.noise.sample2D(x * (config.wiggleFrequency ?? 0.012), wallV * (config.wiggleScale ?? 10), 2) * (config.wiggleAmplitude ?? 30);
+    apply(sf, si, rf, ro, config, noise) {
+        if (!si[SI_IS_WALL]) return;
+        const x = sf[SF_EVAL_X] + (config.offset?.[0] ?? 0);
+        const y = sf[SF_EVAL_Y] + (config.offset?.[1] ?? 0);
+        const wallV = sf[SF_WALL_V];
+        const wiggle = noise.sample2D(x * (config.wiggleFrequency ?? 0.012), wallV * (config.wiggleScale ?? 10), 2) * (config.wiggleAmplitude ?? 30);
         const along = (x + wiggle) * config.frequency;
         const across = wallV * (config.verticalScale ?? 0.12) + y * (config.worldVerticalDrift ?? 0.008);
-        const value = config.ridged === false ? sample.noise.sample2D(along, across, config.octaves ?? 2) : sampleRidged2D(sample.noise, along, across, config.octaves ?? 2);
+        const value = config.ridged === false ? noise.sample2D(along, across, config.octaves ?? 2) : sampleRidged2D(noise, along, across, config.octaves ?? 2);
         if (value >= config.threshold) return;
         const intensity = (1.0 - value / config.threshold) * config.peak;
-        applyTint(rgb, intensity, config.tint);
+        applyTint(rf, ro, intensity, config.tint);
     },
 };

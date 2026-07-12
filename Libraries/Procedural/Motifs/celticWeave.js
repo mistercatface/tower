@@ -1,4 +1,4 @@
-import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
  * Continuous Truchet arc pipes. When warped, they turn into tangled organic tubes.
  */
@@ -15,8 +15,9 @@ export const celticWeaveMotif = {
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
         const gridSize = config.gridSize ?? 32;
         const col = Math.floor(x / gridSize);
         const row = Math.floor(y / gridSize);
@@ -41,7 +42,7 @@ export const celticWeaveMotif = {
             // Add a rounded profile (bright in center, darker at edges)
             const profile = Math.cos((minDist / halfWidth) * (Math.PI / 2));
             const intensity = profile * config.peak;
-            applyTint(rgb, intensity, config.tint ?? [1, 1, 1]);
+            applyTint(rf, ro, intensity, config.tint ?? [1, 1, 1]);
         }
     },
 };

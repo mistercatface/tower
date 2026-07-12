@@ -1,4 +1,4 @@
-import { applyTint } from "../util/motifUtilities.js";
+import { SF_EVAL_X, SF_EVAL_Y, applyTint } from "../util/motifUtilities.js";
 export const surfaceGrainMotif = {
     metadata: {
         label: "Surface grain",
@@ -11,13 +11,13 @@ export const surfaceGrainMotif = {
             { path: "amplitude", label: "Amplitude", min: 0, max: 10, step: 0.5 },
         ],
     },
-    apply(sample, rgb, config) {
+    apply(sf, si, rf, ro, config, noise) {
         const freq = config.frequency;
-        let nx = sample.evalX;
-        let ny = sample.evalY;
+        let nx = sf[SF_EVAL_X];
+        let ny = sf[SF_EVAL_Y];
         if (config.axis === "horizontal") ny *= config.axisStretch ?? 0.25;
         else if (config.axis === "vertical") nx *= config.axisStretch ?? 0.25;
-        const grain = sample.noise.sample2D(nx * freq, ny * freq, config.octaves ?? 1) * config.amplitude;
-        applyTint(rgb, grain, config.tint);
+        const grain = noise.sample2D(nx * freq, ny * freq, config.octaves ?? 1) * config.amplitude;
+        applyTint(rf, ro, grain, config.tint);
     },
 };

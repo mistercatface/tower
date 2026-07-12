@@ -1,5 +1,5 @@
 import { voronoiEdgeMetric } from "../Fields/VoronoiEdge.js";
-import { sampleCoords, applyTint } from "../util/motifUtilities.js";
+import { SF_SEED, sampleCoordX, sampleCoordY, applyTint } from "../util/motifUtilities.js";
 export const voronoiCellMotif = {
     metadata: {
         label: "Voronoi cells",
@@ -10,11 +10,12 @@ export const voronoiCellMotif = {
             { path: "peak", label: "Peak", min: 0, max: 16, step: 1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
-        const edge = voronoiEdgeMetric(x, y, config.density, sample.seed + config.seedSalt);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
+        const edge = voronoiEdgeMetric(x, y, config.density, sf[SF_SEED] + config.seedSalt);
         if (edge >= config.edgeWidth) return;
         const intensity = (1.0 - edge / config.edgeWidth) * config.peak;
-        applyTint(rgb, intensity, config.tint);
+        applyTint(rf, ro, intensity, config.tint);
     },
 };

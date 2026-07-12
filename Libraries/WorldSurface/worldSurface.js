@@ -574,13 +574,13 @@ class TileMemoryPool {
     bindSamples(session, numPixels) {
         if (!this.buffers.has(numPixels)) this.buffers.set(numPixels, []);
         const pool = this.buffers.get(numPixels);
-        const pooled = pool.length > 0 ? pool.pop() : { evalX: new Float32Array(numPixels), evalY: new Float32Array(numPixels), lookupX: new Float32Array(numPixels), lookupY: new Float32Array(numPixels), wallU: new Float32Array(numPixels), wallV: new Float32Array(numPixels) };
-        session.evalX = pooled.evalX;
-        session.evalY = pooled.evalY;
-        session.lookupX = pooled.lookupX;
-        session.lookupY = pooled.lookupY;
-        session.wallU = pooled.wallU;
-        session.wallV = pooled.wallV;
+        const pooled = pool.length > 0 ? pool.pop() : [new Float32Array(numPixels), new Float32Array(numPixels), new Float32Array(numPixels), new Float32Array(numPixels), new Float32Array(numPixels), new Float32Array(numPixels)];
+        session.evalX = pooled[0];
+        session.evalY = pooled[1];
+        session.lookupX = pooled[2];
+        session.lookupY = pooled[3];
+        session.wallU = pooled[4];
+        session.wallV = pooled[5];
         session._samplePoolEntry = pooled;
     }
     releaseBoundSamples(session, numPixels) {
@@ -683,6 +683,15 @@ export class BakeSession {
         i[BI_WALL_FACE] = 1;
         i[BI_WALL_CELL] = 0;
     }
+    setBakeRect(width, height, startWorldX, startWorldY) {
+        const f = this._f32;
+        const i = this._i32;
+        i[BI_WIDTH] = width;
+        i[BI_HEIGHT] = height;
+        f[BF_START_X] = startWorldX;
+        f[BF_START_Y] = startWorldY;
+        if (i[BI_WALL_CELL]) f[BF_SPAN_U] = width > 1 ? width - 1 : 1;
+    }
 }
 export const globalBakeSession = new BakeSession();
 function writeFloorPixel(session, idx, x, y) {
@@ -693,12 +702,14 @@ function writeFloorPixel(session, idx, x, y) {
     session.wallU[idx] = 0;
     session.wallV[idx] = 0;
 }
-function fillWallFaceRows(session, width, height) {
+function fillWallFaceRows(session) {
     const f = session._f32;
+    const i = session._i32;
+    const width = i[BI_WIDTH];
+    const height = i[BI_HEIGHT];
     const invBakeScale = f[BF_INV_BAKE_SCALE];
     const H = f[BF_WALL_HEIGHT];
     const W = f[BF_WALL_WIDTH];
-    const heightPx = session._i32[BI_HEIGHT];
     const dirX = f[BF_DIR_X];
     const dirY = f[BF_DIR_Y];
     const foldX = f[BF_FOLD_X];
@@ -708,7 +719,7 @@ function fillWallFaceRows(session, width, height) {
     const p1y = f[BF_P1Y];
     let idx = 0;
     for (let y = 0; y < height; y++) {
-        const v = (heightPx - 1 - y) * invBakeScale;
+        const v = (height - 1 - y) * invBakeScale;
         let evalXBase;
         let evalYBase;
         let wallV;
@@ -741,11 +752,14 @@ function writeRoofPixel(session, idx, x, y) {
     session.wallU[idx] = x / f[BF_SPAN_U];
     session.wallV[idx] = 1;
 }
-function fillPaintRows(bakeSession, width, height, writePixel) {
+function fillPaintRows(bakeSession) {
     if (bakeSession._i32[BI_WALL_FACE]) {
-        fillWallFaceRows(bakeSession, width, height);
+        fillWallFaceRows(bakeSession);
         return;
     }
+    const width = bakeSession._i32[BI_WIDTH];
+    const height = bakeSession._i32[BI_HEIGHT];
+    const writePixel = bakeSession._i32[BI_WALL_CELL] ? writeRoofPixel : writeFloorPixel;
     let idx = 0;
     for (let y = 0; y < height; y++)
         for (let x = 0; x < width; x++) {
@@ -753,28 +767,19 @@ function fillPaintRows(bakeSession, width, height, writePixel) {
             idx++;
         }
 }
-export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, seed, profileId, bakeSession = globalBakeSession) {
+export function paintPixelArea(ctx, seed, profileId, bakeSession = globalBakeSession) {
     const metricsOn = isTileBakeMetricsEnabled();
     if (metricsOn) bakeSession.noiseEvaluator.resetProfile();
     const profile = resolveSurfaceProfile(profileId);
-    const f = bakeSession._f32;
-    const i = bakeSession._i32;
-    f[BF_START_X] = startWorldX;
-    f[BF_START_Y] = startWorldY;
-    i[BI_WIDTH] = width;
-    i[BI_HEIGHT] = height;
-    if (i[BI_WALL_CELL]) f[BF_SPAN_U] = width > 1 ? width - 1 : 1;
-    const writePixel = i[BI_WALL_CELL] ? writeRoofPixel : writeFloorPixel;
+    const width = bakeSession._i32[BI_WIDTH];
+    const height = bakeSession._i32[BI_HEIGHT];
     const imgData = ctx.createImageData(width, height);
     const data = imgData.data;
     const numPixels = width * height;
     bakeSession.memoryPool.bindSamples(bakeSession, numPixels);
-    bakeSession._samplePoolEntry.width = width;
-    bakeSession._samplePoolEntry.height = height;
-    const samples = bakeSession._samplePoolEntry;
     if (!metricsOn) {
-        fillPaintRows(bakeSession, width, height, writePixel);
-        const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession);
+        fillPaintRows(bakeSession);
+        const rgbBuffer = composeSurfaceImage(bakeSession, profile, seed);
         copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
         ctx.putImageData(imgData, 0, 0);
         bakeSession.memoryPool.releaseBoundSamples(bakeSession, numPixels);
@@ -783,10 +788,10 @@ export function paintPixelArea(ctx, width, height, startWorldX, startWorldY, see
     }
     const phases = createEmptyBakePhases();
     let phaseStart = performance.now();
-    fillPaintRows(bakeSession, width, height, writePixel);
+    fillPaintRows(bakeSession);
     phases.sampleFillMs = performance.now() - phaseStart;
     phaseStart = performance.now();
-    const rgbBuffer = composeSurfaceImage(samples, profile, seed, bakeSession);
+    const rgbBuffer = composeSurfaceImage(bakeSession, profile, seed);
     phases.composeStaticMs = performance.now() - phaseStart;
     phaseStart = performance.now();
     copyRgbTripletsToRgba(data, rgbBuffer, numPixels);
@@ -800,8 +805,9 @@ export function bakeWallAtlasCanvases(payload, bakeSession = globalBakeSession) 
     const { cellSize, surfaceBakeScale } = getTileWorkerBakeConstants();
     const wallWidth = payload.wallWidth ?? cellSize;
     bakeSession.configureWallFace(payload.p1x, payload.p1y, payload.p2x, payload.p2y, payload.wallHeight, wallWidth, surfaceBakeScale);
+    bakeSession.setBakeRect(width, height, 0, 0);
     const canvas = createOffscreenCanvas(width, height);
-    paintPixelArea(canvas.getContext("2d"), width, height, 0, 0, seed, profileId, bakeSession);
+    paintPixelArea(canvas.getContext("2d"), seed, profileId, bakeSession);
     return [canvas];
 }
 export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession) {
@@ -810,8 +816,9 @@ export function bakeGroundChunkCanvases(payload, bakeSession = globalBakeSession
     const bakeSize = bakePixelsForWorldSpan(cellSize * cellsPerChunk, surfaceBakeScale);
     if ((payload.zLevel ?? 0) > 0) bakeSession.configureRoof(cellSize, surfaceBakeScale);
     else bakeSession.configureFloor(cellSize, surfaceBakeScale);
+    bakeSession.setBakeRect(bakeSize, bakeSize, minX, minY);
     const canvas = createOffscreenCanvas(bakeSize, bakeSize);
-    paintPixelArea(canvas.getContext("2d"), bakeSize, bakeSize, minX, minY, seed, profileId, bakeSession);
+    paintPixelArea(canvas.getContext("2d"), seed, profileId, bakeSession);
     return [canvas];
 }
 const SS_CELL_RECT = new Int32Array(4);
@@ -997,11 +1004,17 @@ export class WorldSurfaceEngine {
         }
         return { chunkKey, tileChunkKey, minX, minY, seed: this.worldSurfaceSeed, profileId, centerX, centerY, zLevel: zLevel ?? 0 };
     }
-    ensureWallAtlas(key, x1, y1, x2, y2, wallHeight, profileId) {
+    ensureWallAtlas(key, wallHeight, profileId) {
         let cached = this.surfaceCache.get(key);
         if (cached) return cached;
         const cooldown = this.bakeCooldowns.get(key);
         if (cooldown && performance.now() < cooldown) return null;
+        const b = this.surfaceSpace._boundsBank;
+        const o = SS_POINTS;
+        const x1 = b[o];
+        const y1 = b[o + 1];
+        const x2 = b[o + 2];
+        const y2 = b[o + 3];
         const edgeLen = Math.hypot(x2 - x1, y2 - y1);
         if (edgeLen < 0.001) return null;
         const cellSize = this.settings.cellSize;
@@ -1049,19 +1062,12 @@ export class WorldSurfaceEngine {
         const payload = this.buildGroundChunkPayload(state, chunkKey, profileId, zLevel, useBankChunkSample);
         return this._scheduleBake(key, () => TileWorkerCoordinator.requestGroundChunkBake(payload));
     }
-    getOrEnsureWallAtlasScalars(x1, y1, x2, y2, profileId, wallHeight) {
-        const seed = this.worldSurfaceSeed;
+    getOrEnsureWallAtlas(profileId, wallHeight) {
         const wallHeightKey = resolveWallCapHeightPx(wallHeight, this.settings);
-        this.surfaceSpace.writeWallAtlasWrap(x1, y1, x2, y2);
-        const key = this.cacheKeys.wallAtlasCacheKey(seed, profileId, wallHeightKey);
+        const key = this.cacheKeys.wallAtlasCacheKey(this.worldSurfaceSeed, profileId, wallHeightKey);
         let canvases = this.surfaceCache.get(key);
-        if (!canvases) {
-            const b = this.surfaceSpace._boundsBank;
-            const o = SS_POINTS;
-            canvases = this.ensureWallAtlas(key, b[o], b[o + 1], b[o + 2], b[o + 3], wallHeight, profileId);
-            if (!canvases || canvases.length === 0) return null;
-        }
-        return canvases;
+        if (!canvases) canvases = this.ensureWallAtlas(key, wallHeight, profileId);
+        return canvases?.length ? canvases : null;
     }
     fillHorizontalCapDrawSampleIntoFlat(worldCorners8, zLevel, state, outSrc8) {
         const surfaceBakeScale = this.settings.surfaceBakeScale;
@@ -1209,7 +1215,8 @@ export class WorldSurfaceEngine {
     }
     ensureWallChunkProfileTextures(state, profileId, wallHeightPx) {
         const cellSize = this.settings.cellSize;
-        const sideCanvases = this.getOrEnsureWallAtlasScalars(0, 0, cellSize, 0, profileId, wallHeightPx);
+        this.surfaceSpace.writeWallAtlasWrap(0, 0, cellSize, 0);
+        const sideCanvases = this.getOrEnsureWallAtlas(profileId, wallHeightPx);
         const sideCanvas = sideCanvases?.[0] ?? null;
         const chunkKey = this.surfaceSpace.sampleWallChunkTexture(cellSize);
         const capCanvasEntry = this.getGroundChunkCanvas(chunkKey, state, 1, true, profileId);

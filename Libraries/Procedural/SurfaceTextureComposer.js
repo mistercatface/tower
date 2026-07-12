@@ -1,18 +1,27 @@
 import { clampByte } from "../Color/colorMath.js";
 import { blendMotifRgb } from "./util/blend.js";
-import { warpPointInto, writeDomainWarp } from "./Fields/DomainWarp.js";
+import { SF_EVAL_X, SF_EVAL_Y, SF_LOOKUP_X, SF_LOOKUP_Y, SF_WALL_U, SF_WALL_V, SF_SEED, SF_COUNT, SI_IS_WALL, SI_COUNT, RF_R, RF_G, RF_B } from "./util/motifUtilities.js";
+import { writeDomainWarp, warpPointInto } from "./Fields/DomainWarp.js";
 import { getMotif } from "./MotifRegistry.js";
 import { readTranslateConfig, TRANSLATE_COORDINATE_MODES } from "./Motifs/translate.js";
-import { BI_USE_WALL_BASE, BI_WALL_FACE, BI_WALL_CELL } from "../WorldSurface/worldSurface.js";
+import { BI_WIDTH, BI_HEIGHT, BI_USE_WALL_BASE, BI_WALL_FACE, BI_WALL_CELL } from "../WorldSurface/worldSurface.js";
 import { SURFACE_MASK_ALL, SURFACE_MASK_FLOOR, SURFACE_MASK_WALL, SURFACE_MASK_WALL_FACE, SURFACE_MASK_WALL_CELL } from "../../Core/engineEnums.js";
-const sampleScratch = { evalX: 0, evalY: 0, lookupX: 0, lookupY: 0, wallU: 0, wallV: 0, seed: 0, isWall: false, noise: null };
-const sWarpScratch = { x: 0, y: 0 };
-const beforeRgb = { r: 0, g: 0, b: 0 };
-const layerRgb = { r: 0, g: 0, b: 0 };
-const blendOut = { r: 0, g: 0, b: 0 };
+export { SF_EVAL_X, SF_EVAL_Y, SF_LOOKUP_X, SF_LOOKUP_Y, SF_WALL_U, SF_WALL_V, SF_SEED, SF_COUNT, SI_IS_WALL, SI_COUNT, RF_R, RF_G, RF_B };
+const SAMPLE_F32 = new Float32Array(SF_COUNT);
+const SAMPLE_I32 = new Int32Array(SI_COUNT);
+const RGB_F32 = new Float32Array(9);
+const RF_BEFORE = 0;
+const RF_LAYER = 3;
+const RF_BLEND = 6;
+const WARP_OUT = { x: 0, y: 0 };
 const BLEND_KIND_FALLBACK = 0;
 const BLEND_KIND_ADD = 1;
 const BLEND_KIND_REPLACE = 2;
+const passImpl = [];
+const passConfig = [];
+const passRunner = [];
+const passBlendKind = [];
+const passBlendMode = [];
 function resolveBlendKind(blendMode) {
     if (blendMode === "add") return BLEND_KIND_ADD;
     if (blendMode === "replace") return BLEND_KIND_REPLACE;
@@ -59,29 +68,36 @@ function pushTranslateLayer(context, config) {
     context.mode = layer.mode;
     context.active = true;
 }
-function applyTranslateToSample(scratch, samples, pixelIndex, translateContext, warp, noise) {
+function applyTranslateToSample(bakeSession, pixelIndex, translateContext, warp, noise) {
     if (!translateContext.active) {
-        scratch.evalX = samples.evalX[pixelIndex];
-        scratch.evalY = samples.evalY[pixelIndex];
-        scratch.lookupX = samples.lookupX[pixelIndex];
-        scratch.lookupY = samples.lookupY[pixelIndex];
+        SAMPLE_F32[SF_EVAL_X] = bakeSession.evalX[pixelIndex];
+        SAMPLE_F32[SF_EVAL_Y] = bakeSession.evalY[pixelIndex];
+        SAMPLE_F32[SF_LOOKUP_X] = bakeSession.lookupX[pixelIndex];
+        SAMPLE_F32[SF_LOOKUP_Y] = bakeSession.lookupY[pixelIndex];
         return;
     }
     const tx = translateContext.x;
     const ty = translateContext.y;
-    scratch.evalX = samples.evalX[pixelIndex] - tx;
-    scratch.evalY = samples.evalY[pixelIndex] - ty;
+    SAMPLE_F32[SF_EVAL_X] = bakeSession.evalX[pixelIndex] - tx;
+    SAMPLE_F32[SF_EVAL_Y] = bakeSession.evalY[pixelIndex] - ty;
     if (translateContext.mode === TRANSLATE_COORDINATE_MODES.evalOnly) {
-        scratch.lookupX = samples.lookupX[pixelIndex] - tx;
-        scratch.lookupY = samples.lookupY[pixelIndex] - ty;
+        SAMPLE_F32[SF_LOOKUP_X] = bakeSession.lookupX[pixelIndex] - tx;
+        SAMPLE_F32[SF_LOOKUP_Y] = bakeSession.lookupY[pixelIndex] - ty;
         return;
     }
-    const warped = warpPointInto(sWarpScratch, scratch.evalX, scratch.evalY, warp, noise);
-    scratch.lookupX = warped.x;
-    scratch.lookupY = warped.y;
+    warpPointInto(WARP_OUT, SAMPLE_F32[SF_EVAL_X], SAMPLE_F32[SF_EVAL_Y], warp, noise);
+    SAMPLE_F32[SF_LOOKUP_X] = WARP_OUT.x;
+    SAMPLE_F32[SF_LOOKUP_Y] = WARP_OUT.y;
+}
+function clearMotifPasses() {
+    passImpl.length = 0;
+    passConfig.length = 0;
+    passRunner.length = 0;
+    passBlendKind.length = 0;
+    passBlendMode.length = 0;
 }
 function buildMotifPasses(motifs, motifStartIndex, endIdx, bake) {
-    const passes = [];
+    clearMotifPasses();
     let needsPrecomputedLookup = false;
     for (let m = motifStartIndex; m < endIdx; m++) {
         const motifConfig = motifs[m];
@@ -90,29 +106,32 @@ function buildMotifPasses(motifs, motifStartIndex, endIdx, bake) {
         if (motifUsesWarpedCoords(motifConfig)) needsPrecomputedLookup = true;
         const motifImpl = getMotif(motifConfig.type);
         const blendMode = motifConfig.blendMode ?? "add";
-        passes.push({ motifConfig, motifImpl, runner: motifImpl.compile?.(motifConfig) ?? null, blendMode, blendKind: resolveBlendKind(blendMode) });
+        passImpl.push(motifImpl);
+        passConfig.push(motifConfig);
+        passRunner.push(motifImpl.compile?.(motifConfig) ?? null);
+        passBlendKind.push(resolveBlendKind(blendMode));
+        passBlendMode.push(blendMode);
     }
-    return { passes, needsPrecomputedLookup };
+    return needsPrecomputedLookup;
 }
-function writeLookupForPixel(samples, index, warp, warpAmp, noise) {
-    if (warpAmp > 0) writeDomainWarp(samples.evalX[index], samples.evalY[index], warp, samples.lookupX, samples.lookupY, index, noise);
+function writeLookupForPixel(bakeSession, index, warp, warpAmp, noise) {
+    if (warpAmp > 0) writeDomainWarp(bakeSession.evalX[index], bakeSession.evalY[index], warp, bakeSession.lookupX, bakeSession.lookupY, index, noise);
     else {
-        samples.lookupX[index] = samples.evalX[index];
-        samples.lookupY[index] = samples.evalY[index];
+        bakeSession.lookupX[index] = bakeSession.evalX[index];
+        bakeSession.lookupY[index] = bakeSession.evalY[index];
     }
 }
-export function composeSurfaceImage(samples, profile, seed, bakeSession, rgbBuffer = null, motifStartIndex = 0, motifEndIndex = undefined) {
+export function composeSurfaceImage(bakeSession, profile, seed, rgbBuffer = null, motifStartIndex = 0, motifEndIndex = undefined) {
     const noise = bakeSession.noiseEvaluator;
     noise.setSeed(seed);
-    const numPixels = samples.width * samples.height;
+    const numPixels = bakeSession._i32[BI_WIDTH] * bakeSession._i32[BI_HEIGHT];
     if (!rgbBuffer) rgbBuffer = new Float32Array(numPixels * 3);
     const bake = bakeSession;
     const useWallBase = !!bake._i32[BI_USE_WALL_BASE];
     const base = resolvePaletteBase(profile, useWallBase);
     const warp = profile.warp;
-    sampleScratch.seed = seed;
-    sampleScratch.noise = noise;
-    sampleScratch.isWall = useWallBase;
+    SAMPLE_F32[SF_SEED] = seed;
+    SAMPLE_I32[SI_IS_WALL] = useWallBase ? 1 : 0;
     const motifs = resolveMotifStack(profile);
     const endIdx = motifEndIndex ?? motifs.length;
     const translateContext = createTranslateContext();
@@ -120,50 +139,51 @@ export function composeSurfaceImage(samples, profile, seed, bakeSession, rgbBuff
         const motifConfig = motifs[m];
         if (motifConfig.type === "translate") pushTranslateLayer(translateContext, motifConfig);
     }
-    const { passes: motifPasses, needsPrecomputedLookup: warpedMotifs } = buildMotifPasses(motifs, motifStartIndex, endIdx, bake);
+    const warpedMotifs = buildMotifPasses(motifs, motifStartIndex, endIdx, bake);
     const translateReWarp = translateContext.active && translateContext.mode === TRANSLATE_COORDINATE_MODES.evalAndWarped;
     const needsPrecomputedLookup = warpedMotifs && !translateReWarp;
     const warpAmp = warp?.amplitude ?? 0;
+    const passCount = passImpl.length;
     for (let i = 0; i < numPixels; i++) {
         if (motifStartIndex === 0) {
             const idx = i * 3;
             rgbBuffer[idx] = base[0];
             rgbBuffer[idx + 1] = base[1];
             rgbBuffer[idx + 2] = base[2];
-            if (needsPrecomputedLookup) writeLookupForPixel(samples, i, warp, warpAmp, noise);
+            if (needsPrecomputedLookup) writeLookupForPixel(bakeSession, i, warp, warpAmp, noise);
         }
-        if (motifPasses.length === 0) continue;
+        if (passCount === 0) continue;
         noise.beginPixel();
-        applyTranslateToSample(sampleScratch, samples, i, translateContext, warp, noise);
-        sampleScratch.wallU = samples.wallU[i];
-        sampleScratch.wallV = samples.wallV[i];
+        applyTranslateToSample(bakeSession, i, translateContext, warp, noise);
+        SAMPLE_F32[SF_WALL_U] = bakeSession.wallU[i];
+        SAMPLE_F32[SF_WALL_V] = bakeSession.wallV[i];
         const idx = i * 3;
-        for (let p = 0; p < motifPasses.length; p++) {
-            const pass = motifPasses[p];
-            beforeRgb.r = rgbBuffer[idx];
-            beforeRgb.g = rgbBuffer[idx + 1];
-            beforeRgb.b = rgbBuffer[idx + 2];
-            layerRgb.r = beforeRgb.r;
-            layerRgb.g = beforeRgb.g;
-            layerRgb.b = beforeRgb.b;
-            if (pass.runner) pass.runner(sampleScratch, layerRgb);
-            else pass.motifImpl.apply(sampleScratch, layerRgb, pass.motifConfig);
-            if (pass.blendKind === BLEND_KIND_ADD) {
-                rgbBuffer[idx] = clampByte(beforeRgb.r + layerRgb.r);
-                rgbBuffer[idx + 1] = clampByte(beforeRgb.g + layerRgb.g);
-                rgbBuffer[idx + 2] = clampByte(beforeRgb.b + layerRgb.b);
-            } else if (pass.blendKind === BLEND_KIND_REPLACE) {
-                rgbBuffer[idx] = clampByte(layerRgb.r);
-                rgbBuffer[idx + 1] = clampByte(layerRgb.g);
-                rgbBuffer[idx + 2] = clampByte(layerRgb.b);
+        for (let p = 0; p < passCount; p++) {
+            RGB_F32[RF_BEFORE + RF_R] = rgbBuffer[idx];
+            RGB_F32[RF_BEFORE + RF_G] = rgbBuffer[idx + 1];
+            RGB_F32[RF_BEFORE + RF_B] = rgbBuffer[idx + 2];
+            RGB_F32[RF_LAYER + RF_R] = RGB_F32[RF_BEFORE + RF_R];
+            RGB_F32[RF_LAYER + RF_G] = RGB_F32[RF_BEFORE + RF_G];
+            RGB_F32[RF_LAYER + RF_B] = RGB_F32[RF_BEFORE + RF_B];
+            const runner = passRunner[p];
+            if (runner) runner(SAMPLE_F32, SAMPLE_I32, RGB_F32, RF_LAYER, noise);
+            else passImpl[p].apply(SAMPLE_F32, SAMPLE_I32, RGB_F32, RF_LAYER, passConfig[p], noise);
+            const blendKind = passBlendKind[p];
+            if (blendKind === BLEND_KIND_ADD) {
+                rgbBuffer[idx] = clampByte(RGB_F32[RF_BEFORE + RF_R] + RGB_F32[RF_LAYER + RF_R]);
+                rgbBuffer[idx + 1] = clampByte(RGB_F32[RF_BEFORE + RF_G] + RGB_F32[RF_LAYER + RF_G]);
+                rgbBuffer[idx + 2] = clampByte(RGB_F32[RF_BEFORE + RF_B] + RGB_F32[RF_LAYER + RF_B]);
+            } else if (blendKind === BLEND_KIND_REPLACE) {
+                rgbBuffer[idx] = clampByte(RGB_F32[RF_LAYER + RF_R]);
+                rgbBuffer[idx + 1] = clampByte(RGB_F32[RF_LAYER + RF_G]);
+                rgbBuffer[idx + 2] = clampByte(RGB_F32[RF_LAYER + RF_B]);
             } else {
-                blendMotifRgb(blendOut, beforeRgb, layerRgb, pass.blendMode);
-                rgbBuffer[idx] = blendOut.r;
-                rgbBuffer[idx + 1] = blendOut.g;
-                rgbBuffer[idx + 2] = blendOut.b;
+                blendMotifRgb(RGB_F32, RF_BLEND, RGB_F32, RF_BEFORE, RGB_F32, RF_LAYER, passBlendMode[p]);
+                rgbBuffer[idx] = RGB_F32[RF_BLEND + RF_R];
+                rgbBuffer[idx + 1] = RGB_F32[RF_BLEND + RF_G];
+                rgbBuffer[idx + 2] = RGB_F32[RF_BLEND + RF_B];
             }
         }
     }
-    sampleScratch.noise = null;
     return rgbBuffer;
 }

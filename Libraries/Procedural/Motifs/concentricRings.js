@@ -1,4 +1,4 @@
-import { sampleCoords, applyTint } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint } from "../util/motifUtilities.js";
 /**
  * Concentric rings radiating from a center offset. Warps into organic waves.
  */
@@ -17,8 +17,9 @@ export const concentricRingsMotif = {
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
         const [cx, cy] = config.offset ?? [0, 0];
         const dist = Math.hypot(x - cx, y - cy);
         const ringVal = dist * config.frequency;
@@ -26,7 +27,7 @@ export const concentricRingsMotif = {
         const threshold = config.ringWidth ?? 0.1;
         if (distToNearestRing < threshold) {
             const intensity = (1.0 - distToNearestRing / threshold) * config.peak;
-            applyTint(rgb, intensity, config.tint ?? [1, 1, 1]);
+            applyTint(rf, ro, intensity, config.tint ?? [1, 1, 1]);
         }
     },
 };

@@ -1,7 +1,7 @@
 import { rotateXYIntoF32 } from "../../Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
 import { distanceToLineSegment } from "../../Math/math.js";
-import { sampleCoords, applyTint, hash2 } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint, hash2 } from "../util/motifUtilities.js";
 /**
  * Grid-aligned continuous circuit traces. When warped, they snake organically.
  */
@@ -21,16 +21,15 @@ export const circuitTracesMotif = {
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const coords = sampleCoords(sample, config.coordinateSpace);
-        let x = coords.x;
-        let y = coords.y;
+    apply(sf, si, rf, ro, config, noise) {
+        let x = sampleCoordX(sf, config.coordinateSpace);
+        let y = sampleCoordY(sf, config.coordinateSpace);
         const angle = config.angle ?? 0;
         if (angle !== 0) {
             const rad = (angle * Math.PI) / 180;
             const cosA = Math.cos(rad);
             const sinA = Math.sin(rad);
-            rotateXYIntoF32(M_VEC_A, coords.x, coords.y, cosA, sinA);
+            rotateXYIntoF32(M_VEC_A, x, y, cosA, sinA);
             x = ENGINE_F32[M_VEC_A];
             y = ENGINE_F32[M_VEC_A + 1];
         }
@@ -101,7 +100,7 @@ export const circuitTracesMotif = {
             let lineIntensity = 0;
             if (minDist < halfWidth) lineIntensity = (1.0 - minDist / halfWidth) * config.peak;
             const intensity = Math.max(lineIntensity, padIntensity);
-            applyTint(rgb, intensity, config.tint ?? [1, 1, 1]);
+            applyTint(rf, ro, intensity, config.tint ?? [1, 1, 1]);
         }
     },
 };

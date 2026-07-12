@@ -72,7 +72,8 @@ describe("surface material stores", () => {
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
                 settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                getOrEnsureWallAtlasScalars(_p1, _p2, _p3, _p4, profileId) {
+                surfaceSpace: { writeWallAtlasWrap() {} },
+                getOrEnsureWallAtlas(profileId) {
                     capturedProfileId = profileId;
                     return null;
                 },
@@ -106,7 +107,8 @@ describe("surface material stores", () => {
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
                 settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                getOrEnsureWallAtlasScalars(_p1, _p2, _p3, _p4, profileId) {
+                surfaceSpace: { writeWallAtlasWrap() {} },
+                getOrEnsureWallAtlas(profileId) {
                     capturedProfileId = profileId;
                     return null;
                 },
@@ -138,7 +140,8 @@ describe("surface material stores", () => {
             worldSurfaces: {
                 activeSurfaceProfileId: "base",
                 settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                getOrEnsureWallAtlasScalars(_p1, _p2, _p3, _p4, profileId) {
+                surfaceSpace: { writeWallAtlasWrap() {} },
+                getOrEnsureWallAtlas(profileId) {
                     capturedProfileId = profileId;
                     return null;
                 },

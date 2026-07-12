@@ -1,4 +1,4 @@
-import { sampleCoords, applyTint } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint } from "../util/motifUtilities.js";
 export const stainBlotchMotif = {
     metadata: {
         label: "Stain blotch",
@@ -9,13 +9,14 @@ export const stainBlotchMotif = {
             { path: "peak", label: "Peak", min: 0, max: 20, step: 1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
         const [offsetX, offsetY] = config.offset ?? [0, 0];
-        const value = sample.noise.sample2D((x + offsetX) * config.frequency, (y + offsetY) * config.frequency, config.octaves);
+        const value = noise.sample2D((x + offsetX) * config.frequency, (y + offsetY) * config.frequency, config.octaves);
         if (value <= config.threshold) return;
         const span = 1.0 - config.threshold;
         const intensity = ((value - config.threshold) / span) * config.peak;
-        applyTint(rgb, intensity, config.tint);
+        applyTint(rf, ro, intensity, config.tint);
     },
 };

@@ -1,4 +1,4 @@
-import { applyTint } from "../util/motifUtilities.js";
+import { SF_EVAL_X, SF_EVAL_Y, applyTint } from "../util/motifUtilities.js";
 export const panelGridMotif = {
     metadata: {
         label: "Panel grid (legacy)",
@@ -9,16 +9,16 @@ export const panelGridMotif = {
             { path: "peak", label: "Peak", min: 0, max: 20, step: 1 },
         ],
     },
-    apply(sample, rgb, config) {
+    apply(sf, si, rf, ro, config, noise) {
         const cellSize = config.cellWorldSize;
-        const localX = ((sample.evalX % cellSize) + cellSize) % cellSize;
-        const localY = ((sample.evalY % cellSize) + cellSize) % cellSize;
+        const localX = ((sf[SF_EVAL_X] % cellSize) + cellSize) % cellSize;
+        const localY = ((sf[SF_EVAL_Y] % cellSize) + cellSize) % cellSize;
         const u = localX / cellSize;
         const v = localY / cellSize;
         const edgeDist = Math.min(u, 1 - u, v, 1 - v);
         if (edgeDist >= config.groutWidth) return;
-        const variation = sample.noise.sample2D(sample.evalX * config.variationFrequency, sample.evalY * config.variationFrequency, 1) * config.variationAmplitude;
+        const variation = noise.sample2D(sf[SF_EVAL_X] * config.variationFrequency, sf[SF_EVAL_Y] * config.variationFrequency, 1) * config.variationAmplitude;
         const t = (1.0 - edgeDist / config.groutWidth) * (config.peak + variation);
-        applyTint(rgb, t, config.tint);
+        applyTint(rf, ro, t, config.tint);
     },
 };

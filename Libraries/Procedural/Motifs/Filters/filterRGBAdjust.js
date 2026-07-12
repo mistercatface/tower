@@ -1,5 +1,6 @@
 import { clampByte } from "../../../Color/colorMath.js";
 import { BLEND_OPTIONS } from "../../util/blend.js";
+import { RF_R, RF_G, RF_B } from "../../util/motifUtilities.js";
 export const filterRGBAdjustMotif = {
     metadata: {
         label: "Filter: RGB Adjust",
@@ -14,15 +15,15 @@ export const filterRGBAdjustMotif = {
             { path: "blendMode", label: "Blend Mode", options: BLEND_OPTIONS },
         ],
     },
-    apply(sample, rgb, config) {
+    apply(sf, si, rf, ro, config, noise) {
         const rMult = config.rMult ?? 1;
         const gMult = config.gMult ?? 1;
         const bMult = config.bMult ?? 1;
         const rOffset = config.rOffset ?? 0;
         const gOffset = config.gOffset ?? 0;
         const bOffset = config.bOffset ?? 0;
-        rgb.r = clampByte(rgb.r * rMult + rOffset);
-        rgb.g = clampByte(rgb.g * gMult + gOffset);
-        rgb.b = clampByte(rgb.b * bMult + bOffset);
+        rf[ro + RF_R] = clampByte(rf[ro + RF_R] * rMult + rOffset);
+        rf[ro + RF_G] = clampByte(rf[ro + RF_G] * gMult + gOffset);
+        rf[ro + RF_B] = clampByte(rf[ro + RF_B] * bMult + bOffset);
     },
 };

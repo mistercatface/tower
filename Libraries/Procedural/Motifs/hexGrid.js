@@ -1,4 +1,4 @@
-import { applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
+import { SF_EVAL_X, SF_EVAL_Y, applyTint, applyCellJitter, applyGroutBand, applyWarmSeamBand } from "../util/motifUtilities.js";
 const SQRT3 = Math.sqrt(3);
 /** Flat-top hex: circumradius `size` (center to vertex). */
 function axialRound(q, r) {
@@ -30,20 +30,20 @@ function hexSignedDistance(lx, ly, size) {
     const d = size * SQRT3 * 0.5;
     return Math.max(ay - d, (ax * SQRT3 + ay) * 0.5 - d);
 }
-function hexMetrics(sample, config) {
+function hexMetrics(sf, config) {
     const cellWorld = config.cellWorldSize ?? 16;
     const size = cellWorld / SQRT3;
     const apothem = size * SQRT3 * 0.5;
-    const { q, r } = pixelToAxial(sample.evalX, sample.evalY, size);
+    const { q, r } = pixelToAxial(sf[SF_EVAL_X], sf[SF_EVAL_Y], size);
     const center = axialToPixel(q, r, size);
-    const lx = sample.evalX - center.x;
-    const ly = sample.evalY - center.y;
+    const lx = sf[SF_EVAL_X] - center.x;
+    const ly = sf[SF_EVAL_Y] - center.y;
     const sdf = hexSignedDistance(lx, ly, size);
     const distInside = Math.max(0, -sdf);
     const edgeDist = distInside / Math.max(1, apothem);
     return { q, r, edgeDist, distInside, size, lx, ly };
 }
-function applyBevel(rgb, lx, ly, edgeDist, config) {
+function applyBevel(rf, ro, lx, ly, edgeDist, config) {
     const groutW = config.groutWidth ?? 0.08;
     const bevelW = config.bevelWidth;
     if (bevelW == null || bevelW <= 0) return;
@@ -61,30 +61,17 @@ function applyBevel(rgb, lx, ly, edgeDist, config) {
     const isTopLeft = lx + ly < 0;
     const peak = isTopLeft ? (config.highlightPeak ?? 8) : (config.shadowPeak ?? -6);
     const tint = config.bevelTint ?? [1, 1, 1];
-    applyTint(rgb, t * peak, tint);
+    applyTint(rf, ro, t * peak, tint);
 }
-function applyCellFill(rgb, q, r, config, noise) {
+function applyCellFill(rf, ro, q, r, config, noise) {
     const [jx, jy] = config.jitterOffset ?? [0, 0];
-    applyCellJitter(rgb, noise, q * 0.63 + jx, r * 0.47 + jy, config.cellVariation ?? 2, [1, 0.98, 1.02]);
+    applyCellJitter(rf, ro, noise, q * 0.63 + jx, r * 0.47 + jy, config.cellVariation ?? 2, [1, 0.98, 1.02]);
 }
 /** World-aligned flat-top hex grid — grout lines continue across floor and wall bases. */
 export const hexGridMotif = {
     metadata: {
         label: "Hex grid",
-        defaults: {
-            type: "hexGrid",
-            cellWorldSize: 16,
-            groutWidth: 0.08,
-            groutPeak: 12,
-            groutTint: [5, 2, -3],
-            cellVariation: 2,
-            jitterOffset: [0, 0],
-            bevelWidth: 0.0,
-            highlightPeak: 8,
-            shadowPeak: -6,
-            bevelTint: [1, 1, 1],
-            blendMode: "multiply",
-        },
+        defaults: { type: "hexGrid", cellWorldSize: 16, groutWidth: 0.08, groutPeak: 12, groutTint: [5, 2, -3], cellVariation: 2, jitterOffset: [0, 0], bevelWidth: 0.0, highlightPeak: 8, shadowPeak: -6, bevelTint: [1, 1, 1], blendMode: "multiply" },
         fields: [
             { path: "cellWorldSize", label: "Cell world px", min: 8, max: 64, step: 1 },
             { path: "groutWidth", label: "Grout width", min: 0.02, max: 0.2, step: 0.005 },
@@ -100,11 +87,11 @@ export const hexGridMotif = {
             { path: "bevelFalloff", label: "Falloff", min: 0.1, max: 4.0, step: 0.1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { q, r, edgeDist, lx, ly } = hexMetrics(sample, config);
-        applyCellFill(rgb, q, r, config, sample.noise);
-        applyBevel(rgb, lx, ly, edgeDist, config);
-        applyGroutBand(rgb, edgeDist, config, { groutWidth: 0.08, groutPeak: 12, groutTint: [4, 2, -2] });
-        applyWarmSeamBand(rgb, edgeDist, config);
+    apply(sf, si, rf, ro, config, noise) {
+        const { q, r, edgeDist, lx, ly } = hexMetrics(sf, config);
+        applyCellFill(rf, ro, q, r, config, noise);
+        applyBevel(rf, ro, lx, ly, edgeDist, config);
+        applyGroutBand(rf, ro, edgeDist, config, { groutWidth: 0.08, groutPeak: 12, groutTint: [4, 2, -2] });
+        applyWarmSeamBand(rf, ro, edgeDist, config);
     },
 };

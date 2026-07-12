@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import { issue, rel } from "../audit-shared.mjs";
 
-const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest|writeWallFaceAxes|boundsToCellRect)\b/;
+const deletedExportRe = /export\s+function\s+(createWallFaceAxes|wallFaceColumns|wallPaintOptions|resolvePaintCellSize|paintBakeRequest|writeWallFaceAxes|boundsToCellRect|getOrEnsureWallAtlasScalars)\b/;
 const nestedPayloadRe = /payload\.p[12]\b/;
-const paintOptionsBagRe = /\bpaintOptions\b|options\.isWall|options\.roofSurface|options\.p1x|writeWallCellPixel|writeWallFaceAxes|_chunkDraw\s*=\s*\{|_chunkKeyRange\s*=\s*\{|_frameGrid\b/;
+const paintOptionsBagRe = /\bpaintOptions\b|options\.isWall|options\.roofSurface|options\.p1x|writeWallCellPixel|writeWallFaceAxes|_chunkDraw\s*=\s*\{|_chunkKeyRange\s*=\s*\{|_frameGrid\b|_samplePoolEntry\.width|composeSurfaceImage\s*\(\s*samples\b|paintPixelArea\s*\(\s*ctx\s*,\s*width\s*,\s*height\b|getOrEnsureWallAtlasScalars\b/;
 const deadBankRe = /\bSS_(?:CELL|DRAW|AXES)\b(?!_)/;
 const bakeScalarTwinRe = /this\.(?:p1x|invBakeScale|useWallBase|wallFace|wallCell)\s*=/;
 

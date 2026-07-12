@@ -1,6 +1,6 @@
 import { rotateXYIntoF32 } from "../../Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../../../Core/engineMemory.js";
-import { sampleCoords, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint, sampleRidged2D } from "../util/motifUtilities.js";
 /**
  * Intersecting ridged veins form panel seams; glow concentrates on veins and brighter at crossings.
  */
@@ -16,8 +16,9 @@ export const circuitLatticeMotif = {
             { path: "intersectionPeak", label: "Cross peak", min: 0, max: 20, step: 1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
         const [offsetX, offsetY] = config.offset ?? [0, 0];
         const freq = config.frequency;
         const octaves = config.octaves;
@@ -27,30 +28,30 @@ export const circuitLatticeMotif = {
         rotateXYIntoF32(M_VEC_A, x, y, cos, sin);
         const ax = ENGINE_F32[M_VEC_A];
         const ay = ENGINE_F32[M_VEC_A + 1];
-        const r1 = sampleRidged2D(sample.noise, (ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
-        const r2 = sampleRidged2D(sample.noise, (ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
+        const r1 = sampleRidged2D(noise, (ax + offsetX) * freq, (ay + offsetY) * freq, octaves);
+        const r2 = sampleRidged2D(noise, (ay + offsetX) * freq, (ax + offsetY) * freq, octaves);
         const lattice = Math.min(r1, r2);
         const ridgeThreshold = config.ridgeThreshold;
         if (lattice < ridgeThreshold) {
             const vein = (1.0 - lattice / ridgeThreshold) * config.peak;
-            if (config.tint) applyTint(rgb, vein, config.tint);
+            if (config.tint) applyTint(rf, ro, vein, config.tint);
             const crossGate = config.intersectionThreshold ?? ridgeThreshold;
             const crossA = Math.max(0, 1.0 - r1 / crossGate);
             const crossB = Math.max(0, 1.0 - r2 / crossGate);
             const cross = crossA * crossB;
-            if (cross > 0 && config.intersectionPeak > 0 && config.intersectionTint) applyTint(rgb, cross * config.intersectionPeak, config.intersectionTint);
+            if (cross > 0 && config.intersectionPeak > 0 && config.intersectionTint) applyTint(rf, ro, cross * config.intersectionPeak, config.intersectionTint);
             return;
         }
         const grooveThreshold = config.grooveThreshold;
         if (grooveThreshold != null && lattice < grooveThreshold && config.grooveTint) {
             const groove = (1.0 - (lattice - ridgeThreshold) / (grooveThreshold - ridgeThreshold)) * (config.groovePeak ?? 4);
-            applyTint(rgb, groove, config.grooveTint);
+            applyTint(rf, ro, groove, config.grooveTint);
             return;
         }
         const interior = config.interiorVariation;
         if (interior && interior.tint) {
-            const variation = sample.noise.sample2D(x * interior.frequency, y * interior.frequency, interior.octaves ?? 1);
-            applyTint(rgb, variation * interior.amplitude, interior.tint);
+            const variation = noise.sample2D(x * interior.frequency, y * interior.frequency, interior.octaves ?? 1);
+            applyTint(rf, ro, variation * interior.amplitude, interior.tint);
         }
     },
 };

@@ -1,4 +1,4 @@
-import { sampleCoords, applyTint } from "../util/motifUtilities.js";
+import { sampleCoordX, sampleCoordY, applyTint } from "../util/motifUtilities.js";
 function fbmRidged(x, y, octaves, noise) {
     let sum = 0;
     let amp = 1;
@@ -28,18 +28,19 @@ export const fractalCracksMotif = {
             { path: "tint.2", label: "Tint B", min: -5, max: 5, step: 0.1 },
         ],
     },
-    apply(sample, rgb, config) {
-        const { x, y } = sampleCoords(sample, config.coordinateSpace);
+    apply(sf, si, rf, ro, config, noise) {
+        const x = sampleCoordX(sf, config.coordinateSpace);
+        const y = sampleCoordY(sf, config.coordinateSpace);
         const freq = config.frequency ?? 0.01;
         const octaves = config.octaves ?? 3;
         const [ox, oy] = config.offset ?? [0, 0];
-        const v = fbmRidged((x + ox) * freq, (y + oy) * freq, octaves, sample.noise);
+        const v = fbmRidged((x + ox) * freq, (y + oy) * freq, octaves, noise);
         const threshold = config.threshold ?? 0.8;
         if (v < threshold) return;
         // Normalize 0 to 1 over the ridge peak
         let t = (v - threshold) / (1 - threshold);
         // Apply edge smoothstep
         t = t * t * (3 - 2 * t);
-        applyTint(rgb, -t * (config.peak ?? 10), config.tint ?? [1, 1, 1]);
+        applyTint(rf, ro, -t * (config.peak ?? 10), config.tint ?? [1, 1, 1]);
     },
 };
