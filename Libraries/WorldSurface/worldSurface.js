@@ -592,6 +592,7 @@ export class TileBakeScheduler {
 export function clampStampWallHeightLevel(level, settings) {
     return Math.max(1, Math.min(settings.maxWallHeightLevel, Math.round(level)));
 }
+// Private buffer: S_QUAD is used by render LOS (rLosQuad); nesting forbids sharing.
 const sProjectedChunkCorners = new Float32Array(8);
 /** @param {number} worldSpan @param {number} surfaceBakeScale */
 export function bakePixelsForWorldSpan(worldSpan, surfaceBakeScale) {

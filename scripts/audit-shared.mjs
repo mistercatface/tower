@@ -52,6 +52,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "radiusAtT",
     "releaseLiveGeomSpan",
     "removeSandboxWorldProp",
+    "resolveBodyRadius",
     "sandboxAssetDragInteract",
     "scaleAtHeight",
     "setPropRadius",

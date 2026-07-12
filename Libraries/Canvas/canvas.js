@@ -2,7 +2,7 @@
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP } from "../../Core/engineEnums.js";
-import { packRollOrientId, resolveBodyRadius, readEntityFacing } from "../Physics/physics.js";
+import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
 import { visualOverrideCacheId } from "../Color/visualOverride.js";
@@ -728,7 +728,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0, fla
     return propSpriteCacheSlab.getOrBake(key, () => {
         const parentFacing = quantizeAngle(readEntityFacing(prop), resolvePropQuantizeSteps(prop).facing);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
-        const baseR = Math.max(resolveBodyRadius(prop), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
+        const baseR = Math.max(prop.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         const stageR = Math.max(baseR, resolveVisualAttachmentBakeRadius(prop, parentFacing));
         const worldDiameter = stageR * 2;
         const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter, zoom);
@@ -738,7 +738,7 @@ function getOrBakePropSprite(prop, viewport, renderKey, draw, animFrame = 0, fla
         const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d");
         const stageProp = getPropStageBakeState(prop);
-        stageProp.radius = resolveBodyRadius(prop);
+        stageProp.radius = prop.radius;
         const attachments = resolveVisualAttachmentProps(stageProp);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);

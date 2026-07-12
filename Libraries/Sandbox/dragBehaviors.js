@@ -3,7 +3,7 @@ import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRim
 import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, resolveBodyRadius, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
+import { getKineticRollConfig, clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics } from "../Physics/physics.js";
 import { overlayAimSegment, overlayCircleFillStroke, overlayCircleStroke, overlaySegment } from "../Render/render.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON } from "../../Core/engineEnums.js";
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE } from "../../Core/engineMemory.js";
@@ -26,7 +26,7 @@ export function resolveDragLaunchConfigFromSize(radius) {
     return { minDrag: 10, maxPull: Math.min(200, Math.max(90, 90 + 5 * R)), pullScale: 1.25, minPower: Math.max(12, maxPower * 0.08), maxPower };
 }
 export function resolveDragLaunchConfig(prop) {
-    return resolveDragLaunchConfigFromSize(resolveBodyRadius(prop));
+    return resolveDragLaunchConfigFromSize(prop.radius);
 }
 export function createDragLaunchAim(anchorX, anchorY, startX = anchorX, startY = anchorY) {
     return { active: true, anchorX, anchorY, startX, startY, pullX: startX, pullY: startY, shotNx: null, shotNy: null };
@@ -107,7 +107,7 @@ export function applyDragLaunchVelocity(body, nx, ny, power) {
     body.vx = nx * power;
     body.vy = ny * power;
     if (body.strategy?.rolls) {
-        const r = resolveBodyRadius(body);
+        const r = body.radius;
         body.angularVelocity = (power / r) * 0.12;
     }
     wakeKineticBody(body);
@@ -207,7 +207,7 @@ function resolveGrabDragAnchor(prop, world) {
     }
     if (asset?.primitive === PROP_PRIMITIVE_SPHERE && asset.physics?.isKinetic !== false) {
         const facing = readEntityFacing(prop);
-        const radius = resolveBodyRadius(prop);
+        const radius = prop.radius;
         findCircleRimGrabPointInto(ENGINE_F32, G_WX, prop.x, prop.y, facing, radius, world.x, world.y);
         ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
         ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
@@ -220,7 +220,7 @@ function resolveGrabDragAnchor(prop, world) {
 }
 function grabDragAnchorWorld(prop, run) {
     if (prop.strategy?.rolls) {
-        const radius = resolveBodyRadius(prop);
+        const radius = prop.radius;
         findCircleRimGrabPointInto(ENGINE_F32, G_WX, prop.x, prop.y, readEntityFacing(prop), radius, run.targetWorld.x, run.targetWorld.y);
         return;
     }

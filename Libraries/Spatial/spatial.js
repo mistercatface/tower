@@ -1,9 +1,9 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, createNavGraphViewFromTopology, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, scaleAtHeight, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, stepCardinalFacing, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, P_VEC_A, kineticDynamicSlab, entityRefs, entityX, entityY, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE } from "../../Core/engineEnums.js";
-import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, P_VEC_A, primitiveDragFriction } from "../Physics/physics.js";
+import { entityCollisionSpan, neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, readEntityFacing, wakeKineticBody, bumpKineticTopologyGeneration, snapshotKineticBodySlab, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFriction } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
 import { MAX_ENTITIES } from "../../Core/engineLimits.js";
 import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
@@ -1787,7 +1787,7 @@ export function computeCircleAimLineSegmentInto(buf, o, { originX, originY, radi
     const angle = Math.atan2(dy, dx);
     let stopDist = Math.min(maxRayDist, maxTravelDist);
     for (const target of circleTargets) {
-        const otherR = target.radius ?? radius;
+        const otherR = target.radius;
         const t = rayCircleHitDistance(originX, originY, dx, dy, target.x, target.y, radius + otherR);
         if (t != null && t < stopDist) stopDist = t;
     }
@@ -1962,7 +1962,7 @@ export function castSteppedCircleRay(startX, startY, angle, maxDist, radius, { o
         }
         for (const target of circles) {
             const entity = target.entity;
-            const entityRadius = target.radius ?? entity.radius ?? radius;
+            const entityRadius = target.radius;
             if (lengthXY(rayCircle.x - entity.x, rayCircle.y - entity.y) >= rayCircle.radius + entityRadius) continue;
             const distToTarget = Math.hypot(entity.x - startX, entity.y - startY);
             const exactDist = distToTarget - entityRadius;
@@ -2940,7 +2940,6 @@ export function registerMapGenBoundsGridExpansionListener(state) {
         }
     };
 }
-const MAP_GEN_CLEAR_CIRCLE_BOUNDS = new Float32Array(4);
 function clearStaticWallsAndEdgesAtIdx(grid, idx) {
     let cellChanged = false;
     if (cellIsStaticWallAtIdx(grid, idx)) {
@@ -2965,9 +2964,9 @@ function stampCellBoundsForConfig(grid, config) {
 }
 function clearStaticWallsInWorldCircle(state, centerWorldX, centerWorldY, radiusWorld) {
     const grid = state.obstacleGrid;
-    centerReachAabbF32(MAP_GEN_CLEAR_CIRCLE_BOUNDS, 0, centerWorldX, centerWorldY, radiusWorld);
+    centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, centerWorldX, centerWorldY, radiusWorld);
     const bounds = emptyCellBounds();
-    forEachObstacleGridCellInAabbF32(grid, MAP_GEN_CLEAR_CIRCLE_BOUNDS, 0, (idx) => {
+    forEachObstacleGridCellInAabbF32(grid, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, (idx) => {
         grid.getCellBoundsByIdxF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_CELL, idx);
         const o = ENGINE_BOUNDS_BASE + B_CELL;
         const cx = (ENGINE_F32[o] + ENGINE_F32[o + 2]) * 0.5;

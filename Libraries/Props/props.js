@@ -1,5 +1,5 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { writeLivePolygon, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
+import { writeLivePolygon, releaseLivePolygon, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
@@ -40,12 +40,12 @@ export function createSpherePrimitive(visuals) {
     const panelCount = v.panelCount ?? 6;
     const latBands = v.latBands ?? 5;
     return (ctx, prop, viewport, flatPresentation) => {
-        const radius = resolveBodyRadius(prop);
+        const radius = prop.radius;
         if (flatPresentation) {
             drawFlatSphereDisc(ctx, prop, radius, pendingFill);
             return;
         }
-        drawSphere(ctx, prop, viewport, { baseRadius: radius, panelCount, latBands, pendingFill, textures: prop._wallChunkTextures });
+        drawSphere(ctx, prop, viewport, { panelCount, latBands, pendingFill, textures: prop._wallChunkTextures });
     };
 }
 function stampSurfaceProfileFields(prop, asset) {
@@ -61,9 +61,7 @@ PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] = createSpherePrimitive;
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON] = createPolygonPrimitive;
 if (PROP_PRIMITIVE_BUILDERS.length !== PROP_PRIMITIVE_COUNT || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON]) throw new Error("PROP_PRIMITIVE_BUILDERS incomplete relative to PROP_PRIMITIVE_COUNT");
 export function getPolygonPropBoundingRadius(prop) {
-    const shape = prop.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) return shape.getBoundingRadius();
-    return prop.radius ?? null;
+    return prop.radius;
 }
 export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
@@ -86,9 +84,7 @@ export function setPolygonPropBoundingRadius(prop, boundingRadius) {
     scalePolygonPropFootprint(prop, boundingRadius / currentRadius);
 }
 export function getCirclePropRadius(prop) {
-    const shape = prop.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) return shape.radius;
-    return prop.radius ?? null;
+    return prop.radius;
 }
 export function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
@@ -146,7 +142,7 @@ export function initWorldPropShape(prop) {
         return;
     }
     releaseLivePolygon(prop);
-    prop.radius = prop.strategy.radius ?? 0;
+    prop.radius = prop.strategy.radius;
     prop.shape = new CircleShape(prop.radius);
     prop.collisionParts = undefined;
     prop.drawOutline = undefined;
@@ -576,7 +572,7 @@ function resolveQuantizedAttachmentHeading(prop, cfg) {
     return quantizeAngle(resolveAttachmentHeading(prop, cfg), resolvePropQuantizeSteps(prop).facing);
 }
 function resolveAttachmentOffsetScale(parentProp, cfg) {
-    return cfg.offsetSpace === ATTACH_OFFSET_PARENT_RADIUS ? resolveBodyRadius(parentProp) : 1;
+    return cfg.offsetSpace === ATTACH_OFFSET_PARENT_RADIUS ? parentProp.radius : 1;
 }
 function scaleVirtualPropShape(prop, scale) {
     if (scale === 1) return;
@@ -601,9 +597,9 @@ function resolveVirtualPropScale(parentProp, childProp, cfg) {
     const baseScale = normalizeAttachmentScale(cfg.scale);
     if (!Number.isFinite(cfg.radiusScale) || cfg.radiusScale <= 0) return baseScale;
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, childProp);
-    const childRadius = Math.max(resolveBodyRadius(childProp), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
+    const childRadius = Math.max(childProp.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
     if (childRadius <= 0) return baseScale;
-    return baseScale * ((resolveBodyRadius(parentProp) * cfg.radiusScale) / childRadius);
+    return baseScale * ((parentProp.radius * cfg.radiusScale) / childRadius);
 }
 /** @param {object} prop */
 export function getPropVisualAttachmentConfigs(prop) {
@@ -693,7 +689,7 @@ export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
         const child = createVirtualAttachmentProp({ ...prop, x: 0, y: 0, facing: parentFacing }, cfg, heading);
         if (!child) continue;
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, child);
-        const childRadius = Math.max(resolveBodyRadius(child), ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
+        const childRadius = Math.max(child.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         radius = Math.max(radius, Math.hypot(child.x, child.y) + childRadius);
     }
     return radius;

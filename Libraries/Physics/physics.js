@@ -2,7 +2,6 @@ import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAab
 import {
     ENGINE_F32,
     ENGINE_U8,
-    ENGINE_PHYS_BASE,
     ENGINE_BOUNDS_BASE,
     B_QUERY,
     B_PAD,
@@ -15,6 +14,44 @@ import {
     M_OUT_VX,
     M_OUT_VY,
     M_OUT_VZ,
+    P_VEC_A,
+    P_VEC_B,
+    P_VEC_C,
+    P_VEC_D,
+    P_AABB_A,
+    P_OUT_MASS_AREA,
+    P_OUT_MASS_CX,
+    P_OUT_MASS_CY,
+    P_OUT_MASS_INERTIA,
+    P_OUT_RAY_ENTER,
+    P_OUT_RAY_EXIT,
+    P_OUT_RAY_NX,
+    P_OUT_RAY_NY,
+    P_OUT_PEN_NX,
+    P_OUT_PEN_NY,
+    P_OUT_PEN_OVERLAP,
+    P_OUT_PEN_DIST_SQ,
+    P_OUT_DIST_X,
+    P_OUT_DIST_Y,
+    P_OUT_DIST_T,
+    P_OUT_DIST_DIST,
+    P_OUT_SOLVE_ITERS,
+    P_OUT_SOLVE_IMPULSE,
+    P_OUT_SOLVE_REST,
+    P_OUT_WALL_X,
+    P_OUT_WALL_Y,
+    P_OUT_WALL_Z,
+    P_OUT_WALL_IDX,
+    P_OUT_SWEEP_T,
+    P_OUT_SWEEP_X,
+    P_OUT_SWEEP_Y,
+    P_SAT,
+    P_CLIP_X,
+    P_CLIP_Y,
+    P_PROJ_A,
+    P_PROJ_B,
+    P_WALL_VERTS,
+    P_WALL_NORMS,
     P_COMPOUND,
     entityRefs,
     entityFacing,
@@ -84,48 +121,6 @@ import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
 export const LIBRARY_PHYSICS_DEFAULTS = { groundNavRoll: { maxSpeed: 180, accel: 600, stopRadius: 6 }, groundNavHpa: { stopRadius: 8, pathWaypointArrivalMin: 12, pathWaypointArrivalRadiusFactor: 1.5 } };
 export const physicsSettings = structuredClone(LIBRARY_PHYSICS_DEFAULTS);
-export function resolveBodyRadius(body) {
-    const shape = body.shape;
-    let r;
-    if (shape && shape.shapeTypeId === SHAPE_TYPE_CIRCLE) r = shape.radius;
-    return body._baseRadius ?? body.radius;
-}
-export const P_VEC_A = ENGINE_PHYS_BASE;
-export const P_VEC_B = ENGINE_PHYS_BASE + 2;
-export const P_VEC_C = ENGINE_PHYS_BASE + 4;
-export const P_VEC_D = ENGINE_PHYS_BASE + 6;
-export const P_AABB_A = ENGINE_PHYS_BASE + 8;
-export const P_OUT_MASS_AREA = ENGINE_PHYS_BASE + 16;
-export const P_OUT_MASS_CX = ENGINE_PHYS_BASE + 17;
-export const P_OUT_MASS_CY = ENGINE_PHYS_BASE + 18;
-export const P_OUT_MASS_INERTIA = ENGINE_PHYS_BASE + 19;
-export const P_OUT_RAY_ENTER = ENGINE_PHYS_BASE + 20;
-export const P_OUT_RAY_EXIT = ENGINE_PHYS_BASE + 21;
-export const P_OUT_RAY_NX = ENGINE_PHYS_BASE + 22;
-export const P_OUT_RAY_NY = ENGINE_PHYS_BASE + 23;
-export const P_OUT_PEN_NX = ENGINE_PHYS_BASE + 24;
-export const P_OUT_PEN_NY = ENGINE_PHYS_BASE + 25;
-export const P_OUT_PEN_OVERLAP = ENGINE_PHYS_BASE + 26;
-export const P_OUT_PEN_DIST_SQ = ENGINE_PHYS_BASE + 27;
-export const P_OUT_DIST_X = ENGINE_PHYS_BASE + 28;
-export const P_OUT_DIST_Y = ENGINE_PHYS_BASE + 29;
-export const P_OUT_DIST_T = ENGINE_PHYS_BASE + 30;
-export const P_OUT_DIST_DIST = ENGINE_PHYS_BASE + 31;
-export const P_OUT_SOLVE_ITERS = ENGINE_PHYS_BASE + 32;
-export const P_OUT_SOLVE_IMPULSE = ENGINE_PHYS_BASE + 33;
-export const P_OUT_SOLVE_REST = ENGINE_PHYS_BASE + 34;
-export const P_OUT_WALL_X = ENGINE_PHYS_BASE + 35;
-export const P_OUT_WALL_Y = ENGINE_PHYS_BASE + 36;
-export const P_OUT_WALL_Z = ENGINE_PHYS_BASE + 37;
-export const P_OUT_WALL_IDX = ENGINE_PHYS_BASE + 38;
-export const P_OUT_SWEEP_T = ENGINE_PHYS_BASE + 39;
-export const P_OUT_SWEEP_X = ENGINE_PHYS_BASE + 40;
-export const P_OUT_SWEEP_Y = ENGINE_PHYS_BASE + 41;
-export const P_SAT = ENGINE_PHYS_BASE + 42;
-export const P_CLIP_X = ENGINE_PHYS_BASE + 67;
-export const P_CLIP_Y = ENGINE_PHYS_BASE + 71;
-export const P_PROJ_A = ENGINE_PHYS_BASE + 75;
-export const P_PROJ_B = ENGINE_PHYS_BASE + 77;
 /**
  * Library baseline — games override via `gameDefinition.collisionSettings`, project via Config.
  */
@@ -1355,8 +1350,8 @@ export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.
 export function satCheckCollision(xA, yA, angleA, shapeA, xB, yB, angleB, shapeB) {
     return satCheckShapesAtPose(xA, yA, Math.cos(angleA), Math.sin(angleA), shapeA, xB, yB, Math.cos(angleB), Math.sin(angleB), shapeB);
 }
-const sWallVerts = new Float32Array(8);
-const sWallNorms = new Float32Array(8);
+const sWallVerts = ENGINE_F32.subarray(P_WALL_VERTS, P_WALL_VERTS + 8);
+const sWallNorms = ENGINE_F32.subarray(P_WALL_NORMS, P_WALL_NORMS + 8);
 function fillWallBoxF32(segId) {
     const slab = staticWallSegmentSlab;
     const hx = slab.width[segId] * 0.5;
@@ -3571,7 +3566,7 @@ function portalTeleportHandler(body) {
     const t = PORTAL_TICK;
     const grid = t.grid;
     if (grid.worldToIdx(body.x, body.y) !== t.exitIdx) {
-        const r = resolveBodyRadius(body);
+        const r = body.radius;
         const capture = grid.cellHalfSize + r;
         const dx = body.x - t.exitCx;
         const dy = body.y - t.exitCy;
@@ -4572,9 +4567,6 @@ export function transformRollVertexInto(lx, ly, lz, radius, qw, qx, qy, qz) {
     rotateVecByQuatInto(lx, ly, lz - radius, qw, qx, qy, qz);
     ENGINE_F32[M_OUT_VZ] += radius;
 }
-export function getRollRadius(body) {
-    return Math.max(1, resolveBodyRadius(body));
-}
 function readBodyRollComponents(body) {
     const physId = body._physId;
     if (physId !== undefined) {
@@ -4595,7 +4587,7 @@ function integrateGroundRoll(body, dtMs) {
     const speed = lengthXY(vx, vy);
     if (speed < 0.01) return;
     const physId = body._physId;
-    const r = getRollRadius(body);
+    const r = body.radius;
     const angle = -(speed / r) * (dtMs / 1000);
     const ax = -vy / speed;
     const ay = vx / speed;

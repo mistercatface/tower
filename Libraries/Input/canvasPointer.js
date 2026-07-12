@@ -1,3 +1,4 @@
+import { ENGINE_F32, S_OUT_XY } from "../../Core/engineMemory.js";
 /**
  * Map a DOM pointer position to canvas pixel coordinates (handles CSS scaling).
  * @param {HTMLCanvasElement} canvas
@@ -10,14 +11,13 @@ export function canvasClientToScreen(canvas, clientX, clientY) {
     const scaleY = canvas.height / rect.height;
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
 }
-const POINTER_WORLD_XY = new Float32Array(2);
 const POINTER_WORLD = { x: 0, y: 0 };
 /** @param {import("../../Viewport/Viewport.js").Viewport} viewport */
 export function canvasClientToWorld(canvas, viewport, clientX, clientY) {
     const screen = canvasClientToScreen(canvas, clientX, clientY);
-    viewport.screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
-    POINTER_WORLD.x = POINTER_WORLD_XY[0];
-    POINTER_WORLD.y = POINTER_WORLD_XY[1];
+    viewport.screenToWorldF32(ENGINE_F32, S_OUT_XY, screen.x, screen.y);
+    POINTER_WORLD.x = ENGINE_F32[S_OUT_XY];
+    POINTER_WORLD.y = ENGINE_F32[S_OUT_XY + 1];
     return POINTER_WORLD;
 }
 export function canvasClientToWorldF32(buf, o, canvas, viewport, clientX, clientY) {
@@ -35,8 +35,8 @@ export function canvasClientToWorldF32(buf, o, canvas, viewport, clientX, client
 export function bindCanvasPointerDown(canvas, { screenToWorldF32, onPointerDown }) {
     const handler = (e) => {
         const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
-        screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
-        onPointerDown(POINTER_WORLD_XY[0], POINTER_WORLD_XY[1], screen, e);
+        screenToWorldF32(ENGINE_F32, S_OUT_XY, screen.x, screen.y);
+        onPointerDown(ENGINE_F32[S_OUT_XY], ENGINE_F32[S_OUT_XY + 1], screen, e);
     };
     canvas.addEventListener("pointerdown", handler);
     return () => canvas.removeEventListener("pointerdown", handler);
@@ -52,8 +52,8 @@ export function bindCanvasPointerDown(canvas, { screenToWorldF32, onPointerDown 
 export function bindCanvasPointerMove(canvas, { screenToWorldF32, onPointerMove }) {
     const handler = (e) => {
         const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
-        screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
-        onPointerMove(POINTER_WORLD_XY[0], POINTER_WORLD_XY[1], screen, e);
+        screenToWorldF32(ENGINE_F32, S_OUT_XY, screen.x, screen.y);
+        onPointerMove(ENGINE_F32[S_OUT_XY], ENGINE_F32[S_OUT_XY + 1], screen, e);
     };
     canvas.addEventListener("pointermove", handler);
     return () => canvas.removeEventListener("pointermove", handler);
@@ -69,8 +69,8 @@ export function bindCanvasPointerMove(canvas, { screenToWorldF32, onPointerMove 
 export function bindCanvasPointerUp(canvas, { screenToWorldF32, onPointerUp }) {
     const handler = (e) => {
         const screen = canvasClientToScreen(canvas, e.clientX, e.clientY);
-        screenToWorldF32(POINTER_WORLD_XY, 0, screen.x, screen.y);
-        onPointerUp(POINTER_WORLD_XY[0], POINTER_WORLD_XY[1], screen, e);
+        screenToWorldF32(ENGINE_F32, S_OUT_XY, screen.x, screen.y);
+        onPointerUp(ENGINE_F32[S_OUT_XY], ENGINE_F32[S_OUT_XY + 1], screen, e);
     };
     canvas.addEventListener("pointerup", handler);
     canvas.addEventListener("pointercancel", handler);

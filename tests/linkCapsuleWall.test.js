@@ -4,7 +4,7 @@ import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickH
 import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
 import { gatherKineticConstraintSlab, resolveGatheredKineticConstraintSlab } from "../Libraries/Physics/physics.js";
 import { getLinkCapsuleSegmentPenetration, minDistanceSegmentToWall } from "../Libraries/Physics/physics.js";
-import { P_OUT_PEN_OVERLAP } from "../Libraries/Physics/physics.js";
+import { P_OUT_PEN_OVERLAP } from "../Core/engineMemory.js";
 import { kineticDynamicSlab, GrowI32, ENGINE_F32 } from "../Core/engineMemory.js";
 import { mockWallSegment, wallSegIds } from "./harness/wallSegmentHarness.js";
 

@@ -1,4 +1,4 @@
-import { pruneKineticConstraintsForBody, resolveBodyRadius, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, readEntityFacing, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, entityIntersectsAabbEidF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, pickWorldPoly, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
@@ -50,7 +50,7 @@ export function worldPropContainsPoint(prop, worldX, worldY, padding = 0) {
         }
     }
     if (sawPolygon) return false;
-    const r = (prop.radius ?? 0) + padding;
+    const r = prop.radius + padding;
     const centerDistSq = (prop.x - worldX) ** 2 + (prop.y - worldY) ** 2;
     return centerDistSq <= r * r;
 }
@@ -140,7 +140,7 @@ export class EntityArena {
             let flags = 0;
             if (ref.isDead) flags |= ENTITY_FLAG_DEAD;
             if (ref.strategy?.isKinetic) flags |= ENTITY_FLAG_KINETIC;
-            bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, resolveBodyRadius(ref), flags);
+            bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
             ref._physId = eid;
             clearWorldPropSpawnPose(ref);
             if (flags & ENTITY_FLAG_KINETIC) normalizeKineticBody(ref);
@@ -152,7 +152,7 @@ export class EntityArena {
         let flags = 0;
         if (ref.isDead) flags |= ENTITY_FLAG_DEAD;
         if (ref.strategy?.isKinetic) flags |= ENTITY_FLAG_KINETIC;
-        bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, resolveBodyRadius(ref), flags);
+        bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
         ref._physId = eid;
         clearWorldPropSpawnPose(ref);
         if (flags & ENTITY_FLAG_KINETIC) normalizeKineticBody(ref);

@@ -63,7 +63,7 @@ Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch
 
 | Layer | Put here | Do not put here |
 |-------|----------|-----------------|
-| `ENGINE_F32` named slots | Ephemeral outs (snap XY, steer, closest, AABB scratch) | Growable paths, topology, session clocks, camera tiers |
+| `ENGINE_F32` named slots | Ephemeral outs (snap XY, steer, closest, AABB scratch). **All bank slot consts (`M_*`/`P_*`/`G_*`/`F_*`/`S_*`/`N_*`/`B_*`/`R_*`) live only in `engineMemory`.** Libraries may keep subarray *views* (`SAT_RESULT`, etc.), not layout ownership. Body radius is `body.radius` only — no resolver. | Growable paths, topology, session clocks, camera tiers |
 | Dedicated slabs / SoA | Persistent columns (`entityX`, kinetic slabs, wall segments), `viewBoundsBuf` | One-off `{x,y}` helpers, dual bag+F32 twins |
 | Session / SAB / local | Worker paths, HPA graphs, editor caches | Parking more object bags in Core “for convenience” |
 

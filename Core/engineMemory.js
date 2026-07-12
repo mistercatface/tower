@@ -2,8 +2,10 @@ import { MAX_ENTITIES } from "./engineLimits.js";
 // --- Shared scratch buffers ---
 /** Shared Float32 scratch.
  * Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575, Compound 576–831.
- * PHYS layout: +0…78 physics scratch (P_* in physics.js), +79…84 grab (G_*), +85…127 reserved.
- * FRAC layout: +0…33 F_OUT_/F_VEC_/F_EDGE_ slots, +34 F_SHATTER_SEEDS (seed XY payload through +57 for 12 shards), +58…63 reserved.
+ * PHYS: +0…78 P_* scratch, +79…84 G_* grab, +85…92 P_WALL_VERTS, +93…100 P_WALL_NORMS, +101…127 reserved.
+ * Note: P_VEC_C+2/+3 aliases P_VEC_D (legacy overlap — leave values).
+ * FRAC: +0…33 F_OUT_/F_VEC_/F_EDGE_, +34 F_SHATTER_SEEDS (+57 for 12 shards), +58…63 reserved.
+ * All ENGINE_F32 bank slot consts live here; Libraries may keep subarray views only.
  */
 export const ENGINE_F32 = new Float32Array(832);
 export const ENGINE_U8 = new Uint8Array(256);
@@ -16,7 +18,7 @@ export const ENGINE_NAV_BASE = 320;
 export const ENGINE_BOUNDS_BASE = 400;
 export const ENGINE_RENDER_BASE = 420;
 export const ENGINE_COMPOUND_BASE = 576;
-// --- Math / spatial / nav / bounds / render scratch slots (indices into ENGINE_F32) ---
+// --- Math M_* ---
 export const M_VEC_A = ENGINE_MATH_BASE;
 export const M_OUT_NX = ENGINE_MATH_BASE + 8;
 export const M_OUT_NY = ENGINE_MATH_BASE + 9;
@@ -34,6 +36,84 @@ export const M_OUT_QZ = ENGINE_MATH_BASE + 20;
 export const M_OUT_VX = ENGINE_MATH_BASE + 21;
 export const M_OUT_VY = ENGINE_MATH_BASE + 22;
 export const M_OUT_VZ = ENGINE_MATH_BASE + 23;
+// --- Phys P_* (+ G_* grab, wall box scratch) ---
+export const P_VEC_A = ENGINE_PHYS_BASE;
+export const P_VEC_B = ENGINE_PHYS_BASE + 2;
+export const P_VEC_C = ENGINE_PHYS_BASE + 4;
+export const P_VEC_D = ENGINE_PHYS_BASE + 6;
+export const P_AABB_A = ENGINE_PHYS_BASE + 8;
+export const P_OUT_MASS_AREA = ENGINE_PHYS_BASE + 16;
+export const P_OUT_MASS_CX = ENGINE_PHYS_BASE + 17;
+export const P_OUT_MASS_CY = ENGINE_PHYS_BASE + 18;
+export const P_OUT_MASS_INERTIA = ENGINE_PHYS_BASE + 19;
+export const P_OUT_RAY_ENTER = ENGINE_PHYS_BASE + 20;
+export const P_OUT_RAY_EXIT = ENGINE_PHYS_BASE + 21;
+export const P_OUT_RAY_NX = ENGINE_PHYS_BASE + 22;
+export const P_OUT_RAY_NY = ENGINE_PHYS_BASE + 23;
+export const P_OUT_PEN_NX = ENGINE_PHYS_BASE + 24;
+export const P_OUT_PEN_NY = ENGINE_PHYS_BASE + 25;
+export const P_OUT_PEN_OVERLAP = ENGINE_PHYS_BASE + 26;
+export const P_OUT_PEN_DIST_SQ = ENGINE_PHYS_BASE + 27;
+export const P_OUT_DIST_X = ENGINE_PHYS_BASE + 28;
+export const P_OUT_DIST_Y = ENGINE_PHYS_BASE + 29;
+export const P_OUT_DIST_T = ENGINE_PHYS_BASE + 30;
+export const P_OUT_DIST_DIST = ENGINE_PHYS_BASE + 31;
+export const P_OUT_SOLVE_ITERS = ENGINE_PHYS_BASE + 32;
+export const P_OUT_SOLVE_IMPULSE = ENGINE_PHYS_BASE + 33;
+export const P_OUT_SOLVE_REST = ENGINE_PHYS_BASE + 34;
+export const P_OUT_WALL_X = ENGINE_PHYS_BASE + 35;
+export const P_OUT_WALL_Y = ENGINE_PHYS_BASE + 36;
+export const P_OUT_WALL_Z = ENGINE_PHYS_BASE + 37;
+export const P_OUT_WALL_IDX = ENGINE_PHYS_BASE + 38;
+export const P_OUT_SWEEP_T = ENGINE_PHYS_BASE + 39;
+export const P_OUT_SWEEP_X = ENGINE_PHYS_BASE + 40;
+export const P_OUT_SWEEP_Y = ENGINE_PHYS_BASE + 41;
+export const P_SAT = ENGINE_PHYS_BASE + 42;
+export const P_CLIP_X = ENGINE_PHYS_BASE + 67;
+export const P_CLIP_Y = ENGINE_PHYS_BASE + 71;
+export const P_PROJ_A = ENGINE_PHYS_BASE + 75;
+export const P_PROJ_B = ENGINE_PHYS_BASE + 77;
+export const G_WX = ENGINE_PHYS_BASE + 79;
+export const G_WY = ENGINE_PHYS_BASE + 80;
+export const G_LX = ENGINE_PHYS_BASE + 81;
+export const G_LY = ENGINE_PHYS_BASE + 82;
+export const G_OX = ENGINE_PHYS_BASE + 83;
+export const G_OY = ENGINE_PHYS_BASE + 84;
+export const P_WALL_VERTS = ENGINE_PHYS_BASE + 85;
+export const P_WALL_NORMS = ENGINE_PHYS_BASE + 93;
+// --- Frac F_* ---
+export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
+export const F_OUT_CENTROID_Y = ENGINE_FRAC_BASE + 1;
+export const F_OUT_AREA = ENGINE_FRAC_BASE + 2;
+export const F_OUT_RADIUS = ENGINE_FRAC_BASE + 3;
+export const F_OUT_CLOSEST_X = ENGINE_FRAC_BASE + 4;
+export const F_OUT_CLOSEST_Y = ENGINE_FRAC_BASE + 5;
+export const F_OUT_DEBRIS_START = ENGINE_FRAC_BASE + 6;
+export const F_OUT_DEBRIS_COUNT = ENGINE_FRAC_BASE + 7;
+export const F_OUT_MOTION_VX = ENGINE_FRAC_BASE + 8;
+export const F_OUT_MOTION_VY = ENGINE_FRAC_BASE + 9;
+export const F_OUT_MOTION_W = ENGINE_FRAC_BASE + 10;
+export const F_OUT_POS_X = ENGINE_FRAC_BASE + 11;
+export const F_OUT_POS_Y = ENGINE_FRAC_BASE + 12;
+export const F_OUT_REMNANT = ENGINE_FRAC_BASE + 13;
+export const F_VEC_A = ENGINE_FRAC_BASE + 14;
+export const F_VEC_B = ENGINE_FRAC_BASE + 16;
+export const F_VEC_C = ENGINE_FRAC_BASE + 18;
+export const F_VEC_D = ENGINE_FRAC_BASE + 20;
+export const F_OUT_ORIGIN_X = ENGINE_FRAC_BASE + 22;
+export const F_OUT_ORIGIN_Y = ENGINE_FRAC_BASE + 23;
+export const F_OUT_FACING = ENGINE_FRAC_BASE + 24;
+export const F_OUT_IMPACT_LOCAL_X = ENGINE_FRAC_BASE + 25;
+export const F_OUT_IMPACT_LOCAL_Y = ENGINE_FRAC_BASE + 26;
+export const F_OUT_IMPACT_FORCE = ENGINE_FRAC_BASE + 27;
+export const F_OUT_VORONOI_HANDLE = ENGINE_FRAC_BASE + 28;
+export const F_OUT_VORONOI_VERTS = ENGINE_FRAC_BASE + 29;
+export const F_EDGE_P1X = ENGINE_FRAC_BASE + 30;
+export const F_EDGE_P1Y = ENGINE_FRAC_BASE + 31;
+export const F_EDGE_P2X = ENGINE_FRAC_BASE + 32;
+export const F_EDGE_P2Y = ENGINE_FRAC_BASE + 33;
+export const F_SHATTER_SEEDS = ENGINE_FRAC_BASE + 34;
+// --- Spatial S_* ---
 export const S_OUT_XY = ENGINE_SPATIAL_BASE;
 export const S_OUT_SCREEN = ENGINE_SPATIAL_BASE + 2;
 export const S_AABB = ENGINE_SPATIAL_BASE + 4;
@@ -42,14 +122,17 @@ export const S_EDGE_P1X = ENGINE_SPATIAL_BASE + 16;
 export const S_EDGE_P1Y = ENGINE_SPATIAL_BASE + 17;
 export const S_EDGE_P2X = ENGINE_SPATIAL_BASE + 18;
 export const S_EDGE_P2Y = ENGINE_SPATIAL_BASE + 19;
+// --- Nav N_* ---
 export const N_OUT_XY = ENGINE_NAV_BASE;
 export const N_OUT_FLOW = ENGINE_NAV_BASE + 2;
 export const N_OUT_STEER = ENGINE_NAV_BASE + 4;
-export const B_QUERY = 0; // ephemeral AABB slot offsets (not camera)
+// --- Bounds B_* (relative offsets into ENGINE_BOUNDS_BASE) ---
+export const B_QUERY = 0;
 export const B_CELL = 4;
 export const B_FOOTPRINT = 8;
 export const B_PAD = 12;
 export const B_TMP = 16;
+// --- Render R_* ---
 export const R_QUAD_A = ENGINE_RENDER_BASE;
 export const R_SUBDIV = ENGINE_RENDER_BASE + 8;
 export const R_CAP_CORNERS = ENGINE_RENDER_BASE + 16;
@@ -58,10 +141,21 @@ export const R_CAP_SRC = ENGINE_RENDER_BASE + 32;
 export const R_CHEVRON = ENGINE_RENDER_BASE + 40;
 export const R_FACE_BAND_BOT = ENGINE_RENDER_BASE + 52;
 export const R_FACE_BAND_TOP = ENGINE_RENDER_BASE + 56;
+export const R_SPRITE_BAKE_SCALE = ENGINE_RENDER_BASE + 60;
+export const R_SPRITE_ANCHOR_X = ENGINE_RENDER_BASE + 61;
+export const R_SPRITE_ANCHOR_Y = ENGINE_RENDER_BASE + 62;
+export const R_SPRITE_DRAW_W = ENGINE_RENDER_BASE + 63;
+export const R_SPRITE_DRAW_H = ENGINE_RENDER_BASE + 64;
+export const R_SPRITE_FRAME_COUNT = ENGINE_RENDER_BASE + 65;
+export const R_SPRITE_FRAME_WIDTH = ENGINE_RENDER_BASE + 66;
 export const R_FACE_VISIBLE = 0;
 export const MAX_PRISM_FACES = 64;
 export const MAX_OUTLINE_VERTS = 64;
+// --- Compound ---
 export const P_COMPOUND = ENGINE_COMPOUND_BASE;
+// --- I32 scratch ---
+export const I_SPRITE_KEY_LO = 64;
+export const I_SPRITE_KEY_HI = 65;
 // --- Entity SoA (indexed by physId / entity slot) ---
 export const entityX = new Float32Array(MAX_ENTITIES);
 export const entityY = new Float32Array(MAX_ENTITIES);
@@ -132,44 +226,6 @@ export const PENDING_BREAK_HASH_CAPACITY = MAX_PENDING_WALL_BREAKS * 2;
 export const PENDING_BREAK_HASH_MASK = PENDING_BREAK_HASH_CAPACITY - 1; // power-of-two probe mask
 export const MAX_DEFERRED_FRACTURES = 256;
 export const MAX_STATIC_WALL_SEGMENTS = 4096;
-// --- Fracture / grab scratch slots (ENGINE_F32 Frac + Phys grab band) ---
-export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
-export const F_OUT_CENTROID_Y = ENGINE_FRAC_BASE + 1;
-export const F_OUT_AREA = ENGINE_FRAC_BASE + 2;
-export const F_OUT_RADIUS = ENGINE_FRAC_BASE + 3;
-export const F_OUT_CLOSEST_X = ENGINE_FRAC_BASE + 4;
-export const F_OUT_CLOSEST_Y = ENGINE_FRAC_BASE + 5;
-export const F_OUT_DEBRIS_START = ENGINE_FRAC_BASE + 6;
-export const F_OUT_DEBRIS_COUNT = ENGINE_FRAC_BASE + 7;
-export const F_OUT_MOTION_VX = ENGINE_FRAC_BASE + 8;
-export const F_OUT_MOTION_VY = ENGINE_FRAC_BASE + 9;
-export const F_OUT_MOTION_W = ENGINE_FRAC_BASE + 10;
-export const F_OUT_POS_X = ENGINE_FRAC_BASE + 11;
-export const F_OUT_POS_Y = ENGINE_FRAC_BASE + 12;
-export const F_OUT_REMNANT = ENGINE_FRAC_BASE + 13;
-export const F_VEC_A = ENGINE_FRAC_BASE + 14;
-export const F_VEC_B = ENGINE_FRAC_BASE + 16;
-export const F_VEC_C = ENGINE_FRAC_BASE + 18;
-export const F_VEC_D = ENGINE_FRAC_BASE + 20;
-export const F_OUT_ORIGIN_X = ENGINE_FRAC_BASE + 22;
-export const F_OUT_ORIGIN_Y = ENGINE_FRAC_BASE + 23;
-export const F_OUT_FACING = ENGINE_FRAC_BASE + 24;
-export const F_OUT_IMPACT_LOCAL_X = ENGINE_FRAC_BASE + 25;
-export const F_OUT_IMPACT_LOCAL_Y = ENGINE_FRAC_BASE + 26;
-export const F_OUT_IMPACT_FORCE = ENGINE_FRAC_BASE + 27;
-export const F_OUT_VORONOI_HANDLE = ENGINE_FRAC_BASE + 28;
-export const F_OUT_VORONOI_VERTS = ENGINE_FRAC_BASE + 29;
-export const F_EDGE_P1X = ENGINE_FRAC_BASE + 30;
-export const F_EDGE_P1Y = ENGINE_FRAC_BASE + 31;
-export const F_EDGE_P2X = ENGINE_FRAC_BASE + 32;
-export const F_EDGE_P2Y = ENGINE_FRAC_BASE + 33;
-export const F_SHATTER_SEEDS = ENGINE_FRAC_BASE + 34; // seed XY payload through +57 (12 shards)
-export const G_WX = ENGINE_PHYS_BASE + 79;
-export const G_WY = ENGINE_PHYS_BASE + 80;
-export const G_LX = ENGINE_PHYS_BASE + 81;
-export const G_LY = ENGINE_PHYS_BASE + 82;
-export const G_OX = ENGINE_PHYS_BASE + 83;
-export const G_OY = ENGINE_PHYS_BASE + 84;
 // --- Grow helpers (resizable typed lists / slab column grow) ---
 export function ensureGrowI32(obj, key, minCap, copyLen = -1) {
     const cur = obj[key];
@@ -481,15 +537,6 @@ export function createSpriteCacheSlab(capacity) {
 export const propSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_PROP_INIT);
 export const gridStampSpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_GRID_INIT);
 export const overlaySpriteCacheSlab = createSpriteCacheSlab(SPRITE_CACHE_OVERLAY_INIT);
-export const I_SPRITE_KEY_LO = 64; // ENGINE_I32 scratch for cache key halves
-export const I_SPRITE_KEY_HI = 65;
-export const R_SPRITE_BAKE_SCALE = ENGINE_RENDER_BASE + 60;
-export const R_SPRITE_ANCHOR_X = ENGINE_RENDER_BASE + 61;
-export const R_SPRITE_ANCHOR_Y = ENGINE_RENDER_BASE + 62;
-export const R_SPRITE_DRAW_W = ENGINE_RENDER_BASE + 63;
-export const R_SPRITE_DRAW_H = ENGINE_RENDER_BASE + 64;
-export const R_SPRITE_FRAME_COUNT = ENGINE_RENDER_BASE + 65;
-export const R_SPRITE_FRAME_WIDTH = ENGINE_RENDER_BASE + 66;
 export const WALL_FACE_DRAW_MEMO_INIT = 2048;
 export const WALL_FACE_ATLAS_MISS = -1;
 export const WALL_FACE_ATLAS_SOLID = -2;

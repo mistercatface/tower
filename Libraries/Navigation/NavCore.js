@@ -6,7 +6,7 @@ import { manhattanDistanceIdx, octileDistanceIdx, makeAdjacencyKey, boundaryBloc
 import { FloorBelt } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { MAX_HPA_REPLAN_SLOTS } from "./HpaPathWorker.js";
-import { resolveBodyRadius, physicsSettings, getKineticRollConfig, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
+import { physicsSettings, getKineticRollConfig, steerRollToward, clearGroundRollDrive, decelerateRoll } from "../Physics/physics.js";
 import { FlowFieldGrid } from "./NavFlowField.js";
 // --- NavMath.js ---
 export function buildNavReachableMaskFromSeed(blocked, octileNeighbors, cols, rows, seedIdx, activePortalPairs = null, activePortalCount = null) {
@@ -1153,7 +1153,7 @@ export class PathSteeringEvaluator {
         this.y = pose.y;
         this.vx = pose.vx ?? 0;
         this.vy = pose.vy ?? 0;
-        this.radius = resolveBodyRadius(pose);
+        this.radius = pose.radius;
         this.worker = worker;
         this.slot = slot;
         this.pathLen = pathLen;

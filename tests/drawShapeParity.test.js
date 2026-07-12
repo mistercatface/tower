@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
-import { resolveBodyRadius } from "../Libraries/Physics/physics.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createPolygonPrimitive } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
@@ -152,13 +151,6 @@ describe("draw shape parity", () => {
         assert.ok(calls.fill > 1);
         assert.equal(calls.stroke, 0);
     });
-    it("resolveBodyRadius prefers CircleShape over stale radius field", () => {
-        const prop = new WorldProp(0, 0, "ball", 0);
-        setCirclePropRadius(prop, 7);
-        prop.radius = 99;
-        assert.equal(prop.shape.radius, 7);
-        assert.equal(resolveBodyRadius(prop), 7);
-    });
     it("large footprints use finer sprite facing steps than crate-sized props", () => {
         const crate = new WorldProp(0, 0, "box", 0);
         const plank = new WorldProp(0, 0, "box", 0);
@@ -192,14 +184,14 @@ describe("draw shape parity", () => {
         assert.equal(child instanceof WorldProp, false);
         assert.equal(child.type, "tri_wedge");
         assert.ok(Math.abs(child.x) < 1e-6);
-        assert.ok(Math.abs(child.y - resolveBodyRadius(prop) * 1.65) < 1e-6);
+        assert.ok(Math.abs(child.y - prop.radius * 1.65) < 1e-6);
         assert.ok(Math.abs(child.facing - (qHeading - Math.PI / 2)) < 1e-6);
         assert.ok(child.radius < new WorldProp(0, 0, "tri_wedge", 0).radius);
     });
     it("visual attachments scale and offset from parent radius", () => {
         const small = new WorldProp(0, 0, "boid_triangle", 0);
         const large = new WorldProp(0, 0, "boid_triangle", 0);
-        setCirclePropRadius(large, resolveBodyRadius(small) * 2);
+        setCirclePropRadius(large, small.radius * 2);
         small.vx = 30;
         large.vx = 30;
         const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(small)).after[0];
@@ -214,7 +206,7 @@ describe("draw shape parity", () => {
         const down = new WorldProp(0, 0, "boid_triangle", 0);
         right.facing = 0;
         down.facing = Math.PI / 2;
-        const parentRadius = resolveBodyRadius(right);
+        const parentRadius = right.radius;
         assert.ok(resolveVisualAttachmentBakeRadius(right, 0) > parentRadius);
         assert.notEqual(
             getVisualAttachmentSpriteCacheKey(right, { quantizeAngleIndex }),
