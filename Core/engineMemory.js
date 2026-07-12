@@ -1,5 +1,8 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
-/** Shared Float32 scratch. Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575, Compound 576–831 */
+/** Shared Float32 scratch.
+ * Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575, Compound 576–831.
+ * PHYS layout: +0…78 physics scratch (P_* in physics.js), +79…84 grab (G_*), +85…127 reserved.
+ */
 export const ENGINE_F32 = new Float32Array(832);
 export const ENGINE_U8 = new Uint8Array(256);
 export const ENGINE_I32 = new Int32Array(256);
@@ -85,6 +88,36 @@ export const WARM_START_CACHE_MASK = WARM_START_CACHE_SIZE - 1;
 export const PAIR_HASH_CAPACITY = MAX_KINETIC_PAIRS * 2;
 export const MAX_KINETIC_DEBRIS = 4096 * 4;
 export const MAX_PENDING_WALL_BREAKS = 256;
+export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
+export const F_OUT_CENTROID_Y = ENGINE_FRAC_BASE + 1;
+export const F_OUT_AREA = ENGINE_FRAC_BASE + 2;
+export const F_OUT_RADIUS = ENGINE_FRAC_BASE + 3;
+export const F_OUT_CLOSEST_X = ENGINE_FRAC_BASE + 4;
+export const F_OUT_CLOSEST_Y = ENGINE_FRAC_BASE + 5;
+export const F_OUT_DEBRIS_START = ENGINE_FRAC_BASE + 6;
+export const F_OUT_DEBRIS_COUNT = ENGINE_FRAC_BASE + 7;
+export const F_OUT_MOTION_VX = ENGINE_FRAC_BASE + 8;
+export const F_OUT_MOTION_VY = ENGINE_FRAC_BASE + 9;
+export const F_OUT_MOTION_W = ENGINE_FRAC_BASE + 10;
+export const F_OUT_POS_X = ENGINE_FRAC_BASE + 11;
+export const F_OUT_POS_Y = ENGINE_FRAC_BASE + 12;
+export const F_OUT_REMNANT = ENGINE_FRAC_BASE + 13;
+export const F_VEC_A = ENGINE_FRAC_BASE + 14;
+export const F_VEC_B = ENGINE_FRAC_BASE + 16;
+export const F_VEC_C = ENGINE_FRAC_BASE + 18;
+export const F_VEC_D = ENGINE_FRAC_BASE + 20;
+export const F_OUT_ORIGIN_X = ENGINE_FRAC_BASE + 22;
+export const F_OUT_ORIGIN_Y = ENGINE_FRAC_BASE + 23;
+export const F_OUT_FACING = ENGINE_FRAC_BASE + 24;
+export const F_OUT_IMPACT_LOCAL_X = ENGINE_FRAC_BASE + 25;
+export const F_OUT_IMPACT_LOCAL_Y = ENGINE_FRAC_BASE + 26;
+export const F_OUT_IMPACT_FORCE = ENGINE_FRAC_BASE + 27;
+export const F_OUT_VORONOI_HANDLE = ENGINE_FRAC_BASE + 28;
+export const F_OUT_VORONOI_VERTS = ENGINE_FRAC_BASE + 29;
+export const F_EDGE_P1X = ENGINE_FRAC_BASE + 30;
+export const F_EDGE_P1Y = ENGINE_FRAC_BASE + 31;
+export const F_EDGE_P2X = ENGINE_FRAC_BASE + 32;
+export const F_EDGE_P2Y = ENGINE_FRAC_BASE + 33;
 export const F_SHATTER_SEEDS = ENGINE_FRAC_BASE + 34;
 export const G_WX = ENGINE_PHYS_BASE + 79;
 export const G_WY = ENGINE_PHYS_BASE + 80;

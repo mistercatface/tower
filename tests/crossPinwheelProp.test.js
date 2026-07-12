@@ -4,9 +4,9 @@ import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createKineticTestTick, kineticIntegrateHooks, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
-import { ENGINE_F32, kineticStaticSlab } from "../Core/engineMemory.js";
+import { ENGINE_F32, kineticStaticSlab, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { FractureEngine, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Libraries/Physics/fracture.js";
+import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 

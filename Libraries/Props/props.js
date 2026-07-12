@@ -1,5 +1,5 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { writeLivePolygon, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, kineticMassFromFootprint, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, CompoundPolygon } from "../Physics/physics.js";
+import { writeLivePolygon, releaseLivePolygon, resolveBodyRadius, CircleShape, markBroadphaseDirty, stampKineticBodyFromEntity, kineticMassFromFootprint, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, isKinematicallyActive, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityRollQw, entityRollQx, entityRollQy, entityRollQz } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, quantizeCardinalAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
@@ -139,7 +139,7 @@ export function initWorldPropShape(prop) {
             invalidatePropFootprintKey(prop);
             return;
         }
-        CompoundPolygon.applyFootprint(prop, template);
+        applyCompoundFootprint(prop, template);
         invalidatePropFootprintKey(prop);
         return;
     }

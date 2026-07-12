@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, CompoundPolygon } from "./physics.js";
-import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_U8, ENGINE_FRAC_BASE, F_SHATTER_SEEDS, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
+import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticMassFromFootprint, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList, markHitCompoundParts } from "./physics.js";
+import { kineticDynamicSlab, kineticDebrisSlab, pendingWallBreaks, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_POS_X, F_OUT_POS_Y, F_OUT_REMNANT, F_VEC_A, F_VEC_B, F_VEC_C, F_VEC_D, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveCellSurfaceProfileId, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -47,36 +47,6 @@ function copyDebrisPolygonGeometry(dst, src) {
 }
 const kineticDebrisFreePool = [];
 let kineticDebrisNextId = 0x50000000;
-export const F_OUT_CENTROID_X = ENGINE_FRAC_BASE;
-export const F_OUT_CENTROID_Y = ENGINE_FRAC_BASE + 1;
-export const F_OUT_AREA = ENGINE_FRAC_BASE + 2;
-export const F_OUT_RADIUS = ENGINE_FRAC_BASE + 3;
-export const F_OUT_CLOSEST_X = ENGINE_FRAC_BASE + 4;
-export const F_OUT_CLOSEST_Y = ENGINE_FRAC_BASE + 5;
-export const F_OUT_DEBRIS_START = ENGINE_FRAC_BASE + 6;
-export const F_OUT_DEBRIS_COUNT = ENGINE_FRAC_BASE + 7;
-export const F_OUT_MOTION_VX = ENGINE_FRAC_BASE + 8;
-export const F_OUT_MOTION_VY = ENGINE_FRAC_BASE + 9;
-export const F_OUT_MOTION_W = ENGINE_FRAC_BASE + 10;
-export const F_OUT_POS_X = ENGINE_FRAC_BASE + 11;
-export const F_OUT_POS_Y = ENGINE_FRAC_BASE + 12;
-export const F_OUT_REMNANT = ENGINE_FRAC_BASE + 13;
-export const F_VEC_A = ENGINE_FRAC_BASE + 14;
-export const F_VEC_B = ENGINE_FRAC_BASE + 16;
-export const F_VEC_C = ENGINE_FRAC_BASE + 18;
-export const F_VEC_D = ENGINE_FRAC_BASE + 20;
-export const F_OUT_ORIGIN_X = ENGINE_FRAC_BASE + 22;
-export const F_OUT_ORIGIN_Y = ENGINE_FRAC_BASE + 23;
-export const F_OUT_FACING = ENGINE_FRAC_BASE + 24;
-export const F_OUT_IMPACT_LOCAL_X = ENGINE_FRAC_BASE + 25;
-export const F_OUT_IMPACT_LOCAL_Y = ENGINE_FRAC_BASE + 26;
-export const F_OUT_IMPACT_FORCE = ENGINE_FRAC_BASE + 27;
-export const F_OUT_VORONOI_HANDLE = ENGINE_FRAC_BASE + 28;
-export const F_OUT_VORONOI_VERTS = ENGINE_FRAC_BASE + 29;
-export const F_EDGE_P1X = ENGINE_FRAC_BASE + 30;
-export const F_EDGE_P1Y = ENGINE_FRAC_BASE + 31;
-export const F_EDGE_P2X = ENGINE_FRAC_BASE + 32;
-export const F_EDGE_P2Y = ENGINE_FRAC_BASE + 33;
 const spawnedScratch = [];
 const voxelScratch = [];
 const admitScratch = [];
@@ -996,9 +966,9 @@ export class FractureEngine {
         const impactLocalY = -dx * sin + dy * cos;
         seedFractureRand(worldHitX, worldHitY, impactForce);
         ENGINE_F32[F_OUT_REMNANT] = 0;
-        const parts = CompoundPolygon.parts(prop);
+        const parts = collisionPartsList(prop);
         if (parts) {
-            const hitCount = CompoundPolygon.markHitParts(parts, impactLocalX, impactLocalY);
+            const hitCount = markHitCompoundParts(parts, impactLocalX, impactLocalY);
             if (hitCount === 0) return false;
             const batchStart = stores.debris.write;
             for (let i = 0; i < parts.length; i++)
@@ -1053,7 +1023,7 @@ export class FractureEngine {
     }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!effectiveFracture(prop)) return false;
-        const parts = CompoundPolygon.parts(prop);
+        const parts = collisionPartsList(prop);
         if (parts) {
             let maxSpan = 0;
             let refVerts = null;

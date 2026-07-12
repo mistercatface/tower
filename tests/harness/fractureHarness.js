@@ -1,6 +1,6 @@
-import { FractureEngine, moduleStores, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, seedFractureRand } from "../../Libraries/Physics/fracture.js";
+import { FractureEngine, moduleStores, seedFractureRand } from "../../Libraries/Physics/fracture.js";
 import { boxLocalFootprint } from "../../Libraries/Math/math.js";
-import { ENGINE_F32 } from "../../Core/engineMemory.js";
+import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE } from "../../Core/engineMemory.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
