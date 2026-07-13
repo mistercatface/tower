@@ -1,7 +1,7 @@
 import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, cellEdgeEndpointsIdx, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
-import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
+import { addWorldPropToState, removeWorldPropFromState, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32 } from "../Physics/physics.js";
 import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab, entityFlags, entityX, entityY, entityR, entityGameId, entityAlive, entityRenderKeyId } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
@@ -9,7 +9,7 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE, ENTITY_FLAG_KINETIC } from "../../Core/engineEnums.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE, ENTITY_FLAG_KINETIC, ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
@@ -130,6 +130,14 @@ function sandboxAssetTags(asset) {
 export function sandboxTagsMatchFilter(filter, tags) {
     if (filter === "all") return true;
     return tags.includes(filter);
+}
+function findLiveWorldProp(registry, pred) {
+    let found = null;
+    registry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
+        if (found || prop.isDead) return;
+        if (pred(prop)) found = prop;
+    });
+    return found;
 }
 function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
@@ -470,7 +478,7 @@ function serializePlacedProp(prop) {
 function collectFlatPlacedSandboxPropEntries(state) {
     const props = [];
     const propIdToIndex = new Map();
-    visitLiveWorldProps(state.entityRegistry, (prop) => {
+    state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
         propIdToIndex.set(prop.id, props.length);
         props.push(serializePlacedProp(prop));
     });
@@ -888,12 +896,10 @@ function expandGridForSnapshot(state, doc) {
 }
 function clearSandboxSceneContent(state) {
     const toRemove = [];
-    visitLiveWorldProps(state.entityRegistry, (prop) => {
+    state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
         toRemove.push(prop);
     });
-    for (let i = 0; i < toRemove.length; i++) {
-        removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
-    }
+    for (let i = 0; i < toRemove.length; i++) removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
     clearKineticConstraints(state.kinetic);
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
@@ -983,7 +989,7 @@ function createSandboxSession(state) {
     const listPlacedProps = () => {
         const counts = new Map();
         const placed = [];
-        visitLiveWorldProps(state.entityRegistry, (prop) => {
+        state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
             const typeLabel = formatPropTypeLabel(prop.type);
             const index = (counts.get(prop.type) ?? 0) + 1;
             counts.set(prop.type, index);
@@ -1047,7 +1053,7 @@ function createSandboxSession(state) {
     };
     const selectAllPropsWithTagFilter = (filter) => {
         const ids = [];
-        visitLiveWorldProps(state.entityRegistry, (prop) => {
+        state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
             if (!sandboxTagsMatchFilter(filter, sandboxAssetTags(propCatalog[prop.type]))) return;
             ids.push(prop.id);
         });
@@ -1414,12 +1420,10 @@ function createSandboxSession(state) {
         },
         clear() {
             const toRemove = [];
-            visitLiveWorldProps(state.entityRegistry, (prop) => {
+            state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
                 toRemove.push(prop);
             });
-            for (let i = 0; i < toRemove.length; i++) {
-                removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
-            }
+            for (let i = 0; i < toRemove.length; i++) removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
             state.obstacleGrid.clearAllFloorCells();
             selection.clearSelection();
             placement.resetPlacementOrder();

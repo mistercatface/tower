@@ -376,10 +376,6 @@ class KineticDebrisBody {
         }
         if (this._fractureCooldown > 0) this._fractureCooldown--;
     }
-    tickPropSubstep(dt) {
-        if (this.isSleeping) return;
-        applyVelocityDamping(this._physId, dt, primitiveDragFrictionEid(this._physId));
-    }
 }
 class KineticDebrisStore {
     constructor(engine, world) {

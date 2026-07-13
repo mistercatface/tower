@@ -116,36 +116,6 @@ export class EntityArena {
         entityGameId[eid] = -1;
         this._bumpMembership();
     }
-    clear(kind) {
-        if (kind === undefined || kind === null) {
-            if (this._liveCount === 0 && this._gameIdToEid.size === 0) return;
-            for (let i = 0; i < this._liveCount; i++) {
-                const eid = this._liveEids[i];
-                entityKind[eid] = ENTITY_KIND_NONE;
-                entityGameId[eid] = -1;
-            }
-            this._liveCount = 0;
-            this._gameIdToEid.clear();
-            this._bumpMembership();
-            return;
-        }
-        let removed = false;
-        let i = 0;
-        while (i < this._liveCount) {
-            const eid = this._liveEids[i];
-            if (entityKind[eid] !== kind) {
-                i++;
-                continue;
-            }
-            const gameId = entityGameId[eid];
-            if (gameId >= 0) this._gameIdToEid.delete(gameId);
-            this._liveEids[i] = this._liveEids[--this._liveCount];
-            entityKind[eid] = ENTITY_KIND_NONE;
-            entityGameId[eid] = -1;
-            removed = true;
-        }
-        if (removed) this._bumpMembership();
-    }
     get(id) {
         const eid = this._gameIdToEid.get(id);
         if (eid === undefined) return null;
@@ -296,20 +266,6 @@ export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta =
     pruneKineticConstraintsForBody(world.kinetic, prop.id);
     spatialFrame.evictKineticProp(prop, world.kinetic);
     prop.isDead = true;
-}
-export function visitLiveWorldProps(registry, visit) {
-    registry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
-        if (prop.isDead) return;
-        visit(prop);
-    });
-}
-export function findLiveWorldProp(registry, pred) {
-    let found = null;
-    registry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
-        if (found || prop.isDead) return;
-        if (pred(prop)) found = prop;
-    });
-    return found;
 }
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
     centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);

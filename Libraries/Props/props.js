@@ -1,9 +1,9 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { allocateEntityEid, bindEntitySlot, worldPropBindFlags } from "../../Core/entitySlots.js";
-import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid, computeFootprintIdFromSlab } from "../Physics/physics.js";
+import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, computeFootprintIdFromSlab } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, getProfileStr, entityFractureCooldown, entityCachedStaticKey, entityFootprintId, entityRenderKeyId } from "../../Core/engineMemory.js";
-import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_KIND_NONE } from "../../Core/engineEnums.js";
-import { ensureFlatVerts, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
+import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_KIND_NONE } from "../../Core/engineEnums.js";
+import { ensureFlatVerts, convexFootprintHalfExtents, vertCount, quantizeAngle, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
@@ -441,27 +441,6 @@ export class WorldProp {
         if (this._fractureCooldown > 0) this._fractureCooldown--;
         const asleep = this.isSleeping;
         if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
-    }
-    tickPropSubstep(dt) {
-        if (this.isSleeping) return;
-        const eid = this._physId;
-        if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) integratePropMotion(eid, dt);
-        else applyVelocityDamping(eid, dt, primitiveDragFrictionEid(eid));
-        if ((entityFlags[eid] & ENTITY_FLAG_ORIENT_TO_MOTION) !== 0) {
-            const vx = entityVx[eid];
-            const vy = entityVy[eid];
-            const speed = Math.hypot(vx, vy);
-            if (speed > 0.1) {
-                const moveAngle = Math.atan2(vy, vx);
-                const turnRadPerSec = Math.PI * 1.5;
-                const maxStep = turnRadPerSec * (dt / 1000);
-                entityFacing[eid] = rotateAngleTowards(entityFacing[eid], moveAngle, maxStep);
-            }
-        }
-    }
-    update(dt, state, spatialFrame) {
-        this.tickPropFrame(dt, state, spatialFrame);
-        this.tickPropSubstep(dt);
     }
 }
 export function registerPropDrawRecipe(asset) {

@@ -8,9 +8,8 @@ import { initProfileEditor, buildProfileFromEditor } from "./profile/ProfileEdit
 import { drawLabFrame, pushEditorProfile, repaintUntilBakesDone, applyLabWorldRenderMode, mountLabFrameRefresh, mountLabDrawOptions, isLabPathDebugActive, getLabPathDebugMode, setLabPathDebugMode } from "./preview.js";
 import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./toolbar.js";
 import { dragInteractionModeLabel, toggleDragInteractionMode } from "../../../Libraries/Sandbox/dragBehaviors.js";
-import { EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA } from "../../../Core/engineEnums.js";
+import { EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, ENTITY_KIND_WORLD_PROP } from "../../../Core/engineEnums.js";
 import { ENGINE_F32, N_OUT_XY } from "../../../Core/engineMemory.js";
-import { findLiveWorldProp } from "../../../GameState/EntityRegistry.js";
 function syncDragInteractionModeUi(state) {
     const btn = document.getElementById("dragInteractionModeBtn");
     if (btn) btn.textContent = dragInteractionModeLabel(state.sandbox.dragInteractionMode);
@@ -256,7 +255,11 @@ export function refreshEditorUi(state) {
 }
 export function setEditorNavMode(state, mode) {
     state.editor.navMode = mode;
-    const boid = findLiveWorldProp(state.entityRegistry, (p) => p.type === "boid_triangle");
+    let boid = null;
+    state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (p) => {
+        if (boid || p.isDead) return;
+        if (p.type === "boid_triangle") boid = p;
+    });
     if (!boid) return;
     const entityMeta = state.sandbox.entityMeta;
     const currentBehaviorId = entityMeta.getActiveBehaviorId(boid.id);

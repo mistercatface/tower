@@ -11,7 +11,7 @@ import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { EntityRegistry, visitLiveWorldProps } from "../GameState/EntityRegistry.js";
+import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { FractureEngine, FRACTURE_TUNING } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { WallCollisionResolver, createKineticSession, runKineticPhysics } from "../Libraries/Physics/physics.js";
@@ -22,7 +22,7 @@ import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wall
 import { collectVoxelWallFacesInAabbFlatF32 } from "../Libraries/World/wallGridBake.js";
 import { VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridStride.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
-import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL } from "../Core/engineEnums.js";
+import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 function stampWallHitSource(eid, vx, vy, mass = 1) {
     entityVx[eid] = vx;
@@ -31,7 +31,8 @@ function stampWallHitSource(eid, vx, vy, mass = 1) {
 }
 function hasLiveWallChunkProp(registry) {
     let found = false;
-    visitLiveWorldProps(registry, (p) => {
+    registry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (p) => {
+        if (p.isDead) return;
         if (p.type === "wall_voxel_chunk" || p.type === "wall_rail_chunk") found = true;
     });
     return found;

@@ -4,6 +4,7 @@ import { createFractureWorld } from "./harness/fractureHarness.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { entityVx, entityVy, entityW, entityFacing, entityX, entityY } from "../Core/engineMemory.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
+import { applyVelocityDamping, primitiveDragFrictionEid } from "../Libraries/Physics/physics.js";
 
 describe("kinetic debris damping", () => {
     it("pose accessors read and write entity columns when _physId is set", () => {
@@ -29,14 +30,15 @@ describe("kinetic debris damping", () => {
         assert.equal(body.y, 88);
     });
 
-    it("tickPropSubstep damping clears velocity on entity columns", () => {
+    it("applyVelocityDamping clears debris velocity on entity columns", () => {
         const world = createFractureWorld();
         const body = world.fractureEngine.debris.acquireBody("box", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 8);
         assignPhysIdWithPose(body, 0);
         body.vx = 200;
         body.vy = 200;
-        for (let i = 0; i < 120; i++) body.tickPropSubstep(16);
+        const eid = body._physId;
+        for (let i = 0; i < 120; i++) applyVelocityDamping(eid, 16, primitiveDragFrictionEid(eid));
         assert.equal(body.vx, 0);
         assert.equal(body.vy, 0);
         assert.equal(entityVx[0], 0);

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
 import {createKineticTestTick, kineticPhysicsHooks, mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
-import { runKineticPhysics, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
+import { runKineticPhysics, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint, applyVelocityDamping, primitiveDragFrictionEid } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, kineticStaticSlab, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
@@ -109,7 +109,8 @@ describe("cross pinwheel prop", () => {
         const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
         assignPhysIdWithPose(pinwheel, 0);
         pinwheel.angularVelocity = 5;
-        for (let i = 0; i < 120; i++) pinwheel.tickPropSubstep(16);
+        const eid = pinwheel._physId;
+        for (let i = 0; i < 120; i++) applyVelocityDamping(eid, 16, primitiveDragFrictionEid(eid));
         assert.ok(Math.abs(pinwheel.angularVelocity) < 0.1, `spin should decay, got ${pinwheel.angularVelocity}`);
         assert.equal(pinwheel.vx, 0);
         assert.equal(pinwheel.vy, 0);
