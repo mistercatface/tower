@@ -296,7 +296,7 @@ export function normalizeKineticBody(body) {
     slab.invMass[physId] = 1 / mass;
     const moment = kineticInertiaFromBody(body);
     slab.invI[physId] = moment > 0 ? 1 / moment : 0;
-    slab.entityId[physId] = body.id ?? -1;
+    slab.entityId[physId] = body.id;
     slab.restitution[physId] = table.wallRestitution[row];
     slab.friction[physId] = table.wallFriction[row];
     if (kineticDynamicSlab.partGeomOffset[physId] < 0) {
@@ -1017,7 +1017,7 @@ function writePolygonIntoPreInsert(body, src, floatCount) {
     return off;
 }
 export function releaseLivePolygon(body) {
-    if (body._physId !== undefined) releaseShapeGeom(body._physId);
+    releaseShapeGeom(body._physId);
     releasePreInsertGeom(body);
     const shape = body.shape;
     if (shape && shape._liveBound === 1) {
@@ -2601,7 +2601,6 @@ export function getKineticConstraintsVersion(session) {
 }
 function allocConstraintRow(session, type, eidA, eidB) {
     const store = kineticConstraintStore;
-    if (store.count >= MAX_KINETIC_CONSTRAINTS) throw new Error("kinetic constraint store capacity exceeded");
     const row = store.count++;
     store.id[row] = session.nextConstraintId++;
     store.type[row] = type;
@@ -2698,13 +2697,15 @@ export function applyKineticConstraintsFromSnapshot(session, entries, eidByIndex
         let row;
         if (type === CONSTRAINT_TYPE_ANGLE) row = addAngleConstraint(session, eidA, eidB, entry.referenceAngle);
         else {
-            const anchorAx = entry.anchorAx ?? entry.anchorA?.x ?? 0;
-            const anchorAy = entry.anchorAy ?? entry.anchorA?.y ?? 0;
-            const anchorBx = entry.anchorBx ?? entry.anchorB?.x ?? 0;
-            const anchorBy = entry.anchorBy ?? entry.anchorB?.y ?? 0;
-            row = addDistanceConstraint(session, eidA, eidB, { restLength: entry.restLength, anchorAx, anchorAy, anchorBx, anchorBy });
+            row = addDistanceConstraint(session, eidA, eidB, {
+                restLength: entry.restLength,
+                anchorAx: entry.anchorAx,
+                anchorAy: entry.anchorAy,
+                anchorBx: entry.anchorBx,
+                anchorBy: entry.anchorBy,
+            });
         }
-        kineticConstraintStore.accumulatedImpulse[row] = entry.accumulatedImpulse || 0;
+        kineticConstraintStore.accumulatedImpulse[row] = entry.accumulatedImpulse;
     }
 }
 export function getKineticTopologyGeneration(session) {
@@ -3531,11 +3532,9 @@ export function maxActiveKineticSpeedSq() {
     return max;
 }
 function clearBodyIslandFields(physId) {
-    if (physId !== undefined && physId !== -1) {
-        kineticDynamicSlab.linkNeighborOffset[physId] = 0;
-        kineticDynamicSlab.linkNeighborCount[physId] = 0;
-        kineticDynamicSlab.islandRoot[physId] = -1;
-    }
+    kineticDynamicSlab.linkNeighborOffset[physId] = 0;
+    kineticDynamicSlab.linkNeighborCount[physId] = 0;
+    kineticDynamicSlab.islandRoot[physId] = -1;
 }
 function ensureLinkNeighborArena(needed) {
     ensureGrowI32(kineticDynamicSlab, "linkNeighborEids", needed, kineticDynamicSlab.linkNeighborEidsUsed);

@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFrictionEid, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
-import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -228,7 +228,6 @@ class FractureDebrisStore {
         this.write = 0;
     }
     appendCenteredPolygon(handle, vertCount, worldCentroidX = 0, worldCentroidY = 0) {
-        if (this.write >= MAX_FRACTURE_DEBRIS) throw new Error("FractureDebrisStore capacity exceeded");
         this.geomPool.centerVertsInPlace(handle, vertCount);
         const i = this.write++;
         this.vertHandle[i] = handle;
@@ -384,7 +383,7 @@ class KineticDebrisBody {
     }
     get _sleepFrames() {
         const eid = this._physId;
-        return eid !== undefined ? kineticDynamicSlab.sleepFrames[eid] : (this._spawnSleepFrames ?? 0);
+        return eid !== undefined ? kineticDynamicSlab.sleepFrames[eid] : this._spawnSleepFrames;
     }
     set _sleepFrames(v) {
         const eid = this._physId;
@@ -448,7 +447,6 @@ class KineticDebrisStore {
     acquireBody(type, x, y, facing = 0) {
         let body = kineticDebrisFreePool.pop();
         if (!body) {
-            if (kineticDebrisAllocCount >= MAX_KINETIC_DEBRIS) throw new Error(`Kinetic debris capacity exceeded (${MAX_KINETIC_DEBRIS})`);
             kineticDebrisAllocCount++;
             body = new KineticDebrisBody(this);
         }
@@ -480,10 +478,8 @@ class KineticDebrisStore {
         return body;
     }
     remove(body, spatialFrame) {
-        if (!body.isKineticDebris) throw new Error("Invalid kinetic debris removal");
-        if (body._physId !== undefined) spatialFrame.evictKineticProp(body, this.world.kinetic);
+        spatialFrame.evictKineticProp(body, this.world.kinetic);
         const index = body._listIndex;
-        if (index < 0 || index >= this._bodies.length || this._bodies[index] !== body) throw new Error("Kinetic debris body missing from store");
         const last = this._bodies.pop();
         if (last !== body) {
             this._bodies[index] = last;
@@ -644,17 +640,13 @@ class KineticDebrisStore {
         const vy = viewport.y;
         for (let i = 0; i < this._bodies.length; i++) {
             const body = this._bodies[i];
-            if (body.isDead) throw new Error("Invalid live kinetic debris body");
             const radius = body.radius;
-            if (!(radius > 0)) throw new Error("Kinetic debris missing radius");
             const x = body.x;
             const y = body.y;
             if (x + radius < minX || x - radius > maxX || y + radius < minY || y - radius > maxY) continue;
             const dx = x - vx;
             const dy = y - vy;
-            const eid = body._physId;
-            if (eid === undefined) throw new Error("Kinetic debris missing _physId");
-            drawQueue.push(drawKindProp, 0, eid, dx * dx + dy * dy);
+            drawQueue.push(drawKindProp, 0, body._physId, dx * dx + dy * dy);
         }
     }
     integrateSpawned(spatialFrame, bodies, dtMs) {
@@ -743,7 +735,6 @@ export function queueWallHits(wallDamage, grid, hits, preSpeed, eid) {
         if (strength < config.minBreakStrength) continue;
         const key = packWallDamageKey(kind, sWallIdx, sWallSide, grid);
         if (pendingBreakRowForKey(key) >= 0) continue;
-        if (pending.count >= MAX_PENDING_WALL_BREAKS) throw new Error("pending wall breaks capacity exceeded");
         const row = pending.count++;
         insertPendingBreakKey(key, row);
         pending.kind[row] = kind;
@@ -865,9 +856,8 @@ export class FractureEngine {
         for (let i = 0; i < contacts.count; i++) {
             const physIdA = contacts.physIdA[i];
             const physIdB = contacts.physIdB[i];
-            const bodyA = entityRefs[physIdA]?._physId === physIdA ? entityRefs[physIdA] : null;
-            const bodyB = entityRefs[physIdB]?._physId === physIdB ? entityRefs[physIdB] : null;
-            if (!bodyA || !bodyB) continue;
+            const bodyA = entityRefs[physIdA];
+            const bodyB = entityRefs[physIdB];
             const nx = contacts.dynamic.nx[i];
             const ny = contacts.dynamic.ny[i];
             let hitX;
@@ -880,7 +870,7 @@ export class FractureEngine {
                 hitY = slab.y[physIdA] + contacts.dynamic.ray[i];
             }
             const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
-            const force = FractureEngine.impactForceFromContact(relSpeed, kineticStaticSlab.mass[bodyA._physId], kineticStaticSlab.mass[bodyB._physId]);
+            const force = FractureEngine.impactForceFromContact(relSpeed, kineticStaticSlab.mass[physIdA], kineticStaticSlab.mass[physIdB]);
             this.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx, ny);
         }
         this.flushDeferredFractures(tick.world, tick.frame);
@@ -917,7 +907,6 @@ export class FractureEngine {
         let bestArea = Infinity;
         for (let i = 0; i < 2; i++) {
             const prop = i === 0 ? bodyA : bodyB;
-            if (prop._physId === undefined) continue;
             const fractureConfig = effectiveFracture(prop);
             if (!fractureConfig) continue;
             if (!FractureEngine.canFracturePropSplit(prop)) continue;
@@ -941,7 +930,6 @@ export class FractureEngine {
     enqueueDeferredFracture(prop) {
         const deferred = deferredFractureSlab;
         const count = deferred.count;
-        if (count >= MAX_DEFERRED_FRACTURES) throw new Error(`deferredFractureSlab capacity exceeded (${MAX_DEFERRED_FRACTURES})`);
         deferred.propRef[count] = prop;
         deferred.debrisStart[count] = ENGINE_F32[F_OUT_DEBRIS_START];
         deferred.debrisCount[count] = ENGINE_F32[F_OUT_DEBRIS_COUNT];
@@ -978,9 +966,8 @@ export class FractureEngine {
         if (deferredFractureSlab.count === 0) stores.debris.reset();
         if (!effectiveFracture(prop)) return false;
         if (!FractureEngine.canFracturePropSplit(prop)) return false;
-        const physId = prop._physId;
-        const originX = physId !== undefined ? kineticDynamicSlab.x[physId] : prop.x;
-        const originY = physId !== undefined ? kineticDynamicSlab.y[physId] : prop.y;
+        const originX = prop.x;
+        const originY = prop.y;
         const dx = worldHitX - originX;
         const dy = worldHitY - originY;
         const facing = prop.facing;
@@ -1234,13 +1221,6 @@ export class FractureEngine {
         return kineticFootprintArea(prop);
     }
     static _currentPropMotion(prop) {
-        const physId = prop._physId;
-        if (physId !== undefined) {
-            ENGINE_F32[F_OUT_MOTION_VX] = kineticDynamicSlab.vx[physId];
-            ENGINE_F32[F_OUT_MOTION_VY] = kineticDynamicSlab.vy[physId];
-            ENGINE_F32[F_OUT_MOTION_W] = kineticDynamicSlab.w[physId];
-            return;
-        }
         ENGINE_F32[F_OUT_MOTION_VX] = prop.vx;
         ENGINE_F32[F_OUT_MOTION_VY] = prop.vy;
         ENGINE_F32[F_OUT_MOTION_W] = prop.angularVelocity;

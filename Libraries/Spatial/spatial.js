@@ -3064,7 +3064,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         for (let i = 0; i < worldProps.length; i++) {
             const prop = worldProps[i];
             const needBind = prop._physId === undefined || !entityAlive[prop._physId] || entityRefs[prop._physId] !== prop;
-            const physId = prop._physId ?? allocateEntityEid();
+            let physId = prop._physId;
+            if (physId === undefined) physId = allocateEntityEid();
             if (needBind) {
                 invalidateKineticShapeGeom(physId);
                 prop._physId = physId;
@@ -3086,7 +3087,8 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const body = debrisBodies[i];
             if (body.isDead) continue;
             const needBind = body._physId === undefined || !entityAlive[body._physId] || entityRefs[body._physId] !== body;
-            const physId = body._physId ?? allocateEntityEid();
+            let physId = body._physId;
+            if (physId === undefined) physId = allocateEntityEid();
             if (needBind) {
                 invalidateKineticShapeGeom(physId);
                 body._physId = physId;
@@ -3116,7 +3118,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         let anyAdmitted = false;
         for (let i = 0; i < props.length; i++) {
             const prop = props[i];
-            if (!prop) continue;
             const isNew = prop._physId === undefined;
             if (isNew) {
                 const x = prop.x;
@@ -3153,7 +3154,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         }
     }
     _ensureActive(eid) {
-        if (eid === undefined || eid === -1) return;
         if (!entityAlive[eid] || (entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return;
         if (kineticDynamicSlab.activeSlot[eid] >= 0) return;
         appendActiveKineticBodySlabPhysId(eid);
@@ -3172,12 +3172,10 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         slab.activeSlot[eid] = -1;
     }
     scheduleKineticActivation(eid) {
-        if (eid === undefined || eid === -1) return;
         wakeKineticBody(eid);
         this._activationScheduled.add(eid);
     }
     _wakeConstraintLinkedPeers(eid, patchOut) {
-        if (eid === undefined || eid === -1) return;
         const count = kineticDynamicSlab.linkNeighborCount[eid];
         if (count === 0) return;
         const offset = kineticDynamicSlab.linkNeighborOffset[eid];
@@ -3202,7 +3200,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         scheduled.clear();
     }
     activateKineticBody(eid) {
-        if (eid === undefined || eid === -1) return;
         if (kineticDynamicSlab.sleeping[eid]) wakeKineticBody(eid);
         this._ensureActive(eid);
         this._wakeConstraintLinkedPeers(eid);
@@ -3231,7 +3228,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         invalidateWallCandidateBucketFrame(this._wallBuckets);
     }
     evictKineticProp(prop, session) {
-        if (!prop || prop._physId === undefined) return;
         const physId = prop._physId;
         const x = kineticDynamicSlab.x[physId];
         const y = kineticDynamicSlab.y[physId];

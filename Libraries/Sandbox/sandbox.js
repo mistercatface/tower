@@ -899,7 +899,6 @@ function clearSandboxSceneContent(state) {
 }
 function spawnSnapshotProp(state, entry) {
     const asset = propCatalog[entry.type];
-    if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
     const prop = new WorldProp(entry.x, entry.y, entry.type, entry.facing ?? 0);
@@ -921,11 +920,8 @@ function spawnSnapshotProps(state, doc) {
             eidByIndex[i] = spawned.eid;
         }
     }
-    if (doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, eidByIndex);
-    if (doc.chainHeadProp != null) {
-        const headProp = propRefs[doc.chainHeadProp];
-        if (headProp) setChainHead(state, state.sandbox.entityMeta, headProp.id);
-    }
+    if (doc.kineticConstraints) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, eidByIndex);
+    if (doc.chainHeadProp != null) setChainHead(state, state.sandbox.entityMeta, propRefs[doc.chainHeadProp].id);
 }
 async function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {}) {
     if (mode !== "replace") throw new Error("Only replace mode is supported");
@@ -1520,13 +1516,9 @@ function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
 function addChainLink(state, eidA, eidB, linkSlack = 1, restLengthOverride = null) {
     const fromPropId = entityGameId[eidA];
     const toPropId = entityGameId[eidB];
-    const bodyA = state.entityRegistry.getRef(eidA);
-    const bodyB = state.entityRegistry.getRef(eidB);
-    if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
-    if (findDistanceConstraintBetween(state, fromPropId, toPropId) >= 0) return true;
+    if (findDistanceConstraintBetween(state, fromPropId, toPropId) >= 0) return;
     const restLength = restLengthOverride != null ? restLengthOverride : (entityR[eidA] + entityR[eidB]) * linkSlack;
     addDistanceConstraint(state.kinetic, eidA, eidB, { restLength });
-    return true;
 }
 function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
     return (bodyA.radius + bodyB.radius) * linkSlack;

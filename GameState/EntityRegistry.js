@@ -115,14 +115,8 @@ export class EntityArena {
         return eid;
     }
     unregister(refOrId) {
-        let id;
-        if (typeof refOrId === "object" && refOrId != null) id = refOrId.id;
-        else id = refOrId;
-        if (id == null) return;
+        const id = typeof refOrId === "object" ? refOrId.id : refOrId;
         const eid = this._gameIdToEid.get(id);
-        if (eid === undefined) return;
-        const ref = entityRefs[eid];
-        if (typeof refOrId === "object" && refOrId != null && ref !== refOrId) return;
         this._gameIdToEid.delete(id);
         this._removeLiveEid(eid);
         entityKind[eid] = ENTITY_KIND_NONE;
@@ -311,7 +305,6 @@ export function addWorldPropsToState(world, props) {
     }
 }
 export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta = null) {
-    if (!spatialFrame) throw new Error("spatialFrame must be provided to removeWorldPropFromState");
     const index = world.worldProps.indexOf(prop);
     if (index >= 0) world.worldProps.splice(index, 1);
     world.entityRegistry.unregister(prop);
