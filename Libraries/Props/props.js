@@ -279,7 +279,6 @@ export class WorldProp {
         this.wallChunkHeightPx = undefined;
         stampSurfaceProfileFields(this, asset);
         initWorldPropShape(this);
-        normalizeKineticBody(this);
         delete this._physId;
     }
     get isDead() {

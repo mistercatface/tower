@@ -260,14 +260,11 @@ export function primitiveDragFrictionEid(eid) {
 }
 export function kineticMassFromFootprint(body) {
     const minMass = collisionSettings.material.minMass;
-    const eid = body._physId;
-    const row = eid !== undefined && eid !== -1 ? kineticStaticSlab.physicsRow[eid] : body.strategy.physicsRow;
-    const density = primitivePhysics.density[row];
+    const density = primitivePhysics.density[body.strategy.physicsRow];
     return Math.max(minMass, density * kineticFootprintArea(body));
 }
 export function kineticInertiaFromBody(body) {
-    const physId = body._physId;
-    const m = physId !== undefined && physId !== -1 ? kineticStaticSlab.mass[physId] : kineticMassFromFootprint(body);
+    const m = kineticMassFromFootprint(body);
     const parts = collisionPartsList(body);
     if (parts) return m * compoundInertiaFactor(parts);
     const shape = body.shape;
@@ -281,12 +278,8 @@ export function kineticInertiaFromBody(body) {
 }
 export function normalizeKineticBody(body) {
     const strategy = body.strategy;
-    if (!strategy || strategy.isKinetic !== true) throw new Error("normalizeKineticBody requires a kinetic body");
-    if (body.vx === undefined) body.vx = 0;
-    if (body.vy === undefined) body.vy = 0;
-    if (body.angularVelocity === undefined) body.angularVelocity = 0;
     const physId = body._physId;
-    if (physId === undefined || physId === -1) return body;
+    if (physId === undefined) return body;
     const slab = kineticStaticSlab;
     const row = strategy.physicsRow;
     slab.physicsRow[physId] = row;
@@ -1017,8 +1010,6 @@ function writePolygonIntoPreInsert(body, src, floatCount) {
     return off;
 }
 export function releaseLivePolygon(body) {
-    const physId = body._physId;
-    if (physId !== undefined) releaseShapeGeom(physId);
     releasePreInsertGeom(body);
     const shape = body.shape;
     if (shape && shape._liveBound === 1) {
@@ -1753,7 +1744,7 @@ function kineticOverlapsWallCandidates(eid, candidates) {
     return false;
 }
 export function shouldResolveKineticBodyAgainstWalls(eid, candidates) {
-    if (eid === undefined || eid === -1 || (entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return false;
+    if ((entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) return false;
     if (isKinematicallyActiveSlab(eid)) return true;
     return kineticOverlapsWallCandidates(eid, candidates);
 }
@@ -3565,7 +3556,6 @@ function bakeKineticIslandPlan(session, eids, count = eids.length) {
     const constraints = kineticConstraintStore;
     for (let i = 0; i < count; i++) {
         const physId = eids[i];
-        if (physId === undefined || physId === -1) continue;
         islandBakeDegree[physId] = 0;
         islandBakeVisited[physId] = 0;
         clearBodyIslandFields(physId);
@@ -3582,7 +3572,6 @@ function bakeKineticIslandPlan(session, eids, count = eids.length) {
     let used = 0;
     for (let i = 0; i < count; i++) {
         const physId = eids[i];
-        if (physId === undefined || physId === -1) continue;
         const degree = islandBakeDegree[physId];
         slab.linkNeighborOffset[physId] = used;
         slab.linkNeighborCount[physId] = 0;
@@ -3600,14 +3589,12 @@ function bakeKineticIslandPlan(session, eids, count = eids.length) {
     }
     for (let i = 0; i < count; i++) {
         const physId = eids[i];
-        if (physId === undefined || physId === -1) continue;
         const degree = islandBakeDegree[physId];
         slab.linkNeighborCount[physId] = degree;
         sortLinkNeighborSlice(slab.linkNeighborOffset[physId], degree);
     }
     for (let i = 0; i < count; i++) {
         const startPhys = eids[i];
-        if (startPhys === undefined || startPhys === -1) continue;
         if (islandBakeVisited[startPhys]) continue;
         let stackSize = 0;
         islandBakeStack[stackSize++] = startPhys;

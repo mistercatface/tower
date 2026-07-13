@@ -108,9 +108,7 @@ class FractureGeomPool {
         return handle;
     }
     release(handle) {
-        if (!handle) return;
         const buffer = this.buffers[handle];
-        if (!buffer) return;
         this.buckets[this.bucketOf[handle]].push(buffer);
         this.buffers[handle] = null;
         this.freeHandles.push(handle);
@@ -474,12 +472,10 @@ class KineticDebrisStore {
         body._spawnVy = 0;
         body._spawnW = 0;
         body._spawnFacing = facing;
-        normalizeKineticBody(body);
         return body;
     }
     remove(body, spatialFrame) {
-        const physId = body._physId;
-        if (physId !== undefined) spatialFrame.evictKineticProp(body, this.world.kinetic);
+        spatialFrame.evictKineticProp(body, this.world.kinetic);
         const index = body._listIndex;
         const last = this._bodies.pop();
         if (last !== body) {
