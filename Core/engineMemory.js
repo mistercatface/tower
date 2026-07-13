@@ -1,5 +1,5 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
-import { GRID_NAV_EPOCH_COUNT, FACTION_NONE } from "./engineEnums.js";
+import { GRID_NAV_EPOCH_COUNT } from "./engineEnums.js";
 // --- Shared scratch buffers ---
 /** Shared Float32 scratch.
  * Banks: Math 0–63, Phys 64–191, Frac 192–255, Spatial 256–319, Nav 320–399, Bounds 400–419, Render 420–575, Compound 576–831.
@@ -279,13 +279,10 @@ export const entityRefs = new Array(MAX_ENTITIES);
 // New ECS component SoA columns
 export const entityHeight = new Float32Array(MAX_ENTITIES);
 export const entityAlpha = new Float32Array(MAX_ENTITIES);
-export const entityFaction = new Uint8Array(MAX_ENTITIES);
 export const entityShapeKind = new Uint8Array(MAX_ENTITIES);
 export const entityWallProfileId = new Uint8Array(MAX_ENTITIES);
 export const entityWallHeightPx = new Float32Array(MAX_ENTITIES);
-export const entityZIndex = new Uint8Array(MAX_ENTITIES);
 export const entityFractureCooldown = new Uint16Array(MAX_ENTITIES);
-export const entityStateTimer = new Uint32Array(MAX_ENTITIES);
 export const entityStaticKeyFacing = new Float32Array(MAX_ENTITIES);
 export const entityStaticKeyAttachment = new Int32Array(MAX_ENTITIES);
 export const entityStaticKeyPhysicsKey = new Int32Array(MAX_ENTITIES);
@@ -295,17 +292,6 @@ export const entityCachedStaticKey = new BigUint64Array(MAX_ENTITIES);
 export const entityWallChunkTextureReady = new Uint8Array(MAX_ENTITIES);
 export const entityFootprintId = new Int32Array(MAX_ENTITIES);
 entityAlpha.fill(1.0);
-entityZIndex.fill(10);
-const FACTION_IDS = ["alpha", "bravo", "charlie", "delta", "echo"];
-export function getFactionId(factionStr) {
-    if (!factionStr) return FACTION_NONE;
-    const idx = FACTION_IDS.indexOf(factionStr);
-    return idx !== -1 ? idx + 1 : FACTION_NONE;
-}
-export function getFactionStr(factionId) {
-    if (factionId > FACTION_NONE && factionId <= FACTION_IDS.length) return FACTION_IDS[factionId - 1];
-    return undefined;
-}
 const PROFILE_IDS = ["", "shatteredCircuitry", "tomatoGarden", "poolTableFelt", "toxicSludge"];
 export function getProfileId(profileStr) {
     if (!profileStr) return 0;

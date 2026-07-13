@@ -6,7 +6,7 @@ import { kineticConstraintStore } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 import { spawnLinkedBallChain, growChainSegment } from "./harness/spawnAgentChainHarness.js";
 
-const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1, faction: "alpha" };
+const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1 };
 
 describe("spawnLinkedBallChain", () => {
     it("spawns a linked ball chain with one head and distance links", () => {

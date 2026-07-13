@@ -8,7 +8,7 @@ import { createFractureWorld, removeEditorPropFromWorld, setupPropForFracture, s
 describe("fracture debris slab ownership", () => {
     it("editor spawn and delete does not feed debris slab pool", () => {
         const world = createFractureWorld();
-        const prop = spawnPlacedSandboxProp(world, 0, 0, "box", null, 0);
+        const prop = spawnPlacedSandboxProp(world, 0, 0, "box", 0);
         const editorId = prop.id;
         removeEditorPropFromWorld(world, prop);
         const pane = new WorldProp(0, 0, "box", 0);

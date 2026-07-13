@@ -13,7 +13,7 @@ function createEditorTestState() {
 }
 
 function spawnBall(state, x = 64, y = 64) {
-    const prop = spawnPlacedSandboxProp(state, x, y, "ball", "alpha");
+    const prop = spawnPlacedSandboxProp(state, x, y, "ball");
     setCirclePropRadius(prop, 5);
     return prop;
 }

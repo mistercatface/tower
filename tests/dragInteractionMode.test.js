@@ -22,7 +22,7 @@ describe("drag interaction mode", () => {
 
     it("pointer flow flings on launch mode and not on grab mode", () => {
         const state = createSandboxDragTestState();
-        const prop = spawnPlacedSandboxProp(state, 64, 64, "ball", "alpha");
+        const prop = spawnPlacedSandboxProp(state, 64, 64, "ball");
         const { controller, eventListeners } = createSandboxDragTestController(state);
         const pointerEvent = (type, clientX, clientY) => {
             const payload = { button: 0, clientX, clientY, pointerId: 1, detail: 1, preventDefault() {}, stopPropagation() {} };
@@ -50,7 +50,7 @@ describe("drag interaction mode", () => {
     it("controller setDragInteractionMode switches resolved pointer behavior for ball", () => {
         const state = createSandboxDragTestState();
         const { controller, behaviorById } = createSandboxDragTestController(state);
-        const prop = spawnPlacedSandboxProp(state, 64, 64, "ball", "alpha");
+        const prop = spawnPlacedSandboxProp(state, 64, 64, "ball");
         controller.session.select({ kind: "prop", ids: [prop.id] });
 
         controller.setDragInteractionMode(SANDBOX_BEHAVIOR_DRAG_LAUNCH);
@@ -68,7 +68,7 @@ describe("drag interaction mode", () => {
     it("boid grab mode uses grab drag through pointer flow", () => {
         const state = createSandboxDragTestState();
         state.editor.lockSelection = true;
-        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "alpha");
+        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle");
         const { controller, eventListeners } = createSandboxDragTestController(state);
         controller.session.select({ kind: "prop", ids: [prop.id] });
         controller.setDragInteractionMode(SANDBOX_BEHAVIOR_GRAB_DRAG);
@@ -90,7 +90,7 @@ describe("drag interaction mode", () => {
         const state = createSandboxDragTestState();
         state.editor.lockSelection = true;
         state.editor.navMode = EDITOR_NAV_MODE_HPA;
-        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "alpha");
+        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle");
         const cellIdx = state.obstacleGrid.worldToIdx(100, 100);
         state.obstacleGrid.writeFloorCell(cellIdx, state.obstacleGrid.grid[cellIdx]);
         const { controller, behaviorById, eventListeners } = createSandboxDragTestController(state);
@@ -115,7 +115,7 @@ describe("drag interaction mode", () => {
 
     it("boid launch mode double-tap starts HPA and drag clears nav", () => {
         const state = createSandboxDragTestState();
-        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle", "alpha");
+        const prop = spawnPlacedSandboxProp(state, 64, 64, "boid_triangle");
         const cellIdx = worldIdxAtCell(state.obstacleGrid, 22, 22);
         state.obstacleGrid.writeFloorCell(cellIdx, BeltPacked.defaultForSpawn("floor_belt"));
         const { controller, behaviorById, eventListeners } = createSandboxDragTestController(state);

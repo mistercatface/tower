@@ -30,7 +30,6 @@ function spawnAgentChain(state, anchorIdx, spec) {
         leaderPropId,
         leaderIndex = 0,
         segmentCount = 2,
-        faction,
         exportType = null,
         linkSlack = 1.0,
         segmentRadius = null,
@@ -44,12 +43,12 @@ function spawnAgentChain(state, anchorIdx, spec) {
     const anchorY = grid.gridCenterYByIdx(anchorIdx);
     const props = [];
     const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId };
-    const firstProp = spawnPlacedSandboxProp(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec), faction);
+    const firstProp = spawnPlacedSandboxProp(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec));
     if (segmentRadius != null) setCirclePropRadius(firstProp, segmentRadius);
     props.push(firstProp);
     let lastProp = firstProp;
     for (let i = 1; i < segmentCount; i++) {
-        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec), faction);
+        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec));
         if (segmentRadius != null) setCirclePropRadius(bodyProp, segmentRadius);
         const dist = spacing ?? chainLinkRestLength(lastProp, bodyProp, linkSlack);
         bodyProp.x = lastProp.x + growDirX * dist;
@@ -85,7 +84,6 @@ export function spawnLinkedBallChain(state, anchorIdx, options) {
         headPropId,
         bodyPropId: options.ballType,
         segmentCount: options.segmentCount,
-        faction: options.faction,
         exportType: options.exportType,
         linkSlack: options.linkSlack,
         segmentRadius: options.segmentRadius,
@@ -101,12 +99,11 @@ export function growChainSegment(state, tailProp, options) {
     const ballType = options.ballType;
     const growDirX = options.growDirX ?? -1;
     const growDirY = options.growDirY ?? 0;
-    const faction = options.faction ?? tailProp.faction;
     const exportType = options.exportType ?? null;
     const spawnGroupId = options.spawnGroupId ?? tailProp.spawnGroupId;
     const linkSlack = options.linkSlack ?? 1;
     const segmentRadius = options.segmentRadius ?? null;
-    const segment = spawnPlacedSandboxProp(state, tailProp.x + spacing * growDirX, tailProp.y + spacing * growDirY, ballType, faction);
+    const segment = spawnPlacedSandboxProp(state, tailProp.x + spacing * growDirX, tailProp.y + spacing * growDirY, ballType);
     if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
     if (spawnGroupId) {
         segment.spawnGroupId = spawnGroupId;

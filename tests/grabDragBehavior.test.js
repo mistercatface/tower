@@ -190,7 +190,6 @@ describe("grabDrag behavior", () => {
             growDirX: -1,
             growDirY: 0,
             linkSlack: 1,
-            faction: "alpha",
         });
         const middle = chain.members[1];
         const headX = chain.head.x;

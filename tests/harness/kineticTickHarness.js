@@ -3,7 +3,7 @@ import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom, computeFootprintIdFromSlab } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater } from "../../Core/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getProfileId, entityFractureCooldown, entityStateTimer, entityFootprintId } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, entityFractureCooldown, entityFootprintId } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 export function snapshotKineticBodySlab(eids, count = eids.length) {
     for (let i = 0; i < count; i++) {
@@ -185,13 +185,10 @@ export function assignPhysIdWithPose(body, physId) {
     // Evaluate ECS properties before body._physId is set
     const height = body.height ?? 0;
     const alpha = body.alpha ?? 1.0;
-    const faction = body.faction;
     const shapeKind = body.shape?.shapeTypeId ?? 0;
     const wallProfileId = body.wallChunkProfileId;
     const wallHeightPx = body.wallChunkHeightPx ?? 0;
-    const zIndex = body.zIndex ?? 10;
     const fractureCooldown = body._fractureCooldown ?? 0;
-    const stateTimer = body.stateTimer ?? 0;
     // Evaluate flags before body._physId is set
     const flags = worldPropBindFlags(body);
 
@@ -221,13 +218,10 @@ export function assignPhysIdWithPose(body, physId) {
     // Populate new ECS SoA columns
     entityHeight[physId] = height;
     entityAlpha[physId] = alpha;
-    entityFaction[physId] = getFactionId(faction);
     entityShapeKind[physId] = shapeKind;
     entityWallProfileId[physId] = getProfileId(wallProfileId);
     entityWallHeightPx[physId] = wallHeightPx;
-    entityZIndex[physId] = zIndex;
     entityFractureCooldown[physId] = fractureCooldown;
-    entityStateTimer[physId] = stateTimer;
     entityFootprintId[physId] = computeFootprintIdFromSlab(physId);
     if (body.strategy?.physicsRow != null) kineticStaticSlab.physicsRow[physId] = body.strategy.physicsRow;
     if (body.id != null) kineticStaticSlab.entityId[physId] = body.id;

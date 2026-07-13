@@ -13,7 +13,6 @@ describe("snake prop kinetic chain spawning", () => {
         session.setPlacePaletteKey("prop:snake");
         session.setSpawnSnakeLength(7);
         session.setSpawnBallRadius(3);
-        session.setSpawnFaction("alpha");
 
         const success = session.spawnAt(160, 160);
         assert.ok(success);

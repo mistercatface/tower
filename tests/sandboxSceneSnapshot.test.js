@@ -20,7 +20,6 @@ describe("sandboxSceneSnapshot physics", () => {
             headBallType: "boid_triangle",
             growDirX: 1,
             growDirY: 0,
-            faction: "alpha",
         });
         const controller = createSandboxTestController(state);
         const snapshot = JSON.parse(controller.exportSceneSnapshot());
@@ -32,14 +31,13 @@ describe("sandboxSceneSnapshot physics", () => {
 
     it("exportSceneSnapshot captures chain membership fields", () => {
         const state = createSnapshotTestState();
-        spawnPlacedSandboxProp(state, 48, 48, "ball", "alpha");
+        spawnPlacedSandboxProp(state, 48, 48, "ball");
         const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 10, 10), {
             segmentCount: 4,
             spacing: 16,
             ballType: "ball",
             growDirX: 1,
             growDirY: 0,
-            faction: "alpha",
         });
         const controller = createSandboxTestController(state);
         const physicsDoc = JSON.parse(controller.exportSceneSnapshot());

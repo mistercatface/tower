@@ -15,14 +15,14 @@ const noopDeps = {
 describe("propScale", () => {
     it("setPropRadius updates shape, radius, and mass", () => {
         const state = createSandboxKineticWorld(16, 16);
-        const prop = spawnPlacedSandboxProp(state, 80, 80, "ball", "alpha");
+        const prop = spawnPlacedSandboxProp(state, 80, 80, "ball");
         assert.equal(prop.radius, 4);
         setCirclePropRadius(prop, 2);
         assert.equal(prop.radius, 2);
         assert.ok(prop.shape instanceof CircleShape);
         assert.equal(prop.shape.radius, 2);
         assert.ok(kineticStaticSlab.mass[prop._physId] > 0);
-        assert.ok(kineticStaticSlab.mass[prop._physId] < kineticStaticSlab.mass[spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha")._physId]);
+        assert.ok(kineticStaticSlab.mass[prop._physId] < kineticStaticSlab.mass[spawnPlacedSandboxProp(state, 96, 96, "ball")._physId]);
     });
 
     it("setPropRadius rescales polygon props", () => {
@@ -36,8 +36,8 @@ describe("propScale", () => {
 
     it("uses distinct sprite cache keys for quarter-step circle radii", () => {
         const state = createSandboxKineticWorld(16, 16);
-        const a = spawnPlacedSandboxProp(state, 80, 80, "ball", "alpha");
-        const b = spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha");
+        const a = spawnPlacedSandboxProp(state, 80, 80, "ball");
+        const b = spawnPlacedSandboxProp(state, 96, 96, "ball");
         setCirclePropRadius(a, 2);
         setCirclePropRadius(b, 2.25);
         assert.notEqual(getBaseSpriteCacheId(a, noopDeps), getBaseSpriteCacheId(b, noopDeps));

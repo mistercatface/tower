@@ -78,16 +78,6 @@ class SandboxEntityMetaStore {
         else if (this.get(entityId)) this.get(entityId).chainHead = false;
     }
 }
-const SANDBOX_FACTION_OPTIONS = [
-    { id: "alpha", label: "Alpha" },
-    { id: "bravo", label: "Bravo" },
-    { id: "charlie", label: "Charlie" },
-    { id: "delta", label: "Delta" },
-    { id: "echo", label: "Echo" },
-];
-function formatSandboxFactionLabel(factionId) {
-    return SANDBOX_FACTION_OPTIONS.find((opt) => opt.id === factionId)?.label ?? factionId;
-}
 export class SandboxWorldState {
     constructor() {
         this.entityMeta = new SandboxEntityMetaStore();
@@ -466,7 +456,7 @@ function footprintDiffersFromAsset(prop) {
     return ENGINE_F32[M_VEC_A] !== defaultHx || ENGINE_F32[M_VEC_A + 1] !== defaultHy;
 }
 function serializePlacedProp(prop) {
-    const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing, faction: prop.faction };
+    const entry = { type: prop.type, x: prop.x, y: prop.y, facing: prop.facing };
     const assetRadius = propCatalog[prop.type]?.physics?.radius;
     if (prop.radius != null && assetRadius != null && prop.radius !== assetRadius) entry.radius = prop.radius;
     if (footprintDiffersFromAsset(prop)) {
@@ -486,13 +476,12 @@ function collectFlatPlacedSandboxPropEntries(state) {
     });
     return { props, propIdToIndex };
 }
-export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction, facing = 0, boxHalfExtents = undefined) {
+export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, facing = 0, boxHalfExtents = undefined) {
     const asset = propCatalog[propTypeId];
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
-    prop.faction = faction;
     addWorldPropToState(state, prop);
     return prop;
 }
@@ -717,7 +706,7 @@ const PLACEABLE = {
                 const grid = state.obstacleGrid;
                 const idx = grid.worldToIdx(worldX, worldY);
                 if (idx === -1) return false;
-                const chain = spawnAgentChain(state, idx, { leaderIndex: 0, headPropId: "snake", bodyPropId: "ball", segmentCount: ctx.spawnSnakeLength, segmentRadius: ctx.spawnBallRadius, faction: ctx.spawnFaction, spacing: ctx.spawnBallRadius * 2, linkSlack: 1.0, growDirX: -1, growDirY: 0 });
+                const chain = spawnAgentChain(state, idx, { leaderIndex: 0, headPropId: "snake", bodyPropId: "ball", segmentCount: ctx.spawnSnakeLength, segmentRadius: ctx.spawnBallRadius, spacing: ctx.spawnBallRadius * 2, linkSlack: 1.0, growDirX: -1, growDirY: 0 });
                 if (chain && chain.leader) {
                     for (let i = 0; i < chain.members.length; i++) applyPropSurfaceProfile(chain.members[i], ctx.spawnSurfaceProfileId);
                     ctx.placement.touchPropPlacement(chain.leader.id);
@@ -727,7 +716,7 @@ const PLACEABLE = {
             }
             const placedAsset = propCatalog[propTypeId];
             const halfExtents = isResizableBoxSpawnAsset(placedAsset) ? ctx.spawnBoxHalfExtents : undefined;
-            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, ctx.spawnFaction, 0, halfExtents);
+            const spawned = spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, 0, halfExtents);
             if (spawned && isBallFamilyAsset(placedAsset)) setCirclePropRadius(spawned, ctx.spawnBallRadius);
             if (spawned && isPolygonFamilyAsset(placedAsset) && !placedAsset.physics?.fracture) spawned.fractureEnabled = ctx.spawnFractureEnabled;
             if (spawned && spawned.wallChunkProfileId != null) applyPropSurfaceProfile(spawned, ctx.spawnSurfaceProfileId);
@@ -749,7 +738,7 @@ const PLACEABLE = {
                 const prop = props[i];
                 const asset = propCatalog[prop.spawnTypeId ?? prop.type];
                 if (!asset) continue;
-                const label = `${prop.label ?? asset.label} · ${formatSandboxFactionLabel(prop.faction)}`;
+                const label = prop.label ?? asset.label;
                 items.push(sceneItem(placement.placementSeq(placement.propPlacementKey(prop.id), prop.id), label, { kind: "prop", ids: [prop.id] }, `prop:${prop.spawnTypeId ?? prop.type}`));
             }
             return items;
@@ -913,7 +902,7 @@ function spawnSnapshotProp(state, entry) {
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
-    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, halfExtents);
+    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.facing ?? 0, halfExtents);
     if (entry.radius != null)
         if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
@@ -993,7 +982,7 @@ function createSandboxSession(state) {
             const typeLabel = formatPropTypeLabel(prop.type);
             const index = (counts.get(prop.type) ?? 0) + 1;
             counts.set(prop.type, index);
-            placed.push({ id: prop.id, type: prop.type, faction: prop.faction, label: `${typeLabel} #${index}` });
+            placed.push({ id: prop.id, type: prop.type, label: `${typeLabel} #${index}` });
         });
         return placed;
     };
@@ -1011,7 +1000,6 @@ function createSandboxSession(state) {
         }
         return placed;
     };
-    let spawnFaction = "alpha";
     let spawnBoxWidth = DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH;
     let spawnBoxHeight = DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT;
     let spawnBallRadius = null;
@@ -1020,7 +1008,6 @@ function createSandboxSession(state) {
     let spawnSurfaceProfileId = SURFACE_PROFILE_ID.poolTableFelt;
     const spawnCtx = (options = {}) => ({
         spawnPropId: spawnPropIdFromPalette(),
-        spawnFaction,
         resolveSpawnPropTypeId: spawnPropIdFromPalette,
         spawnSurfaceProfileId,
         get spawnBallRadius() {
@@ -1360,10 +1347,6 @@ function createSandboxSession(state) {
             for (const entry of listPlacedRailWalls(state.obstacleGrid)) placement.touchEdgePlacement("rail", entry.idx, entry.side);
         },
         getSpawnPropId: spawnPropIdFromPalette,
-        getSpawnFaction: () => spawnFaction,
-        setSpawnFaction: (faction) => {
-            spawnFaction = faction;
-        },
         getSpawnBoxWidth: () => spawnBoxWidth,
         setSpawnBoxWidth: (width) => {
             spawnBoxWidth = Math.max(6, Math.min(1024, Math.round(width)));
@@ -1451,20 +1434,20 @@ function applySegmentRadius(prop, segmentRadius, headScaleFn) {
     else if (segmentRadius != null) setCirclePropRadius(prop, segmentRadius);
 }
 function spawnAgentChain(state, anchorIdx, spec) {
-    const { headPropId, bodyPropId, leaderPropId, leaderIndex = 0, segmentCount = 2, faction, exportType = null, linkSlack = 1.0, segmentRadius = null, growDirX = -1, growDirY = 0, spacing = null, headScaleFn = null, onSegmentSpawned = null, spawnGroupId = null, resolvePropId = null } = spec;
+    const { headPropId, bodyPropId, leaderPropId, leaderIndex = 0, segmentCount = 2, exportType = null, linkSlack = 1.0, segmentRadius = null, growDirX = -1, growDirY = 0, spacing = null, headScaleFn = null, onSegmentSpawned = null, spawnGroupId = null, resolvePropId = null } = spec;
     const grid = state.obstacleGrid;
     const meta = state.sandbox.entityMeta;
     const anchorX = grid.gridCenterXByIdx(anchorIdx);
     const anchorY = grid.gridCenterYByIdx(anchorIdx);
     const props = [];
     const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId, resolvePropId };
-    const firstProp = spawnPlacedSandboxProp(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec), faction);
+    const firstProp = spawnPlacedSandboxProp(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec));
     applySegmentRadius(firstProp, segmentRadius, headScaleFn);
     props.push(firstProp);
     if (onSegmentSpawned) onSegmentSpawned(firstProp, 0);
     let lastProp = firstProp;
     for (let i = 1; i < segmentCount; i++) {
-        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec), faction);
+        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec));
         applySegmentRadius(bodyProp, segmentRadius, null);
         if (onSegmentSpawned) onSegmentSpawned(bodyProp, i);
         const dist = spacing ?? resolveChainLinkRestLength(lastProp, bodyProp, linkSlack);
@@ -2788,17 +2771,7 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
         selection?.kind === "prop" ? "No props in selection." : "Select props on the map.",
     );
 }
-function appendFactionSelect(parent, { value, onChange }) {
-    appendSelectField(parent, "Team", { value, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
-}
 function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
-    appendFactionSelect(body, {
-        value: selectedProp.faction,
-        onChange: (faction) => {
-            selectedProp.faction = faction;
-            refreshPanel();
-        },
-    });
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
     if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isPolygonFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, state, selectedProp);
     if (isChainLinkBall(selectedProp)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
@@ -2865,17 +2838,8 @@ export function appendSelectionInspector(body, state, controller, inspector, ref
     INSPECTOR_UI[inspector.kind](body, state, controller, inspector.data, refreshPanel);
 }
 function appendSpawnFooter(body, controller, spawnAsset, refreshPanel, { showAddAtCamera }) {
-    const session = controller.session;
     const addRow = document.createElement("div");
     addRow.className = "sandbox-add-row";
-    if (spawnAsset && !isGridFloorBeltSpawnAsset(spawnAsset))
-        appendFactionSelect(addRow, {
-            value: session.getSpawnFaction(),
-            onChange: (faction) => {
-                session.setSpawnFaction(faction);
-                refreshPanel();
-            },
-        });
     if (showAddAtCamera) {
         const addBtn = document.createElement("button");
         addBtn.type = "button";

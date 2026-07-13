@@ -82,7 +82,7 @@ describe("fracture contact queue", () => {
         applyPropBoxFootprint(prop, 32, 32);
         prop._fractureCooldown = 4;
         const tick = createKineticTestTick([prop]);
-        const other = { type: "ball", faction: null, strategy: {} };
+        const other = { type: "ball", strategy: {} };
         tick.world.fractureEngine.queueFractureKineticContact(prop, other, 0, 0, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         assert.equal(tick.world.worldProps.filter((p) => p !== prop).length, 0);

@@ -92,14 +92,6 @@ export const ENTITY_FLAG_CIRCLE_SHAPE = 1 << 5;
 export const ENTITY_FLAG_FRACTURE_SET = 1 << 6;
 export const ENTITY_FLAG_FRACTURE_VAL = 1 << 7;
 //
-// Factions
-export const FACTION_NONE = 0;
-export const FACTION_ALPHA = 1;
-export const FACTION_BRAVO = 2;
-export const FACTION_CHARLIE = 3;
-export const FACTION_DELTA = 4;
-export const FACTION_ECHO = 5;
-//
 // Kinetic
 export const KINETIC_PAIR_CIRCLE_CIRCLE = 0;
 export const KINETIC_PAIR_CIRCLE_POLY = 1;
