@@ -15,7 +15,7 @@ const dragConfigScratch = { minDrag: 10, maxPull: 90, pullScale: 1.25, minPower:
 function hueFromPullRatio(ratio) {
     return 180 - ratio * 180;
 }
-export function resolveDragLaunchConfigFromSize(radius) {
+function resolveDragLaunchConfigFromSize(radius) {
     const R = Math.max(2, radius);
     const maxPower = Math.min(700, Math.max(200, 70 * R + 220));
     dragConfigScratch.minDrag = 10;
@@ -25,13 +25,13 @@ export function resolveDragLaunchConfigFromSize(radius) {
     dragConfigScratch.maxPower = maxPower;
     return dragConfigScratch;
 }
-export function resolveDragLaunchPullRatio(drag, config) {
+function resolveDragLaunchPullRatio(drag, config) {
     if (drag < config.minDrag) return 0;
     const maxFingerDrag = config.maxPull / config.pullScale;
     const span = Math.max(0.001, maxFingerDrag - config.minDrag);
     return Math.min(1, (drag - config.minDrag) / span);
 }
-export function computeLaunchPower(drag, config) {
+function computeLaunchPower(drag, config) {
     const pullRatio = resolveDragLaunchPullRatio(drag, config);
     if (pullRatio <= 0) return 0;
     return config.minPower + pullRatio * (config.maxPower - config.minPower);
@@ -39,7 +39,7 @@ export function computeLaunchPower(drag, config) {
 function dragLaunchMaxRayDist(obstacleGrid) {
     return Math.hypot(obstacleGrid.maxX - obstacleGrid.minX, obstacleGrid.maxY - obstacleGrid.minY) * 1.25;
 }
-export function applyDragLaunchVelocity(eid, nx, ny, power) {
+function applyDragLaunchVelocity(eid, nx, ny, power) {
     entityVx[eid] = nx * power;
     entityVy[eid] = ny * power;
     if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) entityW[eid] = (power / entityR[eid]) * 0.12;
@@ -60,7 +60,7 @@ export function assetSupportsDragInteraction(asset) {
     if (asset.sandbox?.gridFloorBelt) return false;
     return true;
 }
-export function entitySupportsDragInteraction(eid) {
+function entitySupportsDragInteraction(eid) {
     return (entityFlags[eid] & ENTITY_FLAG_KINETIC) !== 0 && (entityFlags[eid] & ENTITY_FLAG_DEAD) === 0;
 }
 export function resolveDragInteractionBehavior(eid, state, behaviorById) {

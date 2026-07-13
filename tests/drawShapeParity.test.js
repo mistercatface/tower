@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, getBaseSpriteCacheKey, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createWallChunkDraw, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
@@ -9,7 +9,7 @@ import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
 import { ATTACH_HEADING_FACING, ATTACH_OFFSET_PARENT_RADIUS, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
-import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheKey } from "../Libraries/Props/props.js";
+import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheId } from "../Libraries/Props/props.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 import propCatalog from "../Assets/props/index.js";
 import { gridSettings } from "../Config/world.js";
@@ -32,17 +32,17 @@ describe("draw shape parity", () => {
     it("hex and tri wedge bucket different sprite cache footprints", () => {
         const hex = new WorldProp(0, 0, "hex_block", 0);
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);
-        const hexKey = getBaseSpriteCacheKey(hex, cacheKeyDeps);
-        const wedgeKey = getBaseSpriteCacheKey(wedge, cacheKeyDeps);
+        const hexKey = getBaseSpriteCacheId(hex, cacheKeyDeps);
+        const wedgeKey = getBaseSpriteCacheId(wedge, cacheKeyDeps);
         assert.notEqual(hexKey, wedgeKey);
     });
     it("resized custom box changes sprite cache footprint bucket", () => {
         const prop = new WorldProp(0, 0, "box", 0);
-        const before = getBaseSpriteCacheKey(prop, cacheKeyDeps);
+        const before = getBaseSpriteCacheId(prop, cacheKeyDeps);
         applyPropBoxFootprint(prop, 12, 5);
-        const after = getBaseSpriteCacheKey(prop, cacheKeyDeps);
+        const after = getBaseSpriteCacheId(prop, cacheKeyDeps);
         assert.notEqual(before, after);
-        assert.match(after, /[0-9]+/);
+        assert.equal(typeof after, "number");
     });
     it("sprite bake stage passes live polygon verts to draw", () => {
         const prop = new WorldProp(0, 0, "hex_block", 0);
@@ -227,14 +227,14 @@ describe("draw shape parity", () => {
         const parentRadius = right.radius;
         assert.ok(resolveVisualAttachmentBakeRadius(right, 0) > parentRadius);
         assert.notEqual(
-            getVisualAttachmentSpriteCacheKey(right, { quantizeAngleIndex }),
-            getVisualAttachmentSpriteCacheKey(down, { quantizeAngleIndex }),
+            getVisualAttachmentSpriteCacheId(right, { quantizeAngleIndex }),
+            getVisualAttachmentSpriteCacheId(down, { quantizeAngleIndex }),
         );
     });
     it("boid triangle cache keys change on finer facing buckets", () => {
         const base = new WorldProp(0, 0, "boid_triangle", 0);
         const turned = new WorldProp(0, 0, "boid_triangle", 0);
         turned.facing = (Math.PI * 2) / resolvePropQuantizeSteps(turned).facing;
-        assert.notEqual(getVisualAttachmentSpriteCacheKey(base, { quantizeAngleIndex }), getVisualAttachmentSpriteCacheKey(turned, { quantizeAngleIndex }));
+        assert.notEqual(getVisualAttachmentSpriteCacheId(base, { quantizeAngleIndex }), getVisualAttachmentSpriteCacheId(turned, { quantizeAngleIndex }));
     });
 });

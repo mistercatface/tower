@@ -1,17 +1,21 @@
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom, ensureKineticShapeStamped, syncKineticBodySlabPose } from "../../Libraries/Physics/physics.js";
-import { clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
+import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom, ensureKineticShapeStamped } from "../../Libraries/Physics/physics.js";
+import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater } from "../../Core/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
-import { ROLL_DRIVE_NONE } from "../../Core/engineEnums.js";
+import { ROLL_DRIVE_NONE, SHAPE_TYPE_CIRCLE } from "../../Core/engineEnums.js";
 export function snapshotKineticBodySlab(eids, count = eids.length) {
     for (let i = 0; i < count; i++) {
         const eid = eids[i];
         const entity = entityRefs[eid];
         if (!entity) continue;
         ensureKineticShapeStamped(eid, entity);
-        syncKineticBodySlabPose(eid);
+        if (kineticDynamicSlab.shapeKind[eid] !== SHAPE_TYPE_CIRCLE) {
+            const angle = entityFacing[eid];
+            kineticDynamicSlab.cos[eid] = Math.cos(angle);
+            kineticDynamicSlab.sin[eid] = Math.sin(angle);
+        }
     }
 }
 let nextMockPhysId = 0;
@@ -367,7 +371,7 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
         frame.insertEid(i);
         frame._pushKineticEid(i);
     }
-    frame._nextPhysId = bodies.length;
+    noteEntityEidHighWater(bodies.length - 1);
     snapshotKineticBodySlab(frame.kineticEids, frame.kineticEidCount);
     applyHarnessPairOverrides(bodies);
     frame.syncActiveKineticBodies();
@@ -387,7 +391,7 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
         frame.insertEid(i);
         frame._pushKineticEid(i);
     }
-    frame._nextPhysId = props.length;
+    noteEntityEidHighWater(props.length - 1);
     snapshotKineticBodySlab(frame.kineticEids, frame.kineticEidCount);
     applyHarnessPairOverrides(props);
     frame.syncActiveKineticBodies();

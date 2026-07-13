@@ -2,12 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
 import { polygonIsConvex, earClipConvexPartsInto, regularStarFootprint, polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { classifyKineticPairTierSlab, gatherKineticContactPairs, resolveKineticContactPassWithPairs, kineticFootprintArea } from "../Libraries/Physics/physics.js";
+import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { KINETIC_PAIR_COMPOUND } from "../Core/engineEnums.js";
 import { ENGINE_F32, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
-import {createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
-import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
+import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
+import { checkPairAtSlabPose, resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 
@@ -52,13 +51,11 @@ describe("concave footprint compounds", () => {
         assignPhysIdWithPose(star, 0);
         assignPhysIdWithPose(ball, 1);
         snapshotKineticBodySlab([0, 1], 2);
-        assert.equal(classifyKineticPairTierSlab(0, 1), KINETIC_PAIR_COMPOUND);
+        assert.ok(checkPairAtSlabPose(star, ball));
         const tick = createKineticTestTick([star, ball]);
-        const pairs = gatherKineticContactPairs(tick);
-        assert.ok(pairs.count >= 1);
         let maxContacts = 0;
         for (let pass = 0; pass < 12; pass++) {
-            const contacts = resolveKineticContactPassWithPairs(tick, pairs);
+            const contacts = resolveKineticContactPass(tick);
             maxContacts = Math.max(maxContacts, contacts.count);
             if (!checkPairAtSlabPose(star, ball)) break;
         }

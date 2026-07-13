@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { isChainSteeringTarget } from "../Libraries/Sandbox/sandbox.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
@@ -19,8 +18,6 @@ describe("spawnLinkedBallChain", () => {
         assert.equal(kineticConstraintStore.count, 2);
         assert.ok(meta.isChainHead(chain.head.id));
         assert.ok(!meta.isChainHead(chain.tail.id));
-        assert.ok(isChainSteeringTarget(state, meta, chain.head.id));
-        assert.ok(!isChainSteeringTarget(state, meta, chain.tail.id));
         const members = getConnectedBodyIds(state.kinetic, chain.head.id).sort((a, b) => a - b);
         assert.deepEqual(
             members,

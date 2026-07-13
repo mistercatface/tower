@@ -11,10 +11,9 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
 import { FRACTURE_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
 import { transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, kineticStaticSlab } from "../Core/engineMemory.js";
-import { readEntityFacing } from "../Libraries/Physics/physics.js";
+import { satPolygonPolygonF32, PolygonShape } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
-import { PolygonShape } from "../Libraries/Physics/physics.js";
-import { createKineticTestTick, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
 import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
@@ -43,13 +42,19 @@ function shardWorldBody(originX, originY, facing, geom) {
 }
 function countSpawnOverlaps(debris, originX = 0, originY = 0, facing = 0) {
     let overlaps = 0;
+    const cos = Math.cos(facing);
+    const sin = Math.sin(facing);
     for (let i = 0; i < debris.length; i++)
         for (let j = i + 1; j < debris.length; j++) {
             const a = shardWorldBody(originX, originY, facing, debris[i]);
             const b = shardWorldBody(originX, originY, facing, debris[j]);
-            const bodyA = { x: a.x, y: a.y, facing: a.facing };
-            const bodyB = { x: b.x, y: b.y, facing: b.facing };
-            if (satCheckCollision(bodyA.x, bodyA.y, bodyA.facing, new PolygonShape(a.verts), bodyB.x, bodyB.y, bodyB.facing, new PolygonShape(b.verts))) overlaps++;
+            const shapeA = new PolygonShape(a.verts);
+            const shapeB = new PolygonShape(b.verts);
+            const voA = shapeA._vertOffset || 0;
+            const nA = shapeA._floatCount != null ? shapeA._floatCount : shapeA.vertices.length;
+            const voB = shapeB._vertOffset || 0;
+            const nB = shapeB._floatCount != null ? shapeB._floatCount : shapeB.vertices.length;
+            if (satPolygonPolygonF32(a.x, a.y, cos, sin, shapeA.vertices, shapeA.normals, voA, nA, b.x, b.y, cos, sin, shapeB.vertices, shapeB.normals, voB, nB)) overlaps++;
         }
     return overlaps;
 }
@@ -77,7 +82,10 @@ function makeOverlappingFractureShards() {
     b._fractureCooldown = 0;
     a.vx = 120;
     b.vx = -120;
-    assert.ok(satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape));
+    assignPhysIdWithPose(a, 0);
+    assignPhysIdWithPose(b, 1);
+    snapshotKineticBodySlab([a._physId, b._physId], 2);
+    assert.ok(satCheckCollision(a, b));
     return { a, b };
 }
 describe("fracture", () => {
@@ -289,7 +297,7 @@ describe("fracture", () => {
         a._fractureCooldown = 0;
         b._fractureCooldown = 0;
         const tick = createKineticTestTick([a, b]);
-        assert.ok(satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape));
+        assert.ok(satCheckCollision(a, b));
         resolveKineticContactPassWithEffects(tick);
         const afterFirst = liveFracturePropCount(tick.world);
         assert.ok(afterFirst > 2);
@@ -308,7 +316,7 @@ describe("fracture", () => {
         glass.vx = 120;
         crate.vx = -40;
         const tick = createKineticTestTick([glass, crate]);
-        assert.ok(satCheckCollision(glass.x, glass.y, readEntityFacing(glass), glass.shape, crate.x, crate.y, readEntityFacing(crate), crate.shape));
+        assert.ok(satCheckCollision(glass, crate));
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveFracturePropCount(tick.world) > 2);
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
@@ -320,7 +328,7 @@ describe("fracture", () => {
         applyPropBoxFootprint(glass, 24, 18);
         glass.vx = 0;
         ball.vx = -200;
-        assert.ok(satCheckCollision(glass.x, glass.y, readEntityFacing(glass), glass.shape, ball.x, ball.y, readEntityFacing(ball), ball.shape));
+        assert.ok(satCheckCollision(glass, ball));
         const tick = createKineticTestTick([glass, ball]);
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
         const count = liveFracturePropCount(tick.world);

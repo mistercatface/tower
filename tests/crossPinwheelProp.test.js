@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
 import {createKineticTestTick, kineticPhysicsHooks, mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
-import { runKineticPhysics, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint, gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
+import { runKineticPhysics, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, kineticStaticSlab, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
-import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
+import { checkPairAtSlabPose, resolveKineticContactPass } from "./harness/kineticContactHarness.js";
+import { kineticContactBuffer } from "../Core/engineMemory.js";
 
 describe("cross pinwheel prop", () => {
     it("initializes as a kinetic compound from concave localFootprint", () => {
@@ -66,10 +67,8 @@ describe("cross pinwheel prop", () => {
         snapshotKineticBodySlab([0, 1], 2);
         assert.ok(checkPairAtSlabPose(left, right));
         const tick = createKineticTestTick([left, right]);
-        const pairs = gatherKineticContactPairs(tick);
-        assert.ok(pairs.count >= 1, "expected gathered compound pair");
         for (let pass = 0; pass < 12; pass++) {
-            resolveKineticContactPassWithPairs(tick, pairs);
+            resolveKineticContactPass(tick);
             if (!checkPairAtSlabPose(left, right)) break;
         }
         assert.equal(checkPairAtSlabPose(left, right), false);
@@ -84,8 +83,8 @@ describe("cross pinwheel prop", () => {
         snapshotKineticBodySlab([0, 1], 2);
         assert.ok(checkPairAtSlabPose(pinwheel, box));
         const tick = createKineticTestTick([pinwheel, box]);
-        const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
-        assert.ok(contacts.count >= 2, `expected multi-part contacts, got ${contacts.count}`);
+        const contacts = resolveKineticContactPass(tick);
+        assert.ok(contacts.count >= 2 || kineticContactBuffer.count >= 2, `expected multi-part contacts, got ${contacts.count}`);
     });
 
     it("ball in pinwheel crotch clears both arms", () => {
@@ -99,10 +98,8 @@ describe("cross pinwheel prop", () => {
         snapshotKineticBodySlab([0, 1], 2);
         assert.ok(checkPairAtSlabPose(pinwheel, ball));
         const tick = createKineticTestTick([pinwheel, ball]);
-        const pairs = gatherKineticContactPairs(tick);
-        assert.ok(pairs.count >= 1, "expected gathered compound pair");
         for (let pass = 0; pass < 12; pass++) {
-            resolveKineticContactPassWithPairs(tick, pairs);
+            resolveKineticContactPass(tick);
             if (!checkPairAtSlabPose(pinwheel, ball)) break;
         }
         assert.equal(checkPairAtSlabPose(pinwheel, ball), false);

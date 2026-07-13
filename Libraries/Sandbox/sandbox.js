@@ -21,7 +21,7 @@ import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
 import propCatalog, { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { createDragLaunchBehavior, createGrabDragBehavior, assetSupportsDragInteraction, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
-export class SandboxEntityMetaStore {
+class SandboxEntityMetaStore {
     constructor() {
         this.byEntityId = new Map();
         this.cameraTargetId = null;
@@ -79,14 +79,14 @@ export class SandboxEntityMetaStore {
         else if (this.get(entityId)) this.get(entityId).chainHead = false;
     }
 }
-export const SANDBOX_FACTION_OPTIONS = [
+const SANDBOX_FACTION_OPTIONS = [
     { id: "alpha", label: "Alpha" },
     { id: "bravo", label: "Bravo" },
     { id: "charlie", label: "Charlie" },
     { id: "delta", label: "Delta" },
     { id: "echo", label: "Echo" },
 ];
-export function formatSandboxFactionLabel(factionId) {
+function formatSandboxFactionLabel(factionId) {
     return SANDBOX_FACTION_OPTIONS.find((opt) => opt.id === factionId)?.label ?? factionId;
 }
 export class SandboxWorldState {
@@ -123,9 +123,9 @@ function applyPropSurfaceProfile(prop, profileId) {
 function assetDefaultSurfaceProfileId(asset) {
     return asset?.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
 }
-export const GROUND_NAV_BEHAVIOR_IDS = new Set([SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA]);
-export const SANDBOX_BEHAVIOR_LABELS = { [SANDBOX_BEHAVIOR_DRAG_LAUNCH]: "Drag launch", [SANDBOX_BEHAVIOR_GRAB_DRAG]: "Grab drag", [SANDBOX_BEHAVIOR_GROUND_DIRECT]: "Ground nav (direct)", [SANDBOX_BEHAVIOR_GROUND_HPA]: "Ground nav (HPA)", [SANDBOX_BEHAVIOR_GROUND_FLOW]: "Ground nav (flow)" };
-export function getSandboxBehaviorLabel(behaviorId) {
+const GROUND_NAV_BEHAVIOR_IDS = new Set([SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA]);
+const SANDBOX_BEHAVIOR_LABELS = { [SANDBOX_BEHAVIOR_DRAG_LAUNCH]: "Drag launch", [SANDBOX_BEHAVIOR_GRAB_DRAG]: "Grab drag", [SANDBOX_BEHAVIOR_GROUND_DIRECT]: "Ground nav (direct)", [SANDBOX_BEHAVIOR_GROUND_HPA]: "Ground nav (HPA)", [SANDBOX_BEHAVIOR_GROUND_FLOW]: "Ground nav (flow)" };
+function getSandboxBehaviorLabel(behaviorId) {
     return SANDBOX_BEHAVIOR_LABELS[behaviorId] ?? behaviorId;
 }
 export function isSandboxSpawnable(asset) {
@@ -133,7 +133,7 @@ export function isSandboxSpawnable(asset) {
     if (sandbox == null || typeof sandbox !== "object") return false;
     return sandbox.spawnable !== false;
 }
-export function sandboxAssetTags(asset) {
+function sandboxAssetTags(asset) {
     const tags = asset?.sandbox?.tags;
     if (!Array.isArray(tags)) return [];
     return tags.filter((tag) => typeof tag === "string");
@@ -142,15 +142,15 @@ export function sandboxTagsMatchFilter(filter, tags) {
     if (filter === "all") return true;
     return tags.includes(filter);
 }
-export function isGridFloorBeltSpawnAsset(asset) {
+function isGridFloorBeltSpawnAsset(asset) {
     return asset?.sandbox?.gridFloorBelt === true;
 }
-export const DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH = 16;
-export const DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT = 16;
-export function isResizableBoxSpawnAsset(asset) {
+const DEFAULT_RESIZABLE_BOX_SPAWN_WIDTH = 16;
+const DEFAULT_RESIZABLE_BOX_SPAWN_HEIGHT = 16;
+function isResizableBoxSpawnAsset(asset) {
     return Boolean(asset?.sandbox?.resizableBox);
 }
-export function isSingleWorldPropSpawnAsset(asset) {
+function isSingleWorldPropSpawnAsset(asset) {
     return Boolean(asset) && !isGridFloorBeltSpawnAsset(asset);
 }
 function syncSandboxBehaviorById(state, behaviors) {
@@ -500,7 +500,7 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, factio
     addWorldPropToState(state, prop);
     return prop;
 }
-export function createSandboxPlacementOrder(state) {
+function createSandboxPlacementOrder(state) {
     let nextPlacementSeq = 1;
     const placementSeqByKey = new Map();
     const propPlacementKey = (id) => `prop:${id}`;
@@ -579,8 +579,8 @@ export function createSandboxPlacementOrder(state) {
     };
 }
 const SANDBOX_PATH_VISUAL_LABELS = ["Off", "Normal", "Debug"];
-export const SANDBOX_PATH_VISUAL_OPTIONS = Array.from({ length: SANDBOX_PATH_VISUAL_COUNT }, (_, i) => i);
-export const SANDBOX_PRIMARY_PROP_IDS = ["ball"];
+const SANDBOX_PATH_VISUAL_OPTIONS = Array.from({ length: SANDBOX_PATH_VISUAL_COUNT }, (_, i) => i);
+const SANDBOX_PRIMARY_PROP_IDS = ["ball"];
 function ballRadiusFromAsset(asset) {
     if (asset.physics?.radius == null) throw new Error(`asset ${asset.id} missing physics.radius`);
     return asset.physics.radius;
@@ -595,20 +595,17 @@ export function orderSandboxPalettePropIds(propIds) {
     const rest = propIds.filter((id) => !SANDBOX_PRIMARY_PROP_IDS.includes(id)).sort((a, b) => a.localeCompare(b));
     return ordered.concat(rest);
 }
-export function isBallFamilyAsset(asset) {
+function isBallFamilyAsset(asset) {
     return asset?.primitive === PROP_PRIMITIVE_SPHERE && isSingleWorldPropSpawnAsset(asset);
 }
-export function isPolygonFamilyAsset(asset) {
+function isPolygonFamilyAsset(asset) {
     return asset?.primitive === PROP_PRIMITIVE_POLYGON && isSingleWorldPropSpawnAsset(asset);
 }
-export function createSandboxSelection({ isLiveProp }) {
-    /** @type {SandboxSelection | null} */
+function createSandboxSelection({ isLiveProp }) {
     let selection = null;
-    /** @param {SandboxSelection | null} next */
     const assign = (next) => {
         selection = next;
     };
-    /** @param {SandboxSelectInput | null} input */
     const select = (input) => {
         if (input == null) {
             assign(null);
@@ -678,10 +675,10 @@ export function createSandboxSelection({ isLiveProp }) {
 }
 /** @typedef {{ kind: 'prop', ids: Set<number> } | { kind: 'floor', idx: number } | { kind: 'voxel', idx: number } | { kind: 'rail', idx: number, side: number }} SandboxSelection */
 /** @typedef {{ kind: 'prop', ids: number[] } | { kind: 'floor', idx: number } | { kind: 'voxel', idx: number } | { kind: 'rail', idx: number, side: number }} SandboxSelectInput */
-export function selectionPropIds(sel) {
+function selectionPropIds(sel) {
     return sel?.kind === "prop" ? [...sel.ids] : [];
 }
-export function selectionPrimaryPropId(sel, isLiveProp) {
+function selectionPrimaryPropId(sel, isLiveProp) {
     if (sel?.kind !== "prop") return null;
     for (const id of sel.ids) if (isLiveProp(id)) return id;
     return null;
@@ -861,9 +858,9 @@ function dispatchSpawnPlaceableAt(state, worldX, worldY, asset, ctx) {
     }
     return false;
 }
-export const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "voxel", "rail"];
+const PLACEABLE_INSPECTOR_KINDS = ["prop", "floorBelt", "voxel", "rail"];
 /** Sandbox scene JSON — editor copy/paste for props, stamped walls, and floor belts. */
-export function collectSandboxSceneSnapshot(state) {
+function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
     const meta = state.sandbox.entityMeta;
     const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
@@ -881,13 +878,11 @@ export function collectSandboxSceneSnapshot(state) {
     }
     return { cellSize: grid.cellSize, origin: { minX: grid.minX, minY: grid.minY }, cols: grid.cols, rows: grid.rows, voxels, railWalls, floorBelts: FloorBelt.listPlacedForSnapshot(grid), props, kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex), chainHeadProp };
 }
-/** @param {unknown} raw */
-export function parseSandboxSceneSnapshot(raw) {
+function parseSandboxSceneSnapshot(raw) {
     const doc = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!doc || typeof doc !== "object") throw new Error("Scene JSON must be an object");
     return doc;
 }
-/** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
 function expandGridForSnapshot(state, doc) {
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
     const cellHalfSize = state.obstacleGrid.cellHalfSize;
@@ -906,7 +901,6 @@ function expandGridForSnapshot(state, doc) {
     if (ENGINE_F32[o] === Infinity) return;
     state.obstacleGrid.expandToCoverAabbF32(ENGINE_F32, o);
 }
-/** @param {object} state */
 function clearSandboxSceneContent(state) {
     for (let i = state.worldProps.length - 1; i >= 0; i--) {
         const prop = state.worldProps[i];
@@ -918,7 +912,6 @@ function clearSandboxSceneContent(state) {
     state.sandbox.entityMeta.clear();
     FloorBeltDrawCache.clear(state);
 }
-/** @param {object} state @param {{ type: string, x: number, y: number, facing?: number, faction?: string, width?: number, height?: number }} entry */
 function spawnSnapshotProp(state, entry) {
     const asset = propCatalog[entry.type];
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
@@ -931,7 +924,6 @@ function spawnSnapshotProp(state, entry) {
     if (prop && entry.wallChunkProfileId) applyPropSurfaceProfile(prop, entry.wallChunkProfileId);
     return prop;
 }
-/** @param {object} state @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc */
 function spawnSnapshotProps(state, doc) {
     const propRefs = new Array(doc.props.length);
     for (let i = 0; i < doc.props.length; i++) {
@@ -944,12 +936,7 @@ function spawnSnapshotProps(state, doc) {
         if (headProp) setChainHead(state, state.sandbox.entityMeta, headProp.id);
     }
 }
-/**
- * @param {object} state
- * @param {ReturnType<typeof parseSandboxSceneSnapshot>} doc
- * @param {{ mode?: "replace" | "merge" }} [options]
- */
-export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {}) {
+async function applySandboxSceneSnapshot(state, doc, { mode = "replace" } = {}) {
     if (mode !== "replace") throw new Error("Only replace mode is supported");
     const cellSize = doc.cellSize ?? state.obstacleGrid.cellSize;
     if (cellSize !== state.obstacleGrid.cellSize) throw new Error(`Scene cellSize ${cellSize} does not match grid ${state.obstacleGrid.cellSize}`);
@@ -962,8 +949,7 @@ export async function applySandboxSceneSnapshot(state, doc, { mode = "replace" }
     await commitGridNavEdit(state, null, { fullNavSync: true });
     spawnSnapshotProps(state, doc);
 }
-/** @param {object} state */
-export function createSandboxSession(state) {
+function createSandboxSession(state) {
     let placePaletteKey = "";
     let wallStampMode = WALL_STAMP_VOXEL;
     let wallHeightLevel = 1;
@@ -1468,7 +1454,7 @@ function applySegmentRadius(prop, segmentRadius, headScaleFn) {
     if (headScaleFn) headScaleFn(prop, segmentRadius);
     else if (segmentRadius != null) setCirclePropRadius(prop, segmentRadius);
 }
-export function spawnAgentChain(state, anchorIdx, spec) {
+function spawnAgentChain(state, anchorIdx, spec) {
     const { headPropId, bodyPropId, leaderPropId, leaderIndex = 0, segmentCount = 2, faction, exportType = null, linkSlack = 1.0, segmentRadius = null, growDirX = -1, growDirY = 0, spacing = null, headScaleFn = null, onSegmentSpawned = null, spawnGroupId = null, resolvePropId = null } = spec;
     const grid = state.obstacleGrid;
     const meta = state.sandbox.entityMeta;
@@ -1508,7 +1494,7 @@ export function spawnAgentChain(state, anchorIdx, spec) {
     setChainHead(state, meta, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
 }
-export function isChainLinkBall(prop) {
+function isChainLinkBall(prop) {
     if (!prop || (entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) === 0) return false;
     if (prop.strategy?.canChain) return true;
     return sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]));
@@ -1518,19 +1504,19 @@ function hasChainMembership(state, propId) {
     for (let i = 0; i < store.count; i++) if (store.bodyAId[i] === propId || store.bodyBId[i] === propId) return true;
     return false;
 }
-export function isChainSteeringTarget(state, entityMeta, propId) {
+function isChainSteeringTarget(state, entityMeta, propId) {
     if (entityMeta.isChainHead(propId)) return true;
     if (hasChainMembership(state, propId)) return false;
     const prop = state.entityRegistry.getLive(propId);
     if (!prop || prop.isDead) return false;
     return isChainLinkBall(prop);
 }
-export function setChainHead(state, entityMeta, propId) {
+function setChainHead(state, entityMeta, propId) {
     const members = getConnectedBodyIds(state.kinetic, propId);
     for (let i = 0; i < members.length; i++) entityMeta.setChainHead(members[i], false);
     entityMeta.setChainHead(propId, true);
 }
-export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
+function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     const store = kineticConstraintStore;
     for (let i = 0; i < store.count; i++) {
         if (store.type[i] !== CONSTRAINT_TYPE_DISTANCE) continue;
@@ -1538,7 +1524,7 @@ export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     }
     return -1;
 }
-export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
+function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
     if (fromPropId === toPropId) return false;
     const bodyA = state.entityRegistry.getLive(fromPropId);
     const bodyB = state.entityRegistry.getLive(toPropId);
@@ -1548,10 +1534,10 @@ export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLen
     addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
     return true;
 }
-export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
+function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
     return (bodyA.radius + bodyB.radius) * linkSlack;
 }
-export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
+function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
     for (let i = 0; i < propIds.length; i++) if (entityMeta.isChainHead(propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     for (let i = 0; i < propIds.length; i++) if (isChainSteeringTarget(state, entityMeta, propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     return null;
@@ -1576,7 +1562,7 @@ function applyGroundNavSandboxReplan(nav, eid, targetX, targetY, state, ctx) {
     if (sandboxReason && sandboxReplanAllowed(sandboxReason, ctx.isVisible, ctx.stuckFrames, ctx.stuckReplanFrames)) return nav.requestReplan(eid, targetX, targetY, state, PathReplanManager.getPriority(sandboxReason, ctx.isVisible), sandboxReason);
     return null;
 }
-export function groundNavArrivedAtTarget(eid, targetX, targetY, targetCellIdx, grid, stopRadius) {
+function groundNavArrivedAtTarget(eid, targetX, targetY, targetCellIdx, grid, stopRadius) {
     const x = entityX[eid];
     const y = entityY[eid];
     const onBelt = FloorBelt.isEntityOnBelt(grid, x, y);
@@ -1595,7 +1581,7 @@ function prepareHpaGroundNavPathSettings(state, eid, stopRadius) {
     hpaPathSettingsScratch.arrivalDistance = stopRadius;
     return hpaPathSettingsScratch;
 }
-export function driveGroundNav(eid, targetX, targetY, nav, state, dtMs, pathSettings) {
+function driveGroundNav(eid, targetX, targetY, nav, state, dtMs, pathSettings) {
     const grid = state.obstacleGrid;
     snapNavGoalWorld(ENGINE_F32, N_OUT_XY, grid, entityX[eid], entityY[eid], targetX, targetY);
     const steerX = ENGINE_F32[N_OUT_XY];
@@ -1686,7 +1672,7 @@ function ensureFlowPathVisited(cellCount) {
     }
     return flowPathVisitEpoch;
 }
-export function writeFlowFieldPathInto(slab, startX, startY, targetX, targetY, flowFieldGrid, grid) {
+function writeFlowFieldPathInto(slab, startX, startY, targetX, targetY, flowFieldGrid, grid) {
     const flowField = flowFieldGrid.getReadyFlowField(targetX, targetY);
     const used0 = slab.poly.used;
     if (!flowField) return 0;
@@ -1725,7 +1711,7 @@ export function writeFlowFieldPathInto(slab, startX, startY, targetX, targetY, f
     writeOverlayPolyXY(slab, targetX, targetY);
     return (slab.poly.used - used0) >> 1;
 }
-export function createDirectGroundNavBehavior(state) {
+function createDirectGroundNavBehavior(state) {
     const slab = createGroundNavRunSlab();
     const eidToSlot = new Map();
     const activeRunEids = [];
@@ -1824,7 +1810,7 @@ export function createDirectGroundNavBehavior(state) {
         },
     };
 }
-export function createFlowGroundNavBehavior(state) {
+function createFlowGroundNavBehavior(state) {
     const slab = createGroundNavRunSlab();
     const eidToSlot = new Map();
     const activeRunEids = [];
@@ -1933,7 +1919,7 @@ export function createFlowGroundNavBehavior(state) {
         },
     };
 }
-export function createHpaGroundNavBehavior(state) {
+function createHpaGroundNavBehavior(state) {
     const slab = createGroundNavRunSlab();
     const eidToSlot = new Map();
     const activeRunEids = [];
@@ -2058,8 +2044,8 @@ export function createHpaGroundNavBehavior(state) {
         },
     };
 }
-export const GROUND_NAV_SELECTION_MOVE_IDS = [SANDBOX_BEHAVIOR_GROUND_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW];
-export function countNavPropsInSelection(state, propIds, entityMeta = null) {
+const GROUND_NAV_SELECTION_MOVE_IDS = [SANDBOX_BEHAVIOR_GROUND_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW];
+function countNavPropsInSelection(state, propIds, entityMeta = null) {
     let count = 0;
     for (let i = 0; i < propIds.length; i++) {
         const prop = state.entityRegistry.getLive(propIds[i]);
@@ -2070,7 +2056,7 @@ export function countNavPropsInSelection(state, propIds, entityMeta = null) {
     }
     return count;
 }
-export function issueGroundNavToSelection(state, propIds, behaviorId, worldX, worldY, behaviorById, entityMeta) {
+function issueGroundNavToSelection(state, propIds, behaviorId, worldX, worldY, behaviorById, entityMeta) {
     const behavior = behaviorById.get(behaviorId);
     if (!behavior?.setMoveTarget) return 0;
     let moved = 0;
@@ -2085,7 +2071,7 @@ export function issueGroundNavToSelection(state, propIds, behaviorId, worldX, wo
     }
     return moved;
 }
-export function buildGroundNavSelectionMenuActions(propIds, worldX, worldY, navCount, issueGroundNav) {
+function buildGroundNavSelectionMenuActions(propIds, worldX, worldY, navCount, issueGroundNav) {
     if (navCount === 0) return [];
     const actions = [];
     for (let i = 0; i < GROUND_NAV_SELECTION_MOVE_IDS.length; i++) {
@@ -2210,7 +2196,7 @@ export class FollowCamera {
     }
 }
 const SELECTION_RING_PAD = 4;
-export function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
+function createSandboxPointerGestures({ getCanvas, session, clientToWorld }) {
     let interactionBehavior = null;
     let groundNavEid = -1;
     let groundNavBehavior = null;
@@ -2271,7 +2257,7 @@ export function createSandboxPointerGestures({ getCanvas, session, clientToWorld
         },
     };
 }
-export function createSandboxDeletePointerTool(state, session) {
+function createSandboxDeletePointerTool(state, session) {
     return {
         isActive: () => true,
         onPointerDown(world, e) {
@@ -2296,7 +2282,7 @@ export function createSandboxDeletePointerTool(state, session) {
         },
     };
 }
-export function createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued }) {
+function createSandboxGroundNavContextMenu(state, session, { behaviorById, entityMeta, onIssued }) {
     const menu = createContextMenu();
     const issueGroundNav = (propIds, behaviorId, worldX, worldY) => {
         const moved = issueGroundNavToSelection(state, propIds, behaviorId, worldX, worldY, behaviorById, entityMeta());
@@ -2319,7 +2305,7 @@ export function createSandboxGroundNavContextMenu(state, session, { behaviorById
         },
     };
 }
-export function createSandboxPrimaryPointerTools(state, session, { blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
+function createSandboxPrimaryPointerTools(state, session, { blocksPlacement, resolveBehavior, resolveGroundMove, gestures, issueGroundNavToSelected }) {
     const behaviors = state.sandbox.behaviorById ? [...state.sandbox.behaviorById.values()] : [];
     let lastClickTime = 0;
     let lastClickX = 0;
@@ -2449,7 +2435,7 @@ export function createSandboxPrimaryPointerTools(state, session, { blocksPlaceme
 }
 const overlaySelectedIdSet = new Set();
 const overlayVisibleSelectedProps = [];
-export function buildSandboxOverlayCommands(state, session, spatialFrame, marqueeActive, behaviorById, resolveBehavior, selectedProp) {
+function buildSandboxOverlayCommands(state, session, spatialFrame, marqueeActive, behaviorById, resolveBehavior, selectedProp) {
     const slab = overlayCommandSlab;
     clearOverlayCommands(slab);
     const sel = session.getSelection();
@@ -2638,7 +2624,7 @@ export function appendWallPlaceParams(body, state, controller, { wallStampMode, 
             if (selectedRailInfo) session.setSelectedRailWallProps(selectedRailInfo.heightLevel, val);
         });
 }
-export function appendWallSelectedInspector(body, state, controller, { voxel: selectedVoxelInfo, rail: selectedRailInfo } = {}) {
+function appendWallSelectedInspector(body, state, controller, { voxel: selectedVoxelInfo, rail: selectedRailInfo } = {}) {
     const session = controller.session;
     if (selectedVoxelInfo) {
         appendEditorHint(body, `Voxel block · height ${selectedVoxelInfo.heightLevel}. Change height below or delete.`);
@@ -2662,7 +2648,7 @@ export function appendWallSelectedInspector(body, state, controller, { voxel: se
     }
     return false;
 }
-export const SANDBOX_PALETTE_TAG_FILTERS = [
+const SANDBOX_PALETTE_TAG_FILTERS = [
     { id: "all", label: "All" },
     { id: "shapes", label: "Shapes" },
     { id: "nav", label: "Nav" },
@@ -2676,7 +2662,7 @@ function resolvePlacePaletteTags(paletteKey, asset = null) {
     if (paletteKey.startsWith("prop:")) return sandboxAssetTags(asset ?? propCatalog[paletteKey.slice(5)]);
     return [];
 }
-export function sandboxTagFilterLabel(filterId) {
+function sandboxTagFilterLabel(filterId) {
     const option = SANDBOX_PALETTE_TAG_FILTERS.find((entry) => entry.id === filterId);
     return option?.label.toLowerCase() ?? filterId;
 }
@@ -2809,7 +2795,7 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
 function appendFactionSelect(parent, { value, onChange }) {
     appendSelectField(parent, "Team", { value, options: SANDBOX_FACTION_OPTIONS.map((option) => ({ value: option.id, label: option.label })), onChange });
 }
-export function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
+function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     appendFactionSelect(body, {
         value: selectedProp.faction,
         onChange: (faction) => {

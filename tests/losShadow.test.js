@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { traceWoundFlatQuad } from "../Libraries/Canvas/canvas.js";
-import { edgeSegmentOutsideCircle, forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabbF32, EdgeList } from "../Libraries/Render/render.js";
+import { forEachLosShadowQuadInRange, composeLosShadowMask, drawLosShadowOverlay, collectRailWallShadowEdgesInAabbF32, EdgeList } from "../Libraries/Render/render.js";
 import {  collectExposedWallEdges, collectExposedWallEdgesInAabbF32  } from "../Libraries/Spatial/spatial.js";
 import {  projectWorldPointToScreen, projectWallShadowQuadScreen, shadowGroundContact  } from "../Libraries/Spatial/spatial.js";
 import { ENGINE_F32, S_OUT_SCREEN, S_OUT_XY, S_QUAD } from "../Core/engineMemory.js";
@@ -159,10 +159,6 @@ describe("collectRailWallShadowEdgesInAabbF32", () => {
     });
 });
 describe("losShadowEdges", () => {
-    it("edgeSegmentOutsideCircle rejects segments whose AABB misses the vision disc", () => {
-        assert.equal(edgeSegmentOutsideCircle(0, 0, 10, 0, 100, 100, 50 * 50), true);
-        assert.equal(edgeSegmentOutsideCircle(0, 0, 10, 0, 5, 0, 50 * 50), false);
-    });
     it("emits projected roof-anchored shadow quads for edges in range", () => {
         const grid = makeTestObstacleGrid(16, 16);
         stampWallRect(grid, 4, 4, 1, 1);

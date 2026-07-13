@@ -148,6 +148,7 @@ describe("hpa ground nav replan policy", () => {
             graphEpoch: 1,
             topologyKey: "topology-a",
             navTopology: null,
+            state: { obstacleGrid: grid },
         });
 
         request.applyResult(nav, worker, { pathSlot: 7, pathLen: 2 });

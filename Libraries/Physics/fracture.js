@@ -26,7 +26,6 @@ export function effectiveFracture(prop) {
     return null;
 }
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
-export const MAX_SHARD_FOOTPRINT_FLOATS = GEOM_VERT_BUCKETS[GEOM_VERT_BUCKETS.length - 1] * 2;
 const MAX_FRACTURE_DEBRIS = 64;
 const MAX_CLIP_VERTS = 512;
 const WALL_KEY_RAIL_BIT = 1 << 30;
@@ -51,7 +50,7 @@ const voxelScratch = [];
 const admitScratch = [];
 let fractureRandBase = 0;
 let fractureRandCall = 0;
-export function seedFractureRand(worldHitX, worldHitY, impactForce, salt = 0) {
+function seedFractureRand(worldHitX, worldHitY, impactForce, salt = 0) {
     fractureRandCall = 0;
     fractureRandBase = Math.imul(Math.floor(worldHitX * 1000), 73856093) ^ Math.imul(Math.floor(worldHitY * 1000), 19349663) ^ Math.imul(Math.floor(impactForce * 100), 83492791) ^ salt;
 }
@@ -242,8 +241,6 @@ class FractureDebrisStore {
         return i;
     }
 }
-const moduleGeomPool = new FractureGeomPool();
-export const moduleStores = { geom: moduleGeomPool, debris: new FractureDebrisStore(moduleGeomPool) };
 function releaseDebrisGeomRange(stores, start, count) {
     const debris = stores.debris;
     for (let i = start; i < start + count; i++) if (debris.vertHandle[i]) stores.geom.release(debris.vertHandle[i]);

@@ -1,12 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp, applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satPolygonVsWallSegmentF32, readEntityFacing, SAT_RESULT, resolveAgainstWallSegmentsSlab, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Libraries/Physics/physics.js";
+import { satPolygonVsWallSegmentF32, readEntityFacing, SAT_RESULT, runCollisionPipeline, WallCollisionResolver, createKineticSession, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Libraries/Physics/physics.js";
 import { computeWallBreakStrength } from "../Libraries/Physics/fracture.js";
 import { dotXY } from "../Libraries/Math/math.js";
-import { staticWallSegmentSlab, kineticStaticSlab } from "../Core/engineMemory.js";
+import { staticWallSegmentSlab } from "../Core/engineMemory.js";
 import { mockWallSegment, wallSegIds } from "./harness/wallSegmentHarness.js";
-import {assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
+import { assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
+
 function shapeOverlapsWall(prop, segId) {
     const shape = prop.shape;
     const vo = shape._vertOffset || 0;
@@ -14,18 +15,21 @@ function shapeOverlapsWall(prop, segId) {
     const angle = readEntityFacing(prop);
     return satPolygonVsWallSegmentF32(prop.x, prop.y, Math.cos(angle), Math.sin(angle), shape.vertices, shape.normals, vo, n, segId);
 }
-function wallRestitution(prop) {
-    return kineticStaticSlab.restitution[prop._physId];
+
+function resolveWall(prop, segs, shouldBreakWallHit = null) {
+    const resolver = new WallCollisionResolver();
+    const frame = { frameId: (resolveWall._nextFrameId = (resolveWall._nextFrameId || 0) + 1), getWallCandidates: () => segs };
+    resolver.resolve(prop._physId, frame, shouldBreakWallHit);
+    return resolver;
 }
-function wallFriction(prop) {
-    return kineticStaticSlab.friction[prop._physId];
-}
-function resolveWallUntilClear(prop, segIds, maxPasses = 6) {
+
+function resolveWallUntilClear(prop, segs, maxPasses = 6) {
     for (let pass = 0; pass < maxPasses; pass++) {
-        if (!shapeOverlapsWall(prop, segIds.buf[0])) return;
-        resolveAgainstWallSegmentsSlab(prop._physId, segIds, wallRestitution(prop), wallFriction(prop), 2);
+        if (!shapeOverlapsWall(prop, segs.buf[0])) return;
+        resolveWall(prop, segs);
     }
 }
+
 function bar16x8(x, y, physId) {
     const bar = new WorldProp(x, y, "box", 0);
     applyPropBoxFootprint(bar, 8, 4);
@@ -33,6 +37,7 @@ function bar16x8(x, y, physId) {
     snapshotKineticBodySlab([bar._physId], 1);
     return bar;
 }
+
 describe("polygon wall resolution", () => {
     it("bar resting overlap pushes out with normal away from wall", () => {
         const bar = bar16x8(5, 0, 0);
@@ -41,12 +46,10 @@ describe("polygon wall resolution", () => {
         const wall = mockWallSegment(-8, 0);
         const segs = wallSegIds(wall);
         assert.ok(shapeOverlapsWall(bar, wall));
-        const hits = createWallHitBuffer();
-        const collided = resolveAgainstWallSegmentsSlab(bar._physId, segs, wallRestitution(bar), wallFriction(bar), 2, () => false, hits);
-        assert.ok(collided);
-        assert.ok(hits.count > 0);
-        assert.ok(hits.normalX[0] > 0.9);
-        assert.ok(Math.abs(hits.normalY[0]) < 0.1);
+        const resolver = resolveWall(bar, segs, () => false);
+        assert.ok(resolver.hits.count > 0);
+        assert.ok(resolver.hits.normalX[0] > 0.9);
+        assert.ok(Math.abs(resolver.hits.normalY[0]) < 0.1);
         assert.ok(!shapeOverlapsWall(bar, wall));
     });
     it("tri wedge resolves against floor wall with upward normal", () => {
@@ -73,7 +76,7 @@ describe("polygon wall resolution", () => {
         bar.vx = -40;
         bar.vy = 0;
         const wall = mockWallSegment(-8, 0);
-        resolveAgainstWallSegmentsSlab(bar._physId, wallSegIds(wall), wallRestitution(bar), wallFriction(bar), 2);
+        resolveWall(bar, wallSegIds(wall));
         assert.ok(bar.vx > -40);
     });
     it("collision pipeline resolves resting polygon at zero linear speed", () => {
@@ -123,18 +126,12 @@ describe("polygon wall resolution", () => {
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const wallBreakConfig = { minBreakStrength: 0.1, minStrikeSpeed: 28, referenceMaxSpeed: 560 };
-        const hits = createWallHitBuffer();
-        const collided = resolveAgainstWallSegmentsSlab(
-            bar._physId,
+        const resolver = resolveWall(
+            bar,
             wallSegIds(wall),
-            wallRestitution(bar),
-            wallFriction(bar),
-            2,
             (approachDot) => computeWallBreakStrength(560, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength,
-            hits,
         );
-        assert.ok(collided);
-        assert.ok(hits.count >= 1);
+        assert.ok(resolver.hits.count >= 1);
         assert.ok(Math.abs(bar.x - startX) < 0.01, "breaking hit should not push body out");
         assert.ok(bar.vx > -560, "breaking hit should apply bounce impulse to velocity");
         assert.ok(shapeOverlapsWall(bar, wall));
@@ -146,12 +143,9 @@ describe("polygon wall resolution", () => {
         const wall = mockWallSegment(-8, 0);
         assert.ok(shapeOverlapsWall(bar, wall));
         const wallBreakConfig = { minBreakStrength: 0.1, minStrikeSpeed: 28, referenceMaxSpeed: 560 };
-        resolveAgainstWallSegmentsSlab(
-            bar._physId,
+        resolveWall(
+            bar,
             wallSegIds(wall),
-            wallRestitution(bar),
-            wallFriction(bar),
-            2,
             (approachDot) => computeWallBreakStrength(40, approachDot, wallBreakConfig) >= wallBreakConfig.minBreakStrength,
         );
         assert.ok(!shapeOverlapsWall(bar, wall));

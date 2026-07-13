@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getCirclePropRadius, setCirclePropRadius, getPolygonPropBoundingRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
-import { getBaseSpriteCacheKey } from "../Libraries/Props/props.js";
+import { getBaseSpriteCacheId } from "../Libraries/Props/props.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 import { kineticStaticSlab } from "../Core/engineMemory.js";
 import { WorldProp } from "../Libraries/Props/props.js";
@@ -40,6 +40,6 @@ describe("propScale", () => {
         const b = spawnPlacedSandboxProp(state, 96, 96, "ball", "alpha");
         setCirclePropRadius(a, 2);
         setCirclePropRadius(b, 2.25);
-        assert.notEqual(getBaseSpriteCacheKey(a, noopDeps), getBaseSpriteCacheKey(b, noopDeps));
+        assert.notEqual(getBaseSpriteCacheId(a, noopDeps), getBaseSpriteCacheId(b, noopDeps));
     });
 });

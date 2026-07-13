@@ -1671,7 +1671,7 @@ export const LOS_SHADOW_VISION_TILES_DEFAULT = 16;
 export const LOS_SHADOW_LIGHT_HEIGHT_CELLS_DEFAULT = 1;
 /** Alpha of the dark overlay outside vision. */
 export const LOS_SHADOW_OVERLAY_ALPHA = 0.82;
-const EDGE_STRIDE = 7;
+export const EDGE_STRIDE = 7;
 export class EdgeList {
     constructor(initialCapacity = 64) {
         this.data = new Float32Array(initialCapacity * EDGE_STRIDE);
@@ -1697,11 +1697,6 @@ export class EdgeList {
         this.data[base + 6] = wallTopZ;
         this.length++;
     }
-}
-export { EDGE_STRIDE };
-export function edgeSegmentOutsideCircle(x1, y1, x2, y2, centerX, centerY, rangeSq) {
-    aabbFromTwoPointsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, x1, y1, x2, y2);
-    return distanceSqToAabbF32(centerX, centerY, ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP) > rangeSq;
 }
 function clampSegmentCoord(a, b, v) {
     const lo = a < b ? a : b;

@@ -11,7 +11,7 @@ import { rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
 import { ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_KINETIC } from "../../Core/engineEnums.js";
-import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, entityEidHighWater, entityEidFreeCount, bindEntitySlot, clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
+import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, bindEntitySlot, clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
 export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     const dc = nc - c;
     const dr = nr - r;
@@ -3080,15 +3080,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this._patchPrimarySeen = new Uint8Array(MAX_ENTITIES);
         this._patchPrimarySeenIds = new Int32Array(MAX_ENTITIES);
     }
-    get _nextPhysId() {
-        return entityEidHighWater();
-    }
-    set _nextPhysId(v) {
-        noteEntityEidHighWater(v - 1);
-    }
-    get _physIdFreeList() {
-        return { length: entityEidFreeCount() };
-    }
     _ensureKineticEidCap(n) {
         if (this.kineticEids.length >= n) return;
         const next = new Int32Array(Math.max(n, this.kineticEids.length * 2));
@@ -3105,7 +3096,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         entityGridTileIdx[physId] = -1;
         if (prop) delete prop._physId;
         releaseEntityEid(physId);
-        if (session) bumpKineticTopologyGeneration(session);
+        bumpKineticTopologyGeneration(session);
     }
     repopulateFrameMembership(state) {
         this.kineticEidCount = 0;

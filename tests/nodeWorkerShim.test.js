@@ -70,7 +70,7 @@ describe("node worker shim", () => {
         const navigation = await createWorkerNavigation(grid);
         const startIdx = worldIdxAtCell(grid, 2, 2);
         const targetIdx = worldIdxAtCell(grid, 10, 10);
-        const request = buildReplanParams(grid, grid.gridCenterXByIdx(startIdx), grid.gridCenterYByIdx(startIdx), grid.gridCenterXByIdx(targetIdx), grid.gridCenterYByIdx(targetIdx), navigation);
+        const request = buildReplanParams(grid, grid.gridCenterXByIdx(startIdx), grid.gridCenterYByIdx(startIdx), grid.gridCenterXByIdx(targetIdx), grid.gridCenterYByIdx(targetIdx), navigation, { obstacleGrid: grid });
 
         const navState1 = createNavState();
         const workerOut1 = await navigation.worker.requestPath(request, navState1);

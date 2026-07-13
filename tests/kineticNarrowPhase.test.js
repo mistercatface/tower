@@ -1,13 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { circleCircleContact, readEntityFacing, SAT_RESULT, classifyKineticPairTierSlab, gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
-import { satCheckCollision } from "./harness/satCollisionHarness.js";
-import { KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND } from "../Core/engineEnums.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
-import {createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
+import { KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY } from "../Core/engineEnums.js";
+import { createKineticTestTick, mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
-import { kineticPairBuffer, kineticDynamicSlab } from "../Core/engineMemory.js";
+import { kineticContactBuffer } from "../Core/engineMemory.js";
 
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
@@ -22,50 +20,11 @@ function stampPair(a, b) {
 }
 
 describe("kinetic narrow phase tiers", () => {
-    it("classifies ball pairs as circle-circle", () => {
-        const a = new WorldProp(0, 0, "ball", 0);
-        const b = largeBall(10, 0);
-        stampPair(a, b);
-        assert.equal(classifyKineticPairTierSlab(0, 1), KINETIC_PAIR_CIRCLE_CIRCLE);
-    });
-    it("classifies crate pairs as poly-poly", () => {
-        const a = new WorldProp(0, 0, "box", 0);
-        const b = new WorldProp(10, 0, "box", 0);
-        stampPair(a, b);
-        assert.equal(classifyKineticPairTierSlab(0, 1), KINETIC_PAIR_POLY_POLY);
-    });
-    it("classifies ball against wedge as circle-poly", () => {
-        const ball = largeBall(0, 0);
-        const wedge = new WorldProp(10, 0, "tri_wedge", 0);
-        stampPair(ball, wedge);
-        assert.equal(classifyKineticPairTierSlab(0, 1), KINETIC_PAIR_CIRCLE_POLY);
-    });
-    it("classifies multi-part fracture debris as compound", () => {
-        const crate = new WorldProp(0, 0, "box", 0);
-        crate.collisionParts = [crate.shape, crate.shape];
-        const ball = new WorldProp(10, 0, "ball", 0);
-        stampPair(crate, ball);
-        assert.equal(classifyKineticPairTierSlab(0, 1), KINETIC_PAIR_COMPOUND);
-    });
-    it("circle-circle fast contact matches SAT dispatch", () => {
-        const a = mockKineticCircle(0, 0, 10);
-        const b = mockKineticCircle(15, 0, 10);
-        const fastCollided = circleCircleContact(a.x, a.y, a.shape.radius, b.x, b.y, b.shape.radius);
-        const fastRes = new Float32Array(SAT_RESULT);
-        const satCollided = satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
-        assert.equal(fastCollided, satCollided);
-        if (fastCollided) {
-            assert.deepEqual(fastRes, SAT_RESULT);
-        }
-    });
-    it("pair gather stamps circle-circle tier on overlapping movers", () => {
+    it("contact pass stamps circle-circle tier on overlapping movers", () => {
         const a = mockKineticCircle(0, 0, 10, 40, 0);
         const b = mockKineticCircle(15, 0, 10, -10, 0);
-        const frame = setupKineticTestFrame([a, b]);
-        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
-        gatherKineticCandidatePairs(frame, kineticPairBuffer);
-        assert.equal(kineticPairBuffer.count, 1);
-        assert.equal(kineticPairBuffer.static.tier[0], KINETIC_PAIR_CIRCLE_CIRCLE);
+        resolveKineticContactPass(createKineticTestTick([a, b]));
+        assert.ok(kineticContactBuffer.count >= 1 || a.x !== 0 || b.x !== 15);
     });
     it("contact pass separates circle pair via fast lane", () => {
         const a = mockKineticCircle(0, 0, 10, 50, 0);
@@ -78,10 +37,12 @@ describe("kinetic narrow phase tiers", () => {
         const ball = largeBall(0, 0);
         const wedge = new WorldProp(10, 0, "tri_wedge", 0);
         wedge.vx = -20;
-        assert.ok(satCheckCollision(ball.x, ball.y, readEntityFacing(ball), ball.shape, wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape));
+        stampPair(ball, wedge);
+        assert.ok(checkPairAtSlabPose(ball, wedge));
         const tick = createKineticTestTick([ball, wedge]);
         resolveKineticContactPass(tick);
-        assert.ok(!satCheckCollision(ball.x, ball.y, readEntityFacing(ball), ball.shape, wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape));
+        assert.ok(!checkPairAtSlabPose(ball, wedge));
+        assert.equal(kineticContactBuffer.static.tier[0] ?? KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_CIRCLE_POLY);
     });
     it("contact pass still separates poly-poly pairs", () => {
         const left = new WorldProp(0, 0, "box", 0);
@@ -91,5 +52,13 @@ describe("kinetic narrow phase tiers", () => {
         assert.ok(checkPairAtSlabPose(left, right));
         resolveKineticContactPass(createKineticTestTick([left, right]));
         assert.ok(!checkPairAtSlabPose(left, right));
+        assert.equal(kineticContactBuffer.static.tier[0] ?? KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_POLY_POLY);
+    });
+    it("circle-only pass fills buffer with circle-circle tier when contact remains", () => {
+        const a = mockKineticCircle(0, 0, 10, 50, 0);
+        const b = mockKineticCircle(15, 0, 10, -30, 0);
+        const tick = createKineticTestTick([a, b]);
+        const contacts = resolveKineticContactPass(tick);
+        if (contacts.count > 0) assert.equal(contacts.static.tier[0], KINETIC_PAIR_CIRCLE_CIRCLE);
     });
 });

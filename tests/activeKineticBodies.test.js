@@ -1,11 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
-import { LIBRARY_COLLISION_DEFAULTS, gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
-import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
-import { clearActiveKineticBodySlab, bakeKineticIslandPlan, addDistanceConstraint, createKineticSession } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab, kineticPairBuffer, entityRefs, entityX, entityAlive } from "../Core/engineMemory.js";
-import { mockKineticBody, mockCircleProp, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { LIBRARY_COLLISION_DEFAULTS, runKineticPhysics } from "../Libraries/Physics/physics.js";
+import { clearActiveKineticBodySlab, ensureKineticIslandPlan, addDistanceConstraint, createKineticSession } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab, entityRefs, entityX, entityAlive } from "../Core/engineMemory.js";
+import { noteEntityEidHighWater } from "../Core/entitySlots.js";
+import { mockKineticBody, mockCircleProp, assignPhysIdWithPose, createKineticTestTick, kineticPhysicsHooks } from "./harness/kineticTickHarness.js";
 import { createKineticAdmitTestState } from "./harness/stateFactories.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
@@ -53,7 +53,7 @@ describe("active kinetic bodies", () => {
         frame.insertEid(1);
         addDistanceConstraint(session, { bodyA: head, bodyB: tail, restLength: 20 });
         frame._pushKineticEid(head._physId); frame._pushKineticEid(tail._physId);
-        bakeKineticIslandPlan(session, frame.kineticEids, frame.kineticEidCount);
+        ensureKineticIslandPlan(session, frame.kineticEids, frame.kineticEidCount);
         head.isSleeping = true;
         tail.isSleeping = true;
         frame.syncActiveKineticBodies();
@@ -69,15 +69,12 @@ describe("active kinetic bodies", () => {
         assert.equal(kineticDynamicSlab.activePhysIds[1], tail._physId);
     });
     it("sleeping kinetic body drops out of active list on next sync", () => {
-        const frame = new KineticSpatialFrame(50);
         const prop = mockKineticBody(false);
-        frame._pushKineticEid(prop._physId);
-        frame.syncActiveKineticBodies();
+        const tick = createKineticTestTick([prop]);
         assert.equal(kineticDynamicSlab.activePhysCount, 1);
-        for (let i = 0; i < SLEEP_FRAMES; i++) advanceKineticSleep(prop._physId, true);
+        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
         assert.equal(prop.isSleeping, true);
-        frame.syncActiveKineticBodies();
-        assert.equal(kineticDynamicSlab.activePhysCount, 0);
+        tick.frame.syncActiveKineticBodies();
         assert.equal(kineticDynamicSlab.activePhysCount, 0);
     });
     it("begin() keeps admitted prop physId across consecutive frames", () => {
@@ -102,7 +99,6 @@ describe("active kinetic bodies", () => {
         frame.begin(world);
         assert.ok(kineticDynamicSlab.partGeomOffset[eid] >= 0);
         frame.syncActiveKineticBodies();
-        gatherKineticCandidatePairs(frame, kineticPairBuffer);
     });
     it("admitKineticProp makes mid-frame spawns visible to neighbor queries", () => {
         const frame = new KineticSpatialFrame(50);
@@ -112,7 +108,7 @@ describe("active kinetic bodies", () => {
         assignPhysIdWithPose(anchor, 0);
         frame.insertEid(0);
         frame._pushKineticEid(anchor._physId);
-        frame._nextPhysId = 1;
+        noteEntityEidHighWater(0);
         const fragment = mockCircleProp(24, 0, 8);
         frame.admitKineticProps([fragment], mockState);
         const nearby = new Int32Array(16);
@@ -131,7 +127,7 @@ describe("active kinetic bodies", () => {
         assignPhysIdWithPose(anchor, 0);
         frame.insertEid(0);
         frame._pushKineticEid(anchor._physId);
-        frame._nextPhysId = 1;
+        noteEntityEidHighWater(0);
         const fragment = mockCircleProp(240, 180, 8);
         frame.admitKineticProps([fragment], mockState);
         assert.equal(kineticDynamicSlab.x[fragment._physId], 240);
@@ -147,7 +143,7 @@ describe("active kinetic bodies", () => {
         assignPhysIdWithPose(mover, 0);
         frame.insertEid(0);
         frame._pushKineticEid(mover._physId);
-        frame._nextPhysId = 1;
+        noteEntityEidHighWater(0);
         const witness = mockCircleProp(200, 0, 8);
         frame.admitKineticProps([witness], mockState);
         {
@@ -183,7 +179,7 @@ describe("active kinetic bodies", () => {
         addDistanceConstraint(session, { bodyA: head, bodyB: tail, restLength: 20 });
         frame._pushKineticEid(head._physId);
         frame._pushKineticEid(1);
-        bakeKineticIslandPlan(session, frame.kineticEids, frame.kineticEidCount);
+        ensureKineticIslandPlan(session, frame.kineticEids, frame.kineticEidCount);
         entityAlive[1] = 0;
         delete tail._physId;
         frame.syncActiveKineticBodies();
@@ -215,7 +211,7 @@ describe("active kinetic bodies", () => {
         addDistanceConstraint(session, { bodyA: head, bodyB: mid, restLength: 20 });
         addDistanceConstraint(session, { bodyA: mid, bodyB: tail, restLength: 20 });
         frame._pushKineticEid(head._physId); frame._pushKineticEid(mid._physId); frame._pushKineticEid(tail._physId);
-        bakeKineticIslandPlan(session, frame.kineticEids, frame.kineticEidCount);
+        ensureKineticIslandPlan(session, frame.kineticEids, frame.kineticEidCount);
         head.isSleeping = true;
         mid.isSleeping = true;
         tail.isSleeping = true;

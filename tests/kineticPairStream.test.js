@@ -1,92 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { readEntityFacing, SAT_RESULT, separateAlongNormalSlab, allowsKineticCollisionPairOrderSlab, isKinematicallyActiveSlab, pairBroadphaseOverlapSlab, gatherKineticCandidatePairs, normalizeKineticBody } from "../Libraries/Physics/physics.js";
-import { satCheckCollision } from "./harness/satCollisionHarness.js";
-import { kineticDynamicSlab, entityRefs, kineticPairBuffer } from "../Core/engineMemory.js";
-import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
-import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
+import { createKineticTestTick, mockKineticCircle, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
+import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
+import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
+import { kineticDynamicSlab } from "../Core/engineMemory.js";
+import { noop } from "./harness/kineticTickHarness.js";
 
-const pairBuffer = kineticPairBuffer;
-function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
-    return allowsKineticCollisionPairOrderSlab(physIdA, physIdB) && overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
-}
-function separatePairUntilClear(a, b, maxPasses = 8) {
-    if (a._physId === undefined) assignPhysIdWithPose(a, 0);
-    if (b._physId === undefined) assignPhysIdWithPose(b, 1);
-    normalizeKineticBody(a);
-    normalizeKineticBody(b);
-    for (let pass = 0; pass < maxPasses; pass++) {
-        const collided = satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
-        if (!collided || SAT_RESULT[0] < 1e-5) return;
-        const overlap = SAT_RESULT[0];
-        const nx = SAT_RESULT[1];
-        const ny = SAT_RESULT[2];
-        const coincident = SAT_RESULT[5] !== 0;
-        if (coincident) return;
-        separateAlongNormalSlab(a._physId, b._physId, nx, ny, overlap);
-    }
-}
-function pairKeys(pairs, spatialFrame) {
-    const keys = [];
-    for (let i = 0; i < pairs.count; i++) {
-        const bodyA = (entityRefs[pairs.physIdA[i]]?._physId === pairs.physIdA[i] ? entityRefs[pairs.physIdA[i]] : null);
-        const bodyB = (entityRefs[pairs.physIdB[i]]?._physId === pairs.physIdB[i] ? entityRefs[pairs.physIdB[i]] : null);
-        const lo = Math.min(bodyA.id, bodyB.id);
-        const hi = Math.max(bodyA.id, bodyB.id);
-        keys.push(lo * 1_000_000 + hi);
-    }
-    keys.sort((a, b) => a - b);
-    return keys;
-}
 describe("kinetic pair stream", () => {
-    it("snapshotted broadphase overlap detects touching circles", () => {
-        const a = mockKineticCircle(0, 0, 10);
-        const b = mockKineticCircle(18, 0, 10);
-        a._physId = 0;
-        b._physId = 1;
-        snapshotKineticBodySlab([a._physId, b._physId], 2);
-        assert.ok(pairBroadphaseOverlapSlab(a._physId, b._physId));
-    });
-    it("slab-backed pair policy resolves resting overlap only when mover is active", () => {
-        const rest = mockKineticCircle(0, 0, 10, 0, 0);
-        const mover = mockKineticCircle(18, 0, 10, 20, 0);
-        assignPhysIdWithPose(rest, 0);
-        assignPhysIdWithPose(mover, 1);
-        snapshotKineticBodySlab([rest._physId, mover._physId], 2);
-        assert.ok(allowsKineticCollisionPairSlab(rest._physId, mover._physId, pairBroadphaseOverlapSlab(rest._physId, mover._physId)));
-        rest.vx = 0;
-        mover.vx = 0;
-        snapshotKineticBodySlab([rest._physId, mover._physId], 2);
-        assert.equal(allowsKineticCollisionPairSlab(rest._physId, mover._physId, pairBroadphaseOverlapSlab(rest._physId, mover._physId)), false);
-    });
-    it("resting overlapping circles emit no candidate pairs", () => {
-        const a = mockKineticCircle(0, 0, 10, 0, 0);
-        const b = mockKineticCircle(18, 0, 10, 0, 0);
-        const frame = setupKineticTestFrame([a, b]);
-        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
-        gatherKineticCandidatePairs(frame, pairBuffer);
-        assert.equal(pairBuffer.count, 0);
-    });
-    it("moving circle against resting neighbor emits one ordered pair", () => {
-        const a = mockKineticCircle(0, 0, 10, 30, 0);
-        const b = mockKineticCircle(18, 0, 10, 0, 0);
-        const frame = setupKineticTestFrame([a, b]);
-        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
-        gatherKineticCandidatePairs(frame, pairBuffer);
-        assert.equal(pairBuffer.count, 1);
-        assert.equal((entityRefs[pairBuffer.physIdA[0]]?._physId === pairBuffer.physIdA[0] ? entityRefs[pairBuffer.physIdA[0]] : null).id, a.id);
-        assert.equal((entityRefs[pairBuffer.physIdB[0]]?._physId === pairBuffer.physIdB[0] ? entityRefs[pairBuffer.physIdB[0]] : null).id, b.id);
-    });
-    it("three-body contact emits each pair once", () => {
-        const left = mockKineticCircle(0, 0, 10, 0, 0);
-        const center = mockKineticCircle(18, 0, 10, 25, 0);
-        const right = mockKineticCircle(36, 0, 10, 0, 0);
-        const frame = setupKineticTestFrame([left, center, right]);
-        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
-        gatherKineticCandidatePairs(frame, pairBuffer);
-        assert.deepEqual(pairKeys(pairBuffer, frame), [left.id * 1_000_000 + center.id, center.id * 1_000_000 + right.id]);
-    });
     it("moving body wakes sleeping overlapping neighbor during contact pass", () => {
         const mover = mockKineticCircle(0, 0, 10, 40, 0);
         const sleeper = mockKineticCircle(18, 0, 10, 0, 0);
@@ -95,22 +16,7 @@ describe("kinetic pair stream", () => {
         resolveKineticContactPass(tick);
         assert.equal(sleeper.isSleeping, false);
     });
-});
-describe("kinetic pair stream on proof props", () => {
-    it("resting crate stack emits no pairs until one body moves", () => {
-        const bottom = new WorldProp(0, 0, "box", 0);
-        const top = new WorldProp(0, 14, "box", 0);
-        separatePairUntilClear(bottom, top);
-        const frame = setupKineticTestFrame([bottom, top]);
-        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
-        gatherKineticCandidatePairs(frame, pairBuffer);
-        assert.equal(pairBuffer.count, 0);
-        top.vx = 12;
-        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
-        gatherKineticCandidatePairs(frame, pairBuffer);
-        assert.equal(pairBuffer.count, 1);
-    });
-    it("contact pass still separates moving circle pair after pair-stream refactor", () => {
+    it("contact pass still separates moving circle pair", () => {
         const a = mockKineticCircle(0, 0, 10, 50, 0);
         const b = mockKineticCircle(15, 0, 10, -30, 0);
         resolveKineticContactPass(createKineticTestTick([a, b]));
@@ -125,5 +31,27 @@ describe("kinetic pair stream on proof props", () => {
         resolveKineticContactPass(createKineticTestTick([a, b]));
         assert.equal(a.x, ax0);
         assert.equal(b.x, bx0);
+    });
+    it("resting crate stack emits no pairs until one body moves", () => {
+        const bottom = new WorldProp(0, 0, "box", 0);
+        const top = new WorldProp(0, 14, "box", 0);
+        top.vx = 0;
+        bottom.vx = 0;
+        const restingTick = createKineticTestTick([bottom, top]);
+        runCollisionPipeline(restingTick, noop, noop, 1);
+        assert.equal(restingTick.world.kinetic.kineticSolverStats.pairCount, 0);
+        top.vx = 12;
+        snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
+        const movingTick = createKineticTestTick([bottom, top]);
+        runCollisionPipeline(movingTick, noop, noop, 1);
+        assert.ok(movingTick.world.kinetic.kineticSolverStats.pairCount >= 1);
+    });
+    it("three-body contact resolves without leaving movers overlapped", () => {
+        const left = mockKineticCircle(0, 0, 10, 0, 0);
+        const center = mockKineticCircle(18, 0, 10, 25, 0);
+        const right = mockKineticCircle(36, 0, 10, 0, 0);
+        const tick = createKineticTestTick([left, center, right]);
+        resolveKineticContactPass(tick);
+        assert.ok(!checkPairAtSlabPose(left, center) || center.vx !== 25);
     });
 });

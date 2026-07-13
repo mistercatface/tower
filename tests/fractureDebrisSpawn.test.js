@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { getBaseSpriteCacheKey, applyPropBoxFootprint, propShapeFootprintId } from "../Libraries/Props/props.js";
+import { getBaseSpriteCacheId, applyPropBoxFootprint, propShapeFootprintId } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
@@ -17,10 +17,10 @@ describe("fracture debris slab spawn", () => {
     it("sprite cache footprint key updates when fracture geometry is applied", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 32, 32);
-        const before = getBaseSpriteCacheKey(prop, spriteCacheKeyDeps);
+        const before = getBaseSpriteCacheId(prop, spriteCacheKeyDeps);
         const shards = shatterFootprint(32, 32, 0, 0, 30);
         FractureEngine.applyPropFractureGeometry(prop, shards[0]);
-        const after = getBaseSpriteCacheKey(prop, spriteCacheKeyDeps);
+        const after = getBaseSpriteCacheId(prop, spriteCacheKeyDeps);
         assert.notEqual(before, after);
     });
 
@@ -40,7 +40,7 @@ describe("fracture debris slab spawn", () => {
             boundingRadius: 16,
         });
         assert.notEqual(propShapeFootprintId(a), propShapeFootprintId(b));
-        assert.notEqual(getBaseSpriteCacheKey(a, spriteCacheKeyDeps), getBaseSpriteCacheKey(b, spriteCacheKeyDeps));
+        assert.notEqual(getBaseSpriteCacheId(a, spriteCacheKeyDeps), getBaseSpriteCacheId(b, spriteCacheKeyDeps));
     });
 
     it("wall chunk sprite keys include footprint so same profile shards stay distinct", () => {

@@ -6,99 +6,6 @@ export function deterministicUnitRandom(seed) {
     h = Math.imul(h ^ (h >>> 13), 3266489909);
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
-/** True when segments (ax, ay)–(bx, by) and (cx, cy)–(dx, dy) intersect (inclusive endpoints). */
-export function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
-    const d1x = bx - ax;
-    const d1y = by - ay;
-    const d2x = dx - cx;
-    const d2y = dy - cy;
-    const cross = d1x * (cy - ay) - d1y * (cx - ax);
-    const cross2 = d1x * (dy - ay) - d1y * (dx - ax);
-    const cross3 = d2x * (ay - cy) - d2y * (ax - cx);
-    const cross4 = d2x * (by - cy) - d2y * (bx - cx);
-    if (((cross >= 0 && cross2 <= 0) || (cross <= 0 && cross2 >= 0)) && ((cross3 >= 0 && cross4 <= 0) || (cross3 <= 0 && cross4 >= 0))) return true;
-    return false;
-}
-/** Intersection of two segments, or false when they do not cross at a single point. Writes x,y,t,u into buf[o..o+3]. */
-export function segmentIntersectionPointIntoF32(buf, o, ax, ay, bx, by, cx, cy, dx, dy) {
-    const d1x = bx - ax;
-    const d1y = by - ay;
-    const d2x = dx - cx;
-    const d2y = dy - cy;
-    const denom = d1x * d2y - d1y * d2x;
-    if (Math.abs(denom) < 1e-10) return false;
-    const t = ((cx - ax) * d2y - (cy - ay) * d2x) / denom;
-    const u = ((cx - ax) * d1y - (cy - ay) * d1x) / denom;
-    if (t < 0 || t > 1 || u < 0 || u > 1) return false;
-    buf[o] = ax + t * d1x;
-    buf[o + 1] = ay + t * d1y;
-    buf[o + 2] = t;
-    buf[o + 3] = u;
-    return true;
-}
-/** Minimum distance between segments (ax, ay)–(bx, by) and (cx, cy)–(dx, dy). */
-export function distanceSegmentToSegment(ax, ay, bx, by, cx, cy, dx, dy) {
-    const ux = bx - ax;
-    const uy = by - ay;
-    const vx = dx - cx;
-    const vy = dy - cy;
-    const wx = ax - cx;
-    const wy = ay - cy;
-    const a = ux * ux + uy * uy;
-    const b = ux * vx + uy * vy;
-    const c = vx * vx + vy * vy;
-    const d = ux * wx + uy * wy;
-    const e = vx * wx + vy * wy;
-    const D = a * c - b * b;
-    let sc;
-    let sN;
-    let sD = D;
-    let tc;
-    let tN;
-    let tD = D;
-    if (D < 1e-10) {
-        sN = 0;
-        sD = 1;
-        tN = e;
-        tD = c;
-    } else {
-        sN = b * e - c * d;
-        tN = a * e - b * d;
-        if (sN < 0) {
-            sN = 0;
-            tN = e;
-            tD = c;
-        } else if (sN > sD) {
-            sN = sD;
-            tN = e + b;
-            tD = c;
-        }
-    }
-    if (tN < 0) {
-        tN = 0;
-        if (-d < 0) sN = 0;
-        else if (-d > a) sN = sD;
-        else {
-            sN = -d;
-            sD = a;
-        }
-    } else if (tN > tD) {
-        tN = tD;
-        if (-d + b < 0) sN = 0;
-        else if (-d + b > a) sN = sD;
-        else {
-            sN = -d + b;
-            sD = a;
-        }
-    }
-    sc = Math.abs(sN) < 1e-10 ? 0 : sN / sD;
-    tc = Math.abs(tN) < 1e-10 ? 0 : tN / tD;
-    const px = ax + sc * ux;
-    const py = ay + sc * uy;
-    const qx = cx + tc * vx;
-    const qy = cy + tc * vy;
-    return Math.hypot(px - qx, py - qy);
-}
 /** Closest point on segment (vx, vy)–(wx, wy) to point (px, py). Writes x,y,t at M_OUT_CLOSEST_*. */
 export function closestPointOnLineSegmentInto(px, py, vx, vy, wx, wy) {
     const dx = wx - vx;
@@ -134,31 +41,6 @@ export function rotateXYIntoF32(o, lx, ly, cos, sin) {
 export function transformPoint2DIntoF32(buf, o, centerX, centerY, lx, ly, cos, sin) {
     buf[o] = centerX + lx * cos - ly * sin;
     buf[o + 1] = centerY + lx * sin + ly * cos;
-}
-/** Writes rotated x,y into buf[o..o+1]. */
-export function rotatePointIntoF32(buf, o, centerX, centerY, lx, ly, angle) {
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    transformPoint2DIntoF32(buf, o, centerX, centerY, lx, ly, cos, sin);
-}
-export function rectCornersInto(buf, o, centerX, centerY, halfSize, angle = 0) {
-    const hx = typeof halfSize === "number" ? halfSize : (halfSize.x ?? halfSize.hx);
-    const hy = typeof halfSize === "number" ? halfSize : (halfSize.y ?? halfSize.hy);
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    buf[o] = centerX - hx * cos + hy * sin;
-    buf[o + 1] = centerY - hx * sin - hy * cos;
-    buf[o + 2] = centerX + hx * cos + hy * sin;
-    buf[o + 3] = centerY + hx * sin - hy * cos;
-    buf[o + 4] = centerX + hx * cos - hy * sin;
-    buf[o + 5] = centerY + hx * sin + hy * cos;
-    buf[o + 6] = centerX - hx * cos - hy * sin;
-    buf[o + 7] = centerY - hx * sin + hy * cos;
-}
-export function rectCorners(centerX, centerY, halfSize, angle = 0) {
-    const out = new Float32Array(8);
-    rectCornersInto(out, 0, centerX, centerY, halfSize, angle);
-    return out;
 }
 export function boxLocalFootprint(hx, hy) {
     return new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]);

@@ -1481,7 +1481,7 @@ export function computeSabPathSteering(buf, o, eid, worker, slot, pathLen, targe
     return dist > offPathDistance;
 }
 // --- NavRuntime.js ---
-export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, state = null) {
+export function buildReplanParams(obstacleGrid, startX, startY, targetX, targetY, nav, state) {
     return new HpaReplanRequest({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch: nav.graphSyncGeneration, topologyKey: nav.syncedTopologyKey(), navTopology: nav.topology, state });
 }
 export function replanCellIndicesFromWorldCoords(grid, startX, startY, targetX, targetY) {
@@ -1721,11 +1721,6 @@ export function patchNavWalkableCellIndex(state, idx = null) {
     if (!cache?.boundsConfig) return null;
     if (idx === null || !cache.candidates) return bakeNavWalkableCellIndex(state, cache.boundsConfig, cache.floodSeedBounds);
     return patchNavWalkableCellIndexRegion(state, cache, idx);
-}
-export function pickWalkableCell(openCells, excludeIndices = null, rng = Math.random) {
-    const candidates = excludeIndices ? openCells.filter((idx) => !excludeIndices.has(idx)) : openCells;
-    if (!candidates.length) return null;
-    return candidates[Math.floor(rng() * candidates.length)];
 }
 export function findNearestOpenCellIdx(blocked, grid, idx) {
     const cols = grid.cols;
@@ -2056,7 +2051,7 @@ export function buildNavComponentMap(blocked, octileNeighbors, cols, rows, activ
     return cellToComponent;
 }
 export class HpaReplanRequest {
-    constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, state = null }) {
+    constructor({ obstacleGrid, startX, startY, targetX, targetY, graphEpoch, topologyKey, navTopology, state }) {
         this.obstacleGrid = obstacleGrid;
         this.startX = startX;
         this.startY = startY;
@@ -2077,7 +2072,7 @@ export class HpaReplanRequest {
         navState.topologyKey = this.topologyKey;
         if (!result || !result.pathLen) {
             worker.releaseOwnedPathSlot(navState);
-            if (this.state && (navState.pendingReplanReason === "targetChange" || navState.pendingReplanReason === "targetMoved")) logHpaReplanFailure(this.obstacleGrid, worker, this.navTopology, this.startX, this.startY, this.targetX, this.targetY);
+            if (navState.pendingReplanReason === "targetChange" || navState.pendingReplanReason === "targetMoved") logHpaReplanFailure(this.obstacleGrid, worker, this.navTopology, this.startX, this.startY, this.targetX, this.targetY);
             return;
         }
         worker.releaseOwnedPathSlot(navState);
@@ -2113,19 +2108,9 @@ export class HpaPathSession {
         this._slotWaiters = [];
         this._frameId = 0;
         this._frameStartsUsed = 0;
-        this._peakInflightSeen = 0;
     }
     isReplanInFlight(navState) {
         return navState.hpaReplanRequestId !== 0;
-    }
-    getInflightCount() {
-        return this._activeWorkerCount;
-    }
-    getPeakInflightReplans() {
-        return this._peakInflightSeen;
-    }
-    resetPeakInflightReplans() {
-        this._peakInflightSeen = 0;
     }
     beginFrame(frameId) {
         if (frameId != null && frameId === this._frameId) return;
@@ -2182,9 +2167,6 @@ export class HpaPathSession {
             this._startDrain(navState);
         }
     }
-    _recordInflightPeak() {
-        if (this._activeWorkerCount > this._peakInflightSeen) this._peakInflightSeen = this._activeWorkerCount;
-    }
     _releaseWorkerSlot() {
         this._activeWorkerCount--;
         while (this._slotWaiters.length) this._slotWaiters.shift()();
@@ -2204,7 +2186,6 @@ export class HpaPathSession {
                 const requestId = navState.hpaReplanRequestId;
                 const request = this._pendingRequests.get(navState);
                 this._activeWorkerCount++;
-                this._recordInflightPeak();
                 let workerOut = null;
                 try {
                     workerOut = await this.worker.requestPath(request, navState);

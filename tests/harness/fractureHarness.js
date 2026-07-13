@@ -1,4 +1,4 @@
-import { FractureEngine, moduleStores, seedFractureRand } from "../../Libraries/Physics/fracture.js";
+import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { boxLocalFootprint } from "../../Libraries/Math/math.js";
 import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT } from "../../Core/engineMemory.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
@@ -7,7 +7,7 @@ import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { WorldProp } from "../../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../../Libraries/Props/props.js";
 import { assignPhysIdWithPose } from "./kineticTickHarness.js";
-import { createKineticSession } from "../../Libraries/Physics/physics.js";
+import { createKineticSession, writeLivePolygon, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
 
 export function createFractureWorld(overrides = {}) {
     const grid = new WorldObstacleGrid(16);
@@ -68,11 +68,25 @@ export function materializeDebrisGeometries(stores, debrisStart, debrisCount) {
     return geometries;
 }
 
-export function shatterPolygon(flatVerts, hitX, hitY, impactForce = 10, stores = moduleStores) {
+let geometryShatterWorld = null;
+function geometryShatterEngine() {
+    if (!geometryShatterWorld) geometryShatterWorld = createFractureWorld();
+    return geometryShatterWorld.fractureEngine;
+}
+
+export function shatterPolygon(flatVerts, hitX, hitY, impactForce = 10) {
     if (flatVerts.length < 6) return [];
-    seedFractureRand(hitX, hitY, impactForce);
+    const engine = geometryShatterEngine();
+    const stores = engine.stores;
     stores.debris.reset();
-    FractureEngine._shatterPolygonIntoStore(stores, flatVerts, hitX, hitY, impactForce);
+    const prop = new WorldProp(0, 0, "box", 0);
+    prop.fractureEnabled = true;
+    writeLivePolygon(prop, flatVerts, flatVerts.length);
+    normalizeKineticBody(prop);
+    if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce, engine)) {
+        stores.debris.reset();
+        return [];
+    }
     if (ENGINE_F32[F_OUT_DEBRIS_COUNT] < 2) {
         stores.debris.reset();
         return [];

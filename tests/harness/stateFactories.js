@@ -1,9 +1,31 @@
 import { createKineticSession } from "../../Libraries/Physics/physics.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
-import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
+import { SandboxWorldState, createSandboxController } from "../../Libraries/Sandbox/sandbox.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { createWorkerNavigation } from "../WorkerNavigationFactory.js";
+
+const noopCanvas = {
+    addEventListener() {},
+    removeEventListener() {},
+};
+
+/** Session via public controller — createSandboxSession is not exported. */
+export function createSandboxControllerSession(state, behaviors = []) {
+    return createSandboxController(state, {
+        getCanvas: () => noopCanvas,
+        clientToWorld: () => ({ x: 0, y: 0 }),
+        behaviors,
+    }).session;
+}
+
+export function createSandboxTestController(state, behaviors = []) {
+    return createSandboxController(state, {
+        getCanvas: () => noopCanvas,
+        clientToWorld: () => ({ x: 0, y: 0 }),
+        behaviors,
+    });
+}
 
 export function createSandboxSessionState(overrides = {}) {
     return {

@@ -205,9 +205,6 @@ export function resolvePropQuantizeSteps(prop) {
     sQuantizeSteps.view = override?.view ?? defaults.view ?? 30;
     return sQuantizeSteps;
 }
-export function getBaseSpriteCacheKey(prop, deps) {
-    return String(getBaseSpriteCacheId(prop, deps));
-}
 export function getBaseSpriteCacheId(prop, deps) {
     const { quantizeAngleIndex } = deps;
     const steps = resolvePropQuantizeSteps(prop);
@@ -489,8 +486,7 @@ export class WorldProp {
             const fadeOutMs = this.strategy.fadeOutMs;
             const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
             if (this.ageMs >= fadeOutMs + durationMs) {
-                if (state && spatialFrame) removeWorldPropFromState(state, this, spatialFrame, state.sandbox?.entityMeta);
-                else this.isDead = true;
+                removeWorldPropFromState(state, this, spatialFrame, state.sandbox?.entityMeta);
                 return;
             } else if (this.ageMs >= fadeOutMs) {
                 const elapsedFade = this.ageMs - fadeOutMs;
@@ -589,13 +585,6 @@ function resolveVirtualPropScale(parentProp, childProp, cfg) {
 export function getPropVisualAttachmentConfigs(prop) {
     const attachments = propCatalog[prop?.type]?.visuals?.attachments;
     return Array.isArray(attachments) ? attachments : [];
-}
-/**
- * @param {object} prop
- * @param {{ quantizeAngleIndex: (angle: number, steps: number) => number }} deps
- */
-export function getVisualAttachmentSpriteCacheKey(prop, deps) {
-    return String(getVisualAttachmentSpriteCacheId(prop, deps));
 }
 export function getVisualAttachmentSpriteCacheId(prop, deps) {
     const attachments = getPropVisualAttachmentConfigs(prop);

@@ -1,10 +1,10 @@
 import { installTestDocument } from "./harness/sandboxInspectorHarness.js";
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
-import { createSandboxSession, spawnPlacedSandboxProp, createSandboxController } from "../Libraries/Sandbox/sandbox.js";
+import { spawnPlacedSandboxProp, createSandboxController } from "../Libraries/Sandbox/sandbox.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
-import { createSandboxKineticWorld } from "./harness/stateFactories.js";
+import { createSandboxKineticWorld, createSandboxControllerSession } from "./harness/stateFactories.js";
 
 function createEditorTestState() {
     return createSandboxKineticWorld(32, 32, {
@@ -27,7 +27,7 @@ describe("sandbox editor inspector wiring", () => {
     it("selected prop tint mutations apply to the live registry object", () => {
         const state = createEditorTestState();
         const prop = spawnBall(state);
-        const session = createSandboxSession(state);
+        const session = createSandboxControllerSession(state);
         session.select({ kind: "prop", ids: [prop.id] });
         const inspector = session.getSelectionInspector();
         assert.equal(inspector.kind, "prop");
@@ -55,7 +55,7 @@ describe("sandbox editor inspector wiring", () => {
 
     it("spawn with selectSpawned false leaves selection empty", () => {
         const state = createEditorTestState();
-        const session = createSandboxSession(state);
+        const session = createSandboxControllerSession(state);
         session.setPlacePaletteKey("prop:ball");
         assert.equal(session.spawnAt(64, 64, { selectSpawned: false }), true);
         assert.equal(session.getSelection(), null);
@@ -64,7 +64,7 @@ describe("sandbox editor inspector wiring", () => {
 
     it("spawn with default selectSpawned selects the new prop", () => {
         const state = createEditorTestState();
-        const session = createSandboxSession(state);
+        const session = createSandboxControllerSession(state);
         session.setPlacePaletteKey("prop:ball");
         assert.equal(session.spawnAt(64, 64), true);
         const selection = session.getSelection();
@@ -74,7 +74,7 @@ describe("sandbox editor inspector wiring", () => {
 
     it("spawnAt honors selectSpawned false in spawn context", () => {
         const state = createEditorTestState();
-        const session = createSandboxSession(state);
+        const session = createSandboxControllerSession(state);
         session.setPlacePaletteKey("prop:ball");
         session.setSpawnBallRadius(4);
         assert.equal(session.spawnAt(48, 48, { selectSpawned: false }), true);

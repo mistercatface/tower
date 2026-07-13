@@ -3,15 +3,21 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
 import { createNavWalkableTestState } from "./harness/stateFactories.js";
-import { getNavWalkableCellIndex, patchNavWalkableCellIndex, pickWalkableCell, isNavWalkableCell } from "../Libraries/Navigation/navigation.js";
+import { getNavWalkableCellIndex, patchNavWalkableCellIndex, isNavWalkableCell } from "../Libraries/Navigation/navigation.js";
 import { terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { bumpGridNavEpoch } from "../Libraries/Spatial/spatial.js";
 import { GRID_NAV_EPOCH_WALL } from "../Core/engineEnums.js";
 
 async function createWalkableCellsTestState(config) {
     return createNavWalkableTestState(config);
+}
+
+function pickWalkableCell(openCells, excludeIndices = null, rng = Math.random) {
+    const candidates = excludeIndices ? openCells.filter((idx) => !excludeIndices.has(idx)) : openCells;
+    if (!candidates.length) return null;
+    return candidates[Math.floor(rng() * candidates.length)];
 }
 
 function pickNavWalkableCell(state, rng = Math.random, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeIndices = null) {

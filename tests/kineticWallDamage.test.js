@@ -15,7 +15,7 @@ import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { FractureEngine, FRACTURE_TUNING } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { WallCollisionResolver, createWallHitBuffer, createKineticSession, runKineticPhysics } from "../Libraries/Physics/physics.js";
+import { WallCollisionResolver, createKineticSession, runKineticPhysics } from "../Libraries/Physics/physics.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import {kineticPhysicsHooks, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
@@ -67,8 +67,21 @@ function kineticDebrisList(state) {
 function assertNoWallChunkWorldProps(state) {
     assert.equal(state.worldProps.some((p) => p.type === "wall_voxel_chunk" || p.type === "wall_rail_chunk"), false);
 }
+function createTestWallHitBuffer(capacity = 64) {
+    return {
+        count: 0,
+        approachDot: new Float32Array(capacity),
+        normalX: new Float32Array(capacity),
+        normalY: new Float32Array(capacity),
+        contactX: new Float32Array(capacity),
+        contactY: new Float32Array(capacity),
+        gridIdx: new Int32Array(capacity),
+        gridSide: new Uint8Array(capacity),
+        flags: new Uint8Array(capacity),
+    };
+}
 function wallHitBuffer(entries) {
-    const hits = createWallHitBuffer(Math.max(1, entries.length));
+    const hits = createTestWallHitBuffer(Math.max(1, entries.length));
     for (let i = 0; i < entries.length; i++) {
         const e = entries[i];
         hits.approachDot[i] = e.approachDot;
@@ -125,7 +138,7 @@ describe("kinetic wall damage", () => {
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 5, 5), 0, 2, 4));
         stampWallHitSource(0, 560, 0, 1);
                 state.wallResolver = {
-            hits: createWallHitBuffer(),
+            hits: createTestWallHitBuffer(),
             resolve() {
                 return true;
             },

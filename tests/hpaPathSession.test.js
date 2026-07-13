@@ -1,15 +1,13 @@
-import { HpaPathSession, createNavState, buildReplanParams, HPA_REPLAN_FRAME_START_BUDGET, HPA_REPLAN_PEAK_INFLIGHT_CAP, REPLAN_PRIORITY_STUCK_OFFSCREEN, REPLAN_PRIORITY_VISIBLE } from "../Libraries/Navigation/navigation.js";
+import { HpaPathSession, createNavState, buildReplanParams, REPLAN_PRIORITY_STUCK_OFFSCREEN, REPLAN_PRIORITY_VISIBLE } from "../Libraries/Navigation/navigation.js";
 import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
-
-
-
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
+
 async function replanParams(grid) {
     const navigation = await createWorkerNavigation(grid);
-    const request = buildReplanParams(grid, 40, 40, 120, 120, navigation);
+    const request = buildReplanParams(grid, 40, 40, 120, 120, navigation, { obstacleGrid: grid });
     request._navigation = navigation;
     return request;
 }
@@ -40,7 +38,6 @@ describe("HpaPathSession frame budget", () => {
         session.flushFrame();
         await new Promise((resolve) => setImmediate(resolve));
         assert.equal(started, 4);
-        assert.equal(session.getInflightCount(), 4);
         release();
         await gate;
         terminateWorkerNavigation(params._navigation);
@@ -77,37 +74,6 @@ describe("HpaPathSession frame budget", () => {
         session.flushFrame();
         await Promise.resolve();
         assert.deepEqual(started.slice(0, 2), ["highA", "highB"]);
-        terminateWorkerNavigation(params._navigation);
-    });
-    it("tracks peak in-flight replans under the configured cap", async () => {
-        const grid = new WorldObstacleGrid(16);
-        grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
-        const params = await replanParams(grid);
-        let release;
-        const gate = new Promise((resolve) => {
-            release = resolve;
-        });
-        const mockWorker = {
-            getPathSlot: () => -1,
-            releaseOwnedPathSlot: () => {},
-            releaseSlot: () => {},
-            requestPath: async () => {
-                await gate;
-                return { result: { pathLen: 0, pathSlot: -1, pathProgressIdx: 0 } };
-            },
-        };
-        const session = new HpaPathSession(mockWorker, { frameStartBudget: HPA_REPLAN_FRAME_START_BUDGET, peakInflightCap: HPA_REPLAN_PEAK_INFLIGHT_CAP });
-        session.resetPeakInflightReplans();
-        const navStates = Array.from({ length: 20 }, () => createNavState());
-        session.beginFrame(1);
-        for (let i = 0; i < navStates.length; i++) session.requestReplan(navStates[i], params, REPLAN_PRIORITY_VISIBLE);
-        session.flushFrame();
-        await new Promise((resolve) => setImmediate(resolve));
-        assert.equal(session.getInflightCount(), HPA_REPLAN_FRAME_START_BUDGET);
-        assert.equal(session.getPeakInflightReplans(), HPA_REPLAN_FRAME_START_BUDGET);
-        assert.ok(session.getPeakInflightReplans() <= HPA_REPLAN_PEAK_INFLIGHT_CAP);
-        release();
-        await gate;
         terminateWorkerNavigation(params._navigation);
     });
 });

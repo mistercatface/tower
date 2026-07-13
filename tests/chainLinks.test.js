@@ -1,7 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getConnectedBodyIds, CircleShape, createKineticSession } from "../Libraries/Physics/physics.js";
-import { addChainLink, isChainSteeringTarget, resolveChainLinkRestLength, setChainHead, SandboxEntityMetaStore } from "../Libraries/Sandbox/sandbox.js";
+import { getConnectedBodyIds, addDistanceConstraint, createKineticSession } from "../Libraries/Physics/physics.js";
 import { mockBall, resetMockBallIds, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 
@@ -11,7 +10,6 @@ function createState(props) {
     }
     return {
         kinetic: createKineticSession(),
-        sandbox: { entityMeta: new SandboxEntityMetaStore() },
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
@@ -22,55 +20,26 @@ function createState(props) {
 }
 
 describe("chain links", () => {
-    it("addChainLink creates a distance constraint from linked sphere radii", () => {
+    it("addDistanceConstraint links spheres with rest length from radii", () => {
         resetMockBallIds(1);
         const a = mockBall(0, 0);
         const b = mockBall(30, 0);
         const state = createState([a, b]);
-        assert.ok(addChainLink(state, a.id, b.id, 1.05));
+        const slack = 1.05;
+        const restLength = (a.radius + b.radius) * slack;
+        addDistanceConstraint(state.kinetic, { bodyA: a, bodyB: b, restLength });
         assert.equal(kineticConstraintStore.count, 1);
-        assert.ok(Math.abs(kineticConstraintStore.restLength[0] - resolveChainLinkRestLength(a, b, 1.05)) < 1e-5);
+        assert.ok(Math.abs(kineticConstraintStore.restLength[0] - restLength) < 1e-5);
     });
-    it("chain tail is not a steering target but head is", () => {
-        resetMockBallIds(1);
-        const head = mockBall(0, 0);
-        const tail = mockBall(20, 0);
-        const state = createState([head, tail]);
-        addChainLink(state, head.id, tail.id);
-        setChainHead(state, state.sandbox.entityMeta, head.id);
-        assert.ok(isChainSteeringTarget(state, state.sandbox.entityMeta, head.id));
-        assert.ok(!isChainSteeringTarget(state, state.sandbox.entityMeta, tail.id));
-    });
-    it("unlinked nav ball remains a steering target", () => {
-        resetMockBallIds(1);
-        const ball = mockBall(0, 0);
-        const state = createState([ball]);
-        assert.ok(isChainSteeringTarget(state, state.sandbox.entityMeta, ball.id));
-    });
-    it("addChainLink accepts tri wedges marked chain-link eligible", () => {
-        resetMockBallIds(1);
-        const head = mockBall(0, 0);
-        const wedge = {
-            id: 2,
-            x: 20,
-            y: 0,
-            type: "tri_wedge",
-            radius: 10,
-            strategy: { isKinetic: true, canChain: true },
-            shape: new CircleShape(10),
-        };
-        const state = createState([head, wedge]);
-        assert.ok(addChainLink(state, head.id, wedge.id, 1.05));
-        assert.equal(kineticConstraintStore.count, 1);
-    });
+
     it("getConnectedBodyIds walks transitive links", () => {
         resetMockBallIds(1);
         const a = mockBall(0, 0);
         const b = mockBall(20, 0);
         const c = mockBall(40, 0);
         const state = createState([a, b, c]);
-        addChainLink(state, a.id, b.id);
-        addChainLink(state, b.id, c.id);
+        addDistanceConstraint(state.kinetic, { bodyA: a, bodyB: b, restLength: 20 });
+        addDistanceConstraint(state.kinetic, { bodyA: b, bodyB: c, restLength: 20 });
         const members = getConnectedBodyIds(state.kinetic, b.id).sort((x, y) => x - y);
         assert.deepEqual(
             members,

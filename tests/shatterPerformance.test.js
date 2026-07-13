@@ -5,6 +5,7 @@ import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
+import { entityEidHighWater, entityEidFreeCount } from "../Core/entitySlots.js";
 import { createFractureWorld, setupPropForFracture, spawnFractureShards } from "./harness/fractureHarness.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
@@ -52,7 +53,7 @@ describe("Shatter / Debris Performance Fixes", () => {
     it("KineticSpatialFrame assigns unique monotonic physIds and prevents collision", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
-        const startId = frame._nextPhysId;
+        const startId = entityEidHighWater();
 
         const propA = new WorldProp(0, 0, "box", 0);
         const propB = new WorldProp(100, 0, "box", 0);
@@ -61,7 +62,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         world.worldProps.push(propA, propB, propC);
         frame.begin(world);
 
-        assert.equal(frame._nextPhysId, startId + 3);
+        assert.equal(entityEidHighWater(), startId + 3);
         assert.equal(propA._physId, startId);
         assert.equal(propB._physId, startId + 1);
         assert.equal(propC._physId, startId + 2);
@@ -70,13 +71,13 @@ describe("Shatter / Debris Performance Fixes", () => {
         frame.admitKineticProps([propNew], world);
 
         assert.equal(propNew._physId, startId + 3);
-        assert.equal(frame._nextPhysId, startId + 4);
+        assert.equal(entityEidHighWater(), startId + 4);
     });
 
     it("begin() keeps physIds stable when membership is unchanged", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
-        const startId = frame._nextPhysId;
+        const startId = entityEidHighWater();
         const prop = new WorldProp(0, 0, "box", 0);
         world.worldProps.push(prop);
         frame.begin(world);
@@ -93,7 +94,7 @@ describe("Shatter / Debris Performance Fixes", () => {
     it("evict returns physId to free list and scrubs slab on reuse", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
-        const startId = frame._nextPhysId;
+        const startId = entityEidHighWater();
         const prop = new WorldProp(0, 0, "box", 0);
         world.worldProps.push(prop);
         frame.begin(world);
@@ -104,7 +105,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         if (idx >= 0) world.worldProps.splice(idx, 1);
         frame.evictKineticProp(prop, world.kinetic);
         assert.equal(prop._physId, undefined);
-        assert.equal(frame._physIdFreeList.length, 1);
+        assert.equal(entityEidFreeCount(), 1);
         const replacement = new WorldProp(50, 0, "box", 0);
         world.worldProps.push(replacement);
         frame.begin(world);
