@@ -16,10 +16,10 @@ describe("fracture debris slab spawn", () => {
     it("sprite cache footprint key updates when fracture geometry is applied", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 32, 32);
-        const before = getBaseSpriteCacheId(prop, spriteCacheKeyDeps);
+        const before = getBaseSpriteCacheId(prop._physId, spriteCacheKeyDeps);
         const shards = shatterFootprint(32, 32, 0, 0, 30);
         FractureEngine.applyPropFractureGeometry(prop, shards[0]);
-        const after = getBaseSpriteCacheId(prop, spriteCacheKeyDeps);
+        const after = getBaseSpriteCacheId(prop._physId, spriteCacheKeyDeps);
         assert.notEqual(before, after);
     });
 
@@ -41,7 +41,7 @@ describe("fracture debris slab spawn", () => {
             boundingRadius: 16,
         });
         assert.notEqual(entityFootprintId[a._physId], entityFootprintId[b._physId]);
-        assert.notEqual(getBaseSpriteCacheId(a, spriteCacheKeyDeps), getBaseSpriteCacheId(b, spriteCacheKeyDeps));
+        assert.notEqual(getBaseSpriteCacheId(a._physId, spriteCacheKeyDeps), getBaseSpriteCacheId(b._physId, spriteCacheKeyDeps));
     });
 
     it("wall chunk sprite keys include footprint so same profile shards stay distinct", () => {

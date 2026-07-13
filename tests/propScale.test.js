@@ -40,6 +40,6 @@ describe("propScale", () => {
         const b = spawnPlacedSandboxProp(state, 96, 96, "ball");
         setCirclePropRadius(a, 2);
         setCirclePropRadius(b, 2.25);
-        assert.notEqual(getBaseSpriteCacheId(a, noopDeps), getBaseSpriteCacheId(b, noopDeps));
+        assert.notEqual(getBaseSpriteCacheId(a._physId, noopDeps), getBaseSpriteCacheId(b._physId, noopDeps));
     });
 });

@@ -33,17 +33,17 @@ describe("draw shape parity", () => {
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);
         bindStageProp(hex);
         bindStageProp(wedge);
-        const hexKey = getBaseSpriteCacheId(hex, cacheKeyDeps);
-        const wedgeKey = getBaseSpriteCacheId(wedge, cacheKeyDeps);
+        const hexKey = getBaseSpriteCacheId(hex._physId, cacheKeyDeps);
+        const wedgeKey = getBaseSpriteCacheId(wedge._physId, cacheKeyDeps);
         assert.notEqual(hexKey, wedgeKey);
     });
     it("resized custom box changes sprite cache footprint bucket", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         bindStageProp(prop);
-        const before = getBaseSpriteCacheId(prop, cacheKeyDeps);
+        const before = getBaseSpriteCacheId(prop._physId, cacheKeyDeps);
         applyPropBoxFootprint(prop, 12, 5);
         invalidateEntityFootprint(prop._physId);
-        const after = getBaseSpriteCacheId(prop, cacheKeyDeps);
+        const after = getBaseSpriteCacheId(prop._physId, cacheKeyDeps);
         assert.notEqual(before, after);
         assert.equal(typeof after, "number");
     });

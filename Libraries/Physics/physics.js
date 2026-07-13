@@ -1226,7 +1226,6 @@ function buildPolyPolyContactManifoldF32(xA, yA, cosA, sinA, vertsA, normsA, voA
     if (pointCount === 0) return null;
     return pointCount;
 }
-
 export function collisionPartsList(entity) {
     const parts = entity.collisionParts;
     if (parts?.length > 1) return parts;
@@ -4288,20 +4287,6 @@ export function transformRollVertexInto(lx, ly, lz, radius, qw, qx, qy, qz) {
     rotateVecByQuatInto(lx, ly, lz - radius, qw, qx, qy, qz);
     ENGINE_F32[M_OUT_VZ] += radius;
 }
-function readBodyRollComponents(body) {
-    const physId = body._physId;
-    if (physId !== undefined) {
-        ENGINE_F32[M_OUT_QW] = entityRollQw[physId];
-        ENGINE_F32[M_OUT_QX] = entityRollQx[physId];
-        ENGINE_F32[M_OUT_QY] = entityRollQy[physId];
-        ENGINE_F32[M_OUT_QZ] = entityRollQz[physId];
-        return;
-    }
-    ENGINE_F32[M_OUT_QW] = body._spawnRollQw ?? 1;
-    ENGINE_F32[M_OUT_QX] = body._spawnRollQx ?? 0;
-    ENGINE_F32[M_OUT_QY] = body._spawnRollQy ?? 0;
-    ENGINE_F32[M_OUT_QZ] = body._spawnRollQz ?? 0;
-}
 function integrateGroundRoll(eid, dtMs) {
     const vx = entityVx[eid];
     const vy = entityVy[eid];
@@ -4342,7 +4327,7 @@ export function absorbCollisionRollImpulse(eid, dtMs) {
     entityRollQz[eid] = ENGINE_F32[M_OUT_QZ];
     normalizeEntityRollQuat(eid);
 }
-function quantizeRollQuatF32(qw, qx, qy, qz, steps = 16) {
+export function quantizeRollQuatF32(qw, qx, qy, qz, steps = 16) {
     const angle = 2 * Math.acos(clamp(qw, -1, 1));
     if (angle < 1e-4) {
         ENGINE_F32[M_OUT_QW] = 1;
@@ -4366,12 +4351,8 @@ function quantizeRollQuatF32(qw, qx, qy, qz, steps = 16) {
     const qHeading = quantizeAngle(heading, steps);
     axisAngleQuatInto(Math.cos(qHeading), Math.sin(qHeading), 0, qAngle);
 }
-export function quantizeBodyRollQuatF32(body, steps = 16) {
-    readBodyRollComponents(body);
-    quantizeRollQuatF32(ENGINE_F32[M_OUT_QW], ENGINE_F32[M_OUT_QX], ENGINE_F32[M_OUT_QY], ENGINE_F32[M_OUT_QZ], steps);
-}
-export function packRollOrientId(body, steps = 16) {
-    quantizeBodyRollQuatF32(body, steps);
+export function packRollOrientId(eid, steps = 16) {
+    quantizeRollQuatF32(entityRollQw[eid], entityRollQx[eid], entityRollQy[eid], entityRollQz[eid], steps);
     const qw = ENGINE_F32[M_OUT_QW];
     const qx = ENGINE_F32[M_OUT_QX];
     const qy = ENGINE_F32[M_OUT_QY];

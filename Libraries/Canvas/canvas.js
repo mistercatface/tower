@@ -669,8 +669,8 @@ export function getPropStaticKey(eid, renderKey) {
     const prop = entityRefs[eid];
     const facing = prop.facing;
     const rolls = !!prop.strategy?.rolls;
-    const rollId = rolls ? packRollOrientId(prop, resolvePropQuantizeSteps(prop).facing) : 0;
-    const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
+    const rollId = rolls ? packRollOrientId(eid, resolvePropQuantizeSteps(prop).facing) : 0;
+    const physicsId = getBaseSpriteCacheId(eid, PROP_SPRITE_KEY_DEPS);
     const customId = entityWallProfileId[eid] !== 0 ? getWallChunkSpriteCacheKey(eid) : 0;
     if (entityStaticKeyFacing[eid] === facing && entityStaticKeyPhysicsKey[eid] === physicsId && entityStaticKeyCustom[eid] === customId && (!rolls || entityStaticKeyRoll[eid] === rollId) && entityCachedStaticKey[eid] !== 0n) return entityCachedStaticKey[eid];
     const k1 = BigInt(resolveRenderKeyId(renderKey));
