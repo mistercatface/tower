@@ -284,6 +284,8 @@ export const entityShapeKind = new Uint8Array(MAX_ENTITIES);
 export const entityWallProfileId = new Uint8Array(MAX_ENTITIES);
 export const entityWallHeightPx = new Float32Array(MAX_ENTITIES);
 export const entityZIndex = new Uint8Array(MAX_ENTITIES);
+export const entityFractureCooldown = new Uint16Array(MAX_ENTITIES);
+export const entityStateTimer = new Uint32Array(MAX_ENTITIES);
 entityAlpha.fill(1.0);
 entityZIndex.fill(10);
 const FACTION_IDS = ["alpha", "bravo", "charlie", "delta", "echo"];

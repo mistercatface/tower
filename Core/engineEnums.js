@@ -89,6 +89,8 @@ export const ENTITY_FLAG_ROLLS = 1 << 2;
 export const ENTITY_FLAG_ORIENT_TO_MOTION = 1 << 3;
 export const ENTITY_FLAG_RENDER_3D = 1 << 4;
 export const ENTITY_FLAG_CIRCLE_SHAPE = 1 << 5;
+export const ENTITY_FLAG_FRACTURE_SET = 1 << 6;
+export const ENTITY_FLAG_FRACTURE_VAL = 1 << 7;
 //
 // Factions
 export const FACTION_NONE = 0;

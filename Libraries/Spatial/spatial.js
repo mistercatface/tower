@@ -3105,16 +3105,16 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const prop = worldProps[i];
             const needBind = prop._physId === undefined || !entityAlive[prop._physId] || entityRefs[prop._physId] !== prop;
             const physId = prop._physId ?? allocateEntityEid();
-            prop._physId = physId;
             if (needBind) {
                 invalidateKineticShapeGeom(physId);
                 normalizeKineticBody(prop);
                 const x = prop.x;
                 const y = prop.y;
                 const flags = worldPropBindFlags(prop);
+                prop._physId = physId;
                 bindEntitySlot(physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, slabCollisionSpan(physId), flags);
                 clearWorldPropSpawnPose(prop);
-            }
+            } else prop._physId = physId;
             this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
@@ -3124,16 +3124,16 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (body.isDead) continue;
             const needBind = body._physId === undefined || !entityAlive[body._physId] || entityRefs[body._physId] !== body;
             const physId = body._physId ?? allocateEntityEid();
-            body._physId = physId;
             if (needBind) {
                 invalidateKineticShapeGeom(physId);
                 normalizeKineticBody(body);
                 const x = body.x;
                 const y = body.y;
                 const flags = worldPropBindFlags(body);
+                body._physId = physId;
                 bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, x, y, slabCollisionSpan(physId), flags);
                 clearWorldPropSpawnPose(body);
-            }
+            } else body._physId = physId;
             this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
@@ -3155,13 +3155,14 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             if (isNew) {
                 const x = prop.x;
                 const y = prop.y;
-                prop._physId = allocateEntityEid();
-                normalizeKineticBody(prop);
                 const flags = worldPropBindFlags(prop);
+                const physId = allocateEntityEid();
+                prop._physId = physId;
+                normalizeKineticBody(prop);
                 const kind = prop.isKineticDebris ? ENTITY_KIND_DEBRIS : ENTITY_KIND_WORLD_PROP;
-                bindEntitySlot(prop._physId, kind, prop, prop.id | 0, x, y, slabCollisionSpan(prop._physId), flags);
+                bindEntitySlot(physId, kind, prop, prop.id | 0, x, y, slabCollisionSpan(physId), flags);
                 clearWorldPropSpawnPose(prop);
-                if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(prop._physId);
+                if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
             } else this.entityGrid.remove(prop._physId);
             if (kineticDynamicSlab.partGeomOffset[prop._physId] < 0) normalizeKineticBody(prop);
             this.entityGrid.insert(prop._physId);
