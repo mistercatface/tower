@@ -1,7 +1,7 @@
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { boxLocalFootprint } from "../../Libraries/Math/math.js";
 import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, entityRefs, entityKind } from "../../Core/engineMemory.js";
-import { EntityRegistry } from "../../GameState/EntityRegistry.js";
+import { EntityRegistry, removeWorldPropEid } from "../../GameState/EntityRegistry.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_DEBRIS } from "../../Core/engineEnums.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
@@ -147,9 +147,7 @@ export function spawnFractureShards(world, prop, impactForce = 30, hitX = 0, hit
 }
 
 export function removeEditorPropFromWorld(world, prop) {
-    world.entityRegistry.unregister(prop);
-    world.spatialFrame.evictKineticEid(prop._physId, world.kinetic);
-    prop.isDead = true;
+    removeWorldPropEid(world, prop._physId, world.spatialFrame);
 }
 
 export function createFracturableBox(x, y, hx, hy, facing = 0) {

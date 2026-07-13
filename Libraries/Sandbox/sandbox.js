@@ -1,7 +1,7 @@
 import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, cellEdgeEndpointsIdx, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
-import { addWorldPropToState, removeWorldPropFromState, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
+import { removeWorldPropEid, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32 } from "../Physics/physics.js";
 import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab, entityFlags, entityX, entityY, entityR, entityGameId, entityAlive, entityRenderKeyId } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
@@ -490,7 +490,7 @@ export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, facing
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
-    addWorldPropToState(state, prop);
+    state.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
     return prop;
 }
 function createSandboxPlacementOrder(state) {
@@ -899,7 +899,7 @@ function clearSandboxSceneContent(state) {
     state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
         toRemove.push(prop);
     });
-    for (let i = 0; i < toRemove.length; i++) removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
+    for (let i = 0; i < toRemove.length; i++) removeWorldPropEid(state, toRemove[i]._physId, state.spatialFrame, state.sandbox.entityMeta);
     clearKineticConstraints(state.kinetic);
     state.obstacleGrid.clearAllFloorCells();
     clearAllStampedGridWalls(state, { notify: false });
@@ -912,7 +912,7 @@ function spawnSnapshotProp(state, entry) {
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
     const prop = new WorldProp(entry.x, entry.y, entry.type, entry.facing ?? 0);
     if (halfExtents) applyPropBoxFootprint(prop, halfExtents.x, halfExtents.y);
-    const eid = addWorldPropToState(state, prop);
+    const eid = state.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
     if (entry.radius != null)
         if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
@@ -1038,7 +1038,7 @@ function createSandboxSession(state) {
         return dispatchSpawnPlaceableAt(state, worldX, worldY, asset, spawnCtx(options));
     };
     const removeProp = (prop) => {
-        removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
+        removeWorldPropEid(state, prop._physId, state.spatialFrame, state.sandbox.entityMeta);
     };
     const listSelectedPropEntries = () => {
         pruneSelection();
@@ -1423,7 +1423,7 @@ function createSandboxSession(state) {
             state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
                 toRemove.push(prop);
             });
-            for (let i = 0; i < toRemove.length; i++) removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
+            for (let i = 0; i < toRemove.length; i++) removeWorldPropEid(state, toRemove[i]._physId, state.spatialFrame, state.sandbox.entityMeta);
             state.obstacleGrid.clearAllFloorCells();
             selection.clearSelection();
             placement.resetPlacementOrder();
@@ -1456,7 +1456,7 @@ function spawnAgentChain(state, anchorIdx, spec) {
     const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId, resolvePropId };
     const spawnSeg = (x, y, typeId) => {
         const prop = new WorldProp(x, y, typeId, 0);
-        const eid = addWorldPropToState(state, prop);
+        const eid = state.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
         return { prop, eid };
     };
     const first = spawnSeg(anchorX, anchorY, resolveSegmentPropId(0, propSpec));

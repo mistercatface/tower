@@ -243,7 +243,10 @@ describe("fracture", () => {
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         
         // Verify it was shattered again (removed or cooldown set)
-        assert.ok(!tick.world.fractureEngine.debris.hasLiveEid(shardEid) || entityFractureCooldown[shardEid] > 0);
+        let live = false;
+        const store = tick.world.fractureEngine.debris;
+        for (let i = 0; i < store.liveCount; i++) if (store.liveEids[i] === shardEid) live = true;
+        assert.ok(!live || entityFractureCooldown[shardEid] > 0);
     });
     it("shatterPolygon splits non-rect shard geometry", () => {
         const parentShards = shatterFootprint(10, 6, 1, 0, 25);

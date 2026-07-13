@@ -6,7 +6,7 @@ import { addDistanceConstraint, clearKineticConstraints } from "../Libraries/Phy
 import { ensureKineticIslandPlan, clearActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology, kineticPairTopologyStale } from "../Libraries/Physics/physics.js";
-import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
+import { removeWorldPropEid } from "../GameState/EntityRegistry.js";
 import { entityRefs } from "../Core/engineMemory.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
@@ -20,13 +20,13 @@ function createTestWorld(initialProps) {
 }
 
 describe("kinetic topology lifecycle", () => {
-    it("removeWorldPropFromState removes prop from the passed spatial frame", () => {
+    it("removeWorldPropEid removes prop from the passed spatial frame", () => {
         const prop = mockKineticCircle(0, 0, 10);
         const world = createTestWorld([prop]);
         const localFrame = setupKineticTestFrame([prop]);
         kineticSpatial.kineticEidCount = 0;
         clearActiveKineticBodySlab() /* was active list clear */;
-        removeWorldPropFromState(world, prop, localFrame);
+        removeWorldPropEid(world, prop._physId, localFrame);
         assert.equal(prop._physId, undefined);
         assert.equal(localFrame.kineticEidCount, 0);
         assert.equal(liveWorldPropCount(world.entityRegistry), 0);

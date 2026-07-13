@@ -5,7 +5,7 @@ import { getBaseSpriteCacheId, applyPropBoxFootprint } from "../Libraries/Props/
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, liveWorldPropCount, assertDebrisKind, stubEvictKineticEid } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
+import { addWorldPropsToState, removeWorldPropEid } from "../GameState/EntityRegistry.js";
 import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { entityWallChunkTextureReady, entityFootprintId } from "../Core/engineMemory.js";
@@ -121,12 +121,12 @@ describe("fracture debris slab spawn", () => {
         assert.equal(liveWorldPropCount(world.entityRegistry), 0);
     });
 
-    it("removeWorldPropFromState does not recycle box into debris pool", () => {
+    it("removeWorldPropEid does not recycle box into debris pool", () => {
         const world = createFractureWorld();
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 32, 32);
         addWorldPropsToState(world, [prop]);
-        removeWorldPropFromState(world, prop, world.spatialFrame);
+        removeWorldPropEid(world, prop._physId, world.spatialFrame);
         const pane = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(pane, 32, 32);
         const result = spawnFractureShards(world, pane, 30);

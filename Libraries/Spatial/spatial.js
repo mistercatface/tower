@@ -3058,46 +3058,31 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         releaseEntityEid(physId);
         bumpKineticTopologyGeneration(session);
     }
+    _ensureKineticMembership(physId, kind, prop) {
+        const needBind = !entityAlive[physId] || entityRefs[physId] !== prop;
+        if (needBind) {
+            invalidateKineticShapeGeom(physId);
+            prop._physId = physId;
+            normalizeKineticBody(prop);
+            bindEntitySlot(physId, kind, prop, prop.id | 0, prop.x, prop.y, slabCollisionSpan(physId), worldPropBindFlags(prop));
+            clearWorldPropSpawnPose(prop);
+        } else if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(prop);
+        this.insertEid(physId);
+        if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
+    }
     repopulateFrameMembership(state) {
         this.kineticEidCount = 0;
         state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
-            const needBind = prop._physId === undefined || !entityAlive[prop._physId] || entityRefs[prop._physId] !== prop;
             let physId = prop._physId;
             if (physId === undefined) physId = allocateEntityEid();
-            if (needBind) {
-                invalidateKineticShapeGeom(physId);
-                prop._physId = physId;
-                normalizeKineticBody(prop);
-                const x = prop.x;
-                const y = prop.y;
-                const flags = worldPropBindFlags(prop);
-                bindEntitySlot(physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, slabCollisionSpan(physId), flags);
-                clearWorldPropSpawnPose(prop);
-            } else {
-                prop._physId = physId;
-                if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(prop);
-            }
-            this.insertEid(physId);
-            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
+            this._ensureKineticMembership(physId, ENTITY_KIND_WORLD_PROP, prop);
         });
         const debris = state.fractureEngine.debris;
         const debrisEids = debris.liveEids;
-        const debrisCount = debris.liveCount;
-        for (let i = 0; i < debrisCount; i++) {
+        for (let i = 0; i < debris.liveCount; i++) {
             const physId = debrisEids[i];
             if ((entityFlags[physId] & ENTITY_FLAG_DEAD) !== 0) continue;
-            const body = entityRefs[physId];
-            const needBind = !entityAlive[physId] || body == null || body._physId !== physId;
-            if (needBind) {
-                invalidateKineticShapeGeom(physId);
-                body._physId = physId;
-                normalizeKineticBody(body);
-                const flags = worldPropBindFlags(body);
-                bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, entityX[physId], entityY[physId], slabCollisionSpan(physId), flags);
-                clearWorldPropSpawnPose(body);
-            } else if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(body);
-            this.insertEid(physId);
-            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
+            this._ensureKineticMembership(physId, ENTITY_KIND_DEBRIS, entityRefs[physId]);
         }
         this.populatedMembershipGen = state.entityRegistry.membershipGen;
     }
@@ -3109,29 +3094,24 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         return this;
     }
     admitKineticEids(eids, eidCount, world) {
-        let anyAdmitted = false;
+        if (!eidCount) return;
         for (let i = 0; i < eidCount; i++) {
             const physId = eids[i];
             const prop = entityRefs[physId];
-            const isNew = entityAlive[physId] === 0;
-            if (isNew) {
-                const flags = worldPropBindFlags(prop);
+            if (entityAlive[physId] === 0) {
                 normalizeKineticBody(prop);
                 const kind = entityKind[physId] === ENTITY_KIND_DEBRIS ? ENTITY_KIND_DEBRIS : ENTITY_KIND_WORLD_PROP;
-                bindEntitySlot(physId, kind, prop, prop.id | 0, entityX[physId], entityY[physId], slabCollisionSpan(physId), flags);
+                bindEntitySlot(physId, kind, prop, prop.id | 0, entityX[physId], entityY[physId], slabCollisionSpan(physId), worldPropBindFlags(prop));
                 clearWorldPropSpawnPose(prop);
                 if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
             } else this.entityGrid.remove(physId);
             if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(prop);
             this.entityGrid.insert(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this.activateKineticBody(physId);
-            anyAdmitted = true;
         }
-        if (anyAdmitted) {
-            this.frameId = (this.frameId + 1) | 0;
-            this.populatedMembershipGen = world.entityRegistry.membershipGen;
-            bumpKineticTopologyGeneration(world.kinetic);
-        }
+        this.frameId = (this.frameId + 1) | 0;
+        this.populatedMembershipGen = world.entityRegistry.membershipGen;
+        bumpKineticTopologyGeneration(world.kinetic);
     }
     syncActiveKineticBodies() {
         clearActiveKineticBodySlab();

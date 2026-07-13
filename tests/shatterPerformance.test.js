@@ -1,7 +1,7 @@
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
+import { addWorldPropsToState, removeWorldPropEid } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { kineticDynamicSlab, entityRefs } from "../Core/engineMemory.js";
@@ -100,7 +100,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         frame.begin(world);
         const releasedId = prop._physId;
         prop.vx = 999;
-        removeWorldPropFromState(world, prop, frame);
+        removeWorldPropEid(world, prop._physId, frame);
         assert.equal(prop._physId, undefined);
         const replacement = new WorldProp(50, 0, "box", 0);
         world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, replacement);

@@ -59,14 +59,13 @@ describe("prop debris fade-out and removal", () => {
 
         tickEntityFrames(frame, world, 5000);
         assert.equal(entityAlpha[eid], 1);
-        assert.ok(store.hasLiveEid(eid));
+        assert.ok(store.liveCount === 1 && store.liveEids[0] === eid);
 
         tickEntityFrames(frame, world, 500);
         assert.equal(entityAlpha[eid], 0.5);
-        assert.ok(store.hasLiveEid(eid));
+        assert.ok(store.liveCount === 1 && store.liveEids[0] === eid);
 
         tickEntityFrames(frame, world, 500);
         assert.equal(store.liveCount, 0);
-        assert.ok(!store.hasLiveEid(eid));
     });
 });

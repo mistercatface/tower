@@ -249,9 +249,6 @@ export class EntityArena {
     }
 }
 export { EntityArena as EntityRegistry };
-export function addWorldPropToState(world, prop) {
-    return world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
-}
 export function addWorldPropsToState(world, props) {
     world.entityRegistry.beginMembershipBatch();
     try {
@@ -267,9 +264,6 @@ export function removeWorldPropEid(world, eid, spatialFrame, entityMeta = null) 
     entityMeta?.delete(gameId);
     pruneKineticConstraintsForBody(world.kinetic, gameId);
     spatialFrame.evictKineticEid(eid, world.kinetic);
-}
-export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta = null) {
-    removeWorldPropEid(world, prop._physId, spatialFrame, entityMeta);
 }
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
     centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);

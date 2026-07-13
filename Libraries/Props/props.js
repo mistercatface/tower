@@ -234,7 +234,7 @@ function resolvePropSpawnFacing(prop, facing) {
     if (prop.strategy.cardinalFacing) return quantizeAngle(0, CARDINAL_FACING_STEPS);
     return deterministicUnitRandom(Math.imul(prop.id, 2654435761)) * Math.PI * 2;
 }
-// WorldProp lifecycle: (1) birth - new WorldProp() or sandbox spawn; (2) live - registry/kinetic membership; (3) death - removeWorldPropFromState.
+// WorldProp lifecycle: (1) birth - new WorldProp() or sandbox spawn; (2) live - registry/kinetic membership; (3) death - removeWorldPropEid.
 export class WorldProp {
     constructor(x, y, type, facing = null) {
         this.id = nextWorldPropId++;

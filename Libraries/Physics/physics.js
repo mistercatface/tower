@@ -3434,6 +3434,10 @@ function applyFloorPortalTeleports(world, spatialFrame) {
     }
 }
 const fadeRemoveScratch = new GrowI32(16);
+export function removeLiveKineticEid(world, eid, spatialFrame, entityMeta = null) {
+    if (entityKind[eid] === ENTITY_KIND_DEBRIS) world.fractureEngine.debris.removeEid(eid, spatialFrame);
+    else removeWorldPropEid(world, eid, spatialFrame, entityMeta);
+}
 export function tickEntityFrames(frame, world, dt) {
     if (dt <= 0) return;
     const eids = frame.kineticEids;
@@ -3457,11 +3461,7 @@ export function tickEntityFrames(frame, world, dt) {
             entityAlpha[eid] = Math.max(0, Math.min(1, 1 - elapsedFade / durationMs));
         } else entityAlpha[eid] = 1;
     }
-    for (let i = 0; i < fadeRemoveScratch.used; i++) {
-        const eid = fadeRemoveScratch.buf[i];
-        if (entityKind[eid] === ENTITY_KIND_DEBRIS) world.fractureEngine.debris.removeEid(eid, frame);
-        else removeWorldPropEid(world, eid, frame, world.sandbox?.entityMeta);
-    }
+    for (let i = 0; i < fadeRemoveScratch.used; i++) removeLiveKineticEid(world, fadeRemoveScratch.buf[i], frame, world.sandbox?.entityMeta);
     fadeRemoveScratch.clear();
 }
 export function runKineticPhysics(frame, world, dt, hooks) {

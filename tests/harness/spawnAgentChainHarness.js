@@ -1,6 +1,5 @@
 import { addDistanceConstraint, getConnectedBodyIds } from "../../Libraries/Physics/physics.js";
 import { setCirclePropRadius, WorldProp } from "../../Libraries/Props/props.js";
-import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 import { ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
 
 function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId }) {
@@ -26,7 +25,7 @@ function linkChainBodies(state, eidA, eidB, restLength) {
 
 function spawnSeg(state, x, y, typeId) {
     const prop = new WorldProp(x, y, typeId, 0);
-    const eid = addWorldPropToState(state, prop);
+    const eid = state.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
     return { prop, eid };
 }
 

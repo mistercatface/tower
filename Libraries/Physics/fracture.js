@@ -1,7 +1,6 @@
-import { removeWorldPropEid } from "../../GameState/EntityRegistry.js";
 import { allocateEntityEid, clearWorldPropSpawnPose } from "../../Core/entitySlots.js";
 import propCatalog from "../../Assets/props/index.js";
-import { wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFrictionEid, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
+import { wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFrictionEid, kineticMassFromFootprint, kineticInertiaFromBody, removeLiveKineticEid } from "./physics.js";
 import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, entityR, entityKind, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags, GrowI32, ensureGrowI32 } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_FLAG_PENDING_FRACTURE, ENTITY_KIND_DEBRIS } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
@@ -383,10 +382,31 @@ class KineticDebrisStore {
             return;
         }
     }
-    hasLiveEid(eid) {
-        const live = this.liveEids;
-        for (let i = 0; i < this.liveCount; i++) if (live[i] === eid) return true;
-        return false;
+    _admitEids(spatialFrame) {
+        spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
+        admitEidScratch.clear();
+    }
+    _pushLiveAndAdmit(body, spatialFrame) {
+        const eid = body._physId;
+        this._addLiveEid(eid);
+        wakeKineticBody(eid);
+        admitEidScratch.clear();
+        admitEidScratch.push(eid);
+        this._admitEids(spatialFrame);
+    }
+    _spawnIntactWallChunk(parent, spatialFrame) {
+        const body = this.acquireBody(parent.type, parent.x, parent.y, parent.facing);
+        body.vx = parent.vx;
+        body.vy = parent.vy;
+        body.angularVelocity = parent.angularVelocity;
+        body.wallChunkProfileId = parent.wallChunkProfileId;
+        body.wallChunkHeightPx = parent.wallChunkHeightPx;
+        body.height = parent.height;
+        copyDebrisPolygonGeometry(body, parent);
+        this._pushLiveAndAdmit(body, spatialFrame);
+        spawnedScratch.length = 0;
+        spawnedScratch.push(body);
+        return spawnedScratch;
     }
     acquireBody(type, x, y, facing = 0) {
         let body = kineticDebrisFreePool.pop();
@@ -457,52 +477,17 @@ class KineticDebrisStore {
         ENGINE_F32[F_OUT_MOTION_W] = parent.angularVelocity;
         const force = FractureEngine.impactForceFromContact(spawn.sourceSpeed[row], sourceMass, parentMass) + FRACTURE_TUNING.wallSpawn.forceBias;
         const ok = FractureEngine.fracturePropOnImpact(parent, spawn.contactX[row], spawn.contactY[row], force, this.engine);
-        if (!ok) {
-            const body = this.acquireBody(parent.type, parent.x, parent.y, parent.facing);
-            body.vx = parent.vx;
-            body.vy = parent.vy;
-            body.angularVelocity = parent.angularVelocity;
-            body.wallChunkProfileId = parent.wallChunkProfileId;
-            body.wallChunkHeightPx = parent.wallChunkHeightPx;
-            body.height = parent.height;
-            copyDebrisPolygonGeometry(body, parent);
-            this._addLiveEid(body._physId);
-            wakeKineticBody(body._physId);
-            admitEidScratch.clear();
-            admitEidScratch.push(body._physId);
-            spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
-            admitEidScratch.clear();
-            spawnedScratch.length = 0;
-            spawnedScratch.push(body);
-            return spawnedScratch;
-        }
+        if (!ok) return this._spawnIntactWallChunk(parent, spatialFrame);
         const stores = this.engine.stores;
         const spawned = this.spawnShardsFromFracture(parent);
         if (!spawned.length) {
             releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
             stores.debris.reset();
-            const body = this.acquireBody(parent.type, parent.x, parent.y, parent.facing);
-            body.vx = parent.vx;
-            body.vy = parent.vy;
-            body.angularVelocity = parent.angularVelocity;
-            body.wallChunkProfileId = parent.wallChunkProfileId;
-            body.wallChunkHeightPx = parent.wallChunkHeightPx;
-            body.height = parent.height;
-            copyDebrisPolygonGeometry(body, parent);
-            this._addLiveEid(body._physId);
-            wakeKineticBody(body._physId);
-            admitEidScratch.clear();
-            admitEidScratch.push(body._physId);
-            spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
-            admitEidScratch.clear();
-            spawnedScratch.length = 0;
-            spawnedScratch.push(body);
-            return spawnedScratch;
+            return this._spawnIntactWallChunk(parent, spatialFrame);
         }
         admitEidScratch.clear();
         for (let i = 0; i < spawned.length; i++) admitEidScratch.push(spawned[i]._physId);
-        spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
-        admitEidScratch.clear();
+        this._admitEids(spatialFrame);
         releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
         stores.debris.reset();
         return spawned;
@@ -830,9 +815,7 @@ export class FractureEngine {
                 entityFlags[eid] &= ~ENTITY_FLAG_PENDING_FRACTURE;
                 FractureEngine._currentPropMotion(eid);
                 const shards = this.debris.spawnShardsFromFracture(prop, i);
-                if (!deferred.remnant[i])
-                    if (entityKind[eid] === ENTITY_KIND_DEBRIS) this.debris.removeEid(eid, spatialFrame);
-                    else removeWorldPropEid(world, eid, spatialFrame);
+                if (!deferred.remnant[i]) removeLiveKineticEid(world, eid, spatialFrame);
                 for (let j = 0; j < shards.length; j++) admitEidScratch.push(shards[j]._physId);
                 releaseDebrisGeomRange(stores, deferred.debrisStart[i], deferred.debrisCount[i]);
             }
@@ -889,9 +872,7 @@ export class FractureEngine {
         const sourceEid = prop._physId;
         FractureEngine._currentPropMotion(sourceEid);
         const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop);
-        if (!remnant)
-            if (entityKind[sourceEid] === ENTITY_KIND_DEBRIS) world.fractureEngine.debris.removeEid(sourceEid, spatialFrame);
-            else removeWorldPropEid(world, sourceEid, spatialFrame);
+        if (!remnant) removeLiveKineticEid(world, sourceEid, spatialFrame);
         if (shards.length) {
             admitEidScratch.clear();
             for (let i = 0; i < shards.length; i++) admitEidScratch.push(shards[i]._physId);
