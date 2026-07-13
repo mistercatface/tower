@@ -19,8 +19,8 @@ describe("kinetic substep early-out", () => {
             } finally {
                 primitivePhysics.dragFriction[row] = prevDrag;
             }
-            assert.ok(tick.world.kinetic.motionSubstepStats.substepsPlanned > 1);
-            assert.ok(tick.world.kinetic.motionSubstepStats.substepsRun < tick.world.kinetic.motionSubstepStats.substepsPlanned);
+            assert.ok(tick.world.kinetic.motionSubstepsPlanned > 1);
+            assert.ok(tick.world.kinetic.motionSubstepsRun < tick.world.kinetic.motionSubstepsPlanned);
         });
     });
 });

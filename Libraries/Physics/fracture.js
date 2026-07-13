@@ -360,22 +360,6 @@ class KineticDebrisBody {
     getRender3DKey() {
         return this.strategy.render3DKey;
     }
-    tickPropFrame(dt, _state, spatialFrame) {
-        this.ageMs += dt;
-        if (this.strategy.fadeOutMs !== undefined) {
-            const fadeOutMs = this.strategy.fadeOutMs;
-            const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
-            if (this.ageMs >= fadeOutMs + durationMs) {
-                this._store.remove(this, spatialFrame);
-                return;
-            }
-            if (this.ageMs >= fadeOutMs) {
-                const elapsedFade = this.ageMs - fadeOutMs;
-                this.alpha = Math.max(0, Math.min(1, 1 - elapsedFade / durationMs));
-            } else this.alpha = 1;
-        }
-        if (this._fractureCooldown > 0) this._fractureCooldown--;
-    }
 }
 class KineticDebrisStore {
     constructor(engine, world) {
@@ -573,9 +557,6 @@ class KineticDebrisStore {
             wakeKineticBody(spawnedScratch[i]._physId);
         }
         return spawnedScratch;
-    }
-    tickFrames(dt, spatialFrame) {
-        for (let i = this._bodies.length - 1; i >= 0; i--) this._bodies[i].tickPropFrame(dt, this.world, spatialFrame);
     }
     appendVisibleProps(drawQueue, viewport, drawKindProp) {
         const buf = viewBoundsBuf;

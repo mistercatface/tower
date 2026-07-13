@@ -1,4 +1,3 @@
-import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { allocateEntityEid, bindEntitySlot, worldPropBindFlags } from "../../Core/entitySlots.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, computeFootprintIdFromSlab } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, getProfileStr, entityFractureCooldown, entityCachedStaticKey, entityFootprintId, entityRenderKeyId } from "../../Core/engineMemory.js";
@@ -8,7 +7,6 @@ import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
-import { transitionEntity } from "../FSM/transition.js";
 import propCatalog, { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
@@ -231,7 +229,6 @@ export function sharedWorldPropStrategy(type) {
     return strategy;
 }
 let nextWorldPropId = 1;
-const WORLD_PROP_MODES = Object.freeze({ normal: Object.freeze({}) });
 function resolvePropSpawnFacing(prop, facing) {
     if (facing != null) return prop.strategy.cardinalFacing ? quantizeAngle(facing, CARDINAL_FACING_STEPS) : facing;
     if (prop.strategy.cardinalFacing) return quantizeAngle(0, CARDINAL_FACING_STEPS);
@@ -245,7 +242,6 @@ export class WorldProp {
         this.shape = null;
         this._physId = allocateEntityEid();
         this.initializeSpawn(x, y, type, facing);
-        this.changeState("normal");
     }
     initializeSpawn(x, y, type, facing = null) {
         const asset = propCatalog[type];
@@ -253,7 +249,6 @@ export class WorldProp {
         this.strategy = sharedWorldPropStrategy(type);
         const eid = this._physId;
         entityRefs[eid] = this;
-        this.stateData = {};
         this.height = resolveAssetPropHeight(asset);
         this.collisionParts = undefined;
         this.spawnGroupId = undefined;
@@ -411,10 +406,6 @@ export class WorldProp {
     get momentOfInertia() {
         return kineticInertiaFromBody(this);
     }
-    changeState(stateName, stateDataInit = null) {
-        if (this.strategy?.isKinetic) wakeKineticBody(this._physId);
-        transitionEntity(this, WORLD_PROP_MODES, stateName, stateDataInit);
-    }
     get angle() {
         return this.facing;
     }
@@ -422,25 +413,7 @@ export class WorldProp {
         this.facing = val;
     }
     getRender3DKey() {
-        if (this.currentState?.getRender3DKey) return this.currentState.getRender3DKey(this);
         return this.strategy.render3DKey;
-    }
-    tickPropFrame(dt, state, spatialFrame) {
-        this.ageMs += dt;
-        if (this.strategy.fadeOutMs !== undefined) {
-            const fadeOutMs = this.strategy.fadeOutMs;
-            const durationMs = this.strategy.fadeOutDurationMs ?? 1000;
-            if (this.ageMs >= fadeOutMs + durationMs) {
-                removeWorldPropFromState(state, this, spatialFrame, state.sandbox?.entityMeta);
-                return;
-            } else if (this.ageMs >= fadeOutMs) {
-                const elapsedFade = this.ageMs - fadeOutMs;
-                this.alpha = Math.max(0, Math.min(1, 1 - elapsedFade / durationMs));
-            } else this.alpha = 1;
-        }
-        if (this._fractureCooldown > 0) this._fractureCooldown--;
-        const asleep = this.isSleeping;
-        if (!asleep && this.currentState?.update) this.currentState.update(this, dt, state);
     }
 }
 export function registerPropDrawRecipe(asset) {

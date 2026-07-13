@@ -288,7 +288,7 @@ export function mockCircleProp(x, y, radius) {
     return body;
 }
 export const noop = () => {};
-export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop, updatePropFrame: noop };
+export const kineticPipelineStubs = { resolveWalls: noop, applyContactSideEffects: noop };
 export function kineticPhysicsHooks(overrides = {}) {
     return { ...kineticPipelineStubs, ...overrides };
 }

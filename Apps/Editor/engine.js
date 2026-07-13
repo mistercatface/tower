@@ -32,9 +32,6 @@ function loadGameModeStylesheet() {
 /** @param {import("./state.js").TileLabGameState} state */
 function simulationKineticHooks(state) {
     return {
-        updatePropFrame(prop, dt, frame) {
-            prop.tickPropFrame(dt, state, frame);
-        },
         resolveWalls(eid, frame) {
             return resolveKineticWallDamage(state, eid, frame);
         },

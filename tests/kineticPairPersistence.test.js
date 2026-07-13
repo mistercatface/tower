@@ -73,12 +73,12 @@ describe("kinetic pair persistence", () => {
             };
             const tick = createKineticTestTick([a, b]);
             runKineticPhysics(tick.frame, tick.world, 100, kineticPhysicsHooks());
-            const stats = tick.world.kinetic.kineticPairGatherStats;
-            const substeps = tick.world.kinetic.motionSubstepStats.substepsRun;
-            assert.equal(stats.full, 1);
+            const stats = tick.world.kinetic;
+            const substeps = stats.motionSubstepsRun;
+            assert.equal(stats.pairGatherFull, 1);
             assert.ok(substeps > 1);
-            assert.equal(stats.refresh, substeps - 1);
-            assert.equal(tick.world.kinetic.kineticSolverStats.pairCount, 1);
+            assert.equal(stats.pairGatherRefresh, substeps - 1);
+            assert.equal(stats.kineticSolverStats.pairCount, 1);
         });
     });
 });
