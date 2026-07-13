@@ -100,8 +100,7 @@ describe("polygon wall resolution", () => {
         appendActiveKineticBodySlabPhysId(bar._physId);
         const session = createKineticSession();
         const world = {
-            worldProps: [bar],
-            entityRegistry: { getLive: (id) => (id === bar.id ? bar : null) },
+            entityRegistry: { getLive: (id) => (id === bar.id ? bar : null), forEachOfKind() {} },
             kinetic: session,
         };
         runCollisionPipeline({ frame, world }, (eid) => resolver.resolve(eid, frame), undefined, 1);

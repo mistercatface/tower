@@ -26,20 +26,20 @@ describe("prop debris fade-out and removal", () => {
         const prop = new WorldProp(0, 0, "wall_voxel_chunk", 0);
         const tick = createKineticTestTick([prop]);
 
-        assert.ok(tick.world.worldProps.includes(prop));
+        assert.ok(tick.world.entityRegistry.getLive(prop.id));
 
         prop.update(3000, tick.world, tick.frame);
-        assert.ok(tick.world.worldProps.includes(prop));
+        assert.ok(tick.world.entityRegistry.getLive(prop.id));
         assert.equal(prop.alpha, 1);
         assert.equal(prop.isDead, false);
 
         prop.update(2500, tick.world, tick.frame);
-        assert.ok(tick.world.worldProps.includes(prop));
+        assert.ok(tick.world.entityRegistry.getLive(prop.id));
         assert.equal(prop.alpha, 0.5);
         assert.equal(prop.isDead, false);
 
         prop.update(1000, tick.world, tick.frame);
-        assert.ok(!tick.world.worldProps.includes(prop));
+        assert.ok(!tick.world.entityRegistry.getLive(prop.id));
         assert.equal(prop.isDead, true);
     });
 

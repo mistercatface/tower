@@ -77,7 +77,6 @@ describe("concave footprint compounds", () => {
         const shards = FractureEngine.commitFractureResult(world, star, spatialFrame);
         assert.ok(shards.length >= partsBefore);
         assert.ok(shards.every((s) => s.isKineticDebris));
-        assert.equal(world.worldProps.includes(star), false);
-        assert.ok(!world.worldProps.some((p) => p === star));
+        assert.equal(world.entityRegistry.getLive(star.id), null);
     });
 });

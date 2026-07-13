@@ -87,6 +87,7 @@ describe("fracture contact queue", () => {
         prop._fractureCooldown = 4;
         tick.world.fractureEngine.queueFractureKineticContact(prop._physId, other._physId, 0, 0, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
-        assert.equal(tick.world.worldProps.filter((p) => p !== prop).length, 1);
+        assert.equal(tick.world.entityRegistry.getLive(other.id), other);
+        assert.ok(tick.world.entityRegistry.getLive(prop.id));
     });
 });

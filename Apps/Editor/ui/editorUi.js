@@ -10,6 +10,7 @@ import { initPresetSelect, bindToolbarControls, syncWorldRenderModeUi } from "./
 import { dragInteractionModeLabel, toggleDragInteractionMode } from "../../../Libraries/Sandbox/dragBehaviors.js";
 import { EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA } from "../../../Core/engineEnums.js";
 import { ENGINE_F32, N_OUT_XY } from "../../../Core/engineMemory.js";
+import { findLiveWorldProp } from "../../../GameState/EntityRegistry.js";
 function syncDragInteractionModeUi(state) {
     const btn = document.getElementById("dragInteractionModeBtn");
     if (btn) btn.textContent = dragInteractionModeLabel(state.sandbox.dragInteractionMode);
@@ -255,7 +256,7 @@ export function refreshEditorUi(state) {
 }
 export function setEditorNavMode(state, mode) {
     state.editor.navMode = mode;
-    const boid = state.worldProps.find((p) => p.type === "boid_triangle");
+    const boid = findLiveWorldProp(state.entityRegistry, (p) => p.type === "boid_triangle");
     if (!boid) return;
     const entityMeta = state.sandbox.entityMeta;
     const currentBehaviorId = entityMeta.getActiveBehaviorId(boid.id);

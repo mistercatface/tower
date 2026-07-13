@@ -15,7 +15,6 @@ export function createSandboxDragTestState() {
     const world = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
-        worldProps: [],
         kinetic: createKineticSession(),
         sandbox: new SandboxWorldState(),
         viewport: {
@@ -56,7 +55,6 @@ export function createGrabDragTestState() {
 }
 
 export function registerGrabDragTestProp(state, prop) {
-    state.worldProps.push(prop);
     state.entityRegistry.register("worldProp", prop);
     return prop;
 }

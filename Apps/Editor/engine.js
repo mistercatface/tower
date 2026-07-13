@@ -50,7 +50,7 @@ function simulationKineticHooks(state) {
 }
 /** @param {import("./state.js").TileLabGameState} state @param {import("../../Libraries/Spatial/spatial.js").KineticSpatialFrame} frame */
 function kineticTickFromState(state, frame) {
-    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks, fractureEngine: state.fractureEngine, obstacleGrid: state.obstacleGrid } };
+    return { frame, world: { entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks, fractureEngine: state.fractureEngine, obstacleGrid: state.obstacleGrid } };
 }
 /** @param {import("./state.js").TileLabGameState} state @param {number} dt */
 function runSimulationTick(state, dt) {

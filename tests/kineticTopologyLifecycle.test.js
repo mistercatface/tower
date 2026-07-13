@@ -13,7 +13,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
-import { liveFracturePropCount } from "./harness/fractureHarness.js";
+import { liveFracturePropCount, liveWorldPropCount } from "./harness/fractureHarness.js";
 
 function createTestWorld(initialProps) {
     return createKineticTestWorld(initialProps, { constraintsDirty: false });
@@ -29,7 +29,7 @@ describe("kinetic topology lifecycle", () => {
         removeWorldPropFromState(world, prop, localFrame);
         assert.equal(prop._physId, undefined);
         assert.equal(localFrame.kineticEidCount, 0);
-        assert.equal(world.worldProps.length, 0);
+        assert.equal(liveWorldPropCount(world.entityRegistry), 0);
     });
 
     it("stale pair gather generation rejects bodies after topology bump", () => {
@@ -55,7 +55,7 @@ describe("kinetic topology lifecycle", () => {
         assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.entityRefs[glass._physId]?._physId === glass._physId && tick.entityRefs[ball._physId]?._physId === ball._physId) ? { bodyA: tick.entityRefs[glass._physId], bodyB: tick.entityRefs[ball._physId] } : null)), null);
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveFracturePropCount(tick.world) > 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
+        assert.ok(!tick.world.entityRegistry.getLive(glass.id) || glass._fractureCooldown > 0);
     });
 
     it("clearing and re-adding a link bumps topology and rebuilds island plan", () => {
@@ -89,6 +89,6 @@ describe("kinetic topology lifecycle", () => {
         assert.ok(satCheckCollision(glass, ball));
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
         assert.ok(liveFracturePropCount(tick.world) > 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
+        assert.ok(!tick.world.entityRegistry.getLive(glass.id) || glass._fractureCooldown > 0);
     });
 });

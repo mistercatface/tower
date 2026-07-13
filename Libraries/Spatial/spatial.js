@@ -3060,9 +3060,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     repopulateFrameMembership(state) {
         this.kineticEidCount = 0;
-        const worldProps = state.worldProps;
-        for (let i = 0; i < worldProps.length; i++) {
-            const prop = worldProps[i];
+        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
             const needBind = prop._physId === undefined || !entityAlive[prop._physId] || entityRefs[prop._physId] !== prop;
             let physId = prop._physId;
             if (physId === undefined) physId = allocateEntityEid();
@@ -3081,7 +3079,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             }
             this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
-        }
+        });
         const debrisBodies = state.fractureEngine.debris.list();
         for (let i = 0; i < debrisBodies.length; i++) {
             const body = debrisBodies[i];

@@ -35,7 +35,6 @@ function createEditorTestState() {
     return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
-        worldProps: [],
         kinetic: createKineticSession(),
         selectedIds,
         sandbox: {

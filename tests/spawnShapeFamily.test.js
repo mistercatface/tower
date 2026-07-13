@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A, entityWallProfileId, getProfileId } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld, createSandboxControllerSession, createSandboxTestController } from "./harness/stateFactories.js";
+import { collectLiveWorldProps } from "./harness/fractureHarness.js";
 import { bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
@@ -28,7 +29,7 @@ describe("spawn shape family defaults", () => {
         session.setPlacePaletteKey("prop:ball");
         session.setSpawnBallRadius(6);
         assert.equal(session.spawnAt(64, 64), true);
-        const prop = state.worldProps[0];
+        const prop = collectLiveWorldProps(state.entityRegistry)[0];
         assert.equal(prop.type, "ball");
         assert.equal(prop.radius, 6);
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
@@ -43,7 +44,7 @@ describe("spawn shape family defaults", () => {
         session.setPlacePaletteKey("prop:ball");
         session.setSpawnSurfaceProfileId("tomatoGarden");
         assert.equal(session.spawnAt(64, 64), true);
-        const prop = state.worldProps[0];
+        const prop = collectLiveWorldProps(state.entityRegistry)[0];
         assert.equal(prop.wallChunkProfileId, "tomatoGarden");
         const eid = prop._physId;
         const key1 = getWallChunkSpriteCacheKey(eid);
@@ -76,7 +77,7 @@ describe("spawn shape family defaults", () => {
         session.setSpawnBoxWidth(24);
         session.setSpawnBoxHeight(32);
         assert.equal(session.spawnAt(96, 96), true);
-        const prop = state.worldProps[0];
+        const prop = collectLiveWorldProps(state.entityRegistry)[0];
         assert.equal(prop.type, "box");
         assert.equal(prop.fractureEnabled, false);
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
@@ -92,8 +93,9 @@ describe("spawn shape family defaults", () => {
         session.setPlacePaletteKey("prop:hex_block");
         session.setSpawnFractureEnabled(true);
         assert.equal(session.spawnAt(64, 64), true);
-        assert.equal(state.worldProps[0].type, "hex_block");
-        assert.equal(state.worldProps[0].fractureEnabled, true);
+        const spawned = collectLiveWorldProps(state.entityRegistry)[0];
+        assert.equal(spawned.type, "hex_block");
+        assert.equal(spawned.fractureEnabled, true);
     });
 });
 

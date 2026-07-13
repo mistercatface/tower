@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { getBaseSpriteCacheId, applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
-import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, liveWorldPropCount } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
@@ -107,7 +107,7 @@ describe("fracture debris slab spawn", () => {
         const shards = FractureEngine.commitFractureResult(world, prop, spatialFrame);
         assert.ok(shards.length >= 2);
         assert.ok(shards.every((s) => s.isKineticDebris));
-        assert.equal(world.worldProps.length, 0);
+        assert.equal(liveWorldPropCount(world.entityRegistry), 0);
         assert.equal(world.fractureEngine.debris.list().length, shards.length);
     });
 
@@ -118,7 +118,7 @@ describe("fracture debris slab spawn", () => {
         const result = spawnFractureShards(world, prop, 30);
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
-        assert.equal(world.worldProps.length, 0);
+        assert.equal(liveWorldPropCount(world.entityRegistry), 0);
     });
 
     it("removeWorldPropFromState does not recycle box into debris pool", () => {

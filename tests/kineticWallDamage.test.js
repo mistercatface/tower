@@ -11,7 +11,7 @@ import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
-import { EntityRegistry } from "../GameState/EntityRegistry.js";
+import { EntityRegistry, visitLiveWorldProps } from "../GameState/EntityRegistry.js";
 import { FractureEngine, FRACTURE_TUNING } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { WallCollisionResolver, createKineticSession, runKineticPhysics } from "../Libraries/Physics/physics.js";
@@ -29,6 +29,13 @@ function stampWallHitSource(eid, vx, vy, mass = 1) {
     entityVy[eid] = vy;
     kineticStaticSlab.mass[eid] = mass;
 }
+function hasLiveWallChunkProp(registry) {
+    let found = false;
+    visitLiveWorldProps(registry, (p) => {
+        if (p.type === "wall_voxel_chunk" || p.type === "wall_rail_chunk") found = true;
+    });
+    return found;
+}
 async function createWallDamageTestState(opts = {}) {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 128, 128);
@@ -41,7 +48,6 @@ async function createWallDamageTestState(opts = {}) {
         obstacleGrid: grid,
         worldSurfaces,
         nav: navigation,
-        worldProps: [],
         entityRegistry: new EntityRegistry(),
         kinetic: createKineticSession()
     };
@@ -63,7 +69,7 @@ function kineticDebrisList(state) {
     return state.fractureEngine.debris.list();
 }
 function assertNoWallChunkWorldProps(state) {
-    assert.equal(state.worldProps.some((p) => p.type === "wall_voxel_chunk" || p.type === "wall_rail_chunk"), false);
+    assert.equal(hasLiveWallChunkProp(state.entityRegistry), false);
 }
 function createTestWallHitBuffer(capacity = 64) {
     return {
@@ -304,7 +310,7 @@ describe("kinetic wall damage", () => {
         const frame = kineticSpatial.begin(state);
         assert.ok(Array.from(frame.kineticEids.subarray(0, frame.kineticEidCount)).includes(shard._physId));
         runKineticPhysics(
-            { frame, world: { obstacleGrid: state.obstacleGrid, worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
+            { frame, world: { obstacleGrid: state.obstacleGrid, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
             100,
             kineticPhysicsHooks()
         );

@@ -1,11 +1,11 @@
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
+import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { createFractureWorld, setupPropForFracture, spawnFractureShards } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupPropForFracture, spawnFractureShards, liveWorldPropCount } from "./harness/fractureHarness.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
     it("EntityRegistry membershipGen increments once for batch operations", () => {
@@ -20,7 +20,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         addWorldPropsToState(world, props);
 
         assert.equal(world.entityRegistry.membershipGen, initialGen + 1);
-        assert.equal(world.worldProps.length, 18);
+        assert.equal(liveWorldPropCount(world.entityRegistry), 18);
     });
 
     it("debris slab bodies are pooled and reused after shatter", () => {
@@ -33,7 +33,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.ok(result.shards.length >= 2);
         const originalBodies = result.shards.slice();
         assert.ok(result.shards.every((s) => s.isKineticDebris));
-        assert.equal(world.worldProps.length, 0);
+        assert.equal(liveWorldPropCount(world.entityRegistry), 0);
 
         const spatialFrame = { evictKineticProp() {} };
         for (let i = result.shards.length - 1; i >= 0; i--) {
@@ -57,7 +57,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         const propB = new WorldProp(100, 0, "box", 0);
         const propC = new WorldProp(200, 0, "box", 0);
 
-        world.worldProps.push(propA, propB, propC);
+        addWorldPropsToState(world, [propA, propB, propC]);
         frame.begin(world);
 
         assert.equal(typeof propA._physId, "number");
@@ -74,13 +74,13 @@ describe("Shatter / Debris Performance Fixes", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
         const prop = new WorldProp(0, 0, "box", 0);
-        world.worldProps.push(prop);
+        world.entityRegistry.register("worldProp", prop);
         frame.begin(world);
         const idA = prop._physId;
         const propB = new WorldProp(100, 0, "box", 0);
         frame.admitKineticProps([propB], world);
         assert.equal(propB._physId, idA + 1);
-        world.worldProps.push(propB);
+        world.entityRegistry.register("worldProp", propB);
         frame.begin(world);
         assert.equal(prop._physId, idA);
         assert.equal(propB._physId, idA + 1);
@@ -90,16 +90,14 @@ describe("Shatter / Debris Performance Fixes", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
         const prop = new WorldProp(0, 0, "box", 0);
-        world.worldProps.push(prop);
+        world.entityRegistry.register("worldProp", prop);
         frame.begin(world);
         const releasedId = prop._physId;
         prop.vx = 999;
-        const idx = world.worldProps.indexOf(prop);
-        if (idx >= 0) world.worldProps.splice(idx, 1);
-        frame.evictKineticProp(prop, world.kinetic);
+        removeWorldPropFromState(world, prop, frame);
         assert.equal(prop._physId, undefined);
         const replacement = new WorldProp(50, 0, "box", 0);
-        world.worldProps.push(replacement);
+        world.entityRegistry.register("worldProp", replacement);
         frame.begin(world);
         assert.equal(replacement._physId, releasedId);
         assert.equal(kineticDynamicSlab.vx[releasedId], 0);

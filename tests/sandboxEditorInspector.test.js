@@ -4,6 +4,7 @@ import { describe, it, beforeEach } from "node:test";
 import { spawnPlacedSandboxProp, createSandboxController } from "../Libraries/Sandbox/sandbox.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createSandboxKineticWorld, createSandboxControllerSession } from "./harness/stateFactories.js";
+import { collectLiveWorldProps, liveWorldPropCount } from "./harness/fractureHarness.js";
 
 function createEditorTestState() {
     return createSandboxKineticWorld(32, 32, {
@@ -56,7 +57,7 @@ describe("sandbox editor inspector wiring", () => {
         session.setPlacePaletteKey("prop:ball");
         assert.equal(session.spawnAt(64, 64, { selectSpawned: false }), true);
         assert.equal(session.getSelection(), null);
-        assert.equal(state.worldProps.length, 1);
+        assert.equal(liveWorldPropCount(state.entityRegistry), 1);
     });
 
     it("spawn with default selectSpawned selects the new prop", () => {
@@ -66,7 +67,7 @@ describe("sandbox editor inspector wiring", () => {
         assert.equal(session.spawnAt(64, 64), true);
         const selection = session.getSelection();
         assert.equal(selection?.kind, "prop");
-        assert.ok(selection.ids.has(state.worldProps[0].id));
+        assert.ok(selection.ids.has(collectLiveWorldProps(state.entityRegistry)[0].id));
     });
 
     it("spawnAt honors selectSpawned false in spawn context", () => {
@@ -75,7 +76,7 @@ describe("sandbox editor inspector wiring", () => {
         session.setPlacePaletteKey("prop:ball");
         session.setSpawnBallRadius(4);
         assert.equal(session.spawnAt(48, 48, { selectSpawned: false }), true);
-        assert.equal(state.worldProps.length, 1);
+        assert.equal(liveWorldPropCount(state.entityRegistry), 1);
         assert.equal(session.getSelection(), null);
     });
 });

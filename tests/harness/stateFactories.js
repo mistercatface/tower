@@ -78,7 +78,6 @@ export function createSandboxKineticWorld(cols = 32, rows = 32, overrides = {}) 
     const world = {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
-        worldProps: [],
         kinetic: createKineticSession(),
         sandbox: new SandboxWorldState(),
         ...overrides,

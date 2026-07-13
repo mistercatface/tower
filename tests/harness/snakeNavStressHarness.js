@@ -50,7 +50,6 @@ function createSnakeEditorState(seed) {
     return {
         obstacleGrid: grid,
         entityRegistry: new EntityRegistry(),
-        worldProps: [],
         kinetic: createKineticSession(),
         sandbox: {
             ...new SandboxWorldState(),

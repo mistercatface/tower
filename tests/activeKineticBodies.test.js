@@ -81,7 +81,7 @@ describe("active kinetic bodies", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame(50);
         const prop = new WorldProp(0, 0, "box", 0);
-        world.worldProps.push(prop);
+        world.entityRegistry.register("worldProp", prop);
         frame.begin(world);
         const physId = prop._physId;
         frame.begin(world);
@@ -95,7 +95,7 @@ describe("active kinetic bodies", () => {
         assignPhysIdWithPose(prop, eid);
         kineticDynamicSlab.partGeomOffset[eid] = -1;
         assert.equal(kineticDynamicSlab.partGeomOffset[eid], -1);
-        world.worldProps.push(prop);
+        world.entityRegistry.register("worldProp", prop);
         frame.begin(world);
         assert.ok(kineticDynamicSlab.partGeomOffset[eid] >= 0);
         frame.syncActiveKineticBodies();

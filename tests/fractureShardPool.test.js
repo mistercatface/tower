@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { createFractureWorld, removeEditorPropFromWorld, setupPropForFracture, spawnFractureShards } from "./harness/fractureHarness.js";
+import { createFractureWorld, removeEditorPropFromWorld, setupPropForFracture, spawnFractureShards, liveWorldPropCount } from "./harness/fractureHarness.js";
 
 describe("fracture debris slab ownership", () => {
     it("editor spawn and delete does not feed debris slab pool", () => {
@@ -20,7 +20,7 @@ describe("fracture debris slab ownership", () => {
             assert.equal(shard.isKineticDebris, true);
             assert.ok(shard.id !== editorId);
         }
-        assert.equal(world.worldProps.length, 0);
+        assert.equal(liveWorldPropCount(world.entityRegistry), 0);
     });
 
     it("debris slab bodies are pooled and reused after removal", () => {

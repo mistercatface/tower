@@ -470,7 +470,7 @@ function serializePlacedProp(prop) {
 function collectFlatPlacedSandboxPropEntries(state) {
     const props = [];
     const propIdToIndex = new Map();
-    visitLiveWorldProps(state.worldProps, (prop) => {
+    visitLiveWorldProps(state.entityRegistry, (prop) => {
         propIdToIndex.set(prop.id, props.length);
         props.push(serializePlacedProp(prop));
     });
@@ -849,7 +849,7 @@ function collectSandboxSceneSnapshot(state) {
     const grid = state.obstacleGrid;
     const meta = state.sandbox.entityMeta;
     const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
-    const headProp = findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
+    const headProp = findLiveWorldProp(state.entityRegistry, (prop) => meta.isChainHead(prop.id));
     const chainHeadProp = headProp ? (propIdToIndex.get(headProp.id) ?? null) : null;
     const voxels = listPlacedVoxelWalls(grid).map(({ idx, heightLevel }) => {
         return { idx, heightLevel };
@@ -887,9 +887,12 @@ function expandGridForSnapshot(state, doc) {
     state.obstacleGrid.expandToCoverAabbF32(ENGINE_F32, o);
 }
 function clearSandboxSceneContent(state) {
-    for (let i = state.worldProps.length - 1; i >= 0; i--) {
-        const prop = state.worldProps[i];
-        removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
+    const toRemove = [];
+    visitLiveWorldProps(state.entityRegistry, (prop) => {
+        toRemove.push(prop);
+    });
+    for (let i = 0; i < toRemove.length; i++) {
+        removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
     }
     clearKineticConstraints(state.kinetic);
     state.obstacleGrid.clearAllFloorCells();
@@ -980,7 +983,7 @@ function createSandboxSession(state) {
     const listPlacedProps = () => {
         const counts = new Map();
         const placed = [];
-        visitLiveWorldProps(state.worldProps, (prop) => {
+        visitLiveWorldProps(state.entityRegistry, (prop) => {
             const typeLabel = formatPropTypeLabel(prop.type);
             const index = (counts.get(prop.type) ?? 0) + 1;
             counts.set(prop.type, index);
@@ -1044,7 +1047,7 @@ function createSandboxSession(state) {
     };
     const selectAllPropsWithTagFilter = (filter) => {
         const ids = [];
-        visitLiveWorldProps(state.worldProps, (prop) => {
+        visitLiveWorldProps(state.entityRegistry, (prop) => {
             if (!sandboxTagsMatchFilter(filter, sandboxAssetTags(propCatalog[prop.type]))) return;
             ids.push(prop.id);
         });
@@ -1410,9 +1413,12 @@ function createSandboxSession(state) {
             DELETE_BY_SELECT_KIND[item.select.kind](this, item, pickSelection);
         },
         clear() {
-            for (let i = state.worldProps.length - 1; i >= 0; i--) {
-                const prop = state.worldProps[i];
-                removeWorldPropFromState(state, prop, state.spatialFrame, state.sandbox.entityMeta);
+            const toRemove = [];
+            visitLiveWorldProps(state.entityRegistry, (prop) => {
+                toRemove.push(prop);
+            });
+            for (let i = 0; i < toRemove.length; i++) {
+                removeWorldPropFromState(state, toRemove[i], state.spatialFrame, state.sandbox.entityMeta);
             }
             state.obstacleGrid.clearAllFloorCells();
             selection.clearSelection();
@@ -2321,7 +2327,7 @@ function createSandboxPrimaryPointerTools(state, session, { blocksPlacement, res
             const cameraTargetId = state.sandbox.entityMeta.cameraTargetId;
             if (!targetNavId && cameraTargetId) targetNavId = cameraTargetId;
             if (state.editor.lockSelection && !targetNavId) {
-                const navProp = state.worldProps.find((p) => propCatalog[p.type]?.sandbox?.tags?.includes("nav"));
+                const navProp = findLiveWorldProp(state.entityRegistry, (p) => propCatalog[p.type]?.sandbox?.tags?.includes("nav"));
                 if (navProp) targetNavId = navProp.id;
             }
             const isTargetNavCapable = () => {

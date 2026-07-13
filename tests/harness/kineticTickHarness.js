@@ -376,6 +376,10 @@ export function createKineticTestRegistry(liveProps) {
             for (let i = 0; i < liveProps.length; i++) if (liveProps[i].id === id) return liveProps[i];
             return null;
         },
+        forEachOfKind(kind, fn) {
+            if (kind !== "worldProp") return;
+            for (let i = 0; i < liveProps.length; i++) fn(liveProps[i]);
+        },
         register(_kind, prop) {
             if (!liveProps.includes(prop)) liveProps.push(prop);
         },
@@ -388,9 +392,8 @@ export function createKineticTestRegistry(liveProps) {
     };
 }
 export function createKineticTestWorld(initialProps, { constraintsDirty = false } = {}) {
-    const worldProps = initialProps.slice();
     const liveProps = initialProps.slice();
-    const world = { worldProps, entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraintsDirty }) };
+    const world = { entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraintsDirty }) };
     world.obstacleGrid = { floorBeltCount: 0, activePortalCount: 0 };
     world.fractureEngine = new FractureEngine(world);
     return world;
@@ -428,7 +431,7 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     snapshotKineticBodySlab(frame.kineticEids, frame.kineticEidCount);
     applyHarnessPairOverrides(props);
     frame.syncActiveKineticBodies();
-    return { frame, world: { worldProps: state.worldProps, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
+    return { frame, world: { entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
 }
 export function snapshotKineticBodies(...bodies) {
     const eids = bodies.map((b) => b._physId);

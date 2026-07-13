@@ -3453,7 +3453,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     const { velocityEpsilonSq } = collisionSettings.kineticEarlyOut;
     let substepsRun = steps;
     const resolveWalls = (eid) => hooks.resolveWalls(eid, spatialFrame);
-    for (let i = world.worldProps.length - 1; i >= 0; i--) hooks.updatePropFrame(world.worldProps[i], dt, spatialFrame);
+    world.entityRegistry.forEachOfKind("worldProp", (prop) => hooks.updatePropFrame(prop, dt, spatialFrame));
     world.fractureEngine.debris.tickFrames(dt, spatialFrame);
     const slab = kineticDynamicSlab;
     const dragFriction = primitivePhysics.dragFriction;

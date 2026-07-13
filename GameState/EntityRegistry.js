@@ -289,44 +289,38 @@ export class EntityArena {
 }
 export { EntityArena as EntityRegistry };
 export function addWorldPropToState(world, prop) {
-    world.worldProps.push(prop);
     return world.entityRegistry.register("worldProp", prop);
 }
 export function addWorldPropsToState(world, props) {
     world.entityRegistry.beginMembershipBatch();
     try {
         for (let i = 0; i < props.length; i++) {
-            const prop = props[i];
-            world.worldProps.push(prop);
-            world.entityRegistry.register("worldProp", prop);
+            world.entityRegistry.register("worldProp", props[i]);
         }
     } finally {
         world.entityRegistry.endMembershipBatch();
     }
 }
 export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta = null) {
-    const index = world.worldProps.indexOf(prop);
-    if (index >= 0) world.worldProps.splice(index, 1);
     world.entityRegistry.unregister(prop);
     entityMeta?.delete(prop.id);
     pruneKineticConstraintsForBody(world.kinetic, prop.id);
     spatialFrame.evictKineticProp(prop, world.kinetic);
     prop.isDead = true;
 }
-export function visitLiveWorldProps(worldProps, visit) {
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead) continue;
+export function visitLiveWorldProps(registry, visit) {
+    registry.forEachOfKind("worldProp", (prop) => {
+        if (prop.isDead) return;
         visit(prop);
-    }
+    });
 }
-export function findLiveWorldProp(worldProps, pred) {
-    for (let i = 0; i < worldProps.length; i++) {
-        const prop = worldProps[i];
-        if (prop.isDead) continue;
-        if (pred(prop)) return prop;
-    }
-    return null;
+export function findLiveWorldProp(registry, pred) {
+    let found = null;
+    registry.forEachOfKind("worldProp", (prop) => {
+        if (found || prop.isDead) return;
+        if (pred(prop)) found = prop;
+    });
+    return found;
 }
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
     centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);

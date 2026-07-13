@@ -14,7 +14,7 @@ import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_I
 import { satPolygonPolygonF32, PolygonShape } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
-import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";
+import { liveFracturePropCount, liveWorldPropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
@@ -215,7 +215,7 @@ describe("fracture", () => {
         const tick = createKineticTestTick([]);
         const prop = new WorldProp(0, 0, "box", 0);
         prop.fractureEnabled = true;
-        tick.world.worldProps.push(prop);
+        tick.world.entityRegistry.register("worldProp", prop);
         entityRefs[prop._physId] = prop;
         
         // Shatter the parent pane
@@ -311,7 +311,7 @@ describe("fracture", () => {
             assert.ok(frag.isKineticDebris);
             assert.ok(frag._fractureCooldown > 0);
         }
-        assert.equal(world.worldProps.length, 0);
+        assert.equal(liveWorldPropCount(world.entityRegistry), 0);
     });
     it("soft fracture shard on fracture shard stays intact", () => {
         const { a, b } = makeOverlappingFractureShards();
@@ -368,7 +368,7 @@ describe("fracture", () => {
         assert.ok(satCheckCollision(glass, crate));
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveFracturePropCount(tick.world) > 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
+        assert.ok(!tick.world.entityRegistry.getLive(glass.id) || glass._fractureCooldown > 0);
     });
     it("runCollisionPipeline does not reproduce fracture across persisted pair iterations", () => {
         const glass = new WorldProp(0, 0, "box", 0);
@@ -383,7 +383,7 @@ describe("fracture", () => {
         const count = liveFracturePropCount(tick.world);
         assert.ok(count > 2);
         assert.ok(count <= FRACTURE_MAX_SHARDS_PER_SHATTER + 2);
-        assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
+        assert.ok(!tick.world.entityRegistry.getLive(glass.id) || glass._fractureCooldown > 0);
     });
     it("shattered shards conserve the total area of the parent shape without gaps", () => {
         const flat = new Float32Array([-16, -16, 16, -16, 16, 16, -16, 16]);
