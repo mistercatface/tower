@@ -1227,7 +1227,6 @@ function buildPolyPolyContactManifoldF32(xA, yA, cosA, sinA, vertsA, normsA, voA
     return pointCount;
 }
 export function readEntityFacing(entity) {
-    if (entity == null) return 0;
     return entity.facing ?? entity.angle ?? 0;
 }
 export function collisionPartsList(entity) {
