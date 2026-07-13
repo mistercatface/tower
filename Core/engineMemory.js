@@ -294,6 +294,7 @@ export const entityStaticKeyCustom = new Int32Array(MAX_ENTITIES);
 export const entityStaticKeyRoll = new Int32Array(MAX_ENTITIES);
 export const entityCachedStaticKey = new BigUint64Array(MAX_ENTITIES);
 export const entityWallChunkTextureReady = new Uint8Array(MAX_ENTITIES);
+export const entityFootprintId = new Int32Array(MAX_ENTITIES);
 entityAlpha.fill(1.0);
 entityZIndex.fill(10);
 const FACTION_IDS = ["alpha", "bravo", "charlie", "delta", "echo"];

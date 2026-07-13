@@ -1,10 +1,10 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid } from "../Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getFactionStr, getProfileId, getProfileStr, entityFractureCooldown, entityStateTimer, entityCachedStaticKey } from "../../Core/engineMemory.js";
+import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid, computeFootprintIdFromSlab } from "../Physics/physics.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getFactionStr, getProfileId, getProfileStr, entityFractureCooldown, entityStateTimer, entityCachedStaticKey, entityFootprintId } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
-import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, getWallChunkSpriteCacheKey, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
+import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { visualOverrideCacheId } from "../Color/visualOverride.js";
@@ -92,7 +92,9 @@ export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: PROP_RENDER
 export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
     prop._footprintId = undefined;
-    if (prop._physId !== undefined) entityCachedStaticKey[prop._physId] = 0n;
+    const eid = prop._physId;
+    entityCachedStaticKey[eid] = 0n;
+    entityFootprintId[eid] = computeFootprintIdFromSlab(eid);
 }
 export function applyPropBoxFootprint(prop, hx, hy) {
     const n = 8;
@@ -265,7 +267,6 @@ export function buildWorldPropStrategyFromAsset(asset) {
     const built = { ...PROP_STRATEGY_DEFAULTS, render3DKey: asset.id, renderKeyId: asset.renderKeyId ?? 0, renderMode: renderMode ?? PROP_RENDER_MODE_3D, inspectKey: null, ...strategy };
     if (asset.sandbox?.gridFloorBelt) built.isKinetic = false;
     else stampPrimitivePhysics(built, primitivePhysicsRow(asset));
-    if (assetUsesWallChunkSurface(asset) && !built.getCustomSpriteCacheKey) built.getCustomSpriteCacheKey = getWallChunkSpriteCacheKey;
     return built;
 }
 const worldPropStrategyByType = new Map();

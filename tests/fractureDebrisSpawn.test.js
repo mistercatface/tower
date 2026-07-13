@@ -7,9 +7,9 @@ import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatter
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
-import { getWallChunkSpriteCacheKey } from "../Libraries/Render/render.js";
-import { getPropStaticKey } from "../Libraries/Canvas/canvas.js";
+import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { entityWallChunkTextureReady } from "../Core/engineMemory.js";
 
 const spriteCacheKeyDeps = { quantizeAngleIndex };
 
@@ -50,12 +50,14 @@ describe("fracture debris slab spawn", () => {
         b.wallChunkProfileId = "brick";
         a.wallChunkHeightPx = 24;
         b.wallChunkHeightPx = 24;
-        a._wallChunkTextureReady = true;
-        b._wallChunkTextureReady = true;
         applyPropBoxFootprint(a, 8, 8);
         applyPropBoxFootprint(b, 10, 6);
-        assert.notEqual(getWallChunkSpriteCacheKey(a), getWallChunkSpriteCacheKey(b));
-        assert.equal(typeof getWallChunkSpriteCacheKey(a), "number");
+        assignPhysIdWithPose(a, 1);
+        assignPhysIdWithPose(b, 2);
+        entityWallChunkTextureReady[a._physId] = 1;
+        entityWallChunkTextureReady[b._physId] = 1;
+        assert.notEqual(getWallChunkSpriteCacheKey(a._physId), getWallChunkSpriteCacheKey(b._physId));
+        assert.equal(typeof getWallChunkSpriteCacheKey(a._physId), "number");
     });
 
     it("box WorldProp stamps poolTableFelt profile at wall height 1", () => {
@@ -63,19 +65,18 @@ describe("fracture debris slab spawn", () => {
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
         assert.equal(prop.height, 16);
         assert.equal(prop.wallChunkHeightPx, 16);
-        assert.equal(prop.strategy.getCustomSpriteCacheKey, getWallChunkSpriteCacheKey);
     });
 
     it("wall-chunk texture ready flip changes prop static sprite key", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 16, 16);
         assignPhysIdWithPose(prop, 9100);
-        prop._wallChunkTextureReady = false;
+        entityWallChunkTextureReady[prop._physId] = 0;
         const pendingKey = getPropStaticKey(prop._physId, "box");
-        const pendingCustom = getWallChunkSpriteCacheKey(prop);
-        prop._wallChunkTextureReady = true;
+        const pendingCustom = getWallChunkSpriteCacheKey(prop._physId);
+        entityWallChunkTextureReady[prop._physId] = 1;
         const readyKey = getPropStaticKey(prop._physId, "box");
-        const readyCustom = getWallChunkSpriteCacheKey(prop);
+        const readyCustom = getWallChunkSpriteCacheKey(prop._physId);
         assert.notEqual(pendingCustom, readyCustom);
         assert.notEqual(pendingKey, readyKey);
     });

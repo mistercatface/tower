@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getCirclePropRadius, propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive, resolveVisualAttachmentProps } from "../Libraries/Props/props.js";
-import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
+import { ENGINE_F32, M_VEC_A, entityWallProfileId, getProfileId } from "../Core/engineMemory.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import { createSandboxKineticWorld, createSandboxControllerSession, createSandboxTestController } from "./harness/stateFactories.js";
-import { getWallChunkSpriteCacheKey, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
+import { bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
+import { getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 import propCatalog from "../Assets/props/index.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE } from "../Core/engineEnums.js";
@@ -35,8 +36,8 @@ describe("spawn shape family defaults", () => {
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
         assert.ok(prop.wallChunkHeightPx > 0);
         assert.equal(getPropVisualTint(prop), null);
-        assert.equal(typeof getWallChunkSpriteCacheKey(prop), "number");
-        assert.notEqual(getWallChunkSpriteCacheKey(prop), 0);
+        assert.equal(typeof getWallChunkSpriteCacheKey(prop._physId), "number");
+        assert.notEqual(getWallChunkSpriteCacheKey(prop._physId), 0);
     });
 
     it("places ball with session surface profile override", () => {
@@ -47,10 +48,13 @@ describe("spawn shape family defaults", () => {
         assert.equal(session.spawnAt(64, 64), true);
         const prop = state.worldProps[0];
         assert.equal(prop.wallChunkProfileId, "tomatoGarden");
-        assert.equal(prop._wallChunkTextureReady, false);
-        const other = Object.assign(Object.create(Object.getPrototypeOf(prop)), prop);
-        other.wallChunkProfileId = "poolTableFelt";
-        assert.notEqual(getWallChunkSpriteCacheKey(prop), getWallChunkSpriteCacheKey(other));
+        const eid = prop._physId;
+        const key1 = getWallChunkSpriteCacheKey(eid);
+        const originalProfile = entityWallProfileId[eid];
+        entityWallProfileId[eid] = getProfileId("poolTableFelt");
+        const key2 = getWallChunkSpriteCacheKey(eid);
+        assert.notEqual(key1, key2);
+        entityWallProfileId[eid] = originalProfile;
     });
 
     it("serialize keeps non-default wallChunkProfileId and omits default", () => {

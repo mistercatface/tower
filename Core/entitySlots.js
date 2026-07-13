@@ -1,6 +1,7 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
 import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE, PROP_RENDER_MODE_3D, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "./engineEnums.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRenderKeyId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getProfileId, entityFractureCooldown, entityStateTimer, entityCachedStaticKey, entityWallChunkTextureReady } from "./engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRenderKeyId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getProfileId, entityFractureCooldown, entityStateTimer, entityCachedStaticKey, entityWallChunkTextureReady, entityFootprintId } from "./engineMemory.js";
+import { computeFootprintIdFromSlab } from "../Libraries/Physics/physics.js";
 let nextEid = 0;
 const eidFreeList = [];
 export function allocateEntityEid() {
@@ -44,6 +45,7 @@ export function releaseEntityEid(eid) {
     entityRefs[eid] = null;
     entityCachedStaticKey[eid] = 0n;
     entityWallChunkTextureReady[eid] = 0;
+    entityFootprintId[eid] = -1;
     entityGridTileIdx[eid] = -1;
     kineticDynamicSlab.rollDriveKind[eid] = -1;
     // Clear new ECS columns
@@ -93,6 +95,7 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityZIndex[eid] = ref.zIndex ?? 10;
     entityFractureCooldown[eid] = ref._fractureCooldown ?? 0;
     entityStateTimer[eid] = ref.stateTimer ?? 0;
+    entityFootprintId[eid] = computeFootprintIdFromSlab(eid);
 }
 export function clearWorldPropSpawnPose(ref) {
     delete ref._spawnX;

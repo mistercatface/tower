@@ -116,6 +116,7 @@ import {
     staticWallSegmentSlab,
     GrowI32,
     GrowF32,
+    entityShapeKind,
 } from "../../Core/engineMemory.js";
 import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_DEAD } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
@@ -4469,4 +4470,25 @@ export function decelerateRoll(eid, config) {
 }
 export function clearGroundRollDrive(eid) {
     kineticDynamicSlab.rollDriveKind[eid] = ROLL_DRIVE_NONE;
+}
+export function computeFootprintIdFromSlab(eid) {
+    const slab = kineticDynamicSlab;
+    const kind = entityShapeKind[eid];
+    if (kind === SHAPE_TYPE_POLYGON) {
+        const row = slab.partGeomOffset[eid];
+        if (row < 0) return 0;
+        const vo = slab.partVertOffset[row];
+        const n = slab.partVertFloatCount[row];
+        const verts = slab.shapeVertPool;
+        let hash = 2166136261;
+        hash ^= n >>> 0;
+        hash = Math.imul(hash, 16777619);
+        for (let i = 0; i < n; i++) {
+            const q = Math.round(verts[vo + i] * 8);
+            hash ^= q;
+            hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0) & 0xfffff;
+    } else if (kind === SHAPE_TYPE_CIRCLE) return Math.round(slab.r[eid] * 4) >>> 0;
+    return 0;
 }

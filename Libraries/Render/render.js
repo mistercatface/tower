@@ -9,7 +9,6 @@ import { VOXEL_FACE_CX, VOXEL_FACE_CY, VOXEL_FACE_OUT_X, VOXEL_FACE_OUT_Y, VOXEL
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { getSurfaceProfileRevision, SS_POINTS } from "../WorldSurface/worldSurface.js";
-import { propShapeFootprintId } from "../Props/props.js";
 const WALL_ATLAS_FACE_NONE = 0;
 const WALL_ATLAS_FACE_INNER = 1;
 const WALL_ATLAS_FACE_OUTER = 2;
@@ -986,14 +985,6 @@ export function drawWallChunkTextured(ctx, prop, viewport, localVerts) {
     classifyPrismFaces(count, viewport, cx, cy);
     drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha);
     return true;
-}
-export function getWallChunkSpriteCacheKey(prop) {
-    if (!prop.wallChunkProfileId) return 0;
-    const profileId = prop.wallChunkProfileId;
-    const rev = getSurfaceProfileRevision(profileId);
-    const eid = prop._physId;
-    const footprint = propShapeFootprintId(prop) | 0;
-    return mixHash4(hashString(profileId), prop.wallChunkHeightPx | 0, rev | 0, (footprint << 1) ^ entityWallChunkTextureReady[eid]);
 }
 export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = readEntityFacing(prop)) {
     if (!wallChunkPipeline?._wallChunkReady) return false;
