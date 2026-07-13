@@ -1,7 +1,8 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { allocateEntityEid, bindEntitySlot, worldPropBindFlags } from "../../Core/entitySlots.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid, computeFootprintIdFromSlab } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, getProfileStr, entityFractureCooldown, entityCachedStaticKey, entityFootprintId, entityRenderKeyId } from "../../Core/engineMemory.js";
-import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
+import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_KIND_NONE } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
@@ -242,6 +243,7 @@ export class WorldProp {
         this.id = nextWorldPropId++;
         this._distSq = 0;
         this.shape = null;
+        this._physId = allocateEntityEid();
         this.initializeSpawn(x, y, type, facing);
         this.changeState("normal");
     }
@@ -249,231 +251,176 @@ export class WorldProp {
         const asset = propCatalog[type];
         this.type = type;
         this.strategy = sharedWorldPropStrategy(type);
-        this._spawnX = x;
-        this._spawnY = y;
-        this.isDead = false;
-        this._spawnVx = 0;
-        this._spawnVy = 0;
-        this._spawnW = 0;
-        this._spawnAgeMs = 0;
-        this._spawnSleepFrames = 0;
-        this._spawnSleeping = false;
+        
+        const eid = this._physId;
+        entityRefs[eid] = this;
+
         this.stateData = {};
         this.height = resolveAssetPropHeight(asset);
-        this.fractureEnabled = this.strategy.fracture ? undefined : false;
-        this._spawnFacing = resolvePropSpawnFacing(this, facing);
-        if (this.strategy.rolls) {
-            this._spawnRollQw = 1;
-            this._spawnRollQx = 0;
-            this._spawnRollQy = 0;
-            this._spawnRollQz = 0;
-        }
         this.collisionParts = undefined;
-        this._fractureCooldown = 0;
         this.spawnGroupId = undefined;
+
         releaseLivePolygon(this);
         this.shape = undefined;
         this.drawOutline = undefined;
         this.footprintArea = undefined;
-        this.alpha = undefined;
-        this.wallChunkProfileId = undefined;
-        this.wallChunkHeightPx = undefined;
+
         stampSurfaceProfileFields(this, asset);
         initWorldPropShape(this);
-        delete this._physId;
+
+        const spawnFacing = resolvePropSpawnFacing(this, facing);
+        
+        this.facing = spawnFacing;
+        this.rollQw = 1;
+        this.rollQx = 0;
+        this.rollQy = 0;
+        this.rollQz = 0;
+        this.isSleeping = false;
+        this._sleepFrames = 0;
+        this.ageMs = 0;
+        this.alpha = 1.0;
+        this._fractureCooldown = 0;
+
+        const flags = worldPropBindFlags(this);
+
+        bindEntitySlot(eid, ENTITY_KIND_NONE, this, this.id, x, y, this.radius, flags);
+
+        this.fractureEnabled = this.strategy.fracture ? undefined : false;
+
+        invalidateEntityFootprint(eid);
     }
     get isDead() {
-        const eid = this._physId;
-        return eid !== undefined ? (entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0 : !!this._spawnDead;
+        return (entityFlags[this._physId] & ENTITY_FLAG_DEAD) !== 0;
     }
     set isDead(v) {
-        const eid = this._physId;
-        if (eid !== undefined)
-            if (v) entityFlags[eid] |= ENTITY_FLAG_DEAD;
-            else entityFlags[eid] &= ~ENTITY_FLAG_DEAD;
-        this._spawnDead = !!v;
+        if (v) entityFlags[this._physId] |= ENTITY_FLAG_DEAD;
+        else entityFlags[this._physId] &= ~ENTITY_FLAG_DEAD;
     }
     get fractureEnabled() {
-        const eid = this._physId;
-        if (eid !== undefined) {
-            const flags = entityFlags[eid];
-            if ((flags & ENTITY_FLAG_FRACTURE_SET) === 0) return undefined;
-            return (flags & ENTITY_FLAG_FRACTURE_VAL) !== 0;
-        }
-        return this._spawnFractureEnabled;
+        const flags = entityFlags[this._physId];
+        if ((flags & ENTITY_FLAG_FRACTURE_SET) === 0) return undefined;
+        return (flags & ENTITY_FLAG_FRACTURE_VAL) !== 0;
     }
     set fractureEnabled(v) {
-        const eid = this._physId;
-        if (eid !== undefined)
-            if (v === undefined) entityFlags[eid] &= ~(ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
-            else {
-                entityFlags[eid] |= ENTITY_FLAG_FRACTURE_SET;
-                if (v) entityFlags[eid] |= ENTITY_FLAG_FRACTURE_VAL;
-                else entityFlags[eid] &= ~ENTITY_FLAG_FRACTURE_VAL;
+        if (v === undefined) {
+            if (this.strategy?.fracture) {
+                entityFlags[this._physId] |= (ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
+            } else {
+                entityFlags[this._physId] &= ~(ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
             }
-        this._spawnFractureEnabled = v;
+        } else {
+            entityFlags[this._physId] |= ENTITY_FLAG_FRACTURE_SET;
+            if (v) entityFlags[this._physId] |= ENTITY_FLAG_FRACTURE_VAL;
+            else entityFlags[this._physId] &= ~ENTITY_FLAG_FRACTURE_VAL;
+        }
     }
     get _fractureCooldown() {
-        const eid = this._physId;
-        return eid !== undefined ? entityFractureCooldown[eid] : this._spawnFractureCooldown;
+        return entityFractureCooldown[this._physId];
     }
     set _fractureCooldown(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityFractureCooldown[eid] = v;
-        this._spawnFractureCooldown = v;
+        entityFractureCooldown[this._physId] = v;
     }
     get height() {
-        const eid = this._physId;
-        return eid !== undefined ? entityHeight[eid] : this._spawnHeight;
+        return entityHeight[this._physId];
     }
     set height(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityHeight[eid] = v;
-        this._spawnHeight = v;
+        entityHeight[this._physId] = v;
     }
     get alpha() {
-        const eid = this._physId;
-        return eid !== undefined ? entityAlpha[eid] : this._spawnAlpha;
+        return entityAlpha[this._physId];
     }
     set alpha(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityAlpha[eid] = v;
-        this._spawnAlpha = v;
+        entityAlpha[this._physId] = v;
     }
     get wallChunkProfileId() {
-        const eid = this._physId;
-        return eid !== undefined ? getProfileStr(entityWallProfileId[eid]) : this._spawnWallProfileId;
+        return getProfileStr(entityWallProfileId[this._physId]);
     }
     set wallChunkProfileId(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityWallProfileId[eid] = getProfileId(v);
-        this._spawnWallProfileId = v;
+        entityWallProfileId[this._physId] = getProfileId(v);
     }
     get wallChunkHeightPx() {
-        const eid = this._physId;
-        return eid !== undefined ? entityWallHeightPx[eid] : this._spawnWallHeightPx;
+        return entityWallHeightPx[this._physId];
     }
     set wallChunkHeightPx(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityWallHeightPx[eid] = v;
-        this._spawnWallHeightPx = v;
+        entityWallHeightPx[this._physId] = v;
     }
     get x() {
-        const eid = this._physId;
-        return eid !== undefined ? entityX[eid] : this._spawnX;
+        return entityX[this._physId];
     }
     set x(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityX[eid] = v;
-        else this._spawnX = v;
+        entityX[this._physId] = v;
     }
     get y() {
-        const eid = this._physId;
-        return eid !== undefined ? entityY[eid] : this._spawnY;
+        return entityY[this._physId];
     }
     set y(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityY[eid] = v;
-        else this._spawnY = v;
+        entityY[this._physId] = v;
     }
     get vx() {
-        const eid = this._physId;
-        return eid !== undefined ? entityVx[eid] : this._spawnVx;
+        return entityVx[this._physId];
     }
     set vx(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityVx[eid] = v;
-        else this._spawnVx = v;
+        entityVx[this._physId] = v;
     }
     get vy() {
-        const eid = this._physId;
-        return eid !== undefined ? entityVy[eid] : this._spawnVy;
+        return entityVy[this._physId];
     }
     set vy(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityVy[eid] = v;
-        else this._spawnVy = v;
+        entityVy[this._physId] = v;
     }
     get angularVelocity() {
-        const eid = this._physId;
-        return eid !== undefined ? entityW[eid] : this._spawnW;
+        return entityW[this._physId];
     }
     set angularVelocity(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityW[eid] = v;
-        else this._spawnW = v;
+        entityW[this._physId] = v;
     }
     get facing() {
-        const eid = this._physId;
-        return eid !== undefined ? entityFacing[eid] : this._spawnFacing;
+        return entityFacing[this._physId];
     }
     set facing(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityFacing[eid] = v;
-        else this._spawnFacing = v;
+        entityFacing[this._physId] = v;
     }
     get rollQw() {
-        const eid = this._physId;
-        return eid !== undefined ? entityRollQw[eid] : (this._spawnRollQw ?? 1);
+        return entityRollQw[this._physId];
     }
     set rollQw(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityRollQw[eid] = v;
-        else this._spawnRollQw = v;
+        entityRollQw[this._physId] = v;
     }
     get rollQx() {
-        const eid = this._physId;
-        return eid !== undefined ? entityRollQx[eid] : (this._spawnRollQx ?? 0);
+        return entityRollQx[this._physId];
     }
     set rollQx(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityRollQx[eid] = v;
-        else this._spawnRollQx = v;
+        entityRollQx[this._physId] = v;
     }
     get rollQy() {
-        const eid = this._physId;
-        return eid !== undefined ? entityRollQy[eid] : (this._spawnRollQy ?? 0);
+        return entityRollQy[this._physId];
     }
     set rollQy(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityRollQy[eid] = v;
-        else this._spawnRollQy = v;
+        entityRollQy[this._physId] = v;
     }
     get rollQz() {
-        const eid = this._physId;
-        return eid !== undefined ? entityRollQz[eid] : (this._spawnRollQz ?? 0);
+        return entityRollQz[this._physId];
     }
     set rollQz(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityRollQz[eid] = v;
-        else this._spawnRollQz = v;
+        entityRollQz[this._physId] = v;
     }
     get ageMs() {
-        const eid = this._physId;
-        return eid !== undefined ? entityAgeMs[eid] : (this._spawnAgeMs ?? 0);
+        return entityAgeMs[this._physId];
     }
     set ageMs(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityAgeMs[eid] = v;
-        else this._spawnAgeMs = v;
+        entityAgeMs[this._physId] = v;
     }
     get isSleeping() {
-        const eid = this._physId;
-        return eid !== undefined ? kineticDynamicSlab.sleeping[eid] !== 0 : !!this._spawnSleeping;
+        return kineticDynamicSlab.sleeping[this._physId] !== 0;
     }
     set isSleeping(v) {
-        const eid = this._physId;
-        if (eid !== undefined) kineticDynamicSlab.sleeping[eid] = v ? 1 : 0;
-        else this._spawnSleeping = !!v;
+        kineticDynamicSlab.sleeping[this._physId] = v ? 1 : 0;
     }
     get _sleepFrames() {
-        const eid = this._physId;
-        return eid !== undefined ? kineticDynamicSlab.sleepFrames[eid] : (this._spawnSleepFrames ?? 0);
+        return kineticDynamicSlab.sleepFrames[this._physId];
     }
     set _sleepFrames(v) {
-        const eid = this._physId;
-        if (eid !== undefined) kineticDynamicSlab.sleepFrames[eid] = v;
-        else this._spawnSleepFrames = v;
+        kineticDynamicSlab.sleepFrames[this._physId] = v;
     }
     get momentOfInertia() {
         return kineticInertiaFromBody(this);

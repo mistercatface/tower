@@ -884,11 +884,12 @@ export class FractureEngine {
                 const eid = deferred.physId[i];
                 const prop = entityRefs[eid];
                 entityFlags[eid] &= ~ENTITY_FLAG_PENDING_FRACTURE;
-                if (!deferred.remnant[i])
-                    if (prop.isKineticDebris) this.debris.remove(prop, spatialFrame);
-                    else removeWorldPropFromState(world, prop, spatialFrame);
                 FractureEngine._currentPropMotion(eid);
                 const shards = this.debris.spawnShardsFromFracture(prop, i);
+                if (!deferred.remnant[i]) {
+                    if (prop.isKineticDebris) this.debris.remove(prop, spatialFrame);
+                    else removeWorldPropFromState(world, prop, spatialFrame);
+                }
                 for (let j = 0; j < shards.length; j++) admitScratch.push(shards[j]);
                 releaseDebrisGeomRange(stores, deferred.debrisStart[i], deferred.debrisCount[i]);
             }
@@ -941,12 +942,13 @@ export class FractureEngine {
     }
     static commitFractureResult(world, prop, spatialFrame) {
         const remnant = ENGINE_F32[F_OUT_REMNANT] === 1;
-        if (!remnant)
-            if (prop.isKineticDebris) world.fractureEngine.debris.remove(prop, spatialFrame);
-            else removeWorldPropFromState(world, prop, spatialFrame);
         const stores = world.fractureEngine.stores;
         FractureEngine._currentPropMotion(prop._physId);
         const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop);
+        if (!remnant) {
+            if (prop.isKineticDebris) world.fractureEngine.debris.remove(prop, spatialFrame);
+            else removeWorldPropFromState(world, prop, spatialFrame);
+        }
         if (shards.length) spatialFrame.admitKineticProps(shards, world);
         releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
         stores.debris.reset();
