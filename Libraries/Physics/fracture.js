@@ -481,7 +481,6 @@ class KineticDebrisStore {
         body.faction = undefined;
         body.wallChunkProfileId = undefined;
         body.wallChunkHeightPx = undefined;
-        body._wallChunkTextureReady = undefined;
         body.isDead = false;
         body.isSleeping = false;
         body._sleepFrames = 0;

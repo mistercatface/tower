@@ -333,7 +333,6 @@ export class WorldProp {
         this.alpha = undefined;
         this.wallChunkProfileId = undefined;
         this.wallChunkHeightPx = undefined;
-        this._wallChunkTextureReady = undefined;
         stampSurfaceProfileFields(this, asset);
         this._footprintKey = undefined;
         initWorldPropShape(this);
