@@ -3229,6 +3229,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     evictKineticProp(prop, session) {
         const physId = prop._physId;
+        if (physId === undefined) return;
         const x = kineticDynamicSlab.x[physId];
         const y = kineticDynamicSlab.y[physId];
         const vx = kineticDynamicSlab.vx[physId];

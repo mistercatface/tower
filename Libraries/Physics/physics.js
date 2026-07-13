@@ -1017,7 +1017,8 @@ function writePolygonIntoPreInsert(body, src, floatCount) {
     return off;
 }
 export function releaseLivePolygon(body) {
-    releaseShapeGeom(body._physId);
+    const physId = body._physId;
+    if (physId !== undefined) releaseShapeGeom(physId);
     releasePreInsertGeom(body);
     const shape = body.shape;
     if (shape && shape._liveBound === 1) {
@@ -2696,15 +2697,7 @@ export function applyKineticConstraintsFromSnapshot(session, entries, eidByIndex
         const eidB = eidByIndex[entry.bodyB];
         let row;
         if (type === CONSTRAINT_TYPE_ANGLE) row = addAngleConstraint(session, eidA, eidB, entry.referenceAngle);
-        else {
-            row = addDistanceConstraint(session, eidA, eidB, {
-                restLength: entry.restLength,
-                anchorAx: entry.anchorAx,
-                anchorAy: entry.anchorAy,
-                anchorBx: entry.anchorBx,
-                anchorBy: entry.anchorBy,
-            });
-        }
+        else row = addDistanceConstraint(session, eidA, eidB, { restLength: entry.restLength, anchorAx: entry.anchorAx, anchorAy: entry.anchorAy, anchorBx: entry.anchorBx, anchorBy: entry.anchorBy });
         kineticConstraintStore.accumulatedImpulse[row] = entry.accumulatedImpulse;
     }
 }

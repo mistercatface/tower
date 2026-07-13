@@ -478,7 +478,8 @@ class KineticDebrisStore {
         return body;
     }
     remove(body, spatialFrame) {
-        spatialFrame.evictKineticProp(body, this.world.kinetic);
+        const physId = body._physId;
+        if (physId !== undefined) spatialFrame.evictKineticProp(body, this.world.kinetic);
         const index = body._listIndex;
         const last = this._bodies.pop();
         if (last !== body) {
