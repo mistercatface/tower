@@ -136,7 +136,7 @@ async function runSnakeLaunch(state, ctx) {
     if (playerAnchorIdx < 0) throw new Error("snake launch: no walkable maze cell for player spawn");
     const playerX = grid.gridCenterXByIdx(playerAnchorIdx);
     const playerY = grid.gridCenterYByIdx(playerAnchorIdx);
-    const boid = spawnPlacedSandboxProp(state, playerX, playerY, "boid_triangle", "alpha");
+    const boid = spawnPlacedSandboxProp(state, playerX, playerY, "boid_triangle");
     ctx.boid = boid;
     state.appLaunch?.session?.bind(ctx);
     if (state.sandbox?.controller?.session) {
@@ -178,10 +178,10 @@ async function runFractureLaunch(state, ctx) {
     const cy = ENGINE_F32[M_VEC_A + 1];
     const sizePx = parseFractureLaunchSizePx();
     const half = sizePx * 0.5;
-    const pane = spawnPlacedSandboxProp(state, cx, cy, "box", "alpha");
+    const pane = spawnPlacedSandboxProp(state, cx, cy, "box");
     applyPropBoxFootprint(pane, half, half);
     pane.fractureEnabled = true;
-    const star = spawnPlacedSandboxProp(state, cx, cy - (half + 24), "star_block", "alpha");
+    const star = spawnPlacedSandboxProp(state, cx, cy - (half + 24), "star_block");
     state.appLaunch?.session?.bind(ctx);
     if (state.sandbox?.controller?.session) {
         state.sandbox.controller.session.select({ kind: "prop", ids: [star.id] });
