@@ -6,6 +6,7 @@ import { createFractureWorld, liveDebrisEids } from "./harness/fractureHarness.j
 import { entityAlpha, entityFadeOutMs, entityFadeDurationMs } from "../Core/engineMemory.js";
 import { tickEntityFrames } from "../Libraries/Physics/physics.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
+import { ENTITY_KIND_DEBRIS } from "../Core/engineEnums.js";
 
 describe("prop debris fade-out and removal", () => {
     it("does not fade out or die if fadeOutMs is not configured", () => {
@@ -47,7 +48,7 @@ describe("prop debris fade-out and removal", () => {
         const world = createFractureWorld();
         const body = world.fractureEngine.acquireDebrisProp("wall_rail_chunk", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 2);
-        world.fractureEngine._registerDebrisProp(body);
+        world.entityRegistry.register(ENTITY_KIND_DEBRIS, body);
         const frame = new KineticSpatialFrame(16);
         frame.resetFrame(world.obstacleGrid);
         frame.admitKineticEids([body._physId], 1, world);

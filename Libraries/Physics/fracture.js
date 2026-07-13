@@ -457,10 +457,6 @@ export class FractureEngine {
         prop.height = resolveAssetPropHeight(propCatalog[type]);
         return prop;
     }
-    _registerDebrisProp(prop) {
-        this.world.entityRegistry.register(ENTITY_KIND_DEBRIS, prop);
-        return prop;
-    }
     releaseDebrisEid(eid, spatialFrame) {
         const prop = entityRefs[eid];
         removeWorldPropEid(this.world, eid, spatialFrame);
@@ -468,18 +464,7 @@ export class FractureEngine {
         clearWorldPropSpawnPose(prop);
         debrisWorldPropPool.push(prop);
     }
-    _admitEids(spatialFrame) {
-        spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
-        admitEidScratch.clear();
-    }
-    _pushLiveAndAdmit(prop, spatialFrame) {
-        const eid = prop._physId;
-        wakeKineticBody(eid);
-        admitEidScratch.clear();
-        admitEidScratch.push(eid);
-        this._admitEids(spatialFrame);
-    }
-    _spawnIntactWallChunk(parent, spatialFrame) {
+    spawnIntactWallChunk(parent, spatialFrame) {
         const prop = this.acquireDebrisProp(parent.type, parent.x, parent.y, parent.facing);
         prop.vx = parent.vx;
         prop.vy = parent.vy;
@@ -488,14 +473,16 @@ export class FractureEngine {
         prop.wallChunkHeightPx = parent.wallChunkHeightPx;
         prop.height = parent.height;
         copyDebrisPolygonGeometry(prop, parent);
-        this._registerDebrisProp(prop);
-        this._pushLiveAndAdmit(prop, spatialFrame);
+        this.world.entityRegistry.register(ENTITY_KIND_DEBRIS, prop);
+        const eid = prop._physId;
+        wakeKineticBody(eid);
+        admitEidScratch.clear();
+        admitEidScratch.push(eid);
+        spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
+        admitEidScratch.clear();
         spawnedScratch.length = 0;
         spawnedScratch.push(prop);
         return spawnedScratch;
-    }
-    acquireAndAdmitIntactDebris(parent, spatialFrame) {
-        return this._spawnIntactWallChunk(parent, spatialFrame);
     }
     spawnFromBreakRow(spawn, row, spatialFrame) {
         const propType = spawn.kind[row] === WALL_STAMP_VOXEL ? "wall_voxel_chunk" : "wall_rail_chunk";
@@ -525,17 +512,18 @@ export class FractureEngine {
         ENGINE_F32[F_OUT_MOTION_W] = parent.angularVelocity;
         const force = FractureEngine.impactForceFromContact(spawn.sourceSpeed[row], sourceMass, parentMass) + FRACTURE_TUNING.wallSpawn.forceBias;
         const ok = FractureEngine.fracturePropOnImpact(parent, spawn.contactX[row], spawn.contactY[row], force, this);
-        if (!ok) return this._spawnIntactWallChunk(parent, spatialFrame);
+        if (!ok) return this.spawnIntactWallChunk(parent, spatialFrame);
         const stores = this.stores;
         const spawned = this.spawnShardsFromFracture(parent);
         if (!spawned.length) {
             releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
             stores.debris.reset();
-            return this._spawnIntactWallChunk(parent, spatialFrame);
+            return this.spawnIntactWallChunk(parent, spatialFrame);
         }
         admitEidScratch.clear();
         for (let i = 0; i < spawned.length; i++) admitEidScratch.push(spawned[i]._physId);
-        this._admitEids(spatialFrame);
+        spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
+        admitEidScratch.clear();
         releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
         stores.debris.reset();
         return spawned;
@@ -594,7 +582,7 @@ export class FractureEngine {
             }
             if (shardHeight != null) prop.height = shardHeight;
             if (fractureBurst) FractureEngine._applyShardBurstImpulse(prop, cx, cy);
-            this._registerDebrisProp(prop);
+            this.world.entityRegistry.register(ENTITY_KIND_DEBRIS, prop);
             spawnedScratch.push(prop);
         }
         for (let i = 0; i < spawnedScratch.length; i++) wakeKineticBody(spawnedScratch[i]._physId);

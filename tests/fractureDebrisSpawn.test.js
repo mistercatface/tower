@@ -9,6 +9,7 @@ import { addWorldPropsToState, removeWorldPropEid } from "../GameState/EntityReg
 import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { entityWallChunkTextureReady, entityFootprintId } from "../Core/engineMemory.js";
+import { ENTITY_KIND_DEBRIS } from "../Core/engineEnums.js";
 
 const spriteCacheKeyDeps = { quantizeAngleIndex };
 
@@ -88,7 +89,7 @@ describe("fracture debris slab spawn", () => {
         wall.wallChunkProfileId = "stale_profile";
         wall.wallChunkHeightPx = 64;
         wall.height = 48;
-        world.fractureEngine._registerDebrisProp(wall);
+        world.entityRegistry.register(ENTITY_KIND_DEBRIS, wall);
         world.fractureEngine.releaseDebrisEid(wall._physId, { evictKineticEid: stubEvictKineticEid });
         const glass = world.fractureEngine.acquireDebrisProp("box", 10, 10, 0);
         assert.equal(glass.wallChunkProfileId, undefined);

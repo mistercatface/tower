@@ -51,21 +51,6 @@ export function collectLiveWorldProps(registry) {
     return props;
 }
 
-export function liveDebrisBodies(registryOrStore) {
-    const out = [];
-    if (registryOrStore && typeof registryOrStore.forEachOfKind === "function") {
-        registryOrStore.forEachOfKind(ENTITY_KIND_DEBRIS, (prop) => {
-            if (prop.isDead) return;
-            out.push(prop);
-        });
-        return out;
-    }
-    if (registryOrStore?.liveEids) {
-        for (let i = 0; i < registryOrStore.liveCount; i++) out.push(entityRefs[registryOrStore.liveEids[i]]);
-    }
-    return out;
-}
-
 export function liveDebrisEids(registry) {
     const eids = [];
     registry.forEachOfKind(ENTITY_KIND_DEBRIS, (prop) => {
@@ -87,14 +72,17 @@ export function assertDebrisKind(body) {
 
 export function liveFracturePropCount(world) {
     let count = 0;
-    world.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
-        if (prop.isDead) return;
-        if (prop.type === "box") count++;
-    });
-    world.entityRegistry.forEachOfKind(ENTITY_KIND_DEBRIS, (prop) => {
-        if (prop.isDead) return;
-        if (prop.type === "box") count++;
-    });
+    const registry = world.entityRegistry;
+    const live = registry._liveEids;
+    const n = registry._liveCount;
+    for (let i = 0; i < n; i++) {
+        const eid = live[i];
+        const kind = entityKind[eid];
+        if (kind !== ENTITY_KIND_WORLD_PROP && kind !== ENTITY_KIND_DEBRIS) continue;
+        const prop = entityRefs[eid];
+        if (!prop || prop.isDead || prop.type !== "box") continue;
+        count++;
+    }
     return count;
 }
 

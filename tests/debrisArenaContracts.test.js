@@ -77,12 +77,12 @@ describe("debris arena contracts", () => {
         parent.vx = -40;
         parent.vy = -40;
         parent.angularVelocity = 0.5;
-        const shards = world.fractureEngine.acquireAndAdmitIntactDebris(parent, frame);
+        const shards = world.fractureEngine.spawnIntactWallChunk(parent, frame);
         assert.ok(shards.length >= 1);
         assert.ok(shards.every((s) => Math.hypot(entityVx[s._physId], entityVy[s._physId]) > 5));
         for (const s of shards) world.fractureEngine.releaseDebrisEid(s._physId, frame);
         assert.equal(liveDebrisEids(world.entityRegistry).length, 0);
-        const again = world.fractureEngine.acquireAndAdmitIntactDebris(parent, frame);
+        const again = world.fractureEngine.spawnIntactWallChunk(parent, frame);
         assert.ok(again.every((s) => Math.hypot(entityVx[s._physId], entityVy[s._physId]) > 5), "recycled admit must keep spawn impulse");
     });
 

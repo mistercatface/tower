@@ -3072,17 +3072,14 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     repopulateFrameMembership(state) {
         this.kineticEidCount = 0;
-        state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
-            let physId = prop._physId;
-            if (physId === undefined) physId = allocateEntityEid();
-            this._ensureKineticMembership(physId, ENTITY_KIND_WORLD_PROP, prop);
-        });
-        state.entityRegistry.forEachOfKind(ENTITY_KIND_DEBRIS, (prop) => {
-            let physId = prop._physId;
-            if (physId === undefined) physId = allocateEntityEid();
-            this._ensureKineticMembership(physId, ENTITY_KIND_DEBRIS, prop);
-        });
-        this.populatedMembershipGen = state.entityRegistry.membershipGen;
+        const registry = state.entityRegistry;
+        const live = registry._liveEids;
+        const n = registry._liveCount;
+        for (let i = 0; i < n; i++) {
+            const physId = live[i];
+            this._ensureKineticMembership(physId, entityKind[physId], entityRefs[physId]);
+        }
+        this.populatedMembershipGen = registry.membershipGen;
     }
     begin(state) {
         this.resetFrame(state.obstacleGrid);
