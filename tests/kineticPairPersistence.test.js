@@ -32,7 +32,7 @@ describe("kinetic pair persistence", () => {
             const bodyA = mockKineticCircle(0, 0, 10, 0, 0);
             const bodyB = mockKineticCircle(20, 0, 10, 0, 0);
             const tick = createKineticTestTick([bodyA, bodyB]);
-            addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 20 });
+            addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 20 });
             runCollisionPipeline(tick, noop, noop);
             snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
             assert.ok(bodiesMatchKineticSlab([bodyA, bodyB]));

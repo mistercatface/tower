@@ -12,15 +12,15 @@ describe("angle constraint solver", () => {
         bodyB.facing = 0.0;
         const referenceAngle = -0.5;
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addAngleConstraint(tick.world.kinetic, { bodyA, bodyB, referenceAngle });
+        addAngleConstraint(tick.world.kinetic, 0, 1, referenceAngle);
         runCollisionPipeline(tick, noop, noop);
         assert.ok(Math.abs(bodyB.facing - (bodyA.facing + referenceAngle)) < 1e-4);
         bodyA.facing = 0.5;
         bodyB.facing = 0.0;
         bodyA.angularVelocity = 2.0;
         runCollisionPipeline(tick, noop, noop);
-        const wA = kineticDynamicSlab.w[bodyA._physId];
-        const wB = kineticDynamicSlab.w[bodyB._physId];
+        const wA = kineticDynamicSlab.w[0];
+        const wB = kineticDynamicSlab.w[1];
         assert.ok(Math.abs(wA - 1.0) < 0.1, `expected wA ~1.0, got ${wA}`);
         assert.ok(Math.abs(wB - 1.0) < 0.1, `expected wB ~1.0, got ${wB}`);
     });
@@ -32,7 +32,7 @@ describe("angle constraint solver", () => {
         bodyB.facing = 0.0;
         const referenceAngle = 0.0;
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addAngleConstraint(tick.world.kinetic, { bodyA, bodyB, referenceAngle });
+        addAngleConstraint(tick.world.kinetic, 0, 1, referenceAngle);
         runCollisionPipeline(tick, noop, noop);
         assert.ok(Math.abs(bodyA.facing - 0.5) < 1e-4, `expected bodyA.facing ~0.5, got ${bodyA.facing}`);
         assert.ok(Math.abs(bodyB.facing - 0.5) < 1e-4, `expected bodyB.facing ~0.5, got ${bodyB.facing}`);

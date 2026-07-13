@@ -59,6 +59,7 @@ import {
     entityVy,
     entityW,
     entityR,
+    entityGameId,
     entityRollQw,
     entityRollQx,
     entityRollQy,
@@ -2598,22 +2599,22 @@ export function markKineticConstraintsDirty(session) {
 export function getKineticConstraintsVersion(session) {
     return session.kineticConstraintsVersion;
 }
-function allocConstraintRow(session, type, bodyA, bodyB) {
+function allocConstraintRow(session, type, eidA, eidB) {
     const store = kineticConstraintStore;
     if (store.count >= MAX_KINETIC_CONSTRAINTS) throw new Error("kinetic constraint store capacity exceeded");
     const row = store.count++;
     store.id[row] = session.nextConstraintId++;
     store.type[row] = type;
-    store.bodyAId[row] = bodyA.id;
-    store.bodyBId[row] = bodyB.id;
-    store.physIdA[row] = bodyA._physId ?? -1;
-    store.physIdB[row] = bodyB._physId ?? -1;
+    store.bodyAId[row] = entityGameId[eidA];
+    store.bodyBId[row] = entityGameId[eidB];
+    store.physIdA[row] = eidA;
+    store.physIdB[row] = eidB;
     store.accumulatedImpulse[row] = 0;
     markKineticConstraintsDirty(session);
     return row;
 }
-export function addDistanceConstraint(session, { bodyA, bodyB, anchorAx = 0, anchorAy = 0, anchorBx = 0, anchorBy = 0, restLength }) {
-    const row = allocConstraintRow(session, CONSTRAINT_TYPE_DISTANCE, bodyA, bodyB);
+export function addDistanceConstraint(session, eidA, eidB, { restLength, anchorAx = 0, anchorAy = 0, anchorBx = 0, anchorBy = 0 }) {
+    const row = allocConstraintRow(session, CONSTRAINT_TYPE_DISTANCE, eidA, eidB);
     const store = kineticConstraintStore;
     store.anchorAx[row] = anchorAx;
     store.anchorAy[row] = anchorAy;
@@ -2623,8 +2624,8 @@ export function addDistanceConstraint(session, { bodyA, bodyB, anchorAx = 0, anc
     store.referenceAngle[row] = 0;
     return row;
 }
-export function addAngleConstraint(session, { bodyA, bodyB, referenceAngle }) {
-    const row = allocConstraintRow(session, CONSTRAINT_TYPE_ANGLE, bodyA, bodyB);
+export function addAngleConstraint(session, eidA, eidB, referenceAngle) {
+    const row = allocConstraintRow(session, CONSTRAINT_TYPE_ANGLE, eidA, eidB);
     const store = kineticConstraintStore;
     store.anchorAx[row] = 0;
     store.anchorAy[row] = 0;
@@ -2688,18 +2689,20 @@ export function collectKineticConstraintsSnapshot(session, propIdToIndex) {
     }
     return entries;
 }
-export function applyKineticConstraintsFromSnapshot(session, entries, propRefsByIndex) {
+export function applyKineticConstraintsFromSnapshot(session, entries, eidByIndex) {
     for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
         const type = entry.type;
+        const eidA = eidByIndex[entry.bodyA];
+        const eidB = eidByIndex[entry.bodyB];
         let row;
-        if (type === CONSTRAINT_TYPE_ANGLE) row = addAngleConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], referenceAngle: entry.referenceAngle });
+        if (type === CONSTRAINT_TYPE_ANGLE) row = addAngleConstraint(session, eidA, eidB, entry.referenceAngle);
         else {
             const anchorAx = entry.anchorAx ?? entry.anchorA?.x ?? 0;
             const anchorAy = entry.anchorAy ?? entry.anchorA?.y ?? 0;
             const anchorBx = entry.anchorBx ?? entry.anchorB?.x ?? 0;
             const anchorBy = entry.anchorBy ?? entry.anchorB?.y ?? 0;
-            row = addDistanceConstraint(session, { bodyA: propRefsByIndex[entry.bodyA], bodyB: propRefsByIndex[entry.bodyB], restLength: entry.restLength, anchorAx, anchorAy, anchorBx, anchorBy });
+            row = addDistanceConstraint(session, eidA, eidB, { restLength: entry.restLength, anchorAx, anchorAy, anchorBx, anchorBy });
         }
         kineticConstraintStore.accumulatedImpulse[row] = entry.accumulatedImpulse || 0;
     }

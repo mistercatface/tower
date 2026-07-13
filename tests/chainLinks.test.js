@@ -5,11 +5,13 @@ import { mockBall, resetMockBallIds, assignPhysIdWithPose } from "./harness/kine
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 
 function createState(props) {
+    const eids = [];
     for (let i = 0; i < props.length; i++) {
-        if (props[i]._physId === undefined) assignPhysIdWithPose(props[i], i);
+        eids.push(assignPhysIdWithPose(props[i], i));
     }
     return {
         kinetic: createKineticSession(),
+        eids,
         entityRegistry: {
             getLive(id) {
                 for (let i = 0; i < props.length; i++) if (props[i].id === id) return props[i];
@@ -27,7 +29,7 @@ describe("chain links", () => {
         const state = createState([a, b]);
         const slack = 1.05;
         const restLength = (a.radius + b.radius) * slack;
-        addDistanceConstraint(state.kinetic, { bodyA: a, bodyB: b, restLength });
+        addDistanceConstraint(state.kinetic, state.eids[0], state.eids[1], { restLength });
         assert.equal(kineticConstraintStore.count, 1);
         assert.ok(Math.abs(kineticConstraintStore.restLength[0] - restLength) < 1e-5);
     });
@@ -38,8 +40,8 @@ describe("chain links", () => {
         const b = mockBall(20, 0);
         const c = mockBall(40, 0);
         const state = createState([a, b, c]);
-        addDistanceConstraint(state.kinetic, { bodyA: a, bodyB: b, restLength: 20 });
-        addDistanceConstraint(state.kinetic, { bodyA: b, bodyB: c, restLength: 20 });
+        addDistanceConstraint(state.kinetic, state.eids[0], state.eids[1], { restLength: 20 });
+        addDistanceConstraint(state.kinetic, state.eids[1], state.eids[2], { restLength: 20 });
         const members = getConnectedBodyIds(state.kinetic, b.id).sort((x, y) => x - y);
         assert.deepEqual(
             members,

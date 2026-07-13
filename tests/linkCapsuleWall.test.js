@@ -26,7 +26,7 @@ describe("link capsule wall projection", () => {
         const bodyA = wallCircle(50, 14, 4);
         const bodyB = wallCircle(66, 14, 4);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 16 });
         tick.frame.getWallCandidates = () => wallSegIds(wall);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
         runCollisionPipeline(tick, noop, noop);
@@ -38,7 +38,7 @@ describe("link capsule wall projection", () => {
         const startAx = bodyA.x;
         const startBx = bodyB.x;
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 16 });
         const decoyWalls = wallSegIds(...Array.from({ length: 32 }, (_, i) => mockWallSegment(400 + i * 8, 400, 16)));
         tick.frame.getWallCandidates = () => decoyWalls;
         runCollisionPipeline(tick, noop, noop);
@@ -51,7 +51,7 @@ describe("link capsule wall projection", () => {
         const bodyA = wallCircle(50, 14, 4, 0, 0);
         const bodyB = wallCircle(66, 14, 4, 0, 0);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 16 });
         tick.frame.getWallCandidates = () => wallSegIds(nearWall, farWall);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, nearWall) < 4);
         runCollisionPipeline(tick, noop, noop);
@@ -62,7 +62,7 @@ describe("link capsule wall projection", () => {
         const bodyA = wallCircle(50, 14, 4, 0, 0);
         const bodyB = wallCircle(66, 14, 4, 0, 0);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 16 });
         tick.frame.getWallCandidates = () => wallSegIds(wall);
         runCollisionPipeline(tick, noop, noop);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) >= 4 - 0.05);
@@ -72,7 +72,7 @@ describe("link capsule wall projection", () => {
         const bodyA = wallCircle(50, 14, 4);
         const bodyB = wallCircle(66, 14, 4);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 16 });
+        addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 16 });
         tick.frame.getWallCandidates = () => wallSegIds(wall);
         assert.ok(minDistanceSegmentToWall(bodyA.x, bodyA.y, bodyB.x, bodyB.y, wall) < 4);
         runKineticPhysics(tick, 16.667, kineticPhysicsHooks());

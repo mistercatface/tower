@@ -1,6 +1,6 @@
-import { spawnPlacedSandboxProp } from "../../Libraries/Sandbox/sandbox.js";
 import { addDistanceConstraint, getConnectedBodyIds } from "../../Libraries/Physics/physics.js";
-import { setCirclePropRadius } from "../../Libraries/Props/props.js";
+import { setCirclePropRadius, WorldProp } from "../../Libraries/Props/props.js";
+import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
 
 function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId }) {
     const leaderId = leaderPropId ?? headPropId ?? bodyPropId;
@@ -19,8 +19,14 @@ function markChainHead(state, propId) {
     meta.setChainHead(propId, true);
 }
 
-function linkChainBodies(state, bodyA, bodyB, restLength) {
-    addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
+function linkChainBodies(state, eidA, eidB, restLength) {
+    addDistanceConstraint(state.kinetic, eidA, eidB, { restLength });
+}
+
+function spawnSeg(state, x, y, typeId) {
+    const prop = new WorldProp(x, y, typeId, 0);
+    const eid = addWorldPropToState(state, prop);
+    return { prop, eid };
 }
 
 function spawnAgentChain(state, anchorIdx, spec) {
@@ -42,19 +48,22 @@ function spawnAgentChain(state, anchorIdx, spec) {
     const anchorX = grid.gridCenterXByIdx(anchorIdx);
     const anchorY = grid.gridCenterYByIdx(anchorIdx);
     const props = [];
+    const eids = [];
     const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId };
-    const firstProp = spawnPlacedSandboxProp(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec));
-    if (segmentRadius != null) setCirclePropRadius(firstProp, segmentRadius);
-    props.push(firstProp);
-    let lastProp = firstProp;
+    const first = spawnSeg(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec));
+    if (segmentRadius != null) setCirclePropRadius(first.prop, segmentRadius);
+    props.push(first.prop);
+    eids.push(first.eid);
+    let lastProp = first.prop;
     for (let i = 1; i < segmentCount; i++) {
-        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec));
-        if (segmentRadius != null) setCirclePropRadius(bodyProp, segmentRadius);
-        const dist = spacing ?? chainLinkRestLength(lastProp, bodyProp, linkSlack);
-        bodyProp.x = lastProp.x + growDirX * dist;
-        bodyProp.y = lastProp.y + growDirY * dist;
-        props.push(bodyProp);
-        lastProp = bodyProp;
+        const spawned = spawnSeg(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec));
+        if (segmentRadius != null) setCirclePropRadius(spawned.prop, segmentRadius);
+        const dist = spacing ?? chainLinkRestLength(lastProp, spawned.prop, linkSlack);
+        spawned.prop.x = lastProp.x + growDirX * dist;
+        spawned.prop.y = lastProp.y + growDirY * dist;
+        props.push(spawned.prop);
+        eids.push(spawned.eid);
+        lastProp = spawned.prop;
     }
     const leader = props[leaderIndex];
     const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${leader.id}`;
@@ -68,7 +77,7 @@ function spawnAgentChain(state, anchorIdx, spec) {
         const b = props[i + 1];
         const segDist = Math.hypot(b.x - a.x, b.y - a.y);
         const restLength = spacing != null ? segDist * linkSlack : segDist;
-        linkChainBodies(state, a, b, restLength);
+        linkChainBodies(state, eids[i], eids[i + 1], restLength);
     }
     markChainHead(state, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
@@ -103,13 +112,16 @@ export function growChainSegment(state, tailProp, options) {
     const spawnGroupId = options.spawnGroupId ?? tailProp.spawnGroupId;
     const linkSlack = options.linkSlack ?? 1;
     const segmentRadius = options.segmentRadius ?? null;
-    const segment = spawnPlacedSandboxProp(state, tailProp.x + spacing * growDirX, tailProp.y + spacing * growDirY, ballType);
-    if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
+    const spawned = spawnSeg(state, tailProp.x + spacing * growDirX, tailProp.y + spacing * growDirY, ballType);
+    if (segmentRadius != null) setCirclePropRadius(spawned.prop, segmentRadius);
     if (spawnGroupId) {
-        segment.spawnGroupId = spawnGroupId;
-        if (exportType) segment.spawnGroupExportType = exportType;
+        spawned.prop.spawnGroupId = spawnGroupId;
+        if (exportType) spawned.prop.spawnGroupExportType = exportType;
     }
-    const restLength = spacing != null ? spacing * linkSlack : chainLinkRestLength(tailProp, segment, linkSlack);
-    linkChainBodies(state, tailProp, segment, restLength);
-    return segment;
+    const restLength = spacing != null ? spacing * linkSlack : chainLinkRestLength(tailProp, spawned.prop, linkSlack);
+    const tailEid = state.entityRegistry.register("worldProp", tailProp);
+    linkChainBodies(state, tailEid, spawned.eid, restLength);
+    return spawned.prop;
 }
+
+export { spawnAgentChain };

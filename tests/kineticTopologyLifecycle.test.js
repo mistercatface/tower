@@ -64,19 +64,19 @@ describe("kinetic topology lifecycle", () => {
         const c = mockKineticCircle(36, 0, 10);
         const bodies = [a, b, c];
         const world = createTestWorld(bodies);
-        addDistanceConstraint(world.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
-        addDistanceConstraint(world.kinetic, { bodyA: b, bodyB: c, restLength: 18 });
         const frame = setupKineticTestFrame(bodies);
+        addDistanceConstraint(world.kinetic, 0, 1, { restLength: 18 });
+        addDistanceConstraint(world.kinetic, 1, 2, { restLength: 18 });
         ensureKineticIslandPlan(world.kinetic, frame.kineticEids, frame.kineticEidCount);
-        assert.equal(kineticDynamicSlab.islandRoot[a._physId], a.id);
-        assert.equal(kineticDynamicSlab.islandRoot[c._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[0], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[2], a.id);
         const genBefore = getKineticTopologyGeneration(world.kinetic);
         clearKineticConstraints(world.kinetic);
-        addDistanceConstraint(world.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
+        addDistanceConstraint(world.kinetic, 0, 1, { restLength: 18 });
         assert.ok(getKineticTopologyGeneration(world.kinetic) > genBefore);
         ensureKineticIslandPlan(world.kinetic, frame.kineticEids, frame.kineticEidCount);
-        assert.notEqual(kineticDynamicSlab.islandRoot[c._physId], kineticDynamicSlab.islandRoot[a._physId]);
-        assert.equal(kineticDynamicSlab.linkNeighborCount[b._physId], 1);
+        assert.notEqual(kineticDynamicSlab.islandRoot[2], kineticDynamicSlab.islandRoot[0]);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[1], 1);
     });
 
     it("runCollisionPipeline does not reproduce fracture after persisted pair gather", () => {

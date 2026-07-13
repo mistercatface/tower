@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { addDistanceConstraint, ensureKineticIslandPlan, wakeKineticBody, LIBRARY_COLLISION_DEFAULTS, runKineticPhysics, createKineticSession, areKineticLinkNeighborsSlab } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticPhysicsHooks } from "./harness/kineticTickHarness.js";
+import { mockKineticCircle, resetMockKineticCircleIds, setupKineticTestFrame, createKineticTestTick, kineticPhysicsHooks, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleepFrames;
 
@@ -23,11 +23,7 @@ function createState(props) {
 
 function linkChain(state, bodies, spacing) {
     for (let i = 0; i < bodies.length - 1; i++) {
-        addDistanceConstraint(state.kinetic, {
-            bodyA: bodies[i],
-            bodyB: bodies[i + 1],
-            restLength: spacing,
-        });
+        addDistanceConstraint(state.kinetic, i, i + 1, { restLength: spacing });
     }
 }
 
@@ -105,14 +101,14 @@ describe("kinetic islands", () => {
         const c = mockKineticCircle(36, 0, 10, 0, 0);
         const bodies = [a, b, c];
         const state = createState(bodies);
-        linkChain(state, bodies, 18);
         const frame = setupKineticTestFrame(bodies);
+        linkChain(state, bodies, 18);
         ensureKineticIslandPlan(state.kinetic, frame.kineticEids, frame.kineticEidCount);
         for (let i = 0; i < bodies.length; i++) {
             bodies[i].isSleeping = true;
             bodies[i]._sleepFrames = SLEEP_FRAMES;
         }
-        wakeKineticBody(a._physId);
+        wakeKineticBody(0);
         assert.equal(a.isSleeping, false);
         assert.equal(b.isSleeping, false);
         assert.equal(c.isSleeping, true);
@@ -124,14 +120,14 @@ describe("kinetic islands", () => {
         const c = mockKineticCircle(36, 0, 10);
         const bodies = [a, b, c];
         const state = createState(bodies);
-        linkChain(state, bodies, 18);
         const frame = setupKineticTestFrame(bodies);
+        linkChain(state, bodies, 18);
         ensureKineticIslandPlan(state.kinetic, frame.kineticEids, frame.kineticEidCount);
-        assert.equal(kineticDynamicSlab.linkNeighborCount[a._physId], 1);
-        assert.equal(kineticDynamicSlab.linkNeighborEids[kineticDynamicSlab.linkNeighborOffset[a._physId]], b._physId);
-        assert.equal(kineticDynamicSlab.linkNeighborCount[b._physId], 2);
-        assert.equal(kineticDynamicSlab.linkNeighborCount[c._physId], 1);
-        assert.equal(kineticDynamicSlab.linkNeighborEids[kineticDynamicSlab.linkNeighborOffset[c._physId]], b._physId);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[0], 1);
+        assert.equal(kineticDynamicSlab.linkNeighborEids[kineticDynamicSlab.linkNeighborOffset[0]], 1);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[1], 2);
+        assert.equal(kineticDynamicSlab.linkNeighborCount[2], 1);
+        assert.equal(kineticDynamicSlab.linkNeighborEids[kineticDynamicSlab.linkNeighborOffset[2]], 1);
     });
 
     it("ensureKineticIslandPlan fills islandRoot for in-frame bodies", () => {
@@ -140,20 +136,22 @@ describe("kinetic islands", () => {
         const c = mockKineticCircle(36, 0, 10);
         const bodies = [a, b, c];
         const state = createState(bodies);
-        linkChain(state, bodies, 18);
         const frame = setupKineticTestFrame(bodies);
+        linkChain(state, bodies, 18);
         ensureKineticIslandPlan(state.kinetic, frame.kineticEids, frame.kineticEidCount);
-        assert.equal(kineticDynamicSlab.islandRoot[a._physId], a.id);
-        assert.equal(kineticDynamicSlab.islandRoot[b._physId], a.id);
-        assert.equal(kineticDynamicSlab.islandRoot[c._physId], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[0], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[1], a.id);
+        assert.equal(kineticDynamicSlab.islandRoot[2], a.id);
     });
 
     it("addDistanceConstraint marks island topology dirty", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
         const state = createState([a, b]);
+        const eidA = assignPhysIdWithPose(a, 0);
+        const eidB = assignPhysIdWithPose(b, 1);
         state.kinetic.kineticConstraintsDirty = false;
-        addDistanceConstraint(state.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
+        addDistanceConstraint(state.kinetic, eidA, eidB, { restLength: 18 });
         assert.equal(state.kinetic.kineticConstraintsDirty, true);
     });
 

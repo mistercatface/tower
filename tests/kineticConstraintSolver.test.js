@@ -11,7 +11,7 @@ describe("kinetic constraint solver", () => {
         const bodyB = mockKineticCircle(30, 0, 10);
         const restLength = 30;
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength });
+        addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength });
         bodyB.x = 50;
         for (let pass = 0; pass < 8; pass++) runCollisionPipeline(tick, noop, noop);
         const dist = Math.hypot(kineticDynamicSlab.x[bodyB._physId] - kineticDynamicSlab.x[bodyA._physId], kineticDynamicSlab.y[bodyB._physId] - kineticDynamicSlab.y[bodyA._physId]);
@@ -31,7 +31,7 @@ describe("kinetic constraint solver", () => {
         const bodyA = mockKineticCircle(0, 0, 10);
         const bodyB = mockKineticCircle(30, 0, 10);
         const tick = createKineticTestTick([bodyA, bodyB]);
-        addDistanceConstraint(tick.world.kinetic, { bodyA, bodyB, restLength: 30 });
+        addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 30 });
         assert.equal(kineticConstraintStore.count, 1);
         pruneKineticConstraintsForBody(tick.world.kinetic, bodyB.id);
         assert.equal(kineticConstraintStore.count, 0);

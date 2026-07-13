@@ -902,20 +902,26 @@ function spawnSnapshotProp(state, entry) {
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
-    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.facing ?? 0, halfExtents);
+    const prop = new WorldProp(entry.x, entry.y, entry.type, entry.facing ?? 0);
+    if (halfExtents) applyPropBoxFootprint(prop, halfExtents.x, halfExtents.y);
+    const eid = addWorldPropToState(state, prop);
     if (entry.radius != null)
         if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
-    if (prop && entry.wallChunkProfileId) applyPropSurfaceProfile(prop, entry.wallChunkProfileId);
-    return prop;
+    if (entry.wallChunkProfileId) applyPropSurfaceProfile(prop, entry.wallChunkProfileId);
+    return { prop, eid };
 }
 function spawnSnapshotProps(state, doc) {
     const propRefs = new Array(doc.props.length);
+    const eidByIndex = new Array(doc.props.length);
     for (let i = 0; i < doc.props.length; i++) {
-        const prop = spawnSnapshotProp(state, doc.props[i]);
-        if (prop) propRefs[i] = prop;
+        const spawned = spawnSnapshotProp(state, doc.props[i]);
+        if (spawned) {
+            propRefs[i] = spawned.prop;
+            eidByIndex[i] = spawned.eid;
+        }
     }
-    if (doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, propRefs);
+    if (doc.kineticConstraints?.length) applyKineticConstraintsFromSnapshot(state.kinetic, doc.kineticConstraints, eidByIndex);
     if (doc.chainHeadProp != null) {
         const headProp = propRefs[doc.chainHeadProp];
         if (headProp) setChainHead(state, state.sandbox.entityMeta, headProp.id);
@@ -1440,21 +1446,29 @@ function spawnAgentChain(state, anchorIdx, spec) {
     const anchorX = grid.gridCenterXByIdx(anchorIdx);
     const anchorY = grid.gridCenterYByIdx(anchorIdx);
     const props = [];
+    const eids = [];
     const propSpec = { leaderIndex, headPropId, bodyPropId, leaderPropId, resolvePropId };
-    const firstProp = spawnPlacedSandboxProp(state, anchorX, anchorY, resolveSegmentPropId(0, propSpec));
-    applySegmentRadius(firstProp, segmentRadius, headScaleFn);
-    props.push(firstProp);
-    if (onSegmentSpawned) onSegmentSpawned(firstProp, 0);
-    let lastProp = firstProp;
+    const spawnSeg = (x, y, typeId) => {
+        const prop = new WorldProp(x, y, typeId, 0);
+        const eid = addWorldPropToState(state, prop);
+        return { prop, eid };
+    };
+    const first = spawnSeg(anchorX, anchorY, resolveSegmentPropId(0, propSpec));
+    applySegmentRadius(first.prop, segmentRadius, headScaleFn);
+    props.push(first.prop);
+    eids.push(first.eid);
+    if (onSegmentSpawned) onSegmentSpawned(first.prop, 0);
+    let lastProp = first.prop;
     for (let i = 1; i < segmentCount; i++) {
-        const bodyProp = spawnPlacedSandboxProp(state, lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec));
-        applySegmentRadius(bodyProp, segmentRadius, null);
-        if (onSegmentSpawned) onSegmentSpawned(bodyProp, i);
-        const dist = spacing ?? resolveChainLinkRestLength(lastProp, bodyProp, linkSlack);
-        bodyProp.x = lastProp.x + growDirX * dist;
-        bodyProp.y = lastProp.y + growDirY * dist;
-        props.push(bodyProp);
-        lastProp = bodyProp;
+        const spawned = spawnSeg(lastProp.x, lastProp.y, resolveSegmentPropId(i, propSpec));
+        applySegmentRadius(spawned.prop, segmentRadius, null);
+        if (onSegmentSpawned) onSegmentSpawned(spawned.prop, i);
+        const dist = spacing ?? resolveChainLinkRestLength(lastProp, spawned.prop, linkSlack);
+        spawned.prop.x = lastProp.x + growDirX * dist;
+        spawned.prop.y = lastProp.y + growDirY * dist;
+        props.push(spawned.prop);
+        eids.push(spawned.eid);
+        lastProp = spawned.prop;
     }
     const leader = props[leaderIndex];
     const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${leader.id}`;
@@ -1468,7 +1482,7 @@ function spawnAgentChain(state, anchorIdx, spec) {
         const b = props[i + 1];
         const segDist = Math.hypot(b.x - a.x, b.y - a.y);
         const restLength = spacing != null ? segDist * linkSlack : segDist;
-        addChainLink(state, a.id, b.id, linkSlack, restLength);
+        addChainLink(state, eids[i], eids[i + 1], linkSlack, restLength);
     }
     setChainHead(state, meta, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
@@ -1503,14 +1517,15 @@ function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     }
     return -1;
 }
-function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
-    if (fromPropId === toPropId) return false;
-    const bodyA = state.entityRegistry.getLive(fromPropId);
-    const bodyB = state.entityRegistry.getLive(toPropId);
+function addChainLink(state, eidA, eidB, linkSlack = 1, restLengthOverride = null) {
+    const fromPropId = entityGameId[eidA];
+    const toPropId = entityGameId[eidB];
+    const bodyA = state.entityRegistry.getRef(eidA);
+    const bodyB = state.entityRegistry.getRef(eidB);
     if (!isChainLinkBall(bodyA) || !isChainLinkBall(bodyB)) return false;
     if (findDistanceConstraintBetween(state, fromPropId, toPropId) >= 0) return true;
-    const restLength = restLengthOverride != null ? restLengthOverride : resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
-    addDistanceConstraint(state.kinetic, { bodyA, bodyB, restLength });
+    const restLength = restLengthOverride != null ? restLengthOverride : (entityR[eidA] + entityR[eidB]) * linkSlack;
+    addDistanceConstraint(state.kinetic, eidA, eidB, { restLength });
     return true;
 }
 function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {

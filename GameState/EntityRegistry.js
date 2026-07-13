@@ -85,9 +85,7 @@ export class EntityArena {
         return entry;
     }
     register(kind, ref) {
-        if (!ref || ref.id == null) return;
         const kindCode = kindStringToCode(kind);
-        if (kindCode === ENTITY_KIND_NONE) return;
         if (this._gameIdToEid.has(ref.id)) {
             const eid = this._gameIdToEid.get(ref.id);
             const flags = worldPropBindFlags(ref);
@@ -99,7 +97,7 @@ export class EntityArena {
                 normalizeKineticBody(ref);
             }
             this._bumpMembership();
-            return;
+            return eid;
         }
         let eid = ref._physId;
         if (eid === undefined) eid = this.allocateEid();
@@ -114,6 +112,7 @@ export class EntityArena {
         this._gameIdToEid.set(ref.id, eid);
         this._addLiveEid(eid);
         this._bumpMembership();
+        return eid;
     }
     unregister(refOrId) {
         let id;
@@ -297,7 +296,7 @@ export class EntityArena {
 export { EntityArena as EntityRegistry };
 export function addWorldPropToState(world, prop) {
     world.worldProps.push(prop);
-    world.entityRegistry.register("worldProp", prop);
+    return world.entityRegistry.register("worldProp", prop);
 }
 export function addWorldPropsToState(world, props) {
     world.entityRegistry.beginMembershipBatch();
