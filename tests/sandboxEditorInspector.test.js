@@ -2,7 +2,6 @@ import { installTestDocument } from "./harness/sandboxInspectorHarness.js";
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { spawnPlacedSandboxProp, createSandboxController } from "../Libraries/Sandbox/sandbox.js";
-import { mergePropVisualOverride } from "../Libraries/Color/visualOverride.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createSandboxKineticWorld, createSandboxControllerSession } from "./harness/stateFactories.js";
 
@@ -24,7 +23,7 @@ describe("sandbox editor inspector wiring", () => {
         installTestDocument();
     });
 
-    it("selected prop tint mutations apply to the live registry object", () => {
+    it("selected prop inspector returns the live registry object", () => {
         const state = createEditorTestState();
         const prop = spawnBall(state);
         const session = createSandboxControllerSession(state);
@@ -32,8 +31,6 @@ describe("sandbox editor inspector wiring", () => {
         const inspector = session.getSelectionInspector();
         assert.equal(inspector.kind, "prop");
         assert.equal(inspector.data, prop);
-        mergePropVisualOverride(inspector.data, { tint: "#112233" });
-        assert.equal(prop.visualOverride.tint, "#112233");
         assert.equal(state.entityRegistry.getLive(prop.id), prop);
     });
 

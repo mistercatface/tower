@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { visualOverrideCacheId } from "../Libraries/Color/visualOverride.js";
 import { propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive, resolveVisualAttachmentProps } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A, entityWallProfileId, getProfileId } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld, createSandboxControllerSession, createSandboxTestController } from "./harness/stateFactories.js";
@@ -34,7 +33,6 @@ describe("spawn shape family defaults", () => {
         assert.equal(prop.radius, 6);
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
         assert.ok(prop.wallChunkHeightPx > 0);
-        assert.equal(prop.visualOverride?.tint ?? null, null);
         assert.equal(typeof getWallChunkSpriteCacheKey(prop._physId), "number");
         assert.notEqual(getWallChunkSpriteCacheKey(prop._physId), 0);
     });
@@ -86,7 +84,6 @@ describe("spawn shape family defaults", () => {
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         assert.equal(Math.round(ENGINE_F32[M_VEC_A] * 2), 24);
         assert.equal(Math.round(ENGINE_F32[M_VEC_A + 1] * 2), 32);
-        assert.equal(prop.visualOverride?.tint ?? null, null);
     });
 
     it("places box with spawn fracture enabled", () => {
@@ -97,18 +94,6 @@ describe("spawn shape family defaults", () => {
         assert.equal(session.spawnAt(64, 64), true);
         assert.equal(state.worldProps[0].type, "hex_block");
         assert.equal(state.worldProps[0].fractureEnabled, true);
-    });
-
-    it("visualOverride cache key changes when coat changes", () => {
-        const prop = { visualOverride: { tint: "#888888" } };
-        const before = visualOverrideCacheId(prop);
-        prop.visualOverride.tint = "#0000ff";
-        assert.notEqual(visualOverrideCacheId(prop), before);
-        prop.visualOverride.tint = "#888888";
-        delete prop.visualOverride.brightness;
-        const base = visualOverrideCacheId(prop);
-        prop.visualOverride.brightness = 1.5;
-        assert.notEqual(visualOverrideCacheId(prop), base);
     });
 });
 

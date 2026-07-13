@@ -7,7 +7,6 @@ import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
-import { visualOverrideCacheId } from "../Color/visualOverride.js";
 import { transitionEntity } from "../FSM/transition.js";
 import propCatalog from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
@@ -144,7 +143,7 @@ function deriveFacingStepsFromFootprint(prop, baselineSteps) {
 }
 const sQuantizeSteps = { facing: 0, view: 0 };
 const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, visualOverride: null, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined };
+const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, faction: null, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined };
 export function resolvePropQuantizeSteps(prop) {
     const defaults = propQuantizeSteps;
     const override = prop.strategy?.quantizeSteps;
@@ -160,13 +159,10 @@ export function getBaseSpriteCacheId(prop, deps) {
     if (prop.strategy?.rolls) orient = packRollOrientId(prop, steps.facing);
     else orient = quantizeAngleIndex(readEntityFacing(prop), steps.facing);
     const foot = entityFootprintId[prop._physId];
-    const vo = visualOverrideCacheId(prop);
     let h = 2166136261;
     h ^= orient >>> 0;
     h = Math.imul(h, 16777619);
     h ^= foot >>> 0;
-    h = Math.imul(h, 16777619);
-    h ^= vo >>> 0;
     h = Math.imul(h, 16777619);
     return (h >>> 0) & 0xfffff;
 }
@@ -198,7 +194,6 @@ export function getPropStageBakeState(eid) {
     sStageProp.collisionParts = prop.collisionParts;
     sStageProp.drawOutline = prop.drawOutline;
     sStageProp.height = entityHeight[eid];
-    sStageProp.visualOverride = prop.visualOverride;
     sStageProp.faction = getFactionStr(entityFaction[eid]);
     sStageProp.ageMs = entityAgeMs[eid];
     sStageProp.id = prop.id;
@@ -667,7 +662,7 @@ function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const localX = (offset.x ?? 0) * offsetScale;
     const localY = (offset.y ?? 0) * offsetScale;
     rotateXYIntoF32(M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
-    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: resolveAssetPropHeight(childAsset), visualOverride: undefined, _visualAttachmentId: cfg.id };
+    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: resolveAssetPropHeight(childAsset), _visualAttachmentId: cfg.id };
     stampSurfaceProfileFields(prop, childAsset);
     if (parentProp.wallChunkProfileId) prop.wallChunkProfileId = parentProp.wallChunkProfileId;
     initWorldPropShape(prop);

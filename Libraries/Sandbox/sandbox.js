@@ -14,7 +14,6 @@ import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBo
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
 import { overlayCommandSlab, clearOverlayCommands, beginOverlayPoly, writeOverlayPolyXY, stampPathDirect, stampPathPolyline, stampSelectionRing, stampFloorCellHighlight, stampVoxelCellHighlight, stampOverlayAabb, stampOverlaySegment, OVERLAY_STYLE_MARQUEE, OVERLAY_STYLE_RAIL_EDGE } from "../Render/render.js";
-import { serializeVisualOverride, stampPropVisualOverride, resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
@@ -474,8 +473,6 @@ function serializePlacedProp(prop) {
         entry.width = ENGINE_F32[M_VEC_A] * 2;
         entry.height = ENGINE_F32[M_VEC_A + 1] * 2;
     }
-    const visualOverride = serializeVisualOverride(prop);
-    if (visualOverride) entry.visualOverride = visualOverride;
     const defaultProfile = assetDefaultSurfaceProfileId(propCatalog[prop.type]);
     if (prop.wallChunkProfileId != null && prop.wallChunkProfileId !== defaultProfile) entry.wallChunkProfileId = prop.wallChunkProfileId;
     return entry;
@@ -489,14 +486,13 @@ function collectFlatPlacedSandboxPropEntries(state) {
     });
     return { props, propIdToIndex };
 }
-export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction, facing = 0, boxHalfExtents = undefined, visualOverride = undefined) {
+export function spawnPlacedSandboxProp(state, worldX, worldY, propTypeId, faction, facing = 0, boxHalfExtents = undefined) {
     const asset = propCatalog[propTypeId];
     if (!asset) throw new Error(`Unknown prop type: ${propTypeId}`);
     if (isGridFloorBeltSpawnAsset(asset)) throw new Error(`Grid floor belt "${propTypeId}" is stamped on the grid, not spawned as a world prop`);
     const prop = new WorldProp(worldX, worldY, propTypeId, facing);
     if (boxHalfExtents) applyPropBoxFootprint(prop, boxHalfExtents.x, boxHalfExtents.y);
     prop.faction = faction;
-    if (visualOverride != null) stampPropVisualOverride(prop, visualOverride);
     addWorldPropToState(state, prop);
     return prop;
 }
@@ -917,7 +913,7 @@ function spawnSnapshotProp(state, entry) {
     if (!asset) throw new Error(`Unknown prop type: ${entry.type}`);
     if (isGridFloorBeltSpawnAsset(asset)) return null;
     const halfExtents = entry.width != null && entry.height != null ? { x: entry.width / 2, y: entry.height / 2 } : undefined;
-    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, halfExtents, entry.visualOverride);
+    const prop = spawnPlacedSandboxProp(state, entry.x, entry.y, entry.type, entry.faction, entry.facing ?? 0, halfExtents);
     if (entry.radius != null)
         if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
@@ -2677,12 +2673,9 @@ const MAP_GEN_PALETTE_OPTIONS = [
     { key: "gen:railMaze", genKind: "railMaze", label: "Rail maze generation", swatch: "#ba68c8", glyph: "Rz" },
     { key: "gen:erase", genKind: "erase", label: "Wall eraser", swatch: "#f44336", glyph: "Er" },
 ];
-function resolvePropPaletteSwatch(asset, prop = null) {
+function resolvePropPaletteSwatch(asset) {
     const colors = asset?.visuals?.colors;
-    if (!colors) return "#64748b";
-    const tree = { bodyInspect: colors.bodyInspect, top: colors.top, side: colors.side };
-    const resolved = resolveVisualOverrideColorTree(prop ?? {}, tree);
-    return resolved?.bodyInspect ?? resolved?.top ?? resolved?.side ?? "#64748b";
+    return colors?.bodyInspect ?? colors?.top ?? colors?.side ?? "#64748b";
 }
 export function buildPlacePaletteItems(propIds) {
     const items = [];

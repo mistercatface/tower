@@ -23,7 +23,6 @@ describe("snake prop kinetic chain spawning", () => {
         assert.equal(head.type, "snake");
         assert.ok(meta.isChainHead(head.id));
         assert.equal(head.wallChunkProfileId, "poolTableFelt");
-        assert.equal(head.visualOverride?.tint, undefined);
 
         for (let i = 0; i < 7; i++) {
             assert.equal(state.worldProps[i].radius, 3);

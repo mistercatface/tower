@@ -1,12 +1,11 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex, hashString, mixHash4 } from "../Math/math.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
-import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyVo, entityStaticKeyAttachment, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyAttachment, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
 import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
-import { visualOverrideCacheId } from "../Color/visualOverride.js";
 import propCatalog, { NEXT_RENDER_KEY_ID } from "../../Assets/props/index.js";
 export function getCanvasLineScale(ctx) {
     return 1 / Math.max(0.001, ctx.getTransform().a);
@@ -677,20 +676,18 @@ function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) 
 export function getPropStaticKey(eid, renderKey) {
     const prop = entityRefs[eid];
     const facing = readEntityFacing(prop);
-    const voId = visualOverrideCacheId(prop);
     const attachmentId = getVisualAttachmentSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const rolls = !!prop.strategy?.rolls;
     const rollId = rolls ? packRollOrientId(prop, resolvePropQuantizeSteps(prop).facing) : 0;
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const customId = entityWallProfileId[eid] !== 0 ? getWallChunkSpriteCacheKey(eid) : 0;
-    if (entityStaticKeyFacing[eid] === facing && entityStaticKeyVo[eid] === voId && entityStaticKeyAttachment[eid] === attachmentId && entityStaticKeyPhysicsKey[eid] === physicsId && entityStaticKeyCustom[eid] === customId && (!rolls || entityStaticKeyRoll[eid] === rollId) && entityCachedStaticKey[eid] !== 0n) return entityCachedStaticKey[eid];
+    if (entityStaticKeyFacing[eid] === facing && entityStaticKeyAttachment[eid] === attachmentId && entityStaticKeyPhysicsKey[eid] === physicsId && entityStaticKeyCustom[eid] === customId && (!rolls || entityStaticKeyRoll[eid] === rollId) && entityCachedStaticKey[eid] !== 0n) return entityCachedStaticKey[eid];
     const k1 = BigInt(resolveRenderKeyId(renderKey));
     const k2 = BigInt(customId);
     const k3 = BigInt(physicsId & SPRITE_KEY_PART_MASK);
     const k4 = BigInt(attachmentId & SPRITE_KEY_PART_MASK);
     const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
     entityStaticKeyFacing[eid] = facing;
-    entityStaticKeyVo[eid] = voId;
     entityStaticKeyAttachment[eid] = attachmentId;
     entityStaticKeyPhysicsKey[eid] = physicsId;
     entityStaticKeyCustom[eid] = customId;

@@ -6,7 +6,6 @@ import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_T
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidateEntityFootprint, resolveAssetPropHeight } from "../Props/props.js";
-import { stampPropVisualOverride } from "../Color/visualOverride.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8, refSpan: 40, sizeForceExp: 1.25 }, default: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const DEFAULT_FRACTURE_CONFIG = Object.freeze({ impactThreshold: FRACTURE_TUNING.default.impactThreshold, minShardArea: FRACTURE_TUNING.default.minShardArea, maxShardsPerShatter: FRACTURE_TUNING.default.maxShardsPerShatter });
 const FRACTURE_IMPACT_THRESHOLD = DEFAULT_FRACTURE_CONFIG.impactThreshold;
@@ -475,7 +474,6 @@ class KineticDebrisStore {
         body.strategy = sharedWorldPropStrategy(type);
         const asset = propCatalog[type];
         body.height = resolveAssetPropHeight(asset);
-        body.visualOverride = undefined;
         body.faction = undefined;
         body.wallChunkProfileId = undefined;
         body.wallChunkHeightPx = undefined;
@@ -619,7 +617,6 @@ class KineticDebrisStore {
         const wallChunkHeightPx = sourceProp.wallChunkHeightPx;
         const shardHeight = sourceProp.height;
         const shardType = sourceProp.type;
-        const inheritedVo = sourceProp.visualOverride ? { ...sourceProp.visualOverride } : null;
         const inheritedFaction = sourceProp.faction;
         const debris = stores.debris;
         spawnedScratch.length = 0;
@@ -638,7 +635,6 @@ class KineticDebrisStore {
             body._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
             body.fractureEnabled = sourceProp.fractureEnabled;
             if (inheritedFaction !== undefined) body.faction = inheritedFaction;
-            if (inheritedVo) stampPropVisualOverride(body, inheritedVo);
             if (wallChunkProfileId !== undefined) {
                 body.wallChunkProfileId = wallChunkProfileId;
                 body.wallChunkHeightPx = wallChunkHeightPx;
