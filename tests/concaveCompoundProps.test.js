@@ -78,5 +78,12 @@ describe("concave footprint compounds", () => {
         assert.ok(shards.length >= partsBefore);
         assert.ok(shards.every((s) => assertDebrisKind(s)));
         assert.equal(world.entityRegistry.getLive(star.id), null);
+        const parentOutlineLen = star.strategy.localFootprint.length;
+        for (const shard of shards) {
+            assert.equal(shard.drawOutline, undefined);
+            assert.equal(shard.collisionParts, undefined);
+            assert.ok(shard.shape?.vertices?.length > 0);
+            assert.ok(shard.shape.vertices.length < parentOutlineLen, "shard silhouette must be smaller than parent compound outline");
+        }
     });
 });

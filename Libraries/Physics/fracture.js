@@ -45,6 +45,8 @@ function copyDebrisPolygonGeometry(dst, src) {
     const verts = src.shape.vertices;
     const n = verts.length;
     writeLivePolygon(dst, verts, n);
+    dst.collisionParts = undefined;
+    dst.drawOutline = undefined;
     dst.footprintArea = src.footprintArea;
     dst.radius = src.radius;
 }
@@ -758,6 +760,7 @@ export class FractureEngine {
     }
     static applyPropFractureGeometry(prop, geometry) {
         prop.collisionParts = undefined;
+        prop.drawOutline = undefined;
         const src = geometry.footprintVertices;
         const n = src.length;
         writeLivePolygon(prop, src, n);
@@ -774,10 +777,10 @@ export class FractureEngine {
         const n = vertCount * 2;
         writeLivePolygon(prop, src, n);
         prop.collisionParts = undefined;
+        prop.drawOutline = undefined;
         prop.footprintArea = debris.footprintArea[debrisIndex];
         prop.radius = debris.boundingRadius[debrisIndex];
         invalidateEntityFootprint(prop._physId);
-        normalizeKineticBody(prop);
     }
     static propFractureSpan(eid) {
         const hx = kineticDynamicSlab.hx[eid];
