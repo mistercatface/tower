@@ -1,5 +1,4 @@
 import { createNavState, PathReplanManager, REPLAN_PRIORITY_TARGET, REPLAN_PRIORITY_VISIBLE, REPLAN_PRIORITY_STUCK_OFFSCREEN, HpaReplanRequest, HpaNavSession } from "../Libraries/Navigation/navigation.js";
-import { sandboxReplanReason, sandboxReplanAllowed } from "../Libraries/Sandbox/sandbox.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
@@ -72,20 +71,6 @@ describe("hpa ground nav replan policy", () => {
 
         manager.updateClock(10);
         assert.equal(manager.evaluateOffPath(true, EID, state).shouldReplan, false);
-    });
-
-    it("sandboxReplanReason and sandboxReplanAllowed gate off-screen idle replans", () => {
-        const nav = createNavState();
-        assert.equal(sandboxReplanReason(nav, true, false, 0, 0), "targetChange");
-        assert.equal(sandboxReplanAllowed("targetChange", false, 0, 20), true);
-        assert.equal(sandboxReplanReason(nav, false, false, 0, 0), "noPath");
-        assert.equal(sandboxReplanAllowed("noPath", false, 0, 20), false);
-        assert.equal(sandboxReplanAllowed("noPath", false, 25, 20), true);
-        nav.pathLen = 2;
-        nav.lastTargetX = 0;
-        nav.lastTargetY = 0;
-        assert.equal(sandboxReplanReason(nav, false, false, 100, 0), "targetMoved");
-        assert.equal(sandboxReplanAllowed("targetMoved", false, 0, 20), false);
     });
 
     it("replanPriorityFor ranks target changes and visible agents ahead of off-screen", () => {

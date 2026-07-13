@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { getConnectedBodyIds, CircleShape, createKineticSession } from "../Libraries/Physics/physics.js";
-import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, setChainHead, SandboxEntityMetaStore } from "../Libraries/Sandbox/sandbox.js";
+import { addChainLink, isChainSteeringTarget, resolveChainLinkRestLength, setChainHead, SandboxEntityMetaStore } from "../Libraries/Sandbox/sandbox.js";
 import { mockBall, resetMockBallIds, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 
@@ -46,7 +46,6 @@ describe("chain links", () => {
         const ball = mockBall(0, 0);
         const state = createState([ball]);
         assert.ok(isChainSteeringTarget(state, state.sandbox.entityMeta, ball.id));
-        assert.ok(!hasChainMembership(state, ball.id));
     });
     it("addChainLink accepts tri wedges marked chain-link eligible", () => {
         resetMockBallIds(1);

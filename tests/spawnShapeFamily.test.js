@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { getPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getCirclePropRadius, propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive, resolveVisualAttachmentProps } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
-import { createSandboxSession, collectFlatPlacedSandboxPropEntries } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxSession, collectSandboxSceneSnapshot } from "../Libraries/Sandbox/sandbox.js";
 import { visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 import { getWallChunkSpriteCacheKey, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
@@ -60,13 +60,13 @@ describe("spawn shape family defaults", () => {
         sessionA.setPlacePaletteKey("prop:box");
         sessionA.setSpawnSurfaceProfileId("toxicSludge");
         assert.equal(sessionA.spawnAt(80, 80), true);
-        assert.equal(collectFlatPlacedSandboxPropEntries(overridden).props[0].wallChunkProfileId, "toxicSludge");
+        assert.equal(collectSandboxSceneSnapshot(overridden).props[0].wallChunkProfileId, "toxicSludge");
         const defaults = createSpawnTestState();
         const sessionB = createSandboxSession(defaults);
         sessionB.setPlacePaletteKey("prop:box");
         assert.equal(sessionB.getSpawnSurfaceProfileId(), "poolTableFelt");
         assert.equal(sessionB.spawnAt(96, 96), true);
-        assert.equal(collectFlatPlacedSandboxPropEntries(defaults).props[0].wallChunkProfileId, undefined);
+        assert.equal(collectSandboxSceneSnapshot(defaults).props[0].wallChunkProfileId, undefined);
     });
 
     it("places box with resizable footprint, surface profile, and fracture off by default", () => {

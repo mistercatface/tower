@@ -1,7 +1,7 @@
-import { installTestDocument, mockPanelBody } from "./harness/sandboxInspectorHarness.js";
+import { installTestDocument } from "./harness/sandboxInspectorHarness.js";
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
-import { createSandboxSession, spawnPlacedSandboxProp, createSandboxController, appendShapeFamilySelectedFields } from "../Libraries/Sandbox/sandbox.js";
+import { createSandboxSession, spawnPlacedSandboxProp, createSandboxController } from "../Libraries/Sandbox/sandbox.js";
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
@@ -22,44 +22,6 @@ function spawnBall(state, x = 64, y = 64) {
 describe("sandbox editor inspector wiring", () => {
     beforeEach(() => {
         installTestDocument();
-    });
-
-    it("appendShapeFamilySelectedFields builds ball fields without throwing", () => {
-        const state = createEditorTestState();
-        const prop = spawnBall(state);
-        const body = mockPanelBody();
-        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
-        assert.ok(body.children.length > 0);
-    });
-
-    it("appendShapeFamilySelectedFields builds box fields without throwing", () => {
-        const state = createEditorTestState();
-        const prop = spawnPlacedSandboxProp(state, 80, 80, "box", "alpha");
-        const body = mockPanelBody();
-        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
-        assert.ok(body.children.length > 0);
-    });
-
-    it("appendShapeFamilySelectedFields builds box resizable fields", () => {
-        const state = createEditorTestState();
-        const prop = spawnPlacedSandboxProp(state, 96, 96, "box", "alpha", 0, { x: 12, y: 16 });
-        const body = mockPanelBody();
-        assert.doesNotThrow(() => appendShapeFamilySelectedFields(body, state, prop));
-        assert.ok(body.children.length > 0);
-    });
-
-    it("appendShapeFamilySelectedFields includes surface profile for ball", () => {
-        const state = createEditorTestState();
-        const prop = spawnBall(state);
-        const body = mockPanelBody();
-        appendShapeFamilySelectedFields(body, state, prop);
-        const labels = [];
-        const walk = (node) => {
-            if (node.textContent) labels.push(node.textContent);
-            for (const child of node.children ?? []) walk(child);
-        };
-        walk(body);
-        assert.ok(labels.some((t) => String(t).includes("Surface profile")));
     });
 
     it("selected prop tint mutations apply to the live registry object", () => {

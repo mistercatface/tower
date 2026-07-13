@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { findLiveWorldProp } from "../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, collectFlatPlacedSandboxPropEntries, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, getConnectedBodyIds } from "../Libraries/Physics/physics.js";
+import { isChainSteeringTarget, setChainHead, collectSandboxSceneSnapshot, spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { hslToHex, normalizeHue } from "../Libraries/Color/colorMath.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
@@ -61,15 +60,7 @@ describe("sandboxSceneSnapshot physics", () => {
             growDirY: 0,
             faction: "alpha",
         });
-        const { props, propIdToIndex } = collectFlatPlacedSandboxPropEntries(state);
-        const meta = state.sandbox.entityMeta;
-        const headProp = findLiveWorldProp(state.worldProps, (prop) => meta.isChainHead(prop.id));
-        const chainHeadProp = headProp ? propIdToIndex.get(headProp.id) : null;
-        const physicsDoc = {
-            props,
-            kineticConstraints: collectKineticConstraintsSnapshot(state.kinetic, propIdToIndex),
-            chainHeadProp,
-        };
+        const physicsDoc = collectSandboxSceneSnapshot(state);
         const fresh = createSnapshotTestState();
         applyPhysicsSnapshot(fresh, physicsDoc);
         const freshMeta = fresh.sandbox.entityMeta;

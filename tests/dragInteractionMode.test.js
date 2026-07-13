@@ -12,27 +12,12 @@ import {
 } from "./harness/sandboxDragHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
-function resolveDragInteractionBehaviorId(asset, dragInteractionMode) {
-    if (!assetSupportsDragInteraction(asset)) return null;
-    return dragInteractionMode === SANDBOX_BEHAVIOR_GRAB_DRAG ? SANDBOX_BEHAVIOR_GRAB_DRAG : SANDBOX_BEHAVIOR_DRAG_LAUNCH;
-}
 describe("drag interaction mode", () => {
     it("kinetic shape assets support drag; floor belts do not", () => {
         assert.equal(assetSupportsDragInteraction(propCatalog.ball), true);
         assert.equal(assetSupportsDragInteraction(propCatalog.box), true);
         assert.equal(assetSupportsDragInteraction(propCatalog.boid_triangle), true);
         assert.equal(assetSupportsDragInteraction(propCatalog.floor_belt), false);
-    });
-
-    it("resolveDragInteractionBehaviorId honors global mode for kinetic props", () => {
-        assert.equal(resolveDragInteractionBehaviorId(propCatalog.ball, SANDBOX_BEHAVIOR_DRAG_LAUNCH), SANDBOX_BEHAVIOR_DRAG_LAUNCH);
-        assert.equal(resolveDragInteractionBehaviorId(propCatalog.ball, SANDBOX_BEHAVIOR_GRAB_DRAG), SANDBOX_BEHAVIOR_GRAB_DRAG);
-    });
-
-    it("boid honors global grab mode", () => {
-        assert.equal(assetSupportsDragInteraction(propCatalog.boid_triangle), true);
-        assert.equal(resolveDragInteractionBehaviorId(propCatalog.boid_triangle, SANDBOX_BEHAVIOR_GRAB_DRAG), SANDBOX_BEHAVIOR_GRAB_DRAG);
-        assert.equal(resolveDragInteractionBehaviorId(propCatalog.boid_triangle, SANDBOX_BEHAVIOR_DRAG_LAUNCH), SANDBOX_BEHAVIOR_DRAG_LAUNCH);
     });
 
     it("pointer flow flings on launch mode and not on grab mode", () => {

@@ -480,7 +480,7 @@ function serializePlacedProp(prop) {
     if (prop.wallChunkProfileId != null && prop.wallChunkProfileId !== defaultProfile) entry.wallChunkProfileId = prop.wallChunkProfileId;
     return entry;
 }
-export function collectFlatPlacedSandboxPropEntries(state) {
+function collectFlatPlacedSandboxPropEntries(state) {
     const props = [];
     const propIdToIndex = new Map();
     visitLiveWorldProps(state.worldProps, (prop) => {
@@ -1513,7 +1513,7 @@ export function isChainLinkBall(prop) {
     if (prop.strategy?.canChain) return true;
     return sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]));
 }
-export function hasChainMembership(state, propId) {
+function hasChainMembership(state, propId) {
     const store = kineticConstraintStore;
     for (let i = 0; i < store.count; i++) if (store.bodyAId[i] === propId || store.bodyBId[i] === propId) return true;
     return false;
@@ -1556,7 +1556,7 @@ export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
     for (let i = 0; i < propIds.length; i++) if (isChainSteeringTarget(state, entityMeta, propIds[i])) return state.entityRegistry.getLive(propIds[i]);
     return null;
 }
-export function sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY) {
+function sandboxReplanReason(navState, pendingTargetReplan, inFlight, targetX, targetY) {
     if (inFlight) return null;
     if (pendingTargetReplan) return "targetChange";
     if (!navState.pathLen) return "noPath";
@@ -1564,7 +1564,7 @@ export function sandboxReplanReason(navState, pendingTargetReplan, inFlight, tar
     if (targetMovedPx >= REPLAN_TARGET_MOVE_PX) return "targetMoved";
     return null;
 }
-export function sandboxReplanAllowed(reason, isVisible, stuckFrames, stuckReplanFrames) {
+function sandboxReplanAllowed(reason, isVisible, stuckFrames, stuckReplanFrames) {
     if (reason === "targetChange") return true;
     if (reason === "noPath") return isVisible || stuckFrames > stuckReplanFrames;
     if (reason === "targetMoved") return isVisible || stuckFrames > stuckReplanFrames;
@@ -2589,7 +2589,7 @@ function appendShapeFamilyFields(body, state, spec) {
         if (selectedProp.wallChunkProfileId != null) appendSurfaceProfileSelect(body, { value: selectedProp.wallChunkProfileId, onChange: onProfileChange });
     }
 }
-export function appendShapeFamilySelectedFields(body, state, selectedProp) {
+function appendShapeFamilySelectedFields(body, state, selectedProp) {
     appendShapeFamilyFields(body, state, { mode: "selected", selectedProp });
 }
 function applyWorldPropFacing(prop, degrees) {
