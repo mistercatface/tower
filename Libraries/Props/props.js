@@ -287,9 +287,8 @@ export class WorldProp {
         else entityFlags[this._physId] &= ~ENTITY_FLAG_DEAD;
     }
     get fractureEnabled() {
-        const flags = entityFlags[this._physId];
-        if ((flags & ENTITY_FLAG_FRACTURE_SET) === 0) return undefined;
-        return (flags & ENTITY_FLAG_FRACTURE_VAL) !== 0;
+        const f = entityFlags[this._physId];
+        return f & ENTITY_FLAG_FRACTURE_SET ? (f & ENTITY_FLAG_FRACTURE_VAL) !== 0 : undefined;
     }
     set fractureEnabled(v) {
         if (v === undefined)
