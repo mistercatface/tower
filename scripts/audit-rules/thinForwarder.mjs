@@ -48,14 +48,14 @@ function parseSingleReturnCall(returnStmt) {
 }
 
 export const id = "thin-forwarder";
-export const description = "Exported functions whose body only forwards to another call (incl. receiver.method)";
+export const description = "Exported functions whose body only forwards to another call (Libraries/ + GameState/)";
 export const severity = "fail";
 
 export function run(ctx) {
     const findings = [];
     for (const file of ctx.files) {
         const relPath = rel(ctx.root, file);
-        if (!relPath.startsWith("Libraries/")) continue;
+        if (!relPath.startsWith("Libraries/") && !relPath.startsWith("GameState/")) continue;
         const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trimEnd();

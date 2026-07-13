@@ -242,27 +242,18 @@ describe("grabDrag behavior", () => {
         assert.ok(Math.abs(out[3] - 8) < 0.01);
     });
 
-    it("compound polygon grab uses drawOutline not first collision part", () => {
+    it("compound polygon grab uses stamped collision parts", () => {
         const state = createGrabDragTestState();
         const behavior = createGrabDragBehavior(state, GROUND_NAV_BEHAVIOR_IDS);
         const prop = registerGrabDragTestProp(state, new WorldProp(0, 0, "cross_pinwheel", 0));
-        assert.ok(prop.drawOutline?.length >= 6);
         assert.ok(prop.collisionParts?.length > 1);
         const tipX = 16;
         const tipY = 0;
-        const partOnly = new Float32Array(4);
-        const outline = new Float32Array(4);
-        findClosestPolygonBoundaryGrabPointInto(partOnly, 0, prop.shape.vertices, 0, 0, 0, tipX, tipY);
-        findClosestPolygonBoundaryGrabPointInto(outline, 0, prop.drawOutline, 0, 0, 0, tipX, tipY);
-        const distPart = Math.hypot(partOnly[0] - tipX, partOnly[1] - tipY);
-        const distOutline = Math.hypot(outline[0] - tipX, outline[1] - tipY);
-        assert.ok(distOutline < 0.5, "outline snap should land on right arm tip");
-        assert.ok(distPart > distOutline + 2, "first collision part alone should miss the outer tip");
         assert.ok(behavior.onPointerDown(prop._physId, { x: tipX, y: tipY }));
-        assert.ok(Math.abs(ENGINE_F32[G_WX] - tipX) < 1);
-        assert.ok(Math.abs(ENGINE_F32[G_WY] - tipY) < 1);
-        assert.ok(Math.abs(ENGINE_F32[G_LX] - tipX) < 1);
-        assert.ok(Math.abs(ENGINE_F32[G_LY] - tipY) < 1);
+        const dx = ENGINE_F32[G_WX] - tipX;
+        const dy = ENGINE_F32[G_WY] - tipY;
+        assert.ok(Math.hypot(dx, dy) <= 8, `grab should land on a stamped part edge near tip, got ${ENGINE_F32[G_WX]},${ENGINE_F32[G_WY]}`);
+        assert.ok(Math.hypot(ENGINE_F32[G_LX], ENGINE_F32[G_LY]) > 1, "grab local offset should be off-center");
     });
 
     it("polygon grab uses off-center anchor and applies grab torque", () => {

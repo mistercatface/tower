@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp, setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createKineticTestTick, kineticPhysicsHooks, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { runKineticPhysics, checkEntityPairCollision, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint, gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
+import { runKineticPhysics, normalizeKineticBody, kineticInertiaFromBody, kineticFootprintArea, kineticMassFromFootprint, gatherKineticContactPairs, resolveKineticContactPassWithPairs, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, kineticStaticSlab, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
@@ -49,16 +49,22 @@ describe("cross pinwheel prop", () => {
     it("detects overlap between two crosses", () => {
         const left = new WorldProp(0, 0, "cross_pinwheel", 0);
         const right = new WorldProp(28, 0, "cross_pinwheel", 0);
-        assert.ok(checkEntityPairCollision(left, right));
+        assignPhysIdWithPose(left, 0);
+        assignPhysIdWithPose(right, 1);
+        snapshotKineticBodySlab([0, 1], 2);
+        assert.ok(checkPairAtSlabPose(left, right));
         right.x = 64;
-        assert.equal(checkEntityPairCollision(left, right), false);
+        assert.equal(checkPairAtSlabPose(left, right), false);
     });
 
     it("separates two overlapping crosses", () => {
         const left = new WorldProp(0, 0, "cross_pinwheel", 0);
         const right = new WorldProp(28, 0, "cross_pinwheel", 0);
         right.vx = -20;
-        assert.ok(checkEntityPairCollision(left, right));
+        assignPhysIdWithPose(left, 0);
+        assignPhysIdWithPose(right, 1);
+        snapshotKineticBodySlab([0, 1], 2);
+        assert.ok(checkPairAtSlabPose(left, right));
         const tick = createKineticTestTick([left, right]);
         const pairs = gatherKineticContactPairs(tick);
         assert.ok(pairs.count >= 1, "expected gathered compound pair");
@@ -73,7 +79,10 @@ describe("cross pinwheel prop", () => {
         const pinwheel = new WorldProp(0, 0, "cross_pinwheel", 0);
         const box = new WorldProp(0, 0, "box", 0);
         box.vx = -1;
-        assert.ok(checkEntityPairCollision(pinwheel, box));
+        assignPhysIdWithPose(pinwheel, 0);
+        assignPhysIdWithPose(box, 1);
+        snapshotKineticBodySlab([0, 1], 2);
+        assert.ok(checkPairAtSlabPose(pinwheel, box));
         const tick = createKineticTestTick([pinwheel, box]);
         const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.ok(contacts.count >= 2, `expected multi-part contacts, got ${contacts.count}`);
@@ -85,7 +94,10 @@ describe("cross pinwheel prop", () => {
         setCirclePropRadius(ball, 4);
         ball.vx = -1;
         ball.vy = -1;
-        assert.ok(checkEntityPairCollision(pinwheel, ball));
+        assignPhysIdWithPose(pinwheel, 0);
+        assignPhysIdWithPose(ball, 1);
+        snapshotKineticBodySlab([0, 1], 2);
+        assert.ok(checkPairAtSlabPose(pinwheel, ball));
         const tick = createKineticTestTick([pinwheel, ball]);
         const pairs = gatherKineticContactPairs(tick);
         assert.ok(pairs.count >= 1, "expected gathered compound pair");

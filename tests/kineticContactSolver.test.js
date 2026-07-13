@@ -2,21 +2,18 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { checkEntityPairCollision, readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { readEntityFacing, SAT_RESULT, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, entityRefs } from "../Core/engineMemory.js";
-import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function pairStillOverlaps(a, b) {
     return satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
-}
-function slabPairStillOverlaps(a, b) {
-    return checkPairAtSlabPose(a, b);
 }
 function separatePairUntilClear(a, b, maxPasses = 8) {
     let last = null;
@@ -42,7 +39,7 @@ function resolveContactUntilClear(tick, maxPasses = 4) {
         resolveKineticContactPassWithPairs(tick, pairs);
         const a = entityRefs[kineticDynamicSlab.activePhysIds[0]];
         const b = entityRefs[kineticDynamicSlab.activePhysIds[1]];
-        if (!slabPairStillOverlaps(a, b)) return;
+        if (!checkPairAtSlabPose(a, b)) return;
     }
 }
 describe("kinetic contact solver", () => {
@@ -108,7 +105,7 @@ describe("poly-poly kinetic contact", () => {
         box.vx = -20;
         assert.ok(pairStillOverlaps(bar, box));
         resolveContactUntilClear(createKineticTestTick([bar, box]));
-        assert.ok(!slabPairStillOverlaps(bar, box));
+        assert.ok(!checkPairAtSlabPose(bar, box));
     });
     it("circle-poly ball and tri wedge separate with normal toward polygon", () => {
         const ball = new WorldProp(0, 0, "ball", 0);
@@ -127,7 +124,7 @@ describe("poly-poly kinetic contact", () => {
         a.vx = 40;
         b.vx = -20;
         resolveContactUntilClear(createKineticTestTick([a, b]));
-        assert.ok(!slabPairStillOverlaps(a, b));
+        assert.ok(!checkPairAtSlabPose(a, b));
         assert.ok(kineticDynamicSlab.vx[a._physId] < 40);
         assert.ok(kineticDynamicSlab.vx[b._physId] > -20);
     });
@@ -144,7 +141,10 @@ describe("poly-poly kinetic contact", () => {
     it("poly-poly crate overlap emits two manifold points", () => {
         const left = new WorldProp(0, 0, "box", 0);
         const right = new WorldProp(10, 0, "box", 0);
-        const collided = checkEntityPairCollision(left, right);
+        assignPhysIdWithPose(left, 0);
+        assignPhysIdWithPose(right, 1);
+        snapshotKineticBodySlab([0, 1], 2);
+        const collided = checkPairAtSlabPose(left, right);
         assert.ok(collided);
         assert.equal(SAT_RESULT[8], 2);
     });

@@ -97,6 +97,7 @@ import {
     islandLinkWallSegGen,
     clearIslandLinkWallSegSeen,
     sleepIslandParent,
+    pickWorldPoly,
     sleepIslandRank,
     sleepComponentRoot,
     sleepComponentMaxSpeedSq,
@@ -1400,27 +1401,6 @@ export function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, s
     }
     return false;
 }
-export function checkEntityPairCollision(bodyA, bodyB, xA = bodyA.x, yA = bodyA.y, xB = bodyB.x, yB = bodyB.y) {
-    const facingA = readEntityFacing(bodyA);
-    const facingB = readEntityFacing(bodyB);
-    const cosA = Math.cos(facingA);
-    const sinA = Math.sin(facingA);
-    const cosB = Math.cos(facingB);
-    const sinB = Math.sin(facingB);
-    const partsA = collisionPartsList(bodyA);
-    const partsB = collisionPartsList(bodyB);
-    if (!partsA && !partsB) return satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, bodyB.shape);
-    if (partsA && partsB) {
-        for (let i = 0; i < partsA.length; i++) for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, partsA[i], xB, yB, cosB, sinB, partsB[j])) return true;
-        return false;
-    }
-    if (partsA) {
-        for (let i = 0; i < partsA.length; i++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, partsA[i], xB, yB, cosB, sinB, bodyB.shape)) return true;
-        return false;
-    }
-    for (let j = 0; j < partsB.length; j++) if (satCheckShapesAtPose(xA, yA, cosA, sinA, bodyA.shape, xB, yB, cosB, sinB, partsB[j])) return true;
-    return false;
-}
 const sWallVerts = ENGINE_F32.subarray(P_WALL_VERTS, P_WALL_VERTS + 8);
 const sWallNorms = ENGINE_F32.subarray(P_WALL_NORMS, P_WALL_NORMS + 8);
 function fillWallBoxF32(segId) {
@@ -1690,17 +1670,65 @@ function entityWorldAabbFromSlabF32(buf, o, eid) {
 export function entityWorldAabbF32(buf, o, eid) {
     entityWorldAabbFromSlabF32(buf, o, eid);
 }
+export function entityContainsPointF32(eid, worldX, worldY, padding = 0) {
+    const slab = kineticDynamicSlab;
+    const geom0 = slab.partGeomOffset[eid];
+    if (geom0 < 0) throw new Error(`entityContainsPointF32: eid ${eid} has no stamped slab geometry`);
+    const cx = slab.x[eid];
+    const cy = slab.y[eid];
+    const cos = slab.cos[eid];
+    const sin = slab.sin[eid];
+    const partCount = Math.max(1, slab.partCount[eid] | 0);
+    let sawPolygon = false;
+    for (let p = 0; p < partCount; p++) {
+        const row = geom0 + p;
+        if (slab.partShapeKind[row] === SHAPE_TYPE_CIRCLE) {
+            const r = slab.partRadius[row] + padding;
+            const dx = cx - worldX;
+            const dy = cy - worldY;
+            if (dx * dx + dy * dy <= r * r) return true;
+            continue;
+        }
+        if (slab.partShapeKind[row] !== SHAPE_TYPE_POLYGON) continue;
+        sawPolygon = true;
+        const vo = slab.partVertOffset[row];
+        const floatCount = slab.partVertFloatCount[row];
+        const verts = slab.shapeVertPool;
+        const out = pickWorldPoly.ensure(floatCount);
+        for (let i = 0; i < floatCount; i += 2) {
+            const lx = verts[vo + i];
+            const ly = verts[vo + i + 1];
+            out[i] = cx + lx * cos - ly * sin;
+            out[i + 1] = cy + lx * sin + ly * cos;
+        }
+        if (pointInPolygon(worldX, worldY, out.subarray(0, floatCount))) return true;
+        if (padding <= 0) continue;
+        const padSq = padding * padding;
+        const count = floatCount / 2;
+        for (let i = 0, j = count - 1; i < count; j = i++) {
+            const ax = out[j * 2];
+            const ay = out[j * 2 + 1];
+            const bx = out[i * 2];
+            const by = out[i * 2 + 1];
+            if (distanceSqToLineSegment(worldX, worldY, ax, ay, bx, by) <= padSq) return true;
+        }
+    }
+    if (sawPolygon) return false;
+    if (slab.shapeKind[eid] === SHAPE_TYPE_CIRCLE) {
+        const r = slab.r[eid] + padding;
+        const dx = cx - worldX;
+        const dy = cy - worldY;
+        return dx * dx + dy * dy <= r * r;
+    }
+    const r = entityR[eid] + padding;
+    const dx = cx - worldX;
+    const dy = cy - worldY;
+    return dx * dx + dy * dy <= r * r;
+}
 /** @param {number} extent */
 export function neighborQueryPadForExtent(extent) {
     const pad = collisionSettings.kineticActivity.neighborQueryPad;
     return Math.min(pad.maxPad, Math.max(pad.minPad, extent * pad.padScale));
-}
-export function entityCollisionSpan(entity) {
-    if (collisionPartsList(entity)) {
-        computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, entity.collisionParts);
-        return lengthXY((ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5, (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5);
-    }
-    return entity.shape.getBoundingRadius();
 }
 export function entityContainedInAabbF32(eid, buf, o) {
     entityWorldAabbF32(ENGINE_F32, P_AABB_A, eid);
@@ -3265,17 +3293,6 @@ export function classifyKineticPairTierSlab(physIdA, physIdB) {
     const kindB = slab.shapeKind[physIdB];
     if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_CIRCLE;
     if (kindA === SHAPE_TYPE_CIRCLE || kindB === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_POLY;
-    return KINETIC_PAIR_POLY_POLY;
-}
-export function classifyKineticPairTier(bodyA, bodyB) {
-    const physIdA = bodyA._physId;
-    const physIdB = bodyB._physId;
-    if (physIdA !== undefined && physIdA !== -1 && physIdB !== undefined && physIdB !== -1 && kineticDynamicSlab.partCount[physIdA] > 0 && kineticDynamicSlab.partCount[physIdB] > 0) return classifyKineticPairTierSlab(physIdA, physIdB);
-    if (collisionPartsList(bodyA) || collisionPartsList(bodyB)) return KINETIC_PAIR_COMPOUND;
-    const shapeA = bodyA.collisionParts?.[0] ?? bodyA.shape;
-    const shapeB = bodyB.collisionParts?.[0] ?? bodyB.shape;
-    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE && shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_CIRCLE;
-    if (shapeA.shapeTypeId === SHAPE_TYPE_CIRCLE || shapeB.shapeTypeId === SHAPE_TYPE_CIRCLE) return KINETIC_PAIR_CIRCLE_POLY;
     return KINETIC_PAIR_POLY_POLY;
 }
 const PAIR_BODY_KEY_SCALE = 1_000_000;

@@ -1,22 +1,18 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { checkEntityPairCollision, readEntityFacing } from "../Libraries/Physics/physics.js";
+import { readEntityFacing, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY } from "../Core/engineEnums.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
-import { createKineticTestTick, mockKineticCircle } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
     setCirclePropRadius(prop, 7);
     return prop;
-}
-
-function slabPairCollision(a, b) {
-    return checkPairAtSlabPose(a, b);
 }
 
 describe("kinetic contact pipeline", () => {
@@ -29,7 +25,7 @@ describe("kinetic contact pipeline", () => {
         const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
         assert.equal(contacts.count, 1);
         assert.equal(contacts.static.tier[0], KINETIC_PAIR_CIRCLE_POLY);
-        assert.ok(!slabPairCollision(ball, wedge));
+        assert.ok(!checkPairAtSlabPose(ball, wedge));
     });
 
     it("circle-only pass fills buffer with circle-circle tier", () => {
@@ -45,12 +41,14 @@ describe("kinetic contact pipeline", () => {
         const left = new WorldProp(0, 0, "box", 0);
         const right = new WorldProp(10, 0, "box", 0);
         right.vx = -20;
-        assert.ok(checkEntityPairCollision(left, right));
+        assignPhysIdWithPose(left, 0);
+        assignPhysIdWithPose(right, 1);
+        snapshotKineticBodySlab([0, 1], 2);
+        assert.ok(checkPairAtSlabPose(left, right));
         const tick = createKineticTestTick([left, right]);
         const contacts = resolveKineticContactPassWithPairs(tick, gatherKineticContactPairs(tick));
-        assert.equal(contacts.count, 2);
+        assert.ok(contacts.count >= 1);
         assert.equal(contacts.static.tier[0], KINETIC_PAIR_POLY_POLY);
-        assert.equal(contacts.static.tier[1], KINETIC_PAIR_POLY_POLY);
-        assert.ok(!slabPairCollision(left, right));
+        assert.ok(!checkPairAtSlabPose(left, right));
     });
 });

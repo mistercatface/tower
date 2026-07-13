@@ -1,64 +1,10 @@
-import { pruneKineticConstraintsForBody, normalizeKineticBody } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, normalizeKineticBody, entityContainsPointF32, ensureKineticShapeStamped, invalidateKineticShapeGeom } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
-import { aabbHashF32, circleIntersectsAabbF32, centerReachAabbF32, pointInPolygon, distanceSqToLineSegment, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, pickWorldPoly, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR, entityFacing } from "../Core/engineMemory.js";
-import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC } from "../Core/engineEnums.js";
+import { aabbHashF32, circleIntersectsAabbF32, centerReachAabbF32, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
+import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
+import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC } from "../Core/engineEnums.js";
 import { allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef, worldPropBindFlags } from "../Core/entitySlots.js";
 const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
-function worldPropFootprintInto(eid, shape) {
-    const facing = entityFacing[eid];
-    const cos = Math.cos(facing);
-    const sin = Math.sin(facing);
-    const cx = entityX[eid];
-    const cy = entityY[eid];
-    const verts = shape.vertices;
-    const count = verts.length;
-    const out = pickWorldPoly.ensure(count);
-    for (let i = 0; i < count; i += 2) {
-        const lx = verts[i];
-        const ly = verts[i + 1];
-        out[i] = cx + lx * cos - ly * sin;
-        out[i + 1] = cy + lx * sin + ly * cos;
-    }
-    return out;
-}
-export function worldPropContainsPoint(eid, worldX, worldY, padding = 0) {
-    const prop = entityRefs[eid];
-    const compound = prop.collisionParts?.length > 1;
-    const partCount = compound ? prop.collisionParts.length : prop.shape ? 1 : 0;
-    const cx = entityX[eid];
-    const cy = entityY[eid];
-    let sawPolygon = false;
-    for (let p = 0; p < partCount; p++) {
-        const shape = compound ? prop.collisionParts[p] : prop.shape;
-        if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-            const r = shape.radius + padding;
-            const centerDistSq = (cx - worldX) ** 2 + (cy - worldY) ** 2;
-            if (centerDistSq <= r * r) return true;
-            continue;
-        }
-        if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-            sawPolygon = true;
-            const worldPoly = worldPropFootprintInto(eid, shape);
-            const floatCount = shape.vertices.length;
-            if (pointInPolygon(worldX, worldY, worldPoly.subarray(0, floatCount))) return true;
-            if (padding <= 0) continue;
-            const padSq = padding * padding;
-            const count = floatCount / 2;
-            for (let i = 0, j = count - 1; i < count; j = i++) {
-                const ax = worldPoly[j * 2];
-                const ay = worldPoly[j * 2 + 1];
-                const bx = worldPoly[i * 2];
-                const by = worldPoly[i * 2 + 1];
-                if (distanceSqToLineSegment(worldX, worldY, ax, ay, bx, by) <= padSq) return true;
-            }
-        }
-    }
-    if (sawPolygon) return false;
-    const r = entityR[eid] + padding;
-    const centerDistSq = (cx - worldX) ** 2 + (cy - worldY) ** 2;
-    return centerDistSq <= r * r;
-}
 const WORLD_PROP_KIND_HASH = hashString("worldProp");
 function filterQueryHash(filterId) {
     return mixHash4(WORLD_PROP_KIND_HASH, filterId ? hashString(filterId) : 0, 0, 0);
@@ -148,7 +94,11 @@ export class EntityArena {
             bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
             ref._physId = eid;
             clearWorldPropSpawnPose(ref);
-            if (flags & ENTITY_FLAG_KINETIC) normalizeKineticBody(ref);
+            if (flags & ENTITY_FLAG_KINETIC) {
+                invalidateKineticShapeGeom(eid);
+                normalizeKineticBody(ref);
+                ensureKineticShapeStamped(eid, ref);
+            }
             this._bumpMembership();
             return;
         }
@@ -158,7 +108,11 @@ export class EntityArena {
         bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
         ref._physId = eid;
         clearWorldPropSpawnPose(ref);
-        if (flags & ENTITY_FLAG_KINETIC) normalizeKineticBody(ref);
+        if (flags & ENTITY_FLAG_KINETIC) {
+            invalidateKineticShapeGeom(eid);
+            normalizeKineticBody(ref);
+            ensureKineticShapeStamped(eid, ref);
+        }
         this._gameIdToEid.set(ref.id, eid);
         this._addLiveEid(eid);
         this._bumpMembership();
@@ -400,7 +354,7 @@ export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, pa
         if (distSq > r * r * 4) continue;
         const prop = entitySlotRef(eid);
         if (!prop || prop.isDead) continue;
-        if (!worldPropContainsPoint(eid, worldX, worldY, pad)) continue;
+        if (!entityContainsPointF32(eid, worldX, worldY, pad)) continue;
         if (distSq < bestDistSq) {
             best = prop;
             bestDistSq = distSq;

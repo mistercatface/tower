@@ -14,10 +14,6 @@ import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
-function slabPairCollision(a, b) {
-    return checkPairAtSlabPose(a, b);
-}
-
 describe("kinetic pair persistence", () => {
     it("reuses gathered pair list across outer iterations", () => {
         withCollisionSettings(collisionSettingsForIterations(3), () => {
@@ -57,7 +53,7 @@ describe("kinetic pair persistence", () => {
             runCollisionPipeline(tick, noop, noop);
             wedge.vx = -25;
             runCollisionPipeline(tick, noop, noop);
-            assert.ok(!slabPairCollision(ball, wedge));
+            assert.ok(!checkPairAtSlabPose(ball, wedge));
         });
     });
 
