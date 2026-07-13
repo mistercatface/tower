@@ -3,7 +3,7 @@ import { quantizeAngle, quantizeAngleIndex, hashString, mixHash4 } from "../Math
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
-import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
+import { packRollOrientId } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto } from "../Props/props.js";
 import propCatalog, { NEXT_RENDER_KEY_ID } from "../../Assets/props/index.js";
@@ -667,7 +667,7 @@ export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, frameIndex =
 const PROP_STAGE_PADDING = 40;
 export function getPropStaticKey(eid, renderKey) {
     const prop = entityRefs[eid];
-    const facing = readEntityFacing(prop);
+    const facing = prop.facing;
     const rolls = !!prop.strategy?.rolls;
     const rollId = rolls ? packRollOrientId(prop, resolvePropQuantizeSteps(prop).facing) : 0;
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);

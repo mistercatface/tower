@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp, applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satPolygonVsWallSegmentF32, readEntityFacing, SAT_RESULT, runCollisionPipeline, WallCollisionResolver, createKineticSession, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Libraries/Physics/physics.js";
+import { satPolygonVsWallSegmentF32, SAT_RESULT, runCollisionPipeline, WallCollisionResolver, createKineticSession, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Libraries/Physics/physics.js";
 import { computeWallBreakStrength } from "../Libraries/Physics/fracture.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { staticWallSegmentSlab } from "../Core/engineMemory.js";
@@ -12,7 +12,7 @@ function shapeOverlapsWall(prop, segId) {
     const shape = prop.shape;
     const vo = shape._vertOffset || 0;
     const n = shape._floatCount != null ? shape._floatCount : shape.vertices.length;
-    const angle = readEntityFacing(prop);
+    const angle = prop.facing;
     return satPolygonVsWallSegmentF32(prop.x, prop.y, Math.cos(angle), Math.sin(angle), shape.vertices, shape.normals, vo, n, segId);
 }
 
@@ -63,7 +63,7 @@ describe("polygon wall resolution", () => {
         assert.ok(shapeOverlapsWall(wedge, floor));
         resolveWallUntilClear(wedge, segs);
         const slab = staticWallSegmentSlab;
-        const angle = readEntityFacing(wedge);
+        const angle = wedge.facing;
         const shape = wedge.shape;
         const vo = shape._vertOffset || 0;
         const n = shape._floatCount != null ? shape._floatCount : shape.vertices.length;

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { readEntityFacing as readEntityFacing } from "../Libraries/Physics/physics.js";
+
 import { ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_KINETIC } from "../Core/engineEnums.js";
 import { bindEntitySlot, clearWorldPropSpawnPose } from "../Core/entitySlots.js";
 import { entityFacing } from "../Core/engineMemory.js";
@@ -13,7 +13,7 @@ describe("entityFacing SoA", () => {
         assert.equal(prop._physId, undefined);
         assert.equal(prop.facing, Math.PI / 4);
         assert.equal(prop._spawnFacing, Math.PI / 4);
-        assert.equal(readEntityFacing(prop), Math.PI / 4);
+        assert.equal(prop.facing, Math.PI / 4);
 
         assignPhysIdWithPose(prop, 7);
         assert.ok(Math.abs(entityFacing[7] - Math.PI / 4) < 1e-6);
@@ -22,7 +22,7 @@ describe("entityFacing SoA", () => {
 
         prop.facing = 1.25;
         assert.ok(Math.abs(entityFacing[7] - 1.25) < 1e-6);
-        assert.ok(Math.abs(readEntityFacing(prop) - 1.25) < 1e-6);
+        assert.ok(Math.abs(prop.facing - 1.25) < 1e-6);
     });
 
     it("bindEntitySlot copies spawn facing before clear", () => {
