@@ -3536,9 +3536,6 @@ function sortLinkNeighborSlice(offset, count) {
         arena[j + 1] = key;
     }
 }
-export function resetKineticLinkNeighborArena() {
-    kineticDynamicSlab.linkNeighborEidsUsed = 0;
-}
 const islandBakeDegree = new Int32Array(MAX_PHYS_BODIES);
 const islandBakeFill = new Int32Array(MAX_PHYS_BODIES);
 const islandBakeVisited = new Uint8Array(MAX_PHYS_BODIES);
@@ -3551,7 +3548,7 @@ function physIdForBodyIdInList(eids, count, bodyId) {
     return -1;
 }
 function bakeKineticIslandPlan(session, eids, count = eids.length) {
-    resetKineticLinkNeighborArena();
+    kineticDynamicSlab.linkNeighborEidsUsed = 0;
     const slab = kineticDynamicSlab;
     const constraints = kineticConstraintStore;
     for (let i = 0; i < count; i++) {

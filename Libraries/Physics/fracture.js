@@ -1,7 +1,7 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFrictionEid, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
-import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_FLAG_PENDING_FRACTURE } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
@@ -254,10 +254,6 @@ function dropShatterSeed(seeds, seedIndex, seedCount) {
         seeds[seedIndex * 2 + 1] = seeds[last * 2 + 1];
     }
     return last;
-}
-function clearPendingWallBreaks(pending) {
-    clearPendingBreakHash();
-    pending.count = 0;
 }
 class KineticDebrisBody {
     constructor(store) {
@@ -714,7 +710,8 @@ function pendingTargetStillValid(grid, pending, row) {
     return isRailWallEdge(edge);
 }
 export function createGridWallDamage(state, config) {
-    clearPendingWallBreaks(pendingWallBreaks);
+    clearPendingBreakHash();
+    pendingWallBreaks.count = 0;
     return { config, pending: pendingWallBreaks, commit: createDeferredGridWallCommit(state), spatialFrame: null, lastCommitBounds: null, lastSpawned: [], lastSpawnedCount: 0 };
 }
 export function resolveKineticWallDamage(state, eid, spatialFrame) {
@@ -825,7 +822,8 @@ export function applyPendingWallDamage(state) {
             spawn.count++;
         }
     }
-    clearPendingWallBreaks(pending);
+    clearPendingBreakHash();
+    pending.count = 0;
     voxelScratch.length = 0;
     railFlushBatch.count = 0;
     for (let i = 0; i < spawn.count; i++)
@@ -901,7 +899,7 @@ export class FractureEngine {
         } finally {
             world.entityRegistry.endMembershipBatch();
             stores.debris.reset();
-            resetDeferredFractureSlab();
+            deferredFractureSlab.count = 0;
             admitScratch.length = 0;
         }
     }
@@ -930,12 +928,9 @@ export class FractureEngine {
         const bestProp = entityRefs[bestEid];
         if (!FractureEngine.fracturePropOnImpact(bestProp, hitX, hitY, force, this)) return;
         if (ENGINE_F32[F_OUT_REMNANT] !== 1) entityFlags[bestEid] |= ENTITY_FLAG_PENDING_FRACTURE;
-        this.enqueueDeferredFracture(bestEid);
-    }
-    enqueueDeferredFracture(eid) {
         const deferred = deferredFractureSlab;
         const count = deferred.count;
-        deferred.physId[count] = eid;
+        deferred.physId[count] = bestEid;
         deferred.debrisStart[count] = ENGINE_F32[F_OUT_DEBRIS_START];
         deferred.debrisCount[count] = ENGINE_F32[F_OUT_DEBRIS_COUNT];
         deferred.originX[count] = ENGINE_F32[F_OUT_ORIGIN_X];
