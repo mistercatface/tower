@@ -1,7 +1,7 @@
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody } from "../../Libraries/Physics/physics.js";
+import { snapshotKineticBodySlab, CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE } from "../../Core/engineEnums.js";
@@ -170,6 +170,7 @@ export function assignPhysIdWithPose(body, physId) {
     const sleepFrames = body._sleepFrames ?? 0;
     const ageMs = body.ageMs ?? 0;
     body._physId = physId;
+    invalidateKineticShapeGeom(physId);
     entityRefs[physId] = body;
     entityAlive[physId] = 1;
     entityX[physId] = x;

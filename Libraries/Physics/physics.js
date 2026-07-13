@@ -426,13 +426,20 @@ export function seedKineticBodyShapeFromBag(eid, bag) {
             const row = slab.partGeomOffset[eid];
             bindLivePolyView(shape, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[row], slab.partVertFloatCount[row]);
             slab.r[eid] = livePolygonBoundingRadius(slab.shapeVertPool, slab.partVertFloatCount[row], slab.partVertOffset[row]);
-        } else {
-            slab.r[eid] = shape.boundingRadius;
-        }
+        } else slab.r[eid] = shape.boundingRadius;
         releasePreInsertGeom(bag);
         return;
     }
     throw new Error(`seedKineticBodyShapeFromBag: unknown shapeTypeId ${shape?.shapeTypeId}`);
+}
+export function ensureKineticShapeStamped(eid, bag = entityRefs[eid]) {
+    if (!bag) throw new Error(`ensureKineticShapeStamped: missing bag for unstamped eid ${eid}`);
+    const kinetic = (entityFlags[eid] & ENTITY_FLAG_KINETIC) !== 0 || bag.strategy?.isKinetic === true;
+    if (!kinetic) return;
+    if (kineticDynamicSlab.partGeomOffset[eid] >= 0) return;
+    normalizeKineticBody(bag);
+    seedKineticBodyShapeFromBag(eid, bag);
+    entityR[eid] = slabCollisionSpan(eid);
 }
 export function syncKineticBodySlabPose(eid) {
     const slab = kineticDynamicSlab;
@@ -465,6 +472,7 @@ function syncPolygonSlabBounds(eid) {
     slab.hx[eid] = hx;
     slab.hy[eid] = hy;
     slab.r[eid] = livePolygonBoundingRadius(verts, n, vo);
+    entityR[eid] = slabCollisionSpan(eid);
 }
 export function stampKineticCircleRadius(eid, radius) {
     const slab = kineticDynamicSlab;
@@ -477,6 +485,7 @@ export function stampKineticCircleRadius(eid, radius) {
     slab.compoundLocalCx[eid] = 0;
     slab.compoundLocalCy[eid] = 0;
     stampShapeGeomCircle(eid, radius);
+    entityR[eid] = slabCollisionSpan(eid);
 }
 const SHAPE_FLOAT_BUCKETS = [16, 32, 64, 128, 256, 512, 1024];
 export const MAX_LIVE_POLYGON_FLOATS = SHAPE_FLOAT_BUCKETS[SHAPE_FLOAT_BUCKETS.length - 1];
@@ -531,6 +540,17 @@ function releaseShapeGeom(physId) {
         slab.partVertCap[row] = 0;
     }
     slab.partGeomOffset[physId] = -1;
+}
+export function invalidateKineticShapeGeom(eid) {
+    releaseShapeGeom(eid);
+    const slab = kineticDynamicSlab;
+    slab.partCount[eid] = 0;
+    slab.shapeKind[eid] = 0;
+    slab.hx[eid] = 0;
+    slab.hy[eid] = 0;
+    slab.r[eid] = 0;
+    slab.compoundLocalCx[eid] = 0;
+    slab.compoundLocalCy[eid] = 0;
 }
 function allocPartRows(count) {
     const slab = kineticDynamicSlab;
@@ -1748,8 +1768,7 @@ export function snapshotKineticBodySlab(eids, count = eids.length) {
         const eid = eids[i];
         const entity = entityRefs[eid];
         if (!entity) continue;
-        normalizeKineticBody(entity);
-        seedKineticBodyShapeFromBag(eid, entity);
+        ensureKineticShapeStamped(eid, entity);
         syncKineticBodySlabPose(eid);
     }
 }
@@ -3373,6 +3392,8 @@ export function gatherKineticCandidatePairs(spatialFrame, pairs) {
         const offset = slab.spatialNeighborOffset[physIdA];
         for (let j = 0; j < neighborCount; j++) {
             const physIdB = neighborEids[offset + j];
+            if (slab.partGeomOffset[physIdA] < 0) throw new Error(`gatherKineticCandidatePairs: unstamped primary eid ${physIdA}`);
+            if (slab.partGeomOffset[physIdB] < 0) throw new Error(`gatherKineticCandidatePairs: unstamped neighbor eid ${physIdB}`);
             if (!kineticPairPassesBroadphase(physIdA, physIdB)) continue;
             if (areKineticLinkNeighborsSlab(physIdA, physIdB)) continue;
             if (pairs.count >= MAX_KINETIC_PAIRS) continue;

@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
-import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
+import { LIBRARY_COLLISION_DEFAULTS, gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { advanceKineticSleep } from "../Libraries/Physics/physics.js";
 import { clearActiveKineticBodySlab, writeKineticLinkNeighbors, resetKineticLinkNeighborArena } from "../Libraries/Physics/physics.js";
-import { kineticDynamicSlab, entityRefs, entityX, entityAlive } from "../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticPairBuffer, entityRefs, entityX, entityAlive } from "../Core/engineMemory.js";
 import { mockKineticBody, mockCircleProp, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { createKineticAdmitTestState } from "./harness/stateFactories.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
@@ -87,6 +87,20 @@ describe("active kinetic bodies", () => {
         const physId = prop._physId;
         frame.begin(world);
         assert.equal(prop._physId, physId);
+    });
+    it("begin() stamps already-bound kinetic props with empty slab CSR", () => {
+        const world = createFractureWorld();
+        const frame = new KineticSpatialFrame(50);
+        const prop = new WorldProp(50, 50, "box", 0);
+        const eid = 42;
+        assignPhysIdWithPose(prop, eid);
+        kineticDynamicSlab.partGeomOffset[eid] = -1;
+        assert.equal(kineticDynamicSlab.partGeomOffset[eid], -1);
+        world.worldProps.push(prop);
+        frame.begin(world);
+        assert.ok(kineticDynamicSlab.partGeomOffset[eid] >= 0);
+        frame.syncActiveKineticBodies();
+        gatherKineticCandidatePairs(frame, kineticPairBuffer);
     });
     it("admitKineticProp makes mid-frame spawns visible to neighbor queries", () => {
         const frame = new KineticSpatialFrame(50);
@@ -172,7 +186,7 @@ describe("active kinetic bodies", () => {
         assert.equal(kineticDynamicSlab.activePhysCount, 1);
         assert.equal(entityRefs[kineticDynamicSlab.activePhysIds[0]], head);
         assert.equal(kineticDynamicSlab.activePhysIds[0], head._physId);
-        frame._ensureActive(1, false);
+        frame._ensureActive(1);
         frame.reindexActiveKineticBodies();
         assert.equal(kineticDynamicSlab.activePhysCount, 1);
         assert.equal(entityRefs[kineticDynamicSlab.activePhysIds[0]], head);
