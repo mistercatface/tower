@@ -3,7 +3,7 @@ import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, cellEdgeEndpointsIdx, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
 import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
-import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab, entityFlags, entityX, entityY, entityR, entityGameId, entityRefs } from "../../Core/engineMemory.js";
+import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab, entityFlags, entityX, entityY, entityR, entityGameId, entityAlive, entityRenderKeyId } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
@@ -19,7 +19,7 @@ import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
 import { createContextMenu } from "../UI/contextMenu.js";
-import propCatalog from "../../Assets/props/index.js";
+import propCatalog, { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { createDragLaunchBehavior, createGrabDragBehavior, assetSupportsDragInteraction, resolveDragInteractionBehavior, normalizeDragInteractionMode, DEFAULT_DRAG_INTERACTION_MODE } from "./dragBehaviors.js";
 export class SandboxEntityMetaStore {
     constructor() {
@@ -3072,14 +3072,15 @@ export function createSandboxController(state, { getCanvas, clientToWorld, behav
             const o = ENGINE_BOUNDS_BASE + B_TMP;
             const filter = session.getSelectionTagFilter();
             const count = state.entityRegistry.queryInAabbF32(null, ENGINE_F32, o, "marquee", (eid) => {
-                const prop = entityRefs[eid];
-                return entityContainedInAabbF32(prop, ENGINE_F32, o) && sandboxTagsMatchFilter(filter, sandboxAssetTags(propCatalog[prop.type]));
+                if (!entityAlive[eid]) return false;
+                const asset = propCatalogByRenderKeyId[entityRenderKeyId[eid]];
+                return entityContainedInAabbF32(eid, ENGINE_F32, o) && sandboxTagsMatchFilter(filter, sandboxAssetTags(asset));
             });
             const eids = state.entityRegistry.borrowedQueryIds("marquee");
             const ids = [];
             for (let i = 0; i < count; i++) {
-                const prop = state.entityRegistry.getRef(eids[i]);
-                if (prop) ids.push(prop.id);
+                const gameId = entityGameId[eids[i]];
+                if (gameId >= 0) ids.push(gameId);
             }
             selectPropIds(ids);
         },

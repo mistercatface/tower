@@ -259,6 +259,9 @@ export function primitiveDragFriction(bodyOrStrategy) {
     const row = eid !== undefined && eid !== -1 ? kineticStaticSlab.physicsRow[eid] : bodyOrStrategy.physicsRow;
     return primitivePhysics.dragFriction[row];
 }
+export function primitiveDragFrictionEid(eid) {
+    return primitivePhysics.dragFriction[kineticStaticSlab.physicsRow[eid]];
+}
 export function kineticMassFromFootprint(body) {
     const minMass = collisionSettings.material.minMass;
     const eid = body._physId;
@@ -302,15 +305,30 @@ export function normalizeKineticBody(body) {
     slab.friction[physId] = table.wallFriction[row];
     return body;
 }
+function slabObbWorldCenterF32(eid) {
+    const slab = kineticDynamicSlab;
+    const cos = slab.cos[eid];
+    const sin = slab.sin[eid];
+    const lx = slab.compoundLocalCx[eid];
+    const ly = slab.compoundLocalCy[eid];
+    ENGINE_F32[P_VEC_B] = slab.x[eid] + lx * cos - ly * sin;
+    ENGINE_F32[P_VEC_B + 1] = slab.y[eid] + lx * sin + ly * cos;
+}
 function intervalsSeparatedObbObbSlab(ax, ay, physIdA, physIdB) {
     const slab = kineticDynamicSlab;
     const aCos = slab.cos[physIdA];
     const aSin = slab.sin[physIdA];
     const bCos = slab.cos[physIdB];
     const bSin = slab.sin[physIdB];
-    const ca = slab.x[physIdA] * ax + slab.y[physIdA] * ay;
+    slabObbWorldCenterF32(physIdA);
+    const cxA = ENGINE_F32[P_VEC_B];
+    const cyA = ENGINE_F32[P_VEC_B + 1];
+    slabObbWorldCenterF32(physIdB);
+    const cxB = ENGINE_F32[P_VEC_B];
+    const cyB = ENGINE_F32[P_VEC_B + 1];
+    const ca = cxA * ax + cyA * ay;
     const ra = slab.hx[physIdA] * Math.abs(aCos * ax + aSin * ay) + slab.hy[physIdA] * Math.abs(-aSin * ax + aCos * ay);
-    const cb = slab.x[physIdB] * ax + slab.y[physIdB] * ay;
+    const cb = cxB * ax + cyB * ay;
     const rb = slab.hx[physIdB] * Math.abs(bCos * ax + bSin * ay) + slab.hy[physIdB] * Math.abs(-bSin * ax + bCos * ay);
     return Math.abs(ca - cb) > ra + rb;
 }
@@ -328,7 +346,10 @@ function intervalsSeparatedCircleObbSlab(ax, ay, physIdCircle, physIdObb) {
     const rc = slab.r[physIdCircle];
     const obbCos = slab.cos[physIdObb];
     const obbSin = slab.sin[physIdObb];
-    const cb = slab.x[physIdObb] * ax + slab.y[physIdObb] * ay;
+    slabObbWorldCenterF32(physIdObb);
+    const cx = ENGINE_F32[P_VEC_B];
+    const cy = ENGINE_F32[P_VEC_B + 1];
+    const cb = cx * ax + cy * ay;
     const rb = slab.hx[physIdObb] * Math.abs(obbCos * ax + obbSin * ay) + slab.hy[physIdObb] * Math.abs(-obbSin * ax + obbCos * ay);
     return Math.abs(cc - cb) > rc + rb;
 }
@@ -338,8 +359,11 @@ function circleObbOverlapSlab(physIdCircle, physIdObb) {
     const obbSin = slab.sin[physIdObb];
     if (intervalsSeparatedCircleObbSlab(obbCos, obbSin, physIdCircle, physIdObb)) return false;
     if (intervalsSeparatedCircleObbSlab(-obbSin, obbCos, physIdCircle, physIdObb)) return false;
-    const dx = slab.x[physIdCircle] - slab.x[physIdObb];
-    const dy = slab.y[physIdCircle] - slab.y[physIdObb];
+    slabObbWorldCenterF32(physIdObb);
+    const obbCx = ENGINE_F32[P_VEC_B];
+    const obbCy = ENGINE_F32[P_VEC_B + 1];
+    const dx = slab.x[physIdCircle] - obbCx;
+    const dy = slab.y[physIdCircle] - obbCy;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len > 1e-6) if (intervalsSeparatedCircleObbSlab(dx / len, dy / len, physIdCircle, physIdObb)) return false;
     return true;
@@ -353,81 +377,106 @@ export function pairBroadphaseOverlapSlab(physIdA, physIdB) {
     if (kindB === SHAPE_TYPE_CIRCLE) return circleObbOverlapSlab(physIdB, physIdA);
     return obbObbOverlapSlab(physIdA, physIdB);
 }
-export function stampKineticBodyFromEntity(physId, entity) {
+export function seedKineticBodyShapeFromBag(eid, bag) {
     const slab = kineticDynamicSlab;
-    const angle = readEntityFacing(entity);
-    const compound = entity.collisionParts;
-    const dirty = entity._broadphaseDirty === true;
+    const angle = entityFacing[eid];
+    const compound = bag.collisionParts;
     if (compound?.length > 1) {
-        if (!dirty && slab.partCount[physId] === compound.length && slab.shapeKind[physId] === 0 && slab.partGeomOffset[physId] >= 0) {
-            slab.cos[physId] = Math.cos(angle);
-            slab.sin[physId] = Math.sin(angle);
-            return;
-        }
-        slab.partCount[physId] = compound.length;
-        slab.shapeKind[physId] = 0;
+        slab.partCount[eid] = compound.length;
+        slab.shapeKind[eid] = 0;
         computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, compound);
-        slab.hx[physId] = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
-        slab.hy[physId] = (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5;
-        slab.cos[physId] = Math.cos(angle);
-        slab.sin[physId] = Math.sin(angle);
-        stampShapeGeomParts(physId, compound);
-        releasePreInsertGeom(entity);
-        entity._broadphaseDirty = false;
+        const minX = ENGINE_F32[P_AABB_A];
+        const minY = ENGINE_F32[P_AABB_A + 1];
+        const maxX = ENGINE_F32[P_AABB_A + 2];
+        const maxY = ENGINE_F32[P_AABB_A + 3];
+        slab.compoundLocalCx[eid] = (minX + maxX) * 0.5;
+        slab.compoundLocalCy[eid] = (minY + maxY) * 0.5;
+        slab.hx[eid] = (maxX - minX) * 0.5;
+        slab.hy[eid] = (maxY - minY) * 0.5;
+        slab.cos[eid] = Math.cos(angle);
+        slab.sin[eid] = Math.sin(angle);
+        stampShapeGeomParts(eid, compound);
+        releasePreInsertGeom(bag);
         return;
     }
-    slab.partCount[physId] = 1;
-    const shape = entity.shape;
+    slab.compoundLocalCx[eid] = 0;
+    slab.compoundLocalCy[eid] = 0;
+    slab.partCount[eid] = 1;
+    const shape = bag.shape;
     if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-        if (!dirty && slab.shapeKind[physId] === SHAPE_TYPE_CIRCLE && slab.partGeomOffset[physId] >= 0 && slab.r[physId] === shape.radius) return;
-        slab.shapeKind[physId] = SHAPE_TYPE_CIRCLE;
-        slab.r[physId] = shape.radius;
-        stampShapeGeomCircle(physId, shape.radius);
-        releasePreInsertGeom(entity);
-        entity._broadphaseDirty = false;
+        slab.shapeKind[eid] = SHAPE_TYPE_CIRCLE;
+        slab.r[eid] = shape.radius;
+        slab.hx[eid] = 0;
+        slab.hy[eid] = 0;
+        slab.cos[eid] = 1;
+        slab.sin[eid] = 0;
+        stampShapeGeomCircle(eid, shape.radius);
+        releasePreInsertGeom(bag);
         return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-        if (!dirty && slab.shapeKind[physId] === SHAPE_TYPE_POLYGON && slab.partGeomOffset[physId] >= 0) {
-            slab.cos[physId] = Math.cos(angle);
-            slab.sin[physId] = Math.sin(angle);
-            return;
-        }
-        slab.shapeKind[physId] = SHAPE_TYPE_POLYGON;
-        slab.cos[physId] = Math.cos(angle);
-        slab.sin[physId] = Math.sin(angle);
-        if (shape._liveBound === 1 && slab.partGeomOffset[physId] >= 0 && (entity._preInsertOff ?? -1) < 0) {
-            const row = slab.partGeomOffset[physId];
-            const vo = slab.partVertOffset[row];
-            const n = slab.partVertFloatCount[row];
-            const verts = slab.shapeVertPool;
-            let hx = 0;
-            let hy = 0;
-            for (let i = 0; i < n; i += 2) {
-                const ax = Math.abs(verts[vo + i]);
-                const ay = Math.abs(verts[vo + i + 1]);
-                if (ax > hx) hx = ax;
-                if (ay > hy) hy = ay;
-            }
-            slab.hx[physId] = hx;
-            slab.hy[physId] = hy;
-            slab.r[physId] = shape.boundingRadius;
-            entity._broadphaseDirty = false;
-            return;
-        }
+        slab.shapeKind[eid] = SHAPE_TYPE_POLYGON;
+        slab.cos[eid] = Math.cos(angle);
+        slab.sin[eid] = Math.sin(angle);
         convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
-        slab.hx[physId] = ENGINE_F32[P_VEC_A];
-        slab.hy[physId] = ENGINE_F32[P_VEC_A + 1];
-        stampShapeGeomPolygon(physId, shape.vertices, shape.normals);
+        slab.hx[eid] = ENGINE_F32[P_VEC_A];
+        slab.hy[eid] = ENGINE_F32[P_VEC_A + 1];
+        stampShapeGeomPolygon(eid, shape.vertices, shape.normals);
         if (shape._liveBound === 1) {
-            const row = slab.partGeomOffset[physId];
+            const row = slab.partGeomOffset[eid];
             bindLivePolyView(shape, slab.shapeVertPool, slab.shapeNormPool, slab.partVertOffset[row], slab.partVertFloatCount[row]);
+            slab.r[eid] = livePolygonBoundingRadius(slab.shapeVertPool, slab.partVertFloatCount[row], slab.partVertOffset[row]);
+        } else {
+            slab.r[eid] = shape.boundingRadius;
         }
-        releasePreInsertGeom(entity);
-        entity._broadphaseDirty = false;
+        releasePreInsertGeom(bag);
         return;
     }
-    throw new Error(`stampKineticBodyFromEntity: unknown shapeTypeId ${shape?.shapeTypeId}`);
+    throw new Error(`seedKineticBodyShapeFromBag: unknown shapeTypeId ${shape?.shapeTypeId}`);
+}
+export function syncKineticBodySlabPose(eid) {
+    const slab = kineticDynamicSlab;
+    if (slab.shapeKind[eid] !== SHAPE_TYPE_CIRCLE) {
+        const angle = entityFacing[eid];
+        slab.cos[eid] = Math.cos(angle);
+        slab.sin[eid] = Math.sin(angle);
+    }
+}
+function syncPolygonSlabBounds(eid) {
+    const slab = kineticDynamicSlab;
+    const angle = entityFacing[eid];
+    slab.cos[eid] = Math.cos(angle);
+    slab.sin[eid] = Math.sin(angle);
+    slab.compoundLocalCx[eid] = 0;
+    slab.compoundLocalCy[eid] = 0;
+    const row = slab.partGeomOffset[eid];
+    if (row < 0) throw new Error(`syncPolygonSlabBounds: eid ${eid} has no slab geometry`);
+    const vo = slab.partVertOffset[row];
+    const n = slab.partVertFloatCount[row];
+    const verts = slab.shapeVertPool;
+    let hx = 0;
+    let hy = 0;
+    for (let i = 0; i < n; i += 2) {
+        const ax = Math.abs(verts[vo + i]);
+        const ay = Math.abs(verts[vo + i + 1]);
+        if (ax > hx) hx = ax;
+        if (ay > hy) hy = ay;
+    }
+    slab.hx[eid] = hx;
+    slab.hy[eid] = hy;
+    slab.r[eid] = livePolygonBoundingRadius(verts, n, vo);
+}
+export function stampKineticCircleRadius(eid, radius) {
+    const slab = kineticDynamicSlab;
+    slab.shapeKind[eid] = SHAPE_TYPE_CIRCLE;
+    slab.r[eid] = radius;
+    slab.hx[eid] = 0;
+    slab.hy[eid] = 0;
+    slab.cos[eid] = 1;
+    slab.sin[eid] = 0;
+    slab.compoundLocalCx[eid] = 0;
+    slab.compoundLocalCy[eid] = 0;
+    stampShapeGeomCircle(eid, radius);
 }
 const SHAPE_FLOAT_BUCKETS = [16, 32, 64, 128, 256, 512, 1024];
 export const MAX_LIVE_POLYGON_FLOATS = SHAPE_FLOAT_BUCKETS[SHAPE_FLOAT_BUCKETS.length - 1];
@@ -596,6 +645,8 @@ export function invalidateKineticSlabSlot(physId) {
     dyn.r[physId] = 0;
     dyn.hx[physId] = 0;
     dyn.hy[physId] = 0;
+    dyn.compoundLocalCx[physId] = 0;
+    dyn.compoundLocalCy[physId] = 0;
     dyn.activeSlot[physId] = -1;
     dyn.islandRoot[physId] = -1;
     dyn.linkNeighborOffset[physId] = 0;
@@ -981,8 +1032,7 @@ export function writeLivePolygon(body, src, floatCount) {
         shape.boundingRadius = br;
         body.radius = br;
         bindLivePolyView(shape, slab.shapeVertPool, slab.shapeNormPool, vo, floatCount);
-        body._broadphaseDirty = true;
-        stampKineticBodyFromEntity(physId, body);
+        syncPolygonSlabBounds(physId);
         return shape;
     }
     const off = writePolygonIntoPreInsert(body, src, floatCount);
@@ -990,7 +1040,6 @@ export function writeLivePolygon(body, src, floatCount) {
     shape.boundingRadius = br;
     body.radius = br;
     bindLivePolyView(shape, preInsertVerts.buf, preInsertNorms.buf, off, floatCount);
-    body._broadphaseDirty = true;
     return shape;
 }
 export function ensureLivePolygonCapacity(body, floatCount) {
@@ -1602,61 +1651,24 @@ function obbWorldAabbF32(buf, o, cx, cy, hx, hy, cos, sin) {
     buf[o + 2] = maxX;
     buf[o + 3] = maxY;
 }
-function entityWorldAabbFromShapeF32(buf, o, entity) {
-    const x = entity.x;
-    const y = entity.y;
-    const angle = readEntityFacing(entity);
-    if (collisionPartsList(entity)) {
-        computeCompoundLocalBoundsF32(ENGINE_F32, P_AABB_A, entity.collisionParts);
-        const hx = (ENGINE_F32[P_AABB_A + 2] - ENGINE_F32[P_AABB_A]) * 0.5;
-        const hy = (ENGINE_F32[P_AABB_A + 3] - ENGINE_F32[P_AABB_A + 1]) * 0.5;
-        const localCx = (ENGINE_F32[P_AABB_A] + ENGINE_F32[P_AABB_A + 2]) * 0.5;
-        const localCy = (ENGINE_F32[P_AABB_A + 1] + ENGINE_F32[P_AABB_A + 3]) * 0.5;
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        const cx = x + localCx * cos - localCy * sin;
-        const cy = y + localCx * sin + localCy * cos;
-        obbWorldAabbF32(buf, o, cx, cy, hx, hy, cos, sin);
-        return;
-    }
-    const shape = entity.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-        const r = shape.radius;
-        buf[o] = x - r;
-        buf[o + 1] = y - r;
-        buf[o + 2] = x + r;
-        buf[o + 3] = y + r;
-        return;
-    }
-    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-        convexFootprintHalfExtents(ENGINE_F32, P_VEC_A, shape.vertices);
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        obbWorldAabbF32(buf, o, x, y, ENGINE_F32[P_VEC_A], ENGINE_F32[P_VEC_A + 1], cos, sin);
-        return;
-    }
-    throw new Error(`entityWorldAabbFromShapeF32: unknown shapeTypeId ${shape?.shapeTypeId}`);
-}
-export function entityWorldAabbF32(buf, o, entity) {
-    const physId = entity._physId;
+function entityWorldAabbFromSlabF32(buf, o, eid) {
     const slab = kineticDynamicSlab;
-    if (physId !== undefined && physId >= 0) {
-        if (slab.shapeKind[physId] === SHAPE_TYPE_CIRCLE) {
-            const cx = slab.x[physId];
-            const cy = slab.y[physId];
-            const r = slab.r[physId];
-            buf[o] = cx - r;
-            buf[o + 1] = cy - r;
-            buf[o + 2] = cx + r;
-            buf[o + 3] = cy + r;
-            return;
-        }
-        if (slab.shapeKind[physId] !== 0 || slab.partCount[physId] > 1) {
-            obbWorldAabbF32(buf, o, slab.x[physId], slab.y[physId], slab.hx[physId], slab.hy[physId], slab.cos[physId], slab.sin[physId]);
-            return;
-        }
+    if (slab.partGeomOffset[eid] < 0) throw new Error(`entityWorldAabbFromSlabF32: eid ${eid} has no stamped slab geometry`);
+    if (slab.shapeKind[eid] === SHAPE_TYPE_CIRCLE) {
+        const cx = slab.x[eid];
+        const cy = slab.y[eid];
+        const r = slab.r[eid];
+        buf[o] = cx - r;
+        buf[o + 1] = cy - r;
+        buf[o + 2] = cx + r;
+        buf[o + 3] = cy + r;
+        return;
     }
-    entityWorldAabbFromShapeF32(buf, o, entity);
+    slabObbWorldCenterF32(eid);
+    obbWorldAabbF32(buf, o, ENGINE_F32[P_VEC_B], ENGINE_F32[P_VEC_B + 1], slab.hx[eid], slab.hy[eid], slab.cos[eid], slab.sin[eid]);
+}
+export function entityWorldAabbF32(buf, o, eid) {
+    entityWorldAabbFromSlabF32(buf, o, eid);
 }
 /** @param {number} extent */
 export function neighborQueryPadForExtent(extent) {
@@ -1670,11 +1682,8 @@ export function entityCollisionSpan(entity) {
     }
     return entity.shape.getBoundingRadius();
 }
-export function markBroadphaseDirty(entity) {
-    entity._broadphaseDirty = true;
-}
-export function entityContainedInAabbF32(entity, buf, o) {
-    entityWorldAabbF32(ENGINE_F32, P_AABB_A, entity);
+export function entityContainedInAabbF32(eid, buf, o) {
+    entityWorldAabbF32(ENGINE_F32, P_AABB_A, eid);
     return buf[o] <= ENGINE_F32[P_AABB_A] && buf[o + 1] <= ENGINE_F32[P_AABB_A + 1] && buf[o + 2] >= ENGINE_F32[P_AABB_A + 2] && buf[o + 3] >= ENGINE_F32[P_AABB_A + 3];
 }
 export function isKinematicallyActiveSlab(physId) {
@@ -1740,19 +1749,13 @@ export function snapshotKineticBodySlab(eids, count = eids.length) {
         const entity = entityRefs[eid];
         if (!entity) continue;
         normalizeKineticBody(entity);
-        stampKineticBodyFromEntity(eid, entity);
+        seedKineticBodyShapeFromBag(eid, entity);
+        syncKineticBodySlabPose(eid);
     }
 }
 export function refreshActiveKineticBodySlabPose() {
     const slab = kineticDynamicSlab;
-    for (let i = 0; i < slab.activePhysCount; i++) {
-        const physId = slab.activePhysIds[i];
-        if (slab.shapeKind[physId] !== SHAPE_TYPE_CIRCLE) {
-            const angle = entityFacing[physId];
-            slab.cos[physId] = Math.cos(angle);
-            slab.sin[physId] = Math.sin(angle);
-        }
-    }
+    for (let i = 0; i < slab.activePhysCount; i++) syncKineticBodySlabPose(slab.activePhysIds[i]);
 }
 export function allowsKineticCollisionPairOrderSlab(physIdA, physIdB) {
     if (physIdA === physIdB) return false;
@@ -3536,7 +3539,7 @@ function portalTeleportHandler(eid) {
     entityVy[eid] = 0;
     entityW[eid] = 0;
     clearGroundRollDrive(eid);
-    snapshotKineticBodySlab([eid], 1);
+    syncKineticBodySlabPose(eid);
     const eg = t.spatialFrame.entityGrid;
     if (eg) {
         eg.remove(eid);

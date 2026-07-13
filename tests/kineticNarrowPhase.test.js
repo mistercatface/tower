@@ -10,7 +10,7 @@ import { KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
-import { kineticPairBuffer } from "../Core/engineMemory.js";
+import { kineticPairBuffer, kineticDynamicSlab } from "../Core/engineMemory.js";
 function largeBall(x, y) {
     const prop = new WorldProp(x, y, "ball", 0);
     setCirclePropRadius(prop, 7);

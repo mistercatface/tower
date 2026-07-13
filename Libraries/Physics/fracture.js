@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
-import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, markBroadphaseDirty, kineticFootprintArea, applyVelocityDamping, snapshotKineticBodySlab, normalizeKineticBody, stampKineticBodyFromEntity, collisionPartsList, markHitCompoundParts, primitiveDragFriction, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
+import { readEntityFacing, wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFriction, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
 import { kineticDynamicSlab, kineticStaticSlab, kineticDebrisSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_KINETIC_DEBRIS, MAX_PENDING_WALL_BREAKS, MAX_DEFERRED_FRACTURES, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, viewBoundsBuf, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
@@ -653,7 +653,6 @@ class KineticDebrisStore {
             integrated.push(body._physId);
         }
         if (!integrated.length) return;
-        snapshotKineticBodySlab(integrated, integrated.length);
         spatialFrame.reindexKineticBodies(integrated, integrated.length);
         integrated.length = 0;
     }
@@ -1011,7 +1010,6 @@ export class FractureEngine {
         prop.footprintArea = geometry.footprintArea;
         prop.radius = geometry.boundingRadius;
         invalidatePropFootprintKey(prop);
-        markBroadphaseDirty(prop);
         normalizeKineticBody(prop);
     }
     static applyPropFractureGeometryFromDebris(prop, stores, debrisIndex) {
@@ -1026,7 +1024,6 @@ export class FractureEngine {
         prop.footprintArea = debris.footprintArea[debrisIndex];
         prop.radius = debris.boundingRadius[debrisIndex];
         invalidatePropFootprintKey(prop);
-        markBroadphaseDirty(prop);
         normalizeKineticBody(prop);
     }
     static propFractureSpan(prop) {

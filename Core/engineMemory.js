@@ -358,6 +358,8 @@ export const kineticDynamicSlab = {
     r: new Float32Array(MAX_PHYS_BODIES),
     hx: new Float32Array(MAX_PHYS_BODIES),
     hy: new Float32Array(MAX_PHYS_BODIES),
+    compoundLocalCx: new Float32Array(MAX_PHYS_BODIES),
+    compoundLocalCy: new Float32Array(MAX_PHYS_BODIES),
     cos: new Float32Array(MAX_PHYS_BODIES),
     sin: new Float32Array(MAX_PHYS_BODIES),
     partGeomOffset: new Int32Array(MAX_PHYS_BODIES),

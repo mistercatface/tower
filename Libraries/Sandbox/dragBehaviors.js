@@ -1,6 +1,6 @@
-import propCatalog from "../../Assets/props/index.js";
+import { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
-import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityVx, entityVy, entityW, entityR, entityFlags, entityFacing, entityRefs, entityGameId } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityVx, entityVy, entityW, entityR, entityFlags, entityFacing, entityRefs, entityGameId, entityAlive, entityRenderKeyId } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
 import { clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics, physicsSettings } from "../Physics/physics.js";
@@ -72,10 +72,10 @@ export function resolveDragInteractionBehaviorId(asset, dragInteractionMode = DE
 }
 export function resolveDragInteractionBehavior(eid, state, behaviorById) {
     if (!entitySupportsDragInteraction(eid)) return null;
+    if (!entityAlive[eid]) return null;
     const mode = state.sandbox.dragInteractionMode ?? DEFAULT_DRAG_INTERACTION_MODE;
-    const ref = entityRefs[eid];
-    if (!ref) return null;
-    const behaviorId = resolveDragInteractionBehaviorId(propCatalog[ref.type], mode);
+    const asset = propCatalogByRenderKeyId[entityRenderKeyId[eid]];
+    const behaviorId = resolveDragInteractionBehaviorId(asset, mode);
     return behaviorId ? (behaviorById.get(behaviorId) ?? null) : null;
 }
 function entityCanStartDrag(state, eid) {
@@ -156,8 +156,7 @@ export function createDragLaunchBehavior(state) {
         stampOverlayCircleStroke(slab, aimAnchorX, aimAnchorY, 7, OVERLAY_STYLE_DRAG_ANCHOR, hue);
         if (aimPower <= 0) return;
         const grid = state.obstacleGrid;
-        const ref = entityRefs[eid];
-        const travelDist = estimateRollingTravelDistance(aimPower, ref.strategy);
+        const travelDist = estimateRollingTravelDistance(aimPower, eid);
         if (!computeCircleAimLineSegmentInto(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, aimAnchorX, aimAnchorY, radius, aimShotNx, aimShotNy, travelDist, dragLaunchMaxRayDist(grid), grid)) return;
         const aimO = ENGINE_BOUNDS_BASE + B_TMP;
         stampOverlayAimSegment(slab, ENGINE_F32[aimO], ENGINE_F32[aimO + 1], ENGINE_F32[aimO + 2], ENGINE_F32[aimO + 3], hue);
@@ -219,7 +218,7 @@ function resolveGrabDragAnchor(eid, world) {
     const py = entityY[eid];
     const ref = entityRefs[eid];
     if (!ref) return;
-    const asset = propCatalog[ref.type];
+    const asset = propCatalogByRenderKeyId[entityRenderKeyId[eid]];
     const verts = ref.drawOutline?.length >= 6 ? ref.drawOutline : ref.shape?.vertices;
     if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false && verts?.length >= 6) {
         const facing = entityFacing[eid];
