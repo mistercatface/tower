@@ -1,6 +1,6 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyVo, entityStaticKeyAttachment, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
 import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
@@ -673,17 +673,6 @@ function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) 
         if (childDraw) childDraw(ctx, child, viewport, flatPresentation);
     }
 }
-const MAX_ENTITIES = 4096;
-const staticKeyFacing = new Float32Array(MAX_ENTITIES);
-const staticKeyVo = new Int32Array(MAX_ENTITIES);
-const staticKeyAttachment = new Int32Array(MAX_ENTITIES);
-const staticKeyPhysicsKey = new Int32Array(MAX_ENTITIES);
-const staticKeyCustom = new Int32Array(MAX_ENTITIES);
-const staticKeyRoll = new Int32Array(MAX_ENTITIES);
-const cachedStaticKey = new BigUint64Array(MAX_ENTITIES);
-export function invalidatePropStaticKey(eid) {
-    cachedStaticKey[eid] = 0n;
-}
 export function getPropStaticKey(eid, renderKey) {
     const prop = entityRefs[eid];
     const facing = readEntityFacing(prop);
@@ -694,19 +683,19 @@ export function getPropStaticKey(eid, renderKey) {
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
     const customId = typeof customKey === "number" ? customKey & SPRITE_KEY_PART_MASK : hashSpriteKeyString(customKey);
-    if (staticKeyFacing[eid] === facing && staticKeyVo[eid] === voId && staticKeyAttachment[eid] === attachmentId && staticKeyPhysicsKey[eid] === physicsId && staticKeyCustom[eid] === customId && (!rolls || staticKeyRoll[eid] === rollId) && cachedStaticKey[eid] !== 0n) return cachedStaticKey[eid];
+    if (entityStaticKeyFacing[eid] === facing && entityStaticKeyVo[eid] === voId && entityStaticKeyAttachment[eid] === attachmentId && entityStaticKeyPhysicsKey[eid] === physicsId && entityStaticKeyCustom[eid] === customId && (!rolls || entityStaticKeyRoll[eid] === rollId) && entityCachedStaticKey[eid] !== 0n) return entityCachedStaticKey[eid];
     const k1 = BigInt(resolveRenderKeyId(renderKey));
     const k2 = BigInt(customId);
     const k3 = BigInt(physicsId & SPRITE_KEY_PART_MASK);
     const k4 = BigInt(attachmentId & SPRITE_KEY_PART_MASK);
     const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
-    staticKeyFacing[eid] = facing;
-    staticKeyVo[eid] = voId;
-    staticKeyAttachment[eid] = attachmentId;
-    staticKeyPhysicsKey[eid] = physicsId;
-    staticKeyCustom[eid] = customId;
-    if (rolls) staticKeyRoll[eid] = rollId;
-    cachedStaticKey[eid] = staticKey;
+    entityStaticKeyFacing[eid] = facing;
+    entityStaticKeyVo[eid] = voId;
+    entityStaticKeyAttachment[eid] = attachmentId;
+    entityStaticKeyPhysicsKey[eid] = physicsId;
+    entityStaticKeyCustom[eid] = customId;
+    if (rolls) entityStaticKeyRoll[eid] = rollId;
+    entityCachedStaticKey[eid] = staticKey;
     return staticKey;
 }
 function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flatPresentation = false, beforeBake = null) {

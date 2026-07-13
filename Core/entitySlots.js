@@ -1,7 +1,6 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
 import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE, PROP_RENDER_MODE_3D, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "./engineEnums.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRenderKeyId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getProfileId, entityFractureCooldown, entityStateTimer } from "./engineMemory.js";
-import { invalidatePropStaticKey } from "../Libraries/Canvas/canvas.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityKind, entityFlags, entityAlive, entityGameId, entityRenderKeyId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getProfileId, entityFractureCooldown, entityStateTimer, entityCachedStaticKey } from "./engineMemory.js";
 let nextEid = 0;
 const eidFreeList = [];
 export function allocateEntityEid() {
@@ -43,7 +42,7 @@ export function releaseEntityEid(eid) {
     entityR[eid] = 0;
     entityAgeMs[eid] = 0;
     entityRefs[eid] = null;
-    invalidatePropStaticKey(eid);
+    entityCachedStaticKey[eid] = 0n;
     entityGridTileIdx[eid] = -1;
     kineticDynamicSlab.rollDriveKind[eid] = -1;
     // Clear new ECS columns
