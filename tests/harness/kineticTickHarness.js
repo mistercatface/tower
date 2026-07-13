@@ -1,10 +1,10 @@
-import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
+import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_KIND_WORLD_PROP, ENTITY_KIND_DEBRIS } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticSlabSlot, computeFootprintIdFromSlab } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater, releaseEntityEid, claimEntityEid } from "../../Core/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, entityFractureCooldown, entityFootprintId, entityGameId } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFadeOutMs, entityFadeDurationMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, entityKind, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, entityFractureCooldown, entityFootprintId, entityGameId } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 export function snapshotKineticBodySlab(eids, count = eids.length) {
     for (let i = 0; i < count; i++) {
@@ -182,10 +182,11 @@ export function assignPhysIdWithPose(body, physId) {
     const rqz = body.rollQz ?? body._spawnRollQz ?? 0;
     const sleeping = body.isSleeping ? 1 : 0;
     const sleepFrames = body._sleepFrames ?? 0;
-    const ageMs = body.isKineticDebris ? 0 : (body.ageMs ?? 0);
+    const isDebris = body._bindKind === ENTITY_KIND_DEBRIS;
+    const ageMs = isDebris ? 0 : (body.ageMs ?? 0);
     // Evaluate ECS properties before body._physId is set
     const height = body.height ?? 0;
-    const alpha = body.isKineticDebris ? 1.0 : (body.alpha ?? 1.0);
+    const alpha = isDebris ? 1.0 : (body.alpha ?? 1.0);
     const shapeKind = body.shape?.shapeTypeId ?? 0;
     const wallProfileId = body.wallChunkProfileId;
     const wallHeightPx = body.wallChunkHeightPx ?? 0;
@@ -206,6 +207,7 @@ export function assignPhysIdWithPose(body, physId) {
     noteEntityEidHighWater(physId);
     entityRefs[physId] = body;
     entityAlive[physId] = 1;
+    entityKind[physId] = isDebris ? ENTITY_KIND_DEBRIS : ENTITY_KIND_WORLD_PROP;
     entityX[physId] = x;
     entityY[physId] = y;
     entityVx[physId] = vx;
@@ -233,12 +235,15 @@ export function assignPhysIdWithPose(body, physId) {
     entityWallHeightPx[physId] = wallHeightPx;
     entityFractureCooldown[physId] = fractureCooldown;
     entityFootprintId[physId] = computeFootprintIdFromSlab(physId);
+    const fadeOutMs = body.strategy?.fadeOutMs;
+    entityFadeOutMs[physId] = fadeOutMs === undefined ? -1 : fadeOutMs;
+    entityFadeDurationMs[physId] = body.strategy?.fadeOutDurationMs ?? 1000;
     if (body.strategy?.physicsRow != null) kineticStaticSlab.physicsRow[physId] = body.strategy.physicsRow;
     if (body.id != null) {
         kineticStaticSlab.entityId[physId] = body.id;
         entityGameId[physId] = body.id;
     }
-    if (!body.isKineticDebris) {
+    if (!isDebris) {
         attachPoseAccessors(body);
         attachSleepAccessors(body);
     }

@@ -4,9 +4,10 @@ import { describe, it } from "node:test";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
-import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { createFractureWorld, setupPropForFracture, spawnFractureShards, liveWorldPropCount } from "./harness/fractureHarness.js";
+import { kineticDynamicSlab, entityRefs } from "../Core/engineMemory.js";
+import { createFractureWorld, setupPropForFracture, spawnFractureShards, liveWorldPropCount, assertDebrisKind } from "./harness/fractureHarness.js";
 import { ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
+import { releaseEntityEid } from "../Core/entitySlots.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
     it("EntityRegistry membershipGen increments once for batch operations", () => {
@@ -33,12 +34,16 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
         const originalBodies = result.shards.slice();
-        assert.ok(result.shards.every((s) => s.isKineticDebris));
+        assert.ok(result.shards.every((s) => assertDebrisKind(s)));
         assert.equal(liveWorldPropCount(world.entityRegistry), 0);
 
-        const spatialFrame = { evictKineticProp() {} };
+        const spatialFrame = { evictKineticEid(eid) {
+            const prop = entityRefs[eid];
+            if (prop) delete prop._physId;
+            releaseEntityEid(eid);
+        } };
         for (let i = result.shards.length - 1; i >= 0; i--) {
-            world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
+            world.fractureEngine.debris.removeEid(result.shards[i]._physId, spatialFrame);
         }
 
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30, world.fractureEngine));
@@ -66,7 +71,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         assert.equal(propC._physId, propA._physId + 2);
 
         const propNew = new WorldProp(300, 0, "box", 0);
-        frame.admitKineticProps([propNew], world);
+        frame.admitKineticEids([propNew._physId], 1, world);
 
         assert.equal(propNew._physId, propC._physId + 1);
     });
@@ -79,7 +84,7 @@ describe("Shatter / Debris Performance Fixes", () => {
         frame.begin(world);
         const idA = prop._physId;
         const propB = new WorldProp(100, 0, "box", 0);
-        frame.admitKineticProps([propB], world);
+        frame.admitKineticEids([propB._physId], 1, world);
         assert.equal(propB._physId, idA + 1);
         world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, propB);
         frame.begin(world);

@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { createFractureWorld, removeEditorPropFromWorld, setupPropForFracture, spawnFractureShards, liveWorldPropCount } from "./harness/fractureHarness.js";
+import { createFractureWorld, removeEditorPropFromWorld, setupPropForFracture, spawnFractureShards, liveWorldPropCount, assertDebrisKind } from "./harness/fractureHarness.js";
+import { entityRefs } from "../Core/engineMemory.js";
+import { releaseEntityEid } from "../Core/entitySlots.js";
 
 describe("fracture debris slab ownership", () => {
     it("editor spawn and delete does not feed debris slab pool", () => {
@@ -17,7 +19,7 @@ describe("fracture debris slab ownership", () => {
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
         for (const shard of result.shards) {
-            assert.equal(shard.isKineticDebris, true);
+            assert.ok(assertDebrisKind(shard));
             assert.ok(shard.id !== editorId);
         }
         assert.equal(liveWorldPropCount(world.entityRegistry), 0);
@@ -30,9 +32,13 @@ describe("fracture debris slab ownership", () => {
         const result = spawnFractureShards(world, prop, 30);
         assert.ok(result);
         const originalBodies = result.shards.slice();
-        const spatialFrame = { evictKineticProp() {} };
+        const spatialFrame = { evictKineticEid(eid) {
+            const prop = entityRefs[eid];
+            if (prop) delete prop._physId;
+            releaseEntityEid(eid);
+        } };
         for (let i = result.shards.length - 1; i >= 0; i--) {
-            world.fractureEngine.debris.remove(result.shards[i], spatialFrame);
+            world.fractureEngine.debris.removeEid(result.shards[i]._physId, spatialFrame);
         }
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30, world.fractureEngine));
         const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop);

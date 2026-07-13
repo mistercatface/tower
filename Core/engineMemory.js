@@ -269,6 +269,10 @@ entityRollQw.fill(1);
 // Collision span + lifecycle meta
 export const entityR = new Float32Array(MAX_ENTITIES);
 export const entityAgeMs = new Float32Array(MAX_ENTITIES);
+export const entityFadeOutMs = new Float32Array(MAX_ENTITIES);
+export const entityFadeDurationMs = new Float32Array(MAX_ENTITIES);
+entityFadeOutMs.fill(-1);
+entityFadeDurationMs.fill(1000);
 export const entityKind = new Uint8Array(MAX_ENTITIES);
 export const entityFlags = new Uint32Array(MAX_ENTITIES);
 export const entityAlive = new Uint8Array(MAX_ENTITIES);

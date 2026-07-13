@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { getBaseSpriteCacheId, applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
-import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, liveWorldPropCount } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, liveWorldPropCount, assertDebrisKind, stubEvictKineticEid } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
@@ -89,8 +89,8 @@ describe("fracture debris slab spawn", () => {
         wall.wallChunkProfileId = "stale_profile";
         wall.wallChunkHeightPx = 64;
         wall.height = 48;
-        store._pushBody(wall);
-        store.remove(wall, { evictKineticProp() {} });
+        store._addLiveEid(wall._physId);
+        store.removeEid(wall._physId, { evictKineticEid: stubEvictKineticEid });
         const glass = store.acquireBody("box", 10, 10, 0);
         assert.equal(glass.wallChunkProfileId, undefined);
         assert.equal(glass.wallChunkHeightPx, undefined);
@@ -103,12 +103,12 @@ describe("fracture debris slab spawn", () => {
         setupPropForFracture(prop, 32, 32, 0);
         addWorldPropsToState(world, [prop]);
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 50, 50, 30, world.fractureEngine));
-        const spatialFrame = { evictKineticProp() {}, admitKineticProps() {} };
+        const spatialFrame = { evictKineticEid: stubEvictKineticEid, admitKineticEids() {} };
         const shards = FractureEngine.commitFractureResult(world, prop, spatialFrame);
         assert.ok(shards.length >= 2);
-        assert.ok(shards.every((s) => s.isKineticDebris));
+        assert.ok(shards.every((s) => assertDebrisKind(s)));
         assert.equal(liveWorldPropCount(world.entityRegistry), 0);
-        assert.equal(world.fractureEngine.debris.list().length, shards.length);
+        assert.equal(world.fractureEngine.debris.liveCount, shards.length);
     });
 
     it("spawnFractureShards leaves registry empty", () => {
@@ -131,6 +131,6 @@ describe("fracture debris slab spawn", () => {
         setupPropForFracture(pane, 32, 32);
         const result = spawnFractureShards(world, pane, 30);
         assert.ok(result);
-        assert.ok(result.shards.every((s) => s.isKineticDebris));
+        assert.ok(result.shards.every((s) => assertDebrisKind(s)));
     });
 });

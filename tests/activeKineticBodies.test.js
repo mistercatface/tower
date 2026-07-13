@@ -111,7 +111,8 @@ describe("active kinetic bodies", () => {
         frame._pushKineticEid(anchor._physId);
         noteEntityEidHighWater(0);
         const fragment = mockCircleProp(24, 0, 8);
-        frame.admitKineticProps([fragment], mockState);
+        assignPhysIdWithPose(fragment, 1);
+        frame.admitKineticEids([fragment._physId], 1, mockState);
         const nearby = new Int32Array(16);
         const count = frame.entityGrid.collectNearbyEidsInto(anchor._physId, nearby, nearby.length);
         let found = false;
@@ -130,7 +131,8 @@ describe("active kinetic bodies", () => {
         frame._pushKineticEid(anchor._physId);
         noteEntityEidHighWater(0);
         const fragment = mockCircleProp(240, 180, 8);
-        frame.admitKineticProps([fragment], mockState);
+        assignPhysIdWithPose(fragment, 1);
+        frame.admitKineticEids([fragment._physId], 1, mockState);
         assert.equal(kineticDynamicSlab.x[fragment._physId], 240);
         assert.equal(kineticDynamicSlab.y[fragment._physId], 180);
         assert.equal(fragment.x, 240);
@@ -146,7 +148,8 @@ describe("active kinetic bodies", () => {
         frame._pushKineticEid(mover._physId);
         noteEntityEidHighWater(0);
         const witness = mockCircleProp(200, 0, 8);
-        frame.admitKineticProps([witness], mockState);
+        assignPhysIdWithPose(witness, 1);
+        frame.admitKineticEids([witness._physId], 1, mockState);
         {
             const nearby = new Int32Array(16);
             const count = frame.entityGrid.collectNearbyEidsInto(witness._physId, nearby, nearby.length);
@@ -156,7 +159,7 @@ describe("active kinetic bodies", () => {
         }
         entityX[mover._physId] = 200;
         mover.x = 200;
-        frame.admitKineticProps([mover], mockState);
+        frame.admitKineticEids([mover._physId], 1, mockState);
         {
             const nearby = new Int32Array(16);
             const count = frame.entityGrid.collectNearbyEidsInto(witness._physId, nearby, nearby.length);

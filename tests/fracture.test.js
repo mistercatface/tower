@@ -10,11 +10,11 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
 }
 import { FRACTURE_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
 import { rotateXYIntoF32 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, kineticStaticSlab, M_VEC_A, entityRefs } from "../Core/engineMemory.js";
+import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, kineticStaticSlab, M_VEC_A, entityRefs, entityFractureCooldown } from "../Core/engineMemory.js";
 import { satPolygonPolygonF32, PolygonShape } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
-import { liveFracturePropCount, liveWorldPropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";
+import { liveFracturePropCount, liveWorldPropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries, assertDebrisKind } from "./harness/fractureHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
@@ -225,23 +225,25 @@ describe("fracture", () => {
         assert.ok(result.shards.length >= 2);
         
         // Admit shards into the tick/frame/world
-        tick.frame.admitKineticProps(result.shards, tick.world);
+        const shardEids = result.shards.map((s) => s._physId);
+        tick.frame.admitKineticEids(shardEids, shardEids.length, tick.world);
         
         // Check first shard's properties and capability
         const shard = result.shards[0];
         assert.ok(shard._physId !== undefined);
-        entityRefs[shard._physId] = shard;
+        const shardEid = shard._physId;
+        entityRefs[shardEid] = shard;
         
         shard._fractureCooldown = 0;
         
         // Trigger a contact fracture on the shard
-        tick.world.fractureEngine.queueFractureKineticContact(shard._physId, 999, shard.x, shard.y, 200);
+        tick.world.fractureEngine.queueFractureKineticContact(shardEid, 999, shard.x, shard.y, 200);
         
         // Flush it
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         
         // Verify it was shattered again (removed or cooldown set)
-        assert.ok(!tick.world.fractureEngine.debris._bodies.includes(shard) || shard._fractureCooldown > 0);
+        assert.ok(!tick.world.fractureEngine.debris.hasLiveEid(shardEid) || entityFractureCooldown[shardEid] > 0);
     });
     it("shatterPolygon splits non-rect shard geometry", () => {
         const parentShards = shatterFootprint(10, 6, 1, 0, 25);
@@ -309,7 +311,7 @@ describe("fracture", () => {
         assert.ok(result);
         assert.ok(result.shards.length >= 2);
         for (const frag of result.shards) {
-            assert.ok(frag.isKineticDebris);
+            assert.ok(assertDebrisKind(frag));
             assert.ok(frag._fractureCooldown > 0);
         }
         assert.equal(liveWorldPropCount(world.entityRegistry), 0);

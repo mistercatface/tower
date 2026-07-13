@@ -1,14 +1,22 @@
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { boxLocalFootprint } from "../../Libraries/Math/math.js";
-import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT } from "../../Core/engineMemory.js";
+import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, entityRefs, entityKind } from "../../Core/engineMemory.js";
 import { EntityRegistry } from "../../GameState/EntityRegistry.js";
-import { ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
+import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_DEBRIS } from "../../Core/engineEnums.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { WorldProp } from "../../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../../Libraries/Props/props.js";
 import { assignPhysIdWithPose } from "./kineticTickHarness.js";
 import { createKineticSession, writeLivePolygon, normalizeKineticBody } from "../../Libraries/Physics/physics.js";
+import { releaseEntityEid } from "../../Core/entitySlots.js";
+
+function stubEvictKineticEid(eid) {
+    const prop = entityRefs[eid];
+    if (prop) delete prop._physId;
+    releaseEntityEid(eid);
+}
+export { stubEvictKineticEid };
 
 export function createFractureWorld(overrides = {}) {
     const grid = new WorldObstacleGrid(16);
@@ -18,7 +26,7 @@ export function createFractureWorld(overrides = {}) {
         entityRegistry: new EntityRegistry(),
         kinetic: createKineticSession(),
         sandbox: new SandboxWorldState(),
-        spatialFrame: { evictKineticProp() {}, admitKineticProps() {} },
+        spatialFrame: { evictKineticEid: stubEvictKineticEid, admitKineticEids() {} },
         ...overrides,
     };
     world.fractureEngine = new FractureEngine(world);
@@ -43,17 +51,27 @@ export function collectLiveWorldProps(registry) {
     return props;
 }
 
+export function liveDebrisBodies(store) {
+    const out = [];
+    for (let i = 0; i < store.liveCount; i++) out.push(entityRefs[store.liveEids[i]]);
+    return out;
+}
+
+export function assertDebrisKind(body) {
+    return entityKind[body._physId] === ENTITY_KIND_DEBRIS;
+}
+
 export function liveFracturePropCount(world) {
     let count = 0;
     world.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
         if (prop.isDead) return;
         if (prop.type === "box") count++;
     });
-    const debris = world.fractureEngine?.debris?.list();
-    if (debris) {
-        for (let i = 0; i < debris.length; i++) {
-            const body = debris[i];
-            if (!body.isDead && body.type === "box") count++;
+    const store = world.fractureEngine?.debris;
+    if (store) {
+        for (let i = 0; i < store.liveCount; i++) {
+            const body = entityRefs[store.liveEids[i]];
+            if (body && !body.isDead && body.type === "box") count++;
         }
     }
     return count;
@@ -130,7 +148,7 @@ export function spawnFractureShards(world, prop, impactForce = 30, hitX = 0, hit
 
 export function removeEditorPropFromWorld(world, prop) {
     world.entityRegistry.unregister(prop);
-    world.spatialFrame.evictKineticProp(prop, world.kinetic);
+    world.spatialFrame.evictKineticEid(prop._physId, world.kinetic);
     prop.isDead = true;
 }
 

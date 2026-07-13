@@ -7,7 +7,7 @@ import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { ENGINE_F32, F_OUT_DEBRIS_COUNT, F_OUT_REMNANT } from "../Core/engineMemory.js";
 import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
 import { checkPairAtSlabPose, resolveKineticContactPass } from "./harness/kineticContactHarness.js";
-import { createFractureWorld } from "./harness/fractureHarness.js";
+import { createFractureWorld, assertDebrisKind } from "./harness/fractureHarness.js";
 import { addWorldPropsToState } from "../GameState/EntityRegistry.js";
 
 describe("concave footprint compounds", () => {
@@ -76,7 +76,7 @@ describe("concave footprint compounds", () => {
         const spatialFrame = world.spatialFrame;
         const shards = FractureEngine.commitFractureResult(world, star, spatialFrame);
         assert.ok(shards.length >= partsBefore);
-        assert.ok(shards.every((s) => s.isKineticDebris));
+        assert.ok(shards.every((s) => assertDebrisKind(s)));
         assert.equal(world.entityRegistry.getLive(star.id), null);
     });
 });

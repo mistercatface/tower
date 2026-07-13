@@ -1,9 +1,9 @@
-import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { removeWorldPropEid } from "../../GameState/EntityRegistry.js";
 import { allocateEntityEid, clearWorldPropSpawnPose } from "../../Core/entitySlots.js";
 import propCatalog from "../../Assets/props/index.js";
 import { wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFrictionEid, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
-import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags } from "../../Core/engineMemory.js";
-import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_FLAG_PENDING_FRACTURE } from "../../Core/engineEnums.js";
+import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, entityR, entityKind, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags, GrowI32, ensureGrowI32 } from "../../Core/engineMemory.js";
+import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_FLAG_PENDING_FRACTURE, ENTITY_KIND_DEBRIS } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidateEntityFootprint, resolveAssetPropHeight } from "../Props/props.js";
@@ -53,7 +53,7 @@ let kineticDebrisAllocCount = 0;
 let kineticDebrisNextId = 0x50000000;
 const spawnedScratch = [];
 const voxelScratch = [];
-const admitScratch = [];
+const admitEidScratch = new GrowI32(32);
 let fractureRandBase = 0;
 let fractureRandCall = 0;
 function seedFractureRand(worldHitX, worldHitY, impactForce, salt = 0) {
@@ -258,7 +258,6 @@ function dropShatterSeed(seeds, seedIndex, seedCount) {
 }
 class KineticDebrisBody {
     constructor(store) {
-        this.isKineticDebris = true;
         this._store = store;
         this._physId = undefined;
         this.id = 0;
@@ -271,7 +270,6 @@ class KineticDebrisBody {
         this.height = undefined;
         this.wallChunkProfileId = undefined;
         this.wallChunkHeightPx = undefined;
-        this._listIndex = -1;
     }
     get isDead() {
         return (entityFlags[this._physId] & ENTITY_FLAG_DEAD) !== 0;
@@ -365,16 +363,30 @@ class KineticDebrisStore {
     constructor(engine, world) {
         this.engine = engine;
         this.world = world;
-        this._bodies = [];
+        this.liveEids = new Int32Array(64);
+        this.liveCount = 0;
         this._integratedScratch = [];
         this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, footprintArea: undefined, radius: 0, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined };
     }
-    list() {
-        return this._bodies;
+    _ensureLiveCap(n) {
+        ensureGrowI32(this, "liveEids", n, this.liveCount);
     }
-    _pushBody(body) {
-        body._listIndex = this._bodies.length;
-        this._bodies.push(body);
+    _addLiveEid(eid) {
+        this._ensureLiveCap(this.liveCount + 1);
+        this.liveEids[this.liveCount++] = eid;
+    }
+    _removeLiveEid(eid) {
+        const live = this.liveEids;
+        for (let i = 0; i < this.liveCount; i++) {
+            if (live[i] !== eid) continue;
+            live[i] = live[--this.liveCount];
+            return;
+        }
+    }
+    hasLiveEid(eid) {
+        const live = this.liveEids;
+        for (let i = 0; i < this.liveCount; i++) if (live[i] === eid) return true;
+        return false;
     }
     acquireBody(type, x, y, facing = 0) {
         let body = kineticDebrisFreePool.pop();
@@ -389,6 +401,7 @@ class KineticDebrisStore {
         const asset = propCatalog[type];
         body._physId = allocateEntityEid();
         entityRefs[body._physId] = body;
+        entityKind[body._physId] = ENTITY_KIND_DEBRIS;
         clearWorldPropSpawnPose(body);
         body.height = resolveAssetPropHeight(asset);
         body.wallChunkProfileId = undefined;
@@ -400,7 +413,6 @@ class KineticDebrisStore {
         body.footprintArea = undefined;
         body.radius = 0;
         body._fractureCooldown = 0;
-        body._listIndex = -1;
         body.x = x;
         body.y = y;
         body.vx = 0;
@@ -409,16 +421,11 @@ class KineticDebrisStore {
         body.facing = facing;
         return body;
     }
-    remove(body, spatialFrame) {
-        spatialFrame.evictKineticProp(body, this.world.kinetic);
-        const index = body._listIndex;
-        const last = this._bodies.pop();
-        if (last !== body) {
-            this._bodies[index] = last;
-            last._listIndex = index;
-        }
-        body._listIndex = -1;
-        body.isDead = true;
+    removeEid(eid, spatialFrame) {
+        const body = entityRefs[eid];
+        entityFlags[eid] |= ENTITY_FLAG_DEAD;
+        this._removeLiveEid(eid);
+        spatialFrame.evictKineticEid(eid, this.world.kinetic);
         releaseLivePolygon(body);
         kineticDebrisFreePool.push(body);
     }
@@ -459,12 +466,12 @@ class KineticDebrisStore {
             body.wallChunkHeightPx = parent.wallChunkHeightPx;
             body.height = parent.height;
             copyDebrisPolygonGeometry(body, parent);
-            this._pushBody(body);
+            this._addLiveEid(body._physId);
             wakeKineticBody(body._physId);
-            admitScratch.length = 0;
-            admitScratch.push(body);
-            spatialFrame.admitKineticProps(admitScratch, this.world);
-            admitScratch.length = 0;
+            admitEidScratch.clear();
+            admitEidScratch.push(body._physId);
+            spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
+            admitEidScratch.clear();
             spawnedScratch.length = 0;
             spawnedScratch.push(body);
             return spawnedScratch;
@@ -482,17 +489,20 @@ class KineticDebrisStore {
             body.wallChunkHeightPx = parent.wallChunkHeightPx;
             body.height = parent.height;
             copyDebrisPolygonGeometry(body, parent);
-            this._pushBody(body);
+            this._addLiveEid(body._physId);
             wakeKineticBody(body._physId);
-            admitScratch.length = 0;
-            admitScratch.push(body);
-            spatialFrame.admitKineticProps(admitScratch, this.world);
-            admitScratch.length = 0;
+            admitEidScratch.clear();
+            admitEidScratch.push(body._physId);
+            spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
+            admitEidScratch.clear();
             spawnedScratch.length = 0;
             spawnedScratch.push(body);
             return spawnedScratch;
         }
-        spatialFrame.admitKineticProps(spawned, this.world);
+        admitEidScratch.clear();
+        for (let i = 0; i < spawned.length; i++) admitEidScratch.push(spawned[i]._physId);
+        spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, this.world);
+        admitEidScratch.clear();
         releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
         stores.debris.reset();
         return spawned;
@@ -521,7 +531,8 @@ class KineticDebrisStore {
         const motionVx = ENGINE_F32[F_OUT_MOTION_VX];
         const motionVy = ENGINE_F32[F_OUT_MOTION_VY];
         const motionW = ENGINE_F32[F_OUT_MOTION_W];
-        const fractureBurst = !sourceProp.isKineticDebris && effectiveFracture(sourceProp);
+        const sourceEid = sourceProp._physId;
+        const fractureBurst = !(sourceEid != null && entityKind[sourceEid] === ENTITY_KIND_DEBRIS) && effectiveFracture(sourceProp);
         const burstSalt = fractureBurst ? 991 : 0;
         if (fractureBurst) seedFractureRand(originX, originY, impactForce, burstSalt);
         const wallChunkProfileId = sourceProp.wallChunkProfileId;
@@ -553,7 +564,7 @@ class KineticDebrisStore {
             spawnedScratch.push(body);
         }
         for (let i = 0; i < spawnedScratch.length; i++) {
-            this._pushBody(spawnedScratch[i]);
+            this._addLiveEid(spawnedScratch[i]._physId);
             wakeKineticBody(spawnedScratch[i]._physId);
         }
         return spawnedScratch;
@@ -567,15 +578,16 @@ class KineticDebrisStore {
         const maxY = buf[o + 3];
         const vx = viewport.x;
         const vy = viewport.y;
-        for (let i = 0; i < this._bodies.length; i++) {
-            const body = this._bodies[i];
-            const radius = body.radius;
-            const x = body.x;
-            const y = body.y;
+        const live = this.liveEids;
+        for (let i = 0; i < this.liveCount; i++) {
+            const eid = live[i];
+            const radius = entityR[eid];
+            const x = entityX[eid];
+            const y = entityY[eid];
             if (x + radius < minX || x - radius > maxX || y + radius < minY || y - radius > maxY) continue;
             const dx = x - vx;
             const dy = y - vy;
-            drawQueue.push(drawKindProp, 0, body._physId, dx * dx + dy * dy);
+            drawQueue.push(drawKindProp, 0, eid, dx * dx + dy * dy);
         }
     }
     integrateSpawned(spatialFrame, eids, dtMs) {
@@ -809,7 +821,7 @@ export class FractureEngine {
         const count = deferred.count;
         if (count === 0) return;
         world.entityRegistry.beginMembershipBatch();
-        admitScratch.length = 0;
+        admitEidScratch.clear();
         const stores = this.stores;
         try {
             for (let i = 0; i < count; i++) {
@@ -819,17 +831,17 @@ export class FractureEngine {
                 FractureEngine._currentPropMotion(eid);
                 const shards = this.debris.spawnShardsFromFracture(prop, i);
                 if (!deferred.remnant[i])
-                    if (prop.isKineticDebris) this.debris.remove(prop, spatialFrame);
-                    else removeWorldPropFromState(world, prop, spatialFrame);
-                for (let j = 0; j < shards.length; j++) admitScratch.push(shards[j]);
+                    if (entityKind[eid] === ENTITY_KIND_DEBRIS) this.debris.removeEid(eid, spatialFrame);
+                    else removeWorldPropEid(world, eid, spatialFrame);
+                for (let j = 0; j < shards.length; j++) admitEidScratch.push(shards[j]._physId);
                 releaseDebrisGeomRange(stores, deferred.debrisStart[i], deferred.debrisCount[i]);
             }
-            if (admitScratch.length) spatialFrame.admitKineticProps(admitScratch, world);
+            if (admitEidScratch.used) spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, world);
         } finally {
             world.entityRegistry.endMembershipBatch();
             stores.debris.reset();
             deferredFractureSlab.count = 0;
-            admitScratch.length = 0;
+            admitEidScratch.clear();
         }
     }
     queueFractureKineticContact(eidA, eidB, hitX, hitY, force, nx = 0, ny = 0) {
@@ -874,12 +886,18 @@ export class FractureEngine {
     static commitFractureResult(world, prop, spatialFrame) {
         const remnant = ENGINE_F32[F_OUT_REMNANT] === 1;
         const stores = world.fractureEngine.stores;
-        FractureEngine._currentPropMotion(prop._physId);
+        const sourceEid = prop._physId;
+        FractureEngine._currentPropMotion(sourceEid);
         const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop);
         if (!remnant)
-            if (prop.isKineticDebris) world.fractureEngine.debris.remove(prop, spatialFrame);
-            else removeWorldPropFromState(world, prop, spatialFrame);
-        if (shards.length) spatialFrame.admitKineticProps(shards, world);
+            if (entityKind[sourceEid] === ENTITY_KIND_DEBRIS) world.fractureEngine.debris.removeEid(sourceEid, spatialFrame);
+            else removeWorldPropEid(world, sourceEid, spatialFrame);
+        if (shards.length) {
+            admitEidScratch.clear();
+            for (let i = 0; i < shards.length; i++) admitEidScratch.push(shards[i]._physId);
+            spatialFrame.admitKineticEids(admitEidScratch.buf, admitEidScratch.used, world);
+            admitEidScratch.clear();
+        }
         releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
         stores.debris.reset();
         return shards;

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
-import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { addDistanceConstraint, clearKineticConstraints } from "../Libraries/Physics/physics.js";
 import { ensureKineticIslandPlan, clearActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
@@ -39,7 +39,9 @@ describe("kinetic topology lifecycle", () => {
         const frame = setupKineticTestFrame([a, b]);
         stampKineticPairGatherTopology(frame, world.kinetic);
         assert.ok((kineticPairTopologyStale(frame) ? null : ((entityRefs[0]?._physId === 0 && entityRefs[1]?._physId === 1) ? { bodyA: entityRefs[0], bodyB: entityRefs[1] } : null)));
-        frame.admitKineticProps([mockKineticCircle(40, 0, 10)], world);
+        const extra = mockKineticCircle(40, 0, 10);
+        assignPhysIdWithPose(extra, 2);
+        frame.admitKineticEids([extra._physId], 1, world);
         assert.equal((kineticPairTopologyStale(frame) ? null : ((entityRefs[0]?._physId === 0 && entityRefs[1]?._physId === 1) ? { bodyA: entityRefs[0], bodyB: entityRefs[1] } : null)), null);
     });
 
@@ -51,7 +53,9 @@ describe("kinetic topology lifecycle", () => {
         ball.vx = -200;
         const tick = createKineticTestTick([glass, ball]);
         stampKineticPairGatherTopology(tick.frame, tick.world.kinetic);
-        tick.frame.admitKineticProps([mockKineticCircle(40, 0, 10)], tick.world);
+        const extra = mockKineticCircle(40, 0, 10);
+        assignPhysIdWithPose(extra, 2);
+        tick.frame.admitKineticEids([extra._physId], 1, tick.world);
         assert.equal((kineticPairTopologyStale(tick.frame) ? null : ((tick.entityRefs[glass._physId]?._physId === glass._physId && tick.entityRefs[ball._physId]?._physId === ball._physId) ? { bodyA: tick.entityRefs[glass._physId], bodyB: tick.entityRefs[ball._physId] } : null)), null);
         resolveKineticContactPassWithEffects(tick);
         assert.ok(liveFracturePropCount(tick.world) > 2);

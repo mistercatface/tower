@@ -65,9 +65,11 @@ import {
     entityRollQy,
     entityRollQz,
     entityAgeMs,
+    entityFadeOutMs,
+    entityFadeDurationMs,
     entityAlpha,
     entityFractureCooldown,
-    entityRefs,
+    entityKind,
     ensureGrowI32,
     ensureGrowF32,
     ensureGrowU8,
@@ -123,9 +125,9 @@ import {
     GrowF32,
     entityShapeKind,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_DEAD } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_DEAD, ENTITY_KIND_DEBRIS } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
-import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { removeWorldPropEid } from "../../GameState/EntityRegistry.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
 export const LIBRARY_PHYSICS_DEFAULTS = { groundNavRoll: { maxSpeed: 180, accel: 600, stopRadius: 6 }, groundNavHpa: { stopRadius: 8, pathWaypointArrivalMin: 12, pathWaypointArrivalRadiusFactor: 1.5 } };
@@ -3442,10 +3444,9 @@ export function tickEntityFrames(frame, world, dt) {
         if ((entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0) continue;
         entityAgeMs[eid] += dt;
         if (entityFractureCooldown[eid] > 0) entityFractureCooldown[eid]--;
-        const strategy = entityRefs[eid].strategy;
-        const fadeOutMs = strategy?.fadeOutMs;
-        if (fadeOutMs === undefined) continue;
-        const durationMs = strategy.fadeOutDurationMs ?? 1000;
+        const fadeOutMs = entityFadeOutMs[eid];
+        if (fadeOutMs < 0) continue;
+        const durationMs = entityFadeDurationMs[eid];
         const ageMs = entityAgeMs[eid];
         if (ageMs >= fadeOutMs + durationMs) {
             fadeRemoveScratch.push(eid);
@@ -3458,9 +3459,8 @@ export function tickEntityFrames(frame, world, dt) {
     }
     for (let i = 0; i < fadeRemoveScratch.used; i++) {
         const eid = fadeRemoveScratch.buf[i];
-        const ref = entityRefs[eid];
-        if (ref.isKineticDebris) world.fractureEngine.debris.remove(ref, frame);
-        else removeWorldPropFromState(world, ref, frame, world.sandbox?.entityMeta);
+        if (entityKind[eid] === ENTITY_KIND_DEBRIS) world.fractureEngine.debris.removeEid(eid, frame);
+        else removeWorldPropEid(world, eid, frame, world.sandbox?.entityMeta);
     }
     fadeRemoveScratch.clear();
 }

@@ -4,6 +4,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
+import { ENTITY_KIND_DEBRIS } from "../Core/engineEnums.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
 describe("kinetic body slab", () => {
@@ -45,7 +46,7 @@ describe("kinetic body slab", () => {
 
     it("activeBodiesMatchKineticSlab detects pose drift after unsynced move", () => {
         const a = mockKineticCircle(0, 0, 10);
-        a.isKineticDebris = true;
+        a._bindKind = ENTITY_KIND_DEBRIS;
         assignPhysIdWithPose(a, 0);
         snapshotKineticBodySlab([a._physId], 1);
         assert.ok(bodiesMatchKineticSlab([a]));

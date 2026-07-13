@@ -1,7 +1,7 @@
 import { withSeededRandom } from "../Random/index.js";
 import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex, patchNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entityR, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entityR, entityKind, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
 import { neighborQueryPadForExtent, circleLeadingPoint, minDistanceSegmentToWall, circleIntersectsSegment, CircleShape, PolygonShape, wakeKineticBody, bumpKineticTopologyGeneration, normalizeKineticBody, invalidateKineticShapeGeom, slabCollisionSpan, refreshActiveKineticBodySlabPose, invalidateKineticSlabSlot, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId, primitiveDragFrictionEid } from "../Physics/physics.js";
 import { SparseBucketGrid } from "../DataStructures/SparseBucketGrid.js";
@@ -10,7 +10,7 @@ import { clampStampWallHeightLevel } from "../WorldSurface/worldSurface.js";
 import { rebuildLabMapCaches } from "../Render/render.js";
 import { BeltPacked, CorridorBeltSession } from "./belts.js";
 import { PortalLink } from "./portals.js";
-import { ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_KINETIC } from "../../Core/engineEnums.js";
+import { ENTITY_KIND_DEBRIS, ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_KINETIC, ENTITY_FLAG_DEAD } from "../../Core/engineEnums.js";
 import { allocateEntityEid, releaseEntityEid, noteEntityEidHighWater, bindEntitySlot, clearWorldPropSpawnPose, worldPropBindFlags } from "../../Core/entitySlots.js";
 export function gridSideFromCellToNeighbor(c, r, nc, nr) {
     const dc = nc - c;
@@ -3080,26 +3080,22 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         });
-        const debrisBodies = state.fractureEngine.debris.list();
-        for (let i = 0; i < debrisBodies.length; i++) {
-            const body = debrisBodies[i];
-            if (body.isDead) continue;
-            const needBind = body._physId === undefined || !entityAlive[body._physId] || entityRefs[body._physId] !== body;
-            let physId = body._physId;
-            if (physId === undefined) physId = allocateEntityEid();
+        const debris = state.fractureEngine.debris;
+        const debrisEids = debris.liveEids;
+        const debrisCount = debris.liveCount;
+        for (let i = 0; i < debrisCount; i++) {
+            const physId = debrisEids[i];
+            if ((entityFlags[physId] & ENTITY_FLAG_DEAD) !== 0) continue;
+            const body = entityRefs[physId];
+            const needBind = !entityAlive[physId] || body == null || body._physId !== physId;
             if (needBind) {
                 invalidateKineticShapeGeom(physId);
                 body._physId = physId;
                 normalizeKineticBody(body);
-                const x = body.x;
-                const y = body.y;
                 const flags = worldPropBindFlags(body);
-                bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, x, y, slabCollisionSpan(physId), flags);
+                bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, entityX[physId], entityY[physId], slabCollisionSpan(physId), flags);
                 clearWorldPropSpawnPose(body);
-            } else {
-                body._physId = physId;
-                if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(body);
-            }
+            } else if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(body);
             this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
@@ -3112,29 +3108,23 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         refreshActiveKineticBodySlabPose();
         return this;
     }
-    admitKineticProps(props, world) {
+    admitKineticEids(eids, eidCount, world) {
         let anyAdmitted = false;
-        for (let i = 0; i < props.length; i++) {
-            const prop = props[i];
-            let physId = prop._physId;
-            const isNew = physId === undefined || entityAlive[physId] === 0;
+        for (let i = 0; i < eidCount; i++) {
+            const physId = eids[i];
+            const prop = entityRefs[physId];
+            const isNew = entityAlive[physId] === 0;
             if (isNew) {
-                const x = prop.x;
-                const y = prop.y;
                 const flags = worldPropBindFlags(prop);
-                if (physId === undefined) {
-                    physId = allocateEntityEid();
-                    prop._physId = physId;
-                }
                 normalizeKineticBody(prop);
-                const kind = prop.isKineticDebris ? ENTITY_KIND_DEBRIS : ENTITY_KIND_WORLD_PROP;
-                bindEntitySlot(physId, kind, prop, prop.id | 0, x, y, slabCollisionSpan(physId), flags);
+                const kind = entityKind[physId] === ENTITY_KIND_DEBRIS ? ENTITY_KIND_DEBRIS : ENTITY_KIND_WORLD_PROP;
+                bindEntitySlot(physId, kind, prop, prop.id | 0, entityX[physId], entityY[physId], slabCollisionSpan(physId), flags);
                 clearWorldPropSpawnPose(prop);
                 if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
             } else this.entityGrid.remove(physId);
-            if (kineticDynamicSlab.partGeomOffset[prop._physId] < 0) normalizeKineticBody(prop);
-            this.entityGrid.insert(prop._physId);
-            if ((entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) !== 0) this.activateKineticBody(prop._physId);
+            if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(prop);
+            this.entityGrid.insert(physId);
+            if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this.activateKineticBody(physId);
             anyAdmitted = true;
         }
         if (anyAdmitted) {
@@ -3228,28 +3218,30 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         this.frameId = (this.frameId + 1) | 0;
         invalidateWallCandidateBucketFrame(this._wallBuckets);
     }
-    evictKineticProp(prop, session) {
-        const physId = prop._physId;
-        const x = kineticDynamicSlab.x[physId];
-        const y = kineticDynamicSlab.y[physId];
-        const vx = kineticDynamicSlab.vx[physId];
-        const vy = kineticDynamicSlab.vy[physId];
-        const w = kineticDynamicSlab.w[physId];
-        prop._spawnX = x;
-        prop._spawnY = y;
-        prop._spawnVx = vx;
-        prop._spawnVy = vy;
-        prop._spawnW = w;
-        this.entityGrid.remove(physId);
+    evictKineticEid(eid, session) {
+        const prop = entityRefs[eid];
+        const x = kineticDynamicSlab.x[eid];
+        const y = kineticDynamicSlab.y[eid];
+        const vx = kineticDynamicSlab.vx[eid];
+        const vy = kineticDynamicSlab.vy[eid];
+        const w = kineticDynamicSlab.w[eid];
+        if (prop) {
+            prop._spawnX = x;
+            prop._spawnY = y;
+            prop._spawnVx = vx;
+            prop._spawnVy = vy;
+            prop._spawnW = w;
+        }
+        this.entityGrid.remove(eid);
         const all = this.kineticEids;
         for (let i = this.kineticEidCount - 1; i >= 0; i--)
-            if (all[i] === physId) {
+            if (all[i] === eid) {
                 all[i] = all[--this.kineticEidCount];
                 break;
             }
-        this._removeFromActive(physId);
-        this._activationScheduled.delete(physId);
-        this.releasePhysId(physId, prop, session);
+        this._removeFromActive(eid);
+        this._activationScheduled.delete(eid);
+        this.releasePhysId(eid, prop, session);
         this.frameId = (this.frameId + 1) | 0;
     }
 }

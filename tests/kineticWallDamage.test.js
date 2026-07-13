@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { describe, it } from "node:test";
 import { computeWallBreakStrength, applyPendingWallDamage, createGridWallDamage, queueWallHits, resolveKineticWallDamage, classifyWallDamageSegment, packWallDamageKey } from "../Libraries/Physics/fracture.js";
-import { pendingBreakRowForKey, GrowI32, staticWallSegmentSlab, kineticStaticSlab, entityVx, entityVy } from "../Core/engineMemory.js";
+import { pendingBreakRowForKey, GrowI32, staticWallSegmentSlab, kineticStaticSlab, entityVx, entityVy, entityRefs } from "../Core/engineMemory.js";
 import { stampRailWallsQuiet, RailWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
@@ -23,6 +23,7 @@ import { collectVoxelWallFacesInAabbFlatF32 } from "../Libraries/World/wallGridB
 import { VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridStride.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
+import { assertDebrisKind } from "./harness/fractureHarness.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 function stampWallHitSource(eid, vx, vy, mass = 1) {
     entityVx[eid] = vx;
@@ -61,13 +62,16 @@ function stampVoxel(grid, col, row, level = 1) {
 function wallDebrisTestFrame(extra = {}) {
     return {
         frameId: 1,
-        admitKineticProps() {},
-        evictKineticProp() {},
+        admitKineticEids() {},
+        evictKineticEid() {},
         ...extra,
     };
 }
 function kineticDebrisList(state) {
-    return state.fractureEngine.debris.list();
+    const store = state.fractureEngine.debris;
+    const out = [];
+    for (let i = 0; i < store.liveCount; i++) out.push(entityRefs[store.liveEids[i]]);
+    return out;
 }
 function assertNoWallChunkWorldProps(state) {
     assert.equal(hasLiveWallChunkProp(state.entityRegistry), false);
@@ -242,7 +246,7 @@ describe("kinetic wall damage", () => {
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,3, 3)));
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_voxel_chunk");
         assert.ok(shards.length > 0);
-        assert.ok(shards.every((s) => s.isKineticDebris));
+        assert.ok(shards.every((s) => assertDebrisKind(s)));
         assert.ok(shards.every((s) => s.height === 32));
         assert.ok(shards.every((s) => s.wallChunkProfileId === "chunk-profile"));
         assert.ok(shards.every((s) => Math.hypot(s.vx ?? 0, s.vy ?? 0) > 5));
@@ -335,7 +339,7 @@ describe("kinetic wall damage", () => {
         applyPendingWallDamage(state);
         const first = kineticDebrisList(state).slice();
         assert.ok(first.length > 0);
-        for (let i = 0; i < first.length; i++) state.fractureEngine.debris.remove(first[i], frame);
+        for (let i = 0; i < first.length; i++) state.fractureEngine.debris.removeEid(first[i]._physId, frame);
         assert.equal(kineticDebrisList(state).length, 0);
         stampVoxel(state.obstacleGrid, 5, 5, 2);
         stampWallHitSource(0, 560, 0, 1);
@@ -385,7 +389,7 @@ describe("kinetic wall damage", () => {
         assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(worldIdxAtCell(state.obstacleGrid,4, 4), 1)));
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0);
-        assert.ok(shards.every((s) => s.isKineticDebris));
+        assert.ok(shards.every((s) => assertDebrisKind(s)));
         assert.ok(shards.every((s) => s.height === 32));
         assert.ok(shards.every((s) => s.wallChunkProfileId === "edge-profile"));
         assertNoWallChunkWorldProps(state);
@@ -416,7 +420,7 @@ describe("kinetic wall damage", () => {
         
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0, "Extreme impact force must produce debris");
-        assert.ok(shards.every((s) => s.isKineticDebris));
+        assert.ok(shards.every((s) => assertDebrisKind(s)));
         assertNoWallChunkWorldProps(state);
         
         terminateWorkerNavigation(state.nav);

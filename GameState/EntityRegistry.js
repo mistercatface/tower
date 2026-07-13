@@ -260,12 +260,16 @@ export function addWorldPropsToState(world, props) {
         world.entityRegistry.endMembershipBatch();
     }
 }
+export function removeWorldPropEid(world, eid, spatialFrame, entityMeta = null) {
+    const gameId = entityGameId[eid];
+    entityFlags[eid] |= ENTITY_FLAG_DEAD;
+    world.entityRegistry.unregister(gameId);
+    entityMeta?.delete(gameId);
+    pruneKineticConstraintsForBody(world.kinetic, gameId);
+    spatialFrame.evictKineticEid(eid, world.kinetic);
+}
 export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta = null) {
-    world.entityRegistry.unregister(prop);
-    entityMeta?.delete(prop.id);
-    pruneKineticConstraintsForBody(world.kinetic, prop.id);
-    spatialFrame.evictKineticProp(prop, world.kinetic);
-    prop.isDead = true;
+    removeWorldPropEid(world, prop._physId, spatialFrame, entityMeta);
 }
 export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, padding = 8) {
     centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);
