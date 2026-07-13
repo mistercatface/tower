@@ -8,9 +8,16 @@ import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { getNavWalkableCellIndex, isNavWalkableCellAt, patchNavWalkableCellIndex, pickNavWalkableCell } from "../Libraries/Navigation/navigation.js";
+import { getNavWalkableCellIndex, patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
+
+function pickNavWalkableCell(state, rng = Math.random, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeIndices = null) {
+    const cells = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds).cells;
+    const candidates = excludeIndices ? cells.filter((idx) => !excludeIndices.has(idx)) : cells;
+    if (!candidates.length) return null;
+    return candidates[Math.floor(rng() * candidates.length)];
+}
 async function createWallDeleteTestState() {
     const config = createDefaultMapGenBoundsConfig();
     config.boundsIdx = 0;
@@ -114,12 +121,12 @@ describe("wall delete nav patch (4a)", () => {
         const cols = state.obstacleGrid.cols;
         stampVoxelQuiet(state, idx % cols, (idx / cols) | 0);
         await state.nav.commitEdit(idx);
-        assert.ok(!isNavWalkableCellAt(state, idx));
+        assert.equal(getNavWalkableCellIndex(state).flags[idx], 0);
         state.resetNotifyCount();
         clearVoxelWallsQuiet(state, [idx]);
         await state.nav.commitEdit(idx);
         assert.equal(state.notifyCount, 1);
-        assert.ok(isNavWalkableCellAt(state, idx));
+        assert.ok(getNavWalkableCellIndex(state).flags[idx] !== 0);
         terminateWorkerNavigation(state.nav);
     });
     it("rail delete restores canStep through the cleared edge", async () => {
@@ -154,7 +161,7 @@ describe("wall delete nav patch (4a)", () => {
         await state.nav.commitEdit(idxBlocked);
         grid.gridTopologyEpoch++;
         await state.nav.commitEdit(idxRail);
-        assert.ok(!isNavWalkableCellAt(state, idxBlocked));
+        assert.equal(getNavWalkableCellIndex(state).flags[idxBlocked], 0);
         assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), false);
         state.resetNotifyCount();
         const bounds = clearGridWallsBatch(state, {
@@ -163,7 +170,7 @@ describe("wall delete nav patch (4a)", () => {
         });
         await state.nav.awaitWorkerNavReady();
         assert.equal(state.notifyCount, 1);
-        assert.ok(isNavWalkableCellAt(state, idxBlocked));
+        assert.ok(getNavWalkableCellIndex(state).flags[idxBlocked] !== 0);
         assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), true);
         assert.ok(bounds);
         terminateWorkerNavigation(state.nav);

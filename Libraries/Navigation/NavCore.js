@@ -1646,10 +1646,6 @@ export class PathReplanManager {
     }
 }
 // --- NavTopology.js ---
-export function isNavWalkableAt(index, idx) {
-    if (idx < 0 || idx >= index.flags.length) return false;
-    return index.flags[idx] !== 0;
-}
 export function writeNavWalkableFlags(flags, cells) {
     flags.fill(0);
     for (let i = 0; i < cells.length; i++) flags[cells[i]] = 1;
@@ -1720,10 +1716,6 @@ export function getNavWalkableCellIndex(state, boundsConfig = state.editor.caver
     if (navWalkableCacheHit(cache, navCacheKey, boundsConfig, floodSeedBounds)) return cache;
     return bakeNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);
 }
-export function isNavWalkableCellAt(state, idx, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null) {
-    const index = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds);
-    return isNavWalkableAt(index, idx);
-}
 export function patchNavWalkableCellIndex(state, idx = null) {
     const cache = state.editor.navWalkableCellsCache;
     if (!cache?.boundsConfig) return null;
@@ -1734,11 +1726,6 @@ export function pickWalkableCell(openCells, excludeIndices = null, rng = Math.ra
     const candidates = excludeIndices ? openCells.filter((idx) => !excludeIndices.has(idx)) : openCells;
     if (!candidates.length) return null;
     return candidates[Math.floor(rng() * candidates.length)];
-}
-export function pickNavWalkableCell(state, rng = Math.random, boundsConfig = state.editor.cavernConfig, floodSeedBounds = null, excludeIndices = null, filterBoundsConfig = null) {
-    let cells = getNavWalkableCellIndex(state, boundsConfig, floodSeedBounds).cells;
-    if (filterBoundsConfig) cells = cells.filter((idx) => isIdxInMapGenBounds(filterBoundsConfig, state.obstacleGrid, idx));
-    return pickWalkableCell(cells, excludeIndices, rng);
 }
 export function findNearestOpenCellIdx(blocked, grid, idx) {
     const cols = grid.cols;

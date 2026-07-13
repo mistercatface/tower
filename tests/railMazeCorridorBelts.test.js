@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BeltPacked, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess } from "../Libraries/Spatial/belts.js";
 import { undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
-import { getNavWalkableCellIndex, isNavWalkableAt, patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
+import { getNavWalkableCellIndex, patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
 
 function undirectedEdgeIndex(aIdx, bIdx, cellCount) {
@@ -206,13 +206,13 @@ describe("rail maze corridor belts", () => {
         assert.ok(zoneCells.length > 50);
         for (let i = 0; i < zoneCells.length; i++) {
             const idx = zoneCells[i];
-            assert.ok(isNavWalkableAt(navWalkableIndex, idx));
+            assert.ok(navWalkableIndex.flags[idx] !== 0);
         }
         const session = new CorridorBeltSession(grid, nav.topology, railConfig, navWalkableIndex);
         const result = session.plan({ mapSeed: 42 });
         assert.equal(result.validation.ok, true);
         for (const [idx] of result.beltPlan) {
-            assert.ok(isNavWalkableAt(navWalkableIndex, idx));
+            assert.ok(navWalkableIndex.flags[idx] !== 0);
         }
         terminateWorkerNavigation(nav);
     });

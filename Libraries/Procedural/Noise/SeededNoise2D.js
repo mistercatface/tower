@@ -25,10 +25,6 @@ function permForSeed(seed) {
     permCaches.set(key, perm);
     return perm;
 }
-let noiseProfileEnabled = false;
-export function setNoiseProfileEnabled(enabled) {
-    noiseProfileEnabled = Boolean(enabled);
-}
 function grad(hash, x, y) {
     const h = hash & 3;
     const u = h < 2 ? x : y;
@@ -63,7 +59,6 @@ export class SeededNoise2D {
         this.memoOctaves = new Int32Array(memoCapacity);
         this.memoVal = new Float32Array(memoCapacity);
         this.memoCount = 0;
-        this.profile = { calls: 0, hits: 0, overflows: 0 };
     }
     static fromDerived(rootSeed, salt) {
         return new SeededNoise2D(hashSaltString(rootSeed, salt));
@@ -77,18 +72,8 @@ export class SeededNoise2D {
     beginPixel() {
         this.memoCount = 0;
     }
-    resetProfile() {
-        this.profile.calls = 0;
-        this.profile.hits = 0;
-        this.profile.overflows = 0;
-    }
     sample2D(x, y, octaves = 2) {
-        if (noiseProfileEnabled) this.profile.calls++;
-        for (let i = 0; i < this.memoCount; i++)
-            if (this.memoX[i] === x && this.memoY[i] === y && this.memoOctaves[i] === octaves) {
-                if (noiseProfileEnabled) this.profile.hits++;
-                return this.memoVal[i];
-            }
+        for (let i = 0; i < this.memoCount; i++) if (this.memoX[i] === x && this.memoY[i] === y && this.memoOctaves[i] === octaves) return this.memoVal[i];
         let value = 0;
         let amplitude = 1.0;
         let frequency = 1.0;
@@ -107,7 +92,7 @@ export class SeededNoise2D {
             this.memoOctaves[c] = octaves;
             this.memoVal[c] = val;
             this.memoCount++;
-        } else if (noiseProfileEnabled) this.profile.overflows++;
+        }
         return val;
     }
 }

@@ -8,7 +8,7 @@ import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js
 import { createNavRuntime } from "./WorkerNavigationFactory.js";
 import { runGameLaunch, GAME_LAUNCHERS } from "../Libraries/Game/gameLaunch.js";
 import { getMapGenBoundsCenterWorldF32, hasMapGenStamp, packChunkKey, cellToChunkCoord, isIdxInMapGenBounds } from "../Libraries/Spatial/spatial.js";
-import { isNavWalkableCellAt } from "../Libraries/Navigation/navigation.js";
+import { getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { ENGINE_F32, M_VEC_A, N_OUT_XY, recomputeViewBounds } from "../Core/engineMemory.js";
 import { EDITOR_NAV_MODE_HPA, EDITOR_NAV_MODE_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, SANDBOX_BEHAVIOR_GROUND_FLOW } from "../Core/engineEnums.js";
 
@@ -113,7 +113,7 @@ describe("snake game launch actions", () => {
         assert.equal(ctx.boid.type, "boid_triangle");
         const playerIdx = grid.worldToIdx(ctx.boid.x, ctx.boid.y);
         assert.ok(isIdxInMapGenBounds(state.editor.railMazeConfig, grid, playerIdx));
-        assert.ok(isNavWalkableCellAt(state, playerIdx, state.editor.railMazeConfig, { boundsMode: "rect", boundsIdx: state.editor.railMazeConfig.boundsIdx + ((state.editor.railMazeConfig.boundsRows / 2) | 0) * grid.cols + ((state.editor.railMazeConfig.boundsCols / 2) | 0), boundsCols: 1, boundsRows: 1 }));
+        assert.ok(getNavWalkableCellIndex(state, state.editor.railMazeConfig, { boundsMode: "rect", boundsIdx: state.editor.railMazeConfig.boundsIdx + ((state.editor.railMazeConfig.boundsRows / 2) | 0) * grid.cols + ((state.editor.railMazeConfig.boundsCols / 2) | 0), boundsCols: 1, boundsRows: 1 }).flags[playerIdx] !== 0);
         assert.ok(Math.hypot(ctx.boid.x - ENGINE_F32[M_VEC_A], ctx.boid.y - ENGINE_F32[M_VEC_A + 1]) < grid.cellSize * 4);
         assert.deepEqual(state.selectedIds, [ctx.boid.id]);
         

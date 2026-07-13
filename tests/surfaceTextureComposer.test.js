@@ -3,10 +3,21 @@ import { describe, it } from "node:test";
 import { baseMetalMotif } from "../Libraries/Procedural/Motifs/baseMetal.js";
 import { deckPlatesMotif } from "../Libraries/Procedural/Motifs/deckPlates.js";
 import { filterHSVMotif } from "../Libraries/Procedural/Motifs/Filters/filterHSV.js";
-import { SeededNoise2D, setNoiseProfileEnabled } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
+import { SeededNoise2D } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
 import { composeSurfaceImage } from "../Libraries/Procedural/SurfaceTextureComposer.js";
 import { BakeSession, BI_WIDTH, BI_HEIGHT } from "../Libraries/WorldSurface/worldSurface.js";
 import { BLEND_MODE_ADD, BLEND_MODE_MULTIPLY, BLEND_MODE_REPLACE, COORD_SPACE_EVAL, COORD_SPACE_WARPED } from "../Core/engineEnums.js";
+
+class ProfiledSeededNoise2D extends SeededNoise2D {
+    constructor(...args) {
+        super(...args);
+        this.profile = { calls: 0 };
+    }
+    sample2D(x, y, octaves = 2) {
+        this.profile.calls++;
+        return super.sample2D(x, y, octaves);
+    }
+}
 
 function fillSessionSamples(bakeSession, width, height) {
     const numPixels = width * height;
@@ -33,8 +44,7 @@ function floorBakeSession(noise, width = 4, height = 4) {
 
 describe("composeSurfaceImage pass 3", () => {
     it("skips domain warp noise when the active stack is eval-only", () => {
-        setNoiseProfileEnabled(true);
-        const noise = new SeededNoise2D(99);
+        const noise = new ProfiledSeededNoise2D(99);
         const bakeSession = floorBakeSession(noise);
         const profile = {
             warp: { frequency: 0.004, amplitude: 5, octaves: 2, sampleOffset: [0, 0] },
@@ -44,14 +54,11 @@ describe("composeSurfaceImage pass 3", () => {
                 { type: "stainBlotch", coordinateSpace: COORD_SPACE_EVAL, frequency: 0.012, threshold: 0.45, peak: 4, octaves: 1, tint: [1, 1, 1] },
             ],
         };
-        noise.resetProfile();
         composeSurfaceImage(bakeSession, profile, 42);
         assert.equal(noise.profile.calls / 16, 3);
-        setNoiseProfileEnabled(false);
     });
     it("precomputes domain warp when a warped motif is active", () => {
-        setNoiseProfileEnabled(true);
-        const noise = new SeededNoise2D(99);
+        const noise = new ProfiledSeededNoise2D(99);
         const bakeSession = floorBakeSession(noise);
         const profile = {
             warp: { frequency: 0.004, amplitude: 5, octaves: 2, sampleOffset: [0, 0] },
@@ -61,14 +68,11 @@ describe("composeSurfaceImage pass 3", () => {
                 { type: "circuitTraces", coordinateSpace: COORD_SPACE_WARPED, gridSize: 24, lineWidth: 2, density: 0.5, peak: 8, tint: [1, 1, 1] },
             ],
         };
-        noise.resetProfile();
         composeSurfaceImage(bakeSession, profile, 42);
         assert.equal(noise.profile.calls / 16, 4);
-        setNoiseProfileEnabled(false);
     });
     it("runs trailing post filters after color motifs without extra noise", () => {
-        setNoiseProfileEnabled(true);
-        const noise = new SeededNoise2D(99);
+        const noise = new ProfiledSeededNoise2D(99);
         const bakeSession = floorBakeSession(noise);
         const profile = {
             palette: { base: [10, 8, 6], floorBase: [10, 8, 6] },
@@ -77,11 +81,9 @@ describe("composeSurfaceImage pass 3", () => {
                 { type: "filterHSV", hueShift: 0, saturation: 1.2, value: 0.9, blendMode: BLEND_MODE_REPLACE },
             ],
         };
-        noise.resetProfile();
         const rgb = composeSurfaceImage(bakeSession, profile, 42);
         assert.equal(noise.profile.calls / 16, 1);
         assert.equal(rgb.length, 16 * 3);
-        setNoiseProfileEnabled(false);
     });
     it("matches fallback output for compiled hot motif runners", () => {
         const profile = {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { createNavWalkableCandidateMask, isNavWalkableAt, writeNavWalkableFlags } from "../Libraries/Navigation/navigation.js";
+import { createNavWalkableCandidateMask, writeNavWalkableFlags } from "../Libraries/Navigation/navigation.js";
 
 describe("navWalkableIndex", () => {
     it("isNavWalkableAt uses dense cell indices", () => {
@@ -15,9 +15,9 @@ describe("navWalkableIndex", () => {
             worldIdxAtCell(grid, 4, 5),
         ]);
         const index = { flags, cols, rows: cols };
-        assert.equal(isNavWalkableAt(index, worldIdxAtCell(grid, 1, 2)), true);
-        assert.equal(isNavWalkableAt(index, worldIdxAtCell(grid, 4, 5)), true);
-        assert.equal(isNavWalkableAt(index, worldIdxAtCell(grid, 0, 0)), false);
+        assert.equal(index.flags[worldIdxAtCell(grid, 1, 2)] !== 0, true);
+        assert.equal(index.flags[worldIdxAtCell(grid, 4, 5)] !== 0, true);
+        assert.equal(index.flags[worldIdxAtCell(grid, 0, 0)] !== 0, false);
     });
 
     it("createNavWalkableCandidateMask reuses buffers", () => {

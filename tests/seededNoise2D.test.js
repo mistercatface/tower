@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SeededNoise2D, setNoiseProfileEnabled } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
+import { SeededNoise2D } from "../Libraries/Procedural/Noise/SeededNoise2D.js";
 
 describe("SeededNoise2D", () => {
     it("returns deterministic values for the same seed and coordinates", () => {
@@ -28,21 +28,5 @@ describe("SeededNoise2D", () => {
         const motif = SeededNoise2D.fromDerived(root, "motif");
         assert.notEqual(warp.sample2D(0.37, 1.82, 1), motif.sample2D(0.37, 1.82, 1));
         assert.equal(SeededNoise2D.fromDerived(root, "warp").sample2D(0.37, 1.82, 1), warp.sample2D(0.37, 1.82, 1));
-    });
-    it("memoizes repeated samples until beginPixel clears the slot table", () => {
-        setNoiseProfileEnabled(true);
-        const noise = new SeededNoise2D(7, 4);
-        noise.resetProfile();
-        noise.beginPixel();
-        noise.sample2D(1, 2, 2);
-        noise.sample2D(1, 2, 2);
-        noise.sample2D(3, 4, 2);
-        assert.equal(noise.profile.calls, 3);
-        assert.equal(noise.profile.hits, 1);
-        noise.beginPixel();
-        noise.sample2D(1, 2, 2);
-        assert.equal(noise.profile.calls, 4);
-        assert.equal(noise.profile.hits, 1);
-        setNoiseProfileEnabled(false);
     });
 });
