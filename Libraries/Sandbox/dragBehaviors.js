@@ -1,12 +1,10 @@
-import { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { normalizeXYInto, findClosestPolygonBoundaryGrabPointInto, findCircleRimGrabPointInto } from "../Math/math.js";
-import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityVx, entityVy, entityW, entityR, entityFlags, entityFacing, entityGameId, entityAlive, entityRenderKeyId, kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { ENGINE_F32, M_OUT_NX, M_OUT_NY, M_OUT_LEN, G_WX, G_WY, G_LX, G_LY, G_OX, G_OY, ENGINE_BOUNDS_BASE, B_TMP, entityX, entityY, entityVx, entityVy, entityW, entityR, entityFlags, entityFacing, entityGameId, entityAlive, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { computeCircleAimLineSegmentInto, estimateRollingTravelDistance } from "../Spatial/spatial.js";
 import { FloorBelt } from "../Spatial/belts.js";
-import { clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, readEntityFacing, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics, physicsSettings } from "../Physics/physics.js";
-import { ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_DEAD, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../../Core/engineEnums.js";
+import { clearGroundRollDrive, decelerateRoll, steerRollToward, wakeKineticBody, kineticInertiaFromBody, CircleShape, stampPrimitivePhysics, physicsSettings } from "../Physics/physics.js";
+import { ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_DEAD, ENTITY_FLAG_CIRCLE_SHAPE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PRIMITIVE_PHYSICS_ROW_CIRCLE, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_DRAG_LAUNCH } from "../../Core/engineEnums.js";
 import { stampOverlayAimSegment, stampOverlayCircleFillStroke, stampOverlayCircleStroke, stampOverlaySegment, OVERLAY_STYLE_DRAG_GRAB_LINE, OVERLAY_STYLE_DRAG_GRAB_DOT_A, OVERLAY_STYLE_DRAG_GRAB_DOT_B, OVERLAY_STYLE_DRAG_BAND, OVERLAY_STYLE_DRAG_PULL_LINE, OVERLAY_STYLE_DRAG_PULL_DOT, OVERLAY_STYLE_DRAG_START_RING, OVERLAY_STYLE_DRAG_START_DOT, OVERLAY_STYLE_DRAG_RUBBER, OVERLAY_STYLE_DRAG_ANCHOR } from "../Render/render.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PRIMITIVE_PHYSICS_ROW_CIRCLE, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_DRAG_LAUNCH } from "../../Core/engineEnums.js";
 const GRAB_DRAG_TORQUE_GAIN = 0.004;
 const GRAB_DRAG_ANGULAR_DAMP = 4;
 const REFERENCE_GRAB_INERTIA = (() => {
@@ -60,7 +58,6 @@ export function dragInteractionModeLabel(mode) {
 export function assetSupportsDragInteraction(asset) {
     if (!asset) return false;
     if (asset.sandbox?.gridFloorBelt) return false;
-    if (asset.physics?.isKinetic === false) return false;
     return true;
 }
 export function entitySupportsDragInteraction(eid) {
@@ -74,9 +71,10 @@ export function resolveDragInteractionBehavior(eid, state, behaviorById) {
     if (!entitySupportsDragInteraction(eid)) return null;
     if (!entityAlive[eid]) return null;
     const mode = state.sandbox.dragInteractionMode ?? DEFAULT_DRAG_INTERACTION_MODE;
-    const asset = propCatalogByRenderKeyId[entityRenderKeyId[eid]];
-    const behaviorId = resolveDragInteractionBehaviorId(asset, mode);
-    return behaviorId ? (behaviorById.get(behaviorId) ?? null) : null;
+    const behaviorId = mode === SANDBOX_BEHAVIOR_GRAB_DRAG ? SANDBOX_BEHAVIOR_GRAB_DRAG : SANDBOX_BEHAVIOR_DRAG_LAUNCH;
+    const behavior = behaviorById.get(behaviorId);
+    if (!behavior) throw new Error(`resolveDragInteractionBehavior: missing behavior ${behaviorId}`);
+    return behavior;
 }
 function entityCanStartDrag(state, eid) {
     if (!entitySupportsDragInteraction(eid)) return false;
@@ -214,48 +212,30 @@ export function createDragLaunchBehavior(state) {
     };
 }
 function resolveGrabDragAnchor(eid, world) {
+    if ((entityFlags[eid] & ENTITY_FLAG_KINETIC) === 0) throw new Error(`resolveGrabDragAnchor: eid ${eid} is not kinetic`);
     const px = entityX[eid];
     const py = entityY[eid];
-    const asset = propCatalogByRenderKeyId[entityRenderKeyId[eid]];
-    if (asset?.primitive === PROP_PRIMITIVE_SPHERE && asset.physics?.isKinetic !== false) {
-        const facing = entityFacing[eid];
+    const facing = entityFacing[eid];
+    if ((entityFlags[eid] & ENTITY_FLAG_CIRCLE_SHAPE) !== 0) {
         findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, facing, entityR[eid], world.x, world.y);
         ENGINE_F32[G_OX] = ENGINE_F32[G_WX] - world.x;
         ENGINE_F32[G_OY] = ENGINE_F32[G_WY] - world.y;
         return;
     }
-    if (asset?.primitive === PROP_PRIMITIVE_POLYGON && asset.physics?.isKinetic !== false) {
-        const slab = kineticDynamicSlab;
-        const geom0 = slab.partGeomOffset[eid];
-        if (geom0 < 0) throw new Error(`resolveGrabDragAnchor: eid ${eid} has no stamped slab geometry`);
-        const facing = entityFacing[eid];
-        const partCount = Math.max(1, slab.partCount[eid] | 0);
-        let bestDistSq = Infinity;
-        let bestWx = px;
-        let bestWy = py;
-        let bestLx = 0;
-        let bestLy = 0;
-        for (let p = 0; p < partCount; p++) {
-            const row = geom0 + p;
-            if (slab.partShapeKind[row] === SHAPE_TYPE_CIRCLE) {
-                findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, facing, slab.partRadius[row], world.x, world.y);
-                const dx = world.x - ENGINE_F32[G_WX];
-                const dy = world.y - ENGINE_F32[G_WY];
-                const distSq = dx * dx + dy * dy;
-                if (distSq < bestDistSq) {
-                    bestDistSq = distSq;
-                    bestWx = ENGINE_F32[G_WX];
-                    bestWy = ENGINE_F32[G_WY];
-                    bestLx = ENGINE_F32[G_LX];
-                    bestLy = ENGINE_F32[G_LY];
-                }
-                continue;
-            }
-            if (slab.partShapeKind[row] !== SHAPE_TYPE_POLYGON) continue;
-            const vo = slab.partVertOffset[row];
-            const n = slab.partVertFloatCount[row];
-            const verts = slab.shapeVertPool.subarray(vo, vo + n);
-            findClosestPolygonBoundaryGrabPointInto(ENGINE_F32, G_WX, verts, px, py, facing, world.x, world.y);
+    const slab = kineticDynamicSlab;
+    const geom0 = slab.partGeomOffset[eid];
+    if (geom0 < 0) throw new Error(`resolveGrabDragAnchor: eid ${eid} has no stamped slab geometry`);
+    const partCount = slab.partCount[eid] | 0;
+    if (partCount <= 0) throw new Error(`resolveGrabDragAnchor: eid ${eid} has empty part table`);
+    let bestDistSq = Infinity;
+    let bestWx = px;
+    let bestWy = py;
+    let bestLx = 0;
+    let bestLy = 0;
+    for (let p = 0; p < partCount; p++) {
+        const row = geom0 + p;
+        if (slab.partShapeKind[row] === SHAPE_TYPE_CIRCLE) {
+            findCircleRimGrabPointInto(ENGINE_F32, G_WX, px, py, facing, slab.partRadius[row], world.x, world.y);
             const dx = world.x - ENGINE_F32[G_WX];
             const dy = world.y - ENGINE_F32[G_WY];
             const distSq = dx * dx + dy * dy;
@@ -266,21 +246,31 @@ function resolveGrabDragAnchor(eid, world) {
                 bestLx = ENGINE_F32[G_LX];
                 bestLy = ENGINE_F32[G_LY];
             }
+            continue;
         }
-        if (bestDistSq < Infinity) {
-            ENGINE_F32[G_WX] = bestWx;
-            ENGINE_F32[G_WY] = bestWy;
-            ENGINE_F32[G_LX] = bestLx;
-            ENGINE_F32[G_LY] = bestLy;
-            ENGINE_F32[G_OX] = bestWx - world.x;
-            ENGINE_F32[G_OY] = bestWy - world.y;
-            return;
+        if (slab.partShapeKind[row] !== SHAPE_TYPE_POLYGON) continue;
+        const vo = slab.partVertOffset[row];
+        const n = slab.partVertFloatCount[row];
+        const verts = slab.shapeVertPool.subarray(vo, vo + n);
+        findClosestPolygonBoundaryGrabPointInto(ENGINE_F32, G_WX, verts, px, py, facing, world.x, world.y);
+        const dx = world.x - ENGINE_F32[G_WX];
+        const dy = world.y - ENGINE_F32[G_WY];
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            bestWx = ENGINE_F32[G_WX];
+            bestWy = ENGINE_F32[G_WY];
+            bestLx = ENGINE_F32[G_LX];
+            bestLy = ENGINE_F32[G_LY];
         }
     }
-    ENGINE_F32[G_LX] = 0;
-    ENGINE_F32[G_LY] = 0;
-    ENGINE_F32[G_OX] = px - world.x;
-    ENGINE_F32[G_OY] = py - world.y;
+    if (bestDistSq === Infinity) throw new Error(`resolveGrabDragAnchor: eid ${eid} stamped parts had no grab boundary`);
+    ENGINE_F32[G_WX] = bestWx;
+    ENGINE_F32[G_WY] = bestWy;
+    ENGINE_F32[G_LX] = bestLx;
+    ENGINE_F32[G_LY] = bestLy;
+    ENGINE_F32[G_OX] = bestWx - world.x;
+    ENGINE_F32[G_OY] = bestWy - world.y;
 }
 export function createGrabDragBehavior(state, groundNavBehaviorIds) {
     let grabEid = -1;
