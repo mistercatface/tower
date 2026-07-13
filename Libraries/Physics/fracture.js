@@ -265,7 +265,6 @@ class KineticDebrisBody {
         this.strategy = null;
         this.shape = null;
         this.collisionParts = undefined;
-        this.chunks = undefined;
         this.footprintArea = undefined;
         this.radius = 0;
         this.height = undefined;
@@ -435,7 +434,7 @@ class KineticDebrisStore {
         this.world = world;
         this._bodies = [];
         this._integratedScratch = [];
-        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined };
+        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, footprintArea: undefined, radius: 0, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined };
     }
     list() {
         return this._bodies;
@@ -462,7 +461,6 @@ class KineticDebrisStore {
         body.isSleeping = false;
         body._sleepFrames = 0;
         body.collisionParts = undefined;
-        body.chunks = undefined;
         body.footprintArea = undefined;
         body.radius = 0;
         body._fractureCooldown = 0;
@@ -501,7 +499,6 @@ class KineticDebrisStore {
         parent.angularVelocity = 0;
         parent.facing = spawn.angle[row];
         parent.collisionParts = undefined;
-        parent.chunks = undefined;
         applyPropBoxFootprint(parent, spawn.width[row] / 2, spawn.height[row] / 2);
         parent.height = spawn.wallHeight[row];
         parent.wallChunkProfileId = spawn.profileId[row];
@@ -1005,7 +1002,6 @@ export class FractureEngine {
         return relativeSpeed * 0.5 + Math.sqrt(massA * massB) * 0.3;
     }
     static applyPropFractureGeometry(prop, geometry) {
-        prop.chunks = undefined;
         prop.collisionParts = undefined;
         const src = geometry.footprintVertices;
         const n = src.length;
@@ -1022,7 +1018,6 @@ export class FractureEngine {
         const src = stores.geom.buffer(handle);
         const n = vertCount * 2;
         writeLivePolygon(prop, src, n);
-        prop.chunks = undefined;
         prop.collisionParts = undefined;
         prop.footprintArea = debris.footprintArea[debrisIndex];
         prop.radius = debris.boundingRadius[debrisIndex];

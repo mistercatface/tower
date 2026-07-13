@@ -245,7 +245,6 @@ export class WorldProp {
         this.strategy = sharedWorldPropStrategy(type);
         this._spawnX = x;
         this._spawnY = y;
-        this.z = 0;
         this.isDead = false;
         this._spawnVx = 0;
         this._spawnVy = 0;
@@ -263,13 +262,9 @@ export class WorldProp {
             this._spawnRollQy = 0;
             this._spawnRollQz = 0;
         }
-        this.chunks = undefined;
         this.collisionParts = undefined;
-        this.snakeFoodValue = undefined;
         this._fractureCooldown = 0;
         this.spawnGroupId = undefined;
-        this.spawnGroupExportType = undefined;
-        this.spawnGroupAnchor = undefined;
         releaseLivePolygon(this);
         this.shape = undefined;
         this.drawOutline = undefined;

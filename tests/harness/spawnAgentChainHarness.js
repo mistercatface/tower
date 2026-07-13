@@ -69,9 +69,7 @@ function spawnAgentChain(state, anchorIdx, spec) {
     const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${leader.id}`;
     for (let i = 0; i < props.length; i++) {
         props[i].spawnGroupId = resolvedGroupId;
-        if (exportType) props[i].spawnGroupExportType = exportType;
     }
-    props[leaderIndex].spawnGroupAnchor = true;
     for (let i = 0; i < props.length - 1; i++) {
         const a = props[i];
         const b = props[i + 1];
@@ -116,7 +114,6 @@ export function growChainSegment(state, tailProp, options) {
     if (segmentRadius != null) setCirclePropRadius(spawned.prop, segmentRadius);
     if (spawnGroupId) {
         spawned.prop.spawnGroupId = spawnGroupId;
-        if (exportType) spawned.prop.spawnGroupExportType = exportType;
     }
     const restLength = spacing != null ? spacing * linkSlack : chainLinkRestLength(tailProp, spawned.prop, linkSlack);
     const tailEid = state.entityRegistry.register("worldProp", tailProp);

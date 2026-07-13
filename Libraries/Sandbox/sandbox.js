@@ -1468,11 +1468,7 @@ function spawnAgentChain(state, anchorIdx, spec) {
     }
     const leader = props[leaderIndex];
     const resolvedGroupId = spawnGroupId ?? `${exportType ?? "agentChain"}:${leader.id}`;
-    for (let i = 0; i < props.length; i++) {
-        props[i].spawnGroupId = resolvedGroupId;
-        if (exportType) props[i].spawnGroupExportType = exportType;
-    }
-    props[leaderIndex].spawnGroupAnchor = true;
+    for (let i = 0; i < props.length; i++) props[i].spawnGroupId = resolvedGroupId;
     for (let i = 0; i < props.length - 1; i++) {
         const a = props[i];
         const b = props[i + 1];
