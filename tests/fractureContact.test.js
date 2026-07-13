@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
+import { entityFlags } from "../Core/engineMemory.js";
+import { ENTITY_FLAG_PENDING_FRACTURE } from "../Core/engineEnums.js";
 
 describe("fracture contact queue", () => {
     it("fractures only the first qualifying body when both could fracture", () => {
@@ -14,20 +16,20 @@ describe("fracture contact queue", () => {
         applyPropBoxFootprint(b, 32, 32);
         const impactor = new WorldProp(92, 100, "ball", 0);
         const tick = createKineticTestTick([a, b, impactor]);
-        tick.world.fractureEngine.queueFractureKineticContact(a, impactor, 104, 100, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(a._physId, impactor._physId, 104, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         const deadCount = [a, b].filter((p) => p.isDead).length;
         assert.equal(deadCount, 1);
     });
 
-    it("skips fracture when _pendingEviction is already set", () => {
+    it("skips fracture when pending-fracture flag is already set", () => {
         const prop = new WorldProp(100, 100, "box", 0);
         prop.fractureEnabled = true;
         applyPropBoxFootprint(prop, 32, 32);
-        prop._pendingEviction = true;
         const impactor = new WorldProp(92, 100, "ball", 0);
         const tick = createKineticTestTick([prop, impactor]);
-        tick.world.fractureEngine.queueFractureKineticContact(prop, impactor, 100, 100, 50);
+        entityFlags[prop._physId] |= ENTITY_FLAG_PENDING_FRACTURE;
+        tick.world.fractureEngine.queueFractureKineticContact(prop._physId, impactor._physId, 100, 100, 50);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         assert.ok(!prop.isDead);
     });
@@ -40,7 +42,7 @@ describe("fracture contact queue", () => {
         b.fractureEnabled = true;
         applyPropBoxFootprint(b, 12, 12);
         const tick = createKineticTestTick([a, b]);
-        tick.world.fractureEngine.queueFractureKineticContact(a, b, 104, 100, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(a._physId, b._physId, 104, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         const deadCount = [a, b].filter((p) => p.isDead).length;
         assert.equal(deadCount, 1);
@@ -56,7 +58,7 @@ describe("fracture contact queue", () => {
         b.fractureEnabled = true;
         applyPropBoxFootprint(b, 2.5, 2.5);
         const tick = createKineticTestTick([a, b]);
-        tick.world.fractureEngine.queueFractureKineticContact(a, b, 102, 100, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(a._physId, b._physId, 102, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         assert.ok(!a.isDead);
         assert.ok(!b.isDead);
@@ -70,7 +72,7 @@ describe("fracture contact queue", () => {
         b.fractureEnabled = true;
         applyPropBoxFootprint(b, 16, 16);
         const tick = createKineticTestTick([a, b]);
-        tick.world.fractureEngine.queueFractureKineticContact(a, b, 104, 100, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(a._physId, b._physId, 104, 100, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
         const deadCount = [a, b].filter((p) => p.isDead).length;
         assert.equal(deadCount, 1);
@@ -80,11 +82,11 @@ describe("fracture contact queue", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         prop.fractureEnabled = true;
         applyPropBoxFootprint(prop, 32, 32);
+        const other = new WorldProp(40, 0, "ball", 0);
+        const tick = createKineticTestTick([prop, other]);
         prop._fractureCooldown = 4;
-        const tick = createKineticTestTick([prop]);
-        const other = { type: "ball", strategy: {} };
-        tick.world.fractureEngine.queueFractureKineticContact(prop, other, 0, 0, 80);
+        tick.world.fractureEngine.queueFractureKineticContact(prop._physId, other._physId, 0, 0, 80);
         tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
-        assert.equal(tick.world.worldProps.filter((p) => p !== prop).length, 0);
+        assert.equal(tick.world.worldProps.filter((p) => p !== prop).length, 1);
     });
 });

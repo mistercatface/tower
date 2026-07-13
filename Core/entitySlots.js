@@ -22,10 +22,8 @@ export function worldPropBindFlags(ref) {
     if (strategy?.orientToMotion) flags |= ENTITY_FLAG_ORIENT_TO_MOTION;
     if ((strategy?.renderMode ?? PROP_RENDER_MODE_3D) === PROP_RENDER_MODE_3D) flags |= ENTITY_FLAG_RENDER_3D;
     if (ref.shape?.shapeTypeId === SHAPE_TYPE_CIRCLE) flags |= ENTITY_FLAG_CIRCLE_SHAPE;
-    if (ref.fractureEnabled !== undefined) {
-        flags |= ENTITY_FLAG_FRACTURE_SET;
-        if (ref.fractureEnabled) flags |= ENTITY_FLAG_FRACTURE_VAL;
-    }
+    if (ref.fractureEnabled === false) flags |= ENTITY_FLAG_FRACTURE_SET;
+    else if (ref.fractureEnabled === true || strategy?.fracture) flags |= ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL;
     return flags;
 }
 export function releaseEntityEid(eid) {

@@ -2,7 +2,7 @@ import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import propCatalog from "../../Assets/props/index.js";
 import { wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFrictionEid, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
 import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, resetDeferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags } from "../../Core/engineMemory.js";
-import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
+import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_FLAG_PENDING_FRACTURE } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
 import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidateEntityFootprint, resolveAssetPropHeight } from "../Props/props.js";
@@ -12,8 +12,8 @@ const FRACTURE_IMPACT_THRESHOLD = DEFAULT_FRACTURE_CONFIG.impactThreshold;
 const FRACTURE_MIN_SHARD_AREA = DEFAULT_FRACTURE_CONFIG.minShardArea;
 export const FRACTURE_MAX_SHARDS_PER_SHATTER = DEFAULT_FRACTURE_CONFIG.maxShardsPerShatter;
 const FRACTURE_MIN_PIECE_SIZE = FRACTURE_TUNING.shared.minPieceSize;
-export function requiredImpactForce(prop, baseThreshold = FRACTURE_IMPACT_THRESHOLD) {
-    const span = Math.max(FractureEngine.propFractureSpan(prop), FRACTURE_MIN_PIECE_SIZE);
+export function requiredImpactForce(eid, baseThreshold = FRACTURE_IMPACT_THRESHOLD) {
+    const span = Math.max(FractureEngine.propFractureSpan(eid), FRACTURE_MIN_PIECE_SIZE);
     const t = FRACTURE_TUNING.shared.refSpan / span;
     return baseThreshold * Math.pow(Math.max(1, t), FRACTURE_TUNING.shared.sizeForceExp);
 }
@@ -23,6 +23,12 @@ export function effectiveFracture(prop) {
     if (prop.fractureEnabled === false) return null;
     if (prop.strategy?.fracture) return DEFAULT_FRACTURE_CONFIG;
     return null;
+}
+function effectiveFractureEid(eid) {
+    const flags = entityFlags[eid];
+    if ((flags & ENTITY_FLAG_FRACTURE_SET) === 0) return null;
+    if ((flags & ENTITY_FLAG_FRACTURE_VAL) === 0) return null;
+    return DEFAULT_FRACTURE_CONFIG;
 }
 const GEOM_VERT_BUCKETS = [8, 16, 32, 64, 128, 256, 512];
 const MAX_FRACTURE_DEBRIS = 512;
@@ -511,7 +517,9 @@ class KineticDebrisStore {
         parent.vx = -spawn.normalX[row] * speed;
         parent.vy = -spawn.normalY[row] * speed;
         parent.angularVelocity = (deterministicUnitRandom(Math.imul(spawn.idx[row] | 0, 1597334677)) - 0.5) * 2.0;
-        FractureEngine._currentPropMotion(parent);
+        ENGINE_F32[F_OUT_MOTION_VX] = parent.vx;
+        ENGINE_F32[F_OUT_MOTION_VY] = parent.vy;
+        ENGINE_F32[F_OUT_MOTION_W] = parent.angularVelocity;
         const force = FractureEngine.impactForceFromContact(spawn.sourceSpeed[row], sourceMass, parentMass) + FRACTURE_TUNING.wallSpawn.forceBias;
         const ok = FractureEngine.fracturePropOnImpact(parent, spawn.contactX[row], spawn.contactY[row], force, this.engine);
         if (!ok) {
@@ -582,7 +590,6 @@ class KineticDebrisStore {
         const impactForce = ENGINE_F32[F_OUT_IMPACT_FORCE];
         const cos = Math.cos(facing);
         const sin = Math.sin(facing);
-        FractureEngine._currentPropMotion(sourceProp);
         const motionVx = ENGINE_F32[F_OUT_MOTION_VX];
         const motionVy = ENGINE_F32[F_OUT_MOTION_VY];
         const motionW = ENGINE_F32[F_OUT_MOTION_W];
@@ -853,8 +860,6 @@ export class FractureEngine {
         for (let i = 0; i < contacts.count; i++) {
             const physIdA = contacts.physIdA[i];
             const physIdB = contacts.physIdB[i];
-            const bodyA = entityRefs[physIdA];
-            const bodyB = entityRefs[physIdB];
             const nx = contacts.dynamic.nx[i];
             const ny = contacts.dynamic.ny[i];
             let hitX;
@@ -868,7 +873,7 @@ export class FractureEngine {
             }
             const relSpeed = Math.hypot(contacts.dynamic.preDvx[i], contacts.dynamic.preDvy[i]);
             const force = FractureEngine.impactForceFromContact(relSpeed, kineticStaticSlab.mass[physIdA], kineticStaticSlab.mass[physIdB]);
-            this.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx, ny);
+            this.queueFractureKineticContact(physIdA, physIdB, hitX, hitY, force, nx, ny);
         }
         this.flushDeferredFractures(tick.world, tick.frame);
     }
@@ -881,11 +886,13 @@ export class FractureEngine {
         const stores = this.stores;
         try {
             for (let i = 0; i < count; i++) {
-                const prop = deferred.propRef[i];
-                delete prop._pendingEviction;
+                const eid = deferred.physId[i];
+                const prop = entityRefs[eid];
+                entityFlags[eid] &= ~ENTITY_FLAG_PENDING_FRACTURE;
                 if (!deferred.remnant[i])
                     if (prop.isKineticDebris) this.debris.remove(prop, spatialFrame);
                     else removeWorldPropFromState(world, prop, spatialFrame);
+                FractureEngine._currentPropMotion(eid);
                 const shards = this.debris.spawnShardsFromFracture(prop, i);
                 for (let j = 0; j < shards.length; j++) admitScratch.push(shards[j]);
                 releaseDebrisGeomRange(stores, deferred.debrisStart[i], deferred.debrisCount[i]);
@@ -898,36 +905,37 @@ export class FractureEngine {
             admitScratch.length = 0;
         }
     }
-    queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force, nx = 0, ny = 0) {
-        let bestProp = null;
+    queueFractureKineticContact(eidA, eidB, hitX, hitY, force, nx = 0, ny = 0) {
+        let bestEid = undefined;
         let bestExcess = -Infinity;
         let bestArea = Infinity;
         for (let i = 0; i < 2; i++) {
-            const prop = i === 0 ? bodyA : bodyB;
-            const fractureConfig = effectiveFracture(prop);
+            const eid = i === 0 ? eidA : eidB;
+            const fractureConfig = effectiveFractureEid(eid);
             if (!fractureConfig) continue;
-            if (!FractureEngine.canFracturePropSplit(prop)) continue;
-            if (prop._fractureCooldown > 0) continue;
-            if (prop._pendingEviction) continue;
+            if (!FractureEngine.canFracturePropSplitEid(eid)) continue;
+            if (entityFractureCooldown[eid] > 0) continue;
+            if ((entityFlags[eid] & ENTITY_FLAG_PENDING_FRACTURE) !== 0) continue;
             const baseThreshold = fractureConfig.minForce ?? FRACTURE_IMPACT_THRESHOLD;
-            const excess = force - requiredImpactForce(prop, baseThreshold);
+            const excess = force - requiredImpactForce(eid, baseThreshold);
             if (excess < 0) continue;
-            const area = FractureEngine._fractureFootprintArea(prop);
+            const area = FractureEngine._fractureFootprintAreaEid(eid);
             if (excess > bestExcess || (excess === bestExcess && area < bestArea)) {
                 bestExcess = excess;
                 bestArea = area;
-                bestProp = prop;
+                bestEid = eid;
             }
         }
-        if (!bestProp) return;
+        if (bestEid === undefined) return;
+        const bestProp = entityRefs[bestEid];
         if (!FractureEngine.fracturePropOnImpact(bestProp, hitX, hitY, force, this)) return;
-        if (ENGINE_F32[F_OUT_REMNANT] !== 1) bestProp._pendingEviction = true;
-        this.enqueueDeferredFracture(bestProp);
+        if (ENGINE_F32[F_OUT_REMNANT] !== 1) entityFlags[bestEid] |= ENTITY_FLAG_PENDING_FRACTURE;
+        this.enqueueDeferredFracture(bestEid);
     }
-    enqueueDeferredFracture(prop) {
+    enqueueDeferredFracture(eid) {
         const deferred = deferredFractureSlab;
         const count = deferred.count;
-        deferred.propRef[count] = prop;
+        deferred.physId[count] = eid;
         deferred.debrisStart[count] = ENGINE_F32[F_OUT_DEBRIS_START];
         deferred.debrisCount[count] = ENGINE_F32[F_OUT_DEBRIS_COUNT];
         deferred.originX[count] = ENGINE_F32[F_OUT_ORIGIN_X];
@@ -945,6 +953,7 @@ export class FractureEngine {
             if (prop.isKineticDebris) world.fractureEngine.debris.remove(prop, spatialFrame);
             else removeWorldPropFromState(world, prop, spatialFrame);
         const stores = world.fractureEngine.stores;
+        FractureEngine._currentPropMotion(prop._physId);
         const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop);
         if (shards.length) spatialFrame.admitKineticProps(shards, world);
         releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
@@ -1025,7 +1034,12 @@ export class FractureEngine {
         invalidateEntityFootprint(prop._physId);
         normalizeKineticBody(prop);
     }
-    static propFractureSpan(prop) {
+    static propFractureSpan(eid) {
+        const hx = kineticDynamicSlab.hx[eid];
+        const hy = kineticDynamicSlab.hy[eid];
+        return Math.max(hx, hy) * 2;
+    }
+    static propFractureSpanFromShape(prop) {
         const parts = collisionPartsList(prop);
         if (parts) {
             let maxSpan = 0;
@@ -1042,6 +1056,13 @@ export class FractureEngine {
         convexFootprintHalfExtents(ENGINE_F32, F_VEC_A, shape.vertices);
         return Math.max(ENGINE_F32[F_VEC_A], ENGINE_F32[F_VEC_A + 1]) * 2;
     }
+    static canFracturePropSplitEid(eid, minSize = FRACTURE_MIN_PIECE_SIZE) {
+        if (!effectiveFractureEid(eid)) return false;
+        if (FractureEngine.propFractureSpan(eid) < minSize) return false;
+        const area = FractureEngine._fractureFootprintAreaEid(eid);
+        const minArea = Math.max(FRACTURE_MIN_SHARD_AREA, area / FRACTURE_MAX_SHARDS_PER_SHATTER) * 2;
+        return area >= minArea;
+    }
     static canFracturePropSplit(prop, minSize = FRACTURE_MIN_PIECE_SIZE) {
         if (!effectiveFracture(prop)) return false;
         const parts = collisionPartsList(prop);
@@ -1053,13 +1074,13 @@ export class FractureEngine {
                 refVerts = shape.vertices;
                 break;
             }
-            if (!refVerts || FractureEngine.propFractureSpan(prop) < minSize) return false;
+            if (!refVerts || FractureEngine.propFractureSpanFromShape(prop) < minSize) return false;
             const minArea = FractureEngine.minShardAreaForPolygon(refVerts) * 2;
             return FractureEngine._fractureFootprintArea(prop) >= minArea;
         }
         const shape = prop.shape;
         if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) return false;
-        if (FractureEngine.propFractureSpan(prop) < minSize) return false;
+        if (FractureEngine.propFractureSpanFromShape(prop) < minSize) return false;
         const minArea = FractureEngine.minShardAreaForPolygon(shape.vertices) * 2;
         return FractureEngine._fractureFootprintArea(prop) >= minArea;
     }
@@ -1217,10 +1238,15 @@ export class FractureEngine {
         if (prop.footprintArea != null) return prop.footprintArea;
         return kineticFootprintArea(prop);
     }
-    static _currentPropMotion(prop) {
-        ENGINE_F32[F_OUT_MOTION_VX] = prop.vx;
-        ENGINE_F32[F_OUT_MOTION_VY] = prop.vy;
-        ENGINE_F32[F_OUT_MOTION_W] = prop.angularVelocity;
+    static _fractureFootprintAreaEid(eid) {
+        const hx = kineticDynamicSlab.hx[eid];
+        const hy = kineticDynamicSlab.hy[eid];
+        return 4 * hx * hy;
+    }
+    static _currentPropMotion(eid) {
+        ENGINE_F32[F_OUT_MOTION_VX] = entityVx[eid];
+        ENGINE_F32[F_OUT_MOTION_VY] = entityVy[eid];
+        ENGINE_F32[F_OUT_MOTION_W] = entityW[eid];
     }
     static _applyShardBurstImpulse(frag, cx, cy) {
         const originX = ENGINE_F32[F_OUT_ORIGIN_X];

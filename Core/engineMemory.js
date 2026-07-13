@@ -511,12 +511,9 @@ export const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
 export const pairHashGen = new Int32Array(PAIR_HASH_CAPACITY);
 export const pairHashState = { generation: 1 }; // bump to clear; wrap resets gen column
 // --- Debris / deferred fracture / pending wall breaks ---
-export const deferredFractureSlab = { count: 0, propRef: new Array(MAX_DEFERRED_FRACTURES), debrisStart: new Int32Array(MAX_DEFERRED_FRACTURES), debrisCount: new Int32Array(MAX_DEFERRED_FRACTURES), originX: new Float32Array(MAX_DEFERRED_FRACTURES), originY: new Float32Array(MAX_DEFERRED_FRACTURES), facing: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalX: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalY: new Float32Array(MAX_DEFERRED_FRACTURES), impactForce: new Float32Array(MAX_DEFERRED_FRACTURES), remnant: new Uint8Array(MAX_DEFERRED_FRACTURES) };
+export const deferredFractureSlab = { count: 0, physId: new Int32Array(MAX_DEFERRED_FRACTURES), debrisStart: new Int32Array(MAX_DEFERRED_FRACTURES), debrisCount: new Int32Array(MAX_DEFERRED_FRACTURES), originX: new Float32Array(MAX_DEFERRED_FRACTURES), originY: new Float32Array(MAX_DEFERRED_FRACTURES), facing: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalX: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalY: new Float32Array(MAX_DEFERRED_FRACTURES), impactForce: new Float32Array(MAX_DEFERRED_FRACTURES), remnant: new Uint8Array(MAX_DEFERRED_FRACTURES) };
 export function resetDeferredFractureSlab() {
-    const slab = deferredFractureSlab;
-    const n = slab.count;
-    for (let i = 0; i < n; i++) slab.propRef[i] = null;
-    slab.count = 0;
+    deferredFractureSlab.count = 0;
 }
 export const pendingWallBreaks = { count: 0, kind: new Uint8Array(MAX_PENDING_WALL_BREAKS), idx: new Int32Array(MAX_PENDING_WALL_BREAKS), side: new Int8Array(MAX_PENDING_WALL_BREAKS), strength: new Float32Array(MAX_PENDING_WALL_BREAKS), contactX: new Float32Array(MAX_PENDING_WALL_BREAKS), contactY: new Float32Array(MAX_PENDING_WALL_BREAKS), normalX: new Float32Array(MAX_PENDING_WALL_BREAKS), normalY: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceSpeed: new Float32Array(MAX_PENDING_WALL_BREAKS), sourceMass: new Float32Array(MAX_PENDING_WALL_BREAKS) };
 export const pendingBreakHashKeys = new Int32Array(PENDING_BREAK_HASH_CAPACITY);

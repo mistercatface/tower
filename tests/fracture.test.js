@@ -5,7 +5,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
 function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed) {
     const force = FractureEngine.impactForceFromContact(relativeSpeed, kineticStaticSlab.mass[bodyA._physId], kineticStaticSlab.mass[bodyB._physId]);
-    tick.world.fractureEngine.queueFractureKineticContact(bodyA, bodyB, hitX, hitY, force);
+    tick.world.fractureEngine.queueFractureKineticContact(bodyA._physId, bodyB._physId, hitX, hitY, force);
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
 import { FRACTURE_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
