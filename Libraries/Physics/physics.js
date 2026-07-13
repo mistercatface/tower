@@ -2906,16 +2906,6 @@ export function quantizeContactFeatureId(nx, ny) {
     if (bucket >= FEATURE_ANGLE_BUCKETS) bucket = 0;
     return bucket & 0x1f;
 }
-export function pairContactKey(bodyA, bodyB) {
-    return bodyA.id < bodyB.id ? bodyA.id * PAIR_KEY_SCALE + bodyB.id : bodyB.id * PAIR_KEY_SCALE + bodyA.id;
-}
-export function contactWarmStartKey(bodyA, bodyB, featureA = 0, featureB = 0) {
-    const isAFirst = bodyA.id < bodyB.id;
-    const f1 = isAFirst ? featureA : featureB;
-    const f2 = isAFirst ? featureB : featureA;
-    const featureKey = (f1 & 0xff) | ((f2 & 0xff) << 8);
-    return pairContactKey(bodyA, bodyB) * WARM_START_FEATURE_STRIDE + featureKey;
-}
 export function contactWarmStartKeyFromPairKey(pairKey, featureA = 0, featureB = 0) {
     const featureKey = (featureA & 0xff) | ((featureB & 0xff) << 8);
     return pairKey * WARM_START_FEATURE_STRIDE + featureKey;

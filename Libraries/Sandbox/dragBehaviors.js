@@ -368,7 +368,7 @@ export function createGrabDragBehavior(state, groundNavBehaviorIds) {
         },
         tickWorld(dtMs = 16) {
             if (grabEid < 0) return;
-            if (!state.entityRegistry.getRef(grabEid)) {
+            if (!entityAlive[grabEid]) {
                 clearGrab();
                 return;
             }
