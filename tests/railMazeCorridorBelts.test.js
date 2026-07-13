@@ -2,12 +2,12 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BeltPacked, FloorBelt, CorridorBeltSession, collectRailMazeBeltZoneCells, validateBeltPathMouthAccess } from "../Libraries/Spatial/belts.js";
-import { undirectedPairIndex, bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
-import { getNavWalkableCellIndex, patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
+import { bakeRailMazeDfs, stampGlobalRailWalls, commitGridNavEdit, WorldObstacleGrid, forEachCardinalNeighborIdx } from "../Libraries/Spatial/spatial.js";
+import { getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
 
 function undirectedEdgeIndex(aIdx, bIdx, cellCount) {
-    return undirectedPairIndex(aIdx, bIdx, cellCount);
+    return aIdx < bIdx ? aIdx * cellCount + bIdx : bIdx * cellCount + aIdx;
 }
 
 function collectCorridorPathPolylines(memberIndices, neighborAtIdx, layout) {

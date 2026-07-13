@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createGameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
-import { resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, packChunkKey, cellIdxToChunkKey } from "../Libraries/Spatial/spatial.js";
+import { resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, packChunkKey, cellIdxToChunkKey, commitSurfaceMaterialEdit } from "../Libraries/Spatial/spatial.js";
 import { WorldSurfaceEngine } from "../Libraries/WorldSurface/worldSurface.js";
-import { setChunkSurfaceProfileEdit } from "../Libraries/Spatial/spatial.js";
 
 describe("chunk surface regions", () => {
     it("uses different ground and roof cache keys for different chunk profiles", () => {
@@ -74,8 +73,10 @@ describe("chunk surface regions", () => {
                 },
             },
         };
-        const bounds = setChunkSurfaceProfileEdit(state, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 }, "east");
-        assert.deepEqual(bounds, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 });
+        const cellBounds = { startCol: 8, endCol: 15, startRow: 0, endRow: 15 };
+        state.obstacleGrid.setChunkSurfaceProfileForCellBounds(cellBounds, "east", settings.cellsPerChunk);
+        commitSurfaceMaterialEdit(state, null);
+        assert.deepEqual(cellBounds, { startCol: 8, endCol: 15, startRow: 0, endRow: 15 });
         assert.equal(invalidated.idx, null);
         assert.equal(invalidated.stateArg, grid);
         assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Chunk, "base", 0, packChunkKey(1, 1)), "east");

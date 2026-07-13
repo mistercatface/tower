@@ -13,12 +13,6 @@ export function allocateEntityEid() {
 export function noteEntityEidHighWater(eid) {
     if (eid >= nextEid) nextEid = eid + 1;
 }
-export function entityEidHighWater() {
-    return nextEid;
-}
-export function entityEidFreeCount() {
-    return eidFreeList.length;
-}
 export function worldPropBindFlags(ref) {
     let flags = 0;
     if (ref.isDead) flags |= ENTITY_FLAG_DEAD;

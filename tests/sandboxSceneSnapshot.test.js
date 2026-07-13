@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { getPropVisualTint, setPropVisualTint } from "../Libraries/Color/visualOverride.js";
+import { mergePropVisualOverride } from "../Libraries/Color/visualOverride.js";
 import { hslToHex, normalizeHue } from "../Libraries/Color/colorMath.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { createSandboxKineticWorld, createSandboxTestController } from "./harness/stateFactories.js";
@@ -36,7 +36,7 @@ describe("sandboxSceneSnapshot physics", () => {
         const state = createSnapshotTestState();
         const tinted = spawnPlacedSandboxProp(state, 48, 48, "ball", "alpha");
         const tintHex = hslToHex(normalizeHue(135), 70, 50);
-        setPropVisualTint(tinted, tintHex);
+        mergePropVisualOverride(tinted, { tint: tintHex });
         const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid, 10, 10), {
             segmentCount: 4,
             spacing: 16,
@@ -55,6 +55,6 @@ describe("sandboxSceneSnapshot physics", () => {
         assert.equal(physicsDoc.props[physicsDoc.chainHeadProp].type, chain.head.type);
         assert.ok(state.sandbox.entityMeta.isChainHead(chain.head.id));
         assert.equal(getConnectedBodyIds(state.kinetic, chain.head.id).length, 4);
-        assert.equal(getPropVisualTint(tinted), tintHex);
+        assert.equal(tinted.visualOverride?.tint, tintHex);
     });
 });

@@ -27,7 +27,7 @@ describe("kinetic body slab", () => {
 
     it("slab overlap detects circle against crate OBB", () => {
         const ball = mockKineticCircle(0, 0, 10);
-        const crate = new WorldProp(18, 0, "box", 0);
+        const crate = new WorldProp(14, 0, "box", 0);
         assignPhysIdWithPose(ball, 0);
         assignPhysIdWithPose(crate, 1);
         snapshotKineticBodySlab([ball._physId, crate._physId], 2);

@@ -1,15 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit, commitGridNavEditUnion } from "../Libraries/Spatial/spatial.js";
-import { stampRailWallsBatch, RailWallBatch } from "../Libraries/Spatial/spatial.js";
-import {  BeltPacked  } from "../Libraries/Spatial/belts.js";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { applyFloorCellEdit, clearFloorCellNavEdit, commitGridNavEdit, stampRailWallsQuiet, commitGridWallBatch, RailWallBatch, WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
+import { BeltPacked } from "../Libraries/Spatial/belts.js";
 
 function createNavEditTestState() {
     const grid = new WorldObstacleGrid(16);
     grid.rebuildFixed(0, 0, 32 * 16, 32 * 16);
     let syncCount = 0;
-    /** @type {import("../Libraries/DataStructures/CellRect.js").CellBounds | null} */
     let syncBounds = null;
     return {
         obstacleGrid: grid,
@@ -53,16 +50,18 @@ describe("gridNavEdit", () => {
         assert.equal(state.syncBounds, null);
     });
 
-    it("commitGridNavEditUnion commits each index", async () => {
+    it("commitGridNavEdit commits each index when called repeatedly", async () => {
         const state = createNavEditTestState();
-        await commitGridNavEditUnion(state, 33, 67);
+        await commitGridNavEdit(state, 33);
+        await commitGridNavEdit(state, 67);
         assert.equal(state.syncCount, 2);
     });
 
-    it("stampRailWallsBatch syncs nav once per batch", () => {
+    it("stampRailWallsQuiet plus commitGridWallBatch syncs nav once per batch", () => {
         const state = createNavEditTestState();
         state.worldSurfaces.settings = { maxWallHeightLevel: 4 };
-        stampRailWallsBatch(state, RailWallBatch.single(2 + 2 * state.obstacleGrid.cols, 0));
+        const { bounds } = stampRailWallsQuiet(state, RailWallBatch.single(2 + 2 * state.obstacleGrid.cols, 0));
+        commitGridWallBatch(state, bounds);
         assert.equal(state.syncCount, 1);
     });
 });

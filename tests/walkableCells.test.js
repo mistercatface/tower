@@ -86,13 +86,14 @@ describe("walkableCells", () => {
         config.boundsCols = 8;
         config.boundsRows = 8;
         const state = await createWalkableCellsTestState(config);
-        state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
         getNavWalkableCellIndex(state);
         const picked = pickNavWalkableCell(state, () => 0);
         assert.ok(picked !== null && picked !== undefined);
         const idx = picked;
         state.obstacleGrid.grid[idx] = 1;
+        bumpGridNavEpoch(state.obstacleGrid, GRID_NAV_EPOCH_WALL);
         await state.nav.commitEdit(idx);
+        patchNavWalkableCellIndex(state, idx);
         assert.ok(getNavWalkableCellIndex(state).flags[picked] === 0);
         terminateWorkerNavigation(state.nav);
     });

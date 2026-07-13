@@ -73,18 +73,15 @@ export function setPolygonPropBoundingRadius(prop, boundingRadius) {
     if (!currentRadius || currentRadius <= 0) throw new Error(`setPolygonPropBoundingRadius requires a polygon prop with positive radius, got ${currentRadius}`);
     scalePolygonPropFootprint(prop, boundingRadius / currentRadius);
 }
-export function getCirclePropRadius(prop) {
-    return prop.radius;
-}
 export function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
     const shape = prop.shape;
     if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`setCirclePropRadius requires a circle prop, got shapeTypeId=${shape?.shapeTypeId}`);
     prop.shape = new CircleShape(radius);
     prop.radius = radius;
-    invalidateEntityFootprint(prop._physId);
     stampKineticCircleRadius(prop._physId, radius);
     normalizeKineticBody(prop);
+    invalidateEntityFootprint(prop._physId);
     wakeKineticBody(prop._physId);
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */

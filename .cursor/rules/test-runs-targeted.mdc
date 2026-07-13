@@ -10,12 +10,11 @@ Do **not** run `npm test` or belt/pathfinding tests as a default wrap-up after u
 ## Skip by default
 
 - No full `npm test` at the end of every task unless the user asks or the change clearly needs it.
-- Do **not** run `tests/floorBeltCell.test.js` or `tests/puzzleTemplateBeltCrate.test.js` unless the work touches pathfinding, HPA nav, floor belts, or belt puzzle templates.
-- Do **not** mention known pre-existing belt test failures — they are expected baseline noise, not a regression signal.
+- Do **not** run `tests/floorBeltCell.test.js` or corridor/belt integration suites unless the work touches pathfinding, HPA nav, floor belts, or belt puzzle templates.
 
 ## When to run tests
 
 - User explicitly asks to run tests.
 - Change is in or directly wired to: `Libraries/Pathfinding/`, `Systems/Navigation/`, belt nav behavior, corridor/HPA tests, or the specific feature's own test file.
-- Prefer targeted runs (`node scripts/run-tests.mjs tests/foo.test.js`) over the full suite. The runner applies a **5s per-test timeout** — hangs fail instead of blocking forever.
-- Do **not** use bare `node --test` (no timeout). Use `npm run test:all` or `node scripts/run-tests.mjs …`.
+- Prefer targeted runs (`node --test --test-timeout=5000 --import ./tests/testPreload.js tests/foo.test.js` or `node scripts/run-tests.mjs tests/foo.test.js`) over the full suite. Always use a **5s per-test timeout** — hangs fail instead of blocking forever.
+- Do **not** use bare `node --test` (no timeout).

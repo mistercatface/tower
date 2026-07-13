@@ -6,18 +6,21 @@ These rules are project-scoped behavior constraints for all AI agents editing th
 
 - **KEEP TEST SPECIFIC CODE INSIDE THE TEST FOLDER. DO NOT PUT TEST CODE OUTSIDE THE TEST FOLDER.**
 - **Consolidate Mocks**: Reuse harness files inside `tests/harness/` — not inline mocks in test files when used 2+ times.
-- **No test-only exports in `Libraries/`** — no `*ForTests` symbols, no production branches loosened for test convenience.
+- **No test-only exports in `Libraries/` or `Core/`** — no `*ForTests` symbols, no production branches loosened for test convenience, no exports whose only callers are `tests/` (manual import-graph; see `.cursor/rules/test-production-boundary.mdc`).
 - **Tests adapt to production contracts** — harness builds real wiring (`createKineticSession`, `WorldObstacleGrid`, `sandboxDragHarness`, etc.).
 
 ## 2. Test Execution
 
-- **Run tests via Node directly**: `node scripts/run-tests.mjs tests/foo.test.js` or `npm run test:all` — not through `cmd.exe /c`.
+- **Run tests via Node directly** with a timeout: `node --test --test-timeout=5000 --import ./tests/testPreload.js tests/foo.test.js` (or `node scripts/run-tests.mjs …`) — not through `cmd.exe /c`.
 - **Targeted runs** — one file or feature scope; avoid full suite unless the change warrants it.
-- **Timeout runner** — prefer `node scripts/run-tests.mjs` over bare `node --test`.
+- Full suite: prefer `--test-concurrency=1` when shared SoA/worker module state can flake under parallel files.
 
 ## 3. Code Hygiene Audits
 
 Before adding exports under `Libraries/` or finishing a feature that touches `Libraries/`:
+
+1. **Manual caller map** (required for test/production boundary): grep the new symbol; if only `tests/` imports it → delete or wire into product first. See `test-production-boundary.mdc`.
+2. Optional hygiene scripts (barrels, bags, `ForTests` *names* — not orphan-export detection):
 
 ```powershell
 node scripts/audit-codebase.mjs Libraries/<area>   # path filter on changed dirs

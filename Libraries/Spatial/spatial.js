@@ -1,5 +1,5 @@
 import { withSeededRandom } from "../Random/index.js";
-import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex } from "../Navigation/navigation.js";
+import { invalidateGridLocalNavBake, CorridorPathfinder, getNavWalkableCellIndex, patchNavWalkableCellIndex } from "../Navigation/navigation.js";
 import { CARDINAL_DCOL, CARDINAL_DR, minCornerAabbF32, CARDINAL_FACING_STEPS, lengthXY, boxLocalFootprint, vertCount, createSeededRng, centerReachAabbF32, centeredAabbF32, padAabbF32, unionAabbF32 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_I32, ENGINE_BOUNDS_BASE, B_PAD, B_CELL, B_TMP, B_FOOTPRINT, S_OUT_XY, S_OUT_SCREEN, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, S_OUT_RAY_X, S_OUT_RAY_Y, S_OUT_RAY_DIST, I_OUT_RAY_HIT, P_VEC_A, kineticDynamicSlab, entityRefs, entityFlags, entityX, entityY, entityR, entitySpatialGen, entityGridTileIdx, entityAlive, entityNext, ensureGrowI32, GrowI32, staticWallSegmentSlab, resetStaticWallSegmentSlab, allocStaticWallSegment, packStaticWallSegKey, lookupStaticWallSegIntern, insertStaticWallSegIntern, MAX_STATIC_WALL_SEGMENTS } from "../../Core/engineMemory.js";
 import { GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, WALL_SEG_STATIC_FACE, CIRCLE_RAY_HIT_NONE, CIRCLE_RAY_HIT_WALL } from "../../Core/engineEnums.js";
@@ -775,9 +775,6 @@ export function forEachStampGlobalIdx(originIdx, layoutCols, strideCols, cellCou
         const idx = stampGlobalIdx(originIdx, localIdx, layoutCols, strideCols);
         if (idx >= 0 && idx < grid.grid.length && isIdxInMapGenBounds(config, grid, idx)) fn(idx, localIdx);
     });
-}
-export function undirectedPairIndex(aIdx, bIdx, cellCount) {
-    return aIdx < bIdx ? aIdx * cellCount + bIdx : bIdx * cellCount + aIdx;
 }
 /** @param {import("./WorldObstacleGrid.js").WorldObstacleGrid} grid */
 export function gridCellLayout(grid) {
@@ -2094,15 +2091,6 @@ export function commitGridWallAtIdx(state, idx) {
     growCellBoundsIdx(bounds, idx, state.obstacleGrid);
     return commitGridWallBatch(state, bounds);
 }
-export function stampRailWallsBatch(state, railWalls) {
-    const { bounds, stamped } = stampRailWallsQuiet(state, railWalls);
-    commitGridWallBatch(state, bounds);
-    return stamped;
-}
-export function clearRailWallsBatch(state, rails) {
-    const bounds = clearRailWallsQuiet(state, rails);
-    commitGridWallBatch(state, bounds);
-}
 export function clearVoxelWallQuiet(state, idx) {
     const grid = state.obstacleGrid;
     if (!cellIsStaticWallAtIdx(grid, idx)) return false;
@@ -2121,17 +2109,6 @@ export function clearVoxelWallsQuiet(state, voxelIndices) {
     }
     if (!changed) return null;
     bumpGridNavEpoch(grid, GRID_NAV_EPOCH_WALL);
-    return bounds;
-}
-export function clearVoxelWallsBatch(state, voxelIndices) {
-    const bounds = clearVoxelWallsQuiet(state, voxelIndices);
-    commitGridWallBatch(state, bounds);
-    return bounds;
-}
-/** Clear voxel and rail walls in one nav invalidation. */
-export function clearGridWallsBatch(state, { voxels = [], rails = [] } = {}) {
-    const bounds = unionCellBounds(clearVoxelWallsQuiet(state, voxels), clearRailWallsQuiet(state, rails));
-    commitGridWallBatch(state, bounds);
     return bounds;
 }
 export function clearAllStampedGridWalls(state, { notify = true } = {}) {
@@ -2316,31 +2293,14 @@ export function commitGridNavEdit(state, region, { invalidateSurfaces = true, fu
         if (fullNavSync || region === null) state.worldSurfaces.invalidateGridBounds(null, grid);
         else state.worldSurfaces.invalidateGridBounds(region, grid);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
+    if (state.editor?.navWalkableCellsCache) patchNavWalkableCellIndex(state, fullNavSync ? null : region);
     const nav = state.nav;
     return nav.commitEdit(region, { fullNavSync });
-}
-export function commitGridNavEditUnion(state, ...indices) {
-    const parts = indices.filter((x) => typeof x === "number");
-    if (!parts.length) return Promise.resolve();
-    for (let i = 0; i < parts.length; i++) commitGridNavEdit(state, parts[i]);
-    return Promise.resolve();
 }
 export function commitSurfaceMaterialEdit(state, idx) {
     if (state.worldSurfaces) state.worldSurfaces.invalidateGridBounds(idx, state.obstacleGrid);
     if (state.editor != null || state.appLaunch != null) rebuildLabMapCaches(state);
     return idx;
-}
-export function setChunkSurfaceProfileEdit(state, cellBounds, profileId) {
-    const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    state.obstacleGrid.setChunkSurfaceProfileForCellBounds(cellBounds, profileId, cellsPerChunk);
-    commitSurfaceMaterialEdit(state, null);
-    return cellBounds;
-}
-export function clearChunkSurfaceProfileEdit(state, cellBounds) {
-    const cellsPerChunk = state.worldSurfaces.settings.cellsPerChunk;
-    forEachChunkKeyInCellBounds(cellBounds, cellsPerChunk, (key) => state.obstacleGrid.clearChunkSurfaceProfileAtKey(key, cellsPerChunk));
-    commitSurfaceMaterialEdit(state, null);
-    return cellBounds;
 }
 /** Stamp or replace one floor cell and resync nav topology. */
 export function applyFloorCellEdit(state, idx, packed) {
@@ -3107,14 +3067,17 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const physId = prop._physId ?? allocateEntityEid();
             if (needBind) {
                 invalidateKineticShapeGeom(physId);
+                prop._physId = physId;
                 normalizeKineticBody(prop);
                 const x = prop.x;
                 const y = prop.y;
                 const flags = worldPropBindFlags(prop);
-                prop._physId = physId;
                 bindEntitySlot(physId, ENTITY_KIND_WORLD_PROP, prop, prop.id | 0, x, y, slabCollisionSpan(physId), flags);
                 clearWorldPropSpawnPose(prop);
-            } else prop._physId = physId;
+            } else {
+                prop._physId = physId;
+                if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(prop);
+            }
             this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }
@@ -3126,14 +3089,17 @@ export class KineticSpatialFrame extends SpatialFrameCore {
             const physId = body._physId ?? allocateEntityEid();
             if (needBind) {
                 invalidateKineticShapeGeom(physId);
+                body._physId = physId;
                 normalizeKineticBody(body);
                 const x = body.x;
                 const y = body.y;
                 const flags = worldPropBindFlags(body);
-                body._physId = physId;
                 bindEntitySlot(physId, ENTITY_KIND_DEBRIS, body, body.id | 0, x, y, slabCollisionSpan(physId), flags);
                 clearWorldPropSpawnPose(body);
-            } else body._physId = physId;
+            } else {
+                body._physId = physId;
+                if (kineticDynamicSlab.partGeomOffset[physId] < 0) normalizeKineticBody(body);
+            }
             this.insertEid(physId);
             if ((entityFlags[physId] & ENTITY_FLAG_KINETIC) !== 0) this._pushKineticEid(physId);
         }

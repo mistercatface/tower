@@ -8,14 +8,14 @@ describe("prop debris fade-out and removal", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         const tick = createKineticTestTick([prop]);
         assert.equal(prop.strategy.fadeOutMs, undefined);
-        assert.equal(prop.alpha, undefined);
+        assert.equal(prop.alpha, 1);
 
         prop.update(3000, tick.world, tick.frame);
-        assert.equal(prop.alpha, undefined);
+        assert.equal(prop.alpha, 1);
         assert.equal(prop.isDead, false);
 
         prop.update(10000, tick.world, tick.frame);
-        assert.equal(prop.alpha, undefined);
+        assert.equal(prop.alpha, 1);
         assert.equal(prop.isDead, false);
     });
 

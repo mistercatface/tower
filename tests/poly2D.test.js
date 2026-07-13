@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { pointInPolygon, rotateXYIntoF32, transformPoint2DIntoF32, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D } from "../Libraries/Math/math.js";
+import { pointInPolygon, rotateXYIntoF32, ensureFlatVerts, reversePolygonWinding, polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { assertPointNear } from "./mathHarness.js";
 describe("Poly2D.rotateXY", () => {
@@ -9,13 +9,12 @@ describe("Poly2D.rotateXY", () => {
         assertPointNear({ x: ENGINE_F32[M_VEC_A], y: ENGINE_F32[M_VEC_A + 1] }, 0, 1);
     });
 });
-describe("Poly2D.transformPoint2DInto", () => {
+describe("Poly2D.transformPoint2D", () => {
     it("applies rotation then translation", () => {
         const cos = Math.cos(Math.PI / 2);
         const sin = Math.sin(Math.PI / 2);
-        const buf = new Float32Array(2);
-        transformPoint2DIntoF32(buf, 0, 5, 5, 2, 0, cos, sin);
-        assertPointNear({ x: buf[0], y: buf[1] }, 5, 7);
+        rotateXYIntoF32(M_VEC_A, 2, 0, cos, sin);
+        assertPointNear({ x: 5 + ENGINE_F32[M_VEC_A], y: 5 + ENGINE_F32[M_VEC_A + 1] }, 5, 7);
     });
 });
 describe("Poly2D.pointInPolygon", () => {

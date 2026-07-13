@@ -37,11 +37,6 @@ export function rotateXYIntoF32(o, lx, ly, cos, sin) {
     ENGINE_F32[o] = lx * cos - ly * sin;
     ENGINE_F32[o + 1] = lx * sin + ly * cos;
 }
-/** Writes transformed x,y into buf[o..o+1]. */
-export function transformPoint2DIntoF32(buf, o, centerX, centerY, lx, ly, cos, sin) {
-    buf[o] = centerX + lx * cos - ly * sin;
-    buf[o + 1] = centerY + lx * sin + ly * cos;
-}
 export function boxLocalFootprint(hx, hy) {
     return new Float32Array([-hx, -hy, hx, -hy, hx, hy, -hx, hy]);
 }

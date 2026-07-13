@@ -431,22 +431,6 @@ export function bfsIndices(seeds, visit) {
     }
     return queue;
 }
-export function bfsTypedIndices(startIdx, gridSize, visit) {
-    const visited = new Uint8Array(gridSize);
-    const queue = new Int32Array(gridSize);
-    let head = 0;
-    let tail = 0;
-    visited[startIdx] = 1;
-    queue[tail++] = startIdx;
-    while (head < tail) {
-        const idx = queue[head++];
-        const result = visit(idx, visited, (nIdx) => {
-            visited[nIdx] = 1;
-            queue[tail++] = nIdx;
-        });
-        if (result !== undefined) return result;
-    }
-}
 // --- NavUtils.js ---
 export function _removeEdgeByTargetId(node, targetId) {
     const edges = node.edges;
@@ -1520,8 +1504,6 @@ export class NavRuntime {
         this._lastGridTopologyEpoch = grid.gridTopologyEpoch;
         this._workerNavGraphSyncChain = Promise.resolve();
         this._graphSyncGeneration = 0;
-        /** @type {NavWalkableSyncHook | null} */
-        this._navWalkableSyncHook = null;
         grid._navTopologyRef = this.topology;
     }
     /** Current grid topology key (changes on every nav-affecting edit). */
@@ -1542,10 +1524,6 @@ export class NavRuntime {
     /** HPA region-graph generation — bumps after each completed worker graph sync. */
     get graphSyncGeneration() {
         return this._graphSyncGeneration;
-    }
-    /** @param {NavWalkableSyncHook | null} hook */
-    setNavWalkableSyncHook(hook) {
-        this._navWalkableSyncHook = hook;
     }
     /**
      * @param {CellBounds | CellBounds[] | null} bounds
@@ -1570,7 +1548,6 @@ export class NavRuntime {
         const fullGraph = topologyChanged || idx == null;
         await this.worker.syncObstacleNavGraph(grid, idx, graphEpoch, fullGraph);
         this._graphSyncGeneration = graphEpoch;
-        this._navWalkableSyncHook?.(idx);
     }
     async shutdown() {
         this.worker.shutdown();

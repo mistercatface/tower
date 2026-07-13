@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { getCirclePropRadius, setCirclePropRadius, getPolygonPropBoundingRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
+import { setCirclePropRadius, getPolygonPropBoundingRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
 import { getBaseSpriteCacheId } from "../Libraries/Props/props.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
 import { kineticStaticSlab } from "../Core/engineMemory.js";
@@ -16,9 +16,9 @@ describe("propScale", () => {
     it("setPropRadius updates shape, radius, and mass", () => {
         const state = createSandboxKineticWorld(16, 16);
         const prop = spawnPlacedSandboxProp(state, 80, 80, "ball", "alpha");
-        assert.equal(getCirclePropRadius(prop), 4);
+        assert.equal(prop.radius, 4);
         setCirclePropRadius(prop, 2);
-        assert.equal(getCirclePropRadius(prop), 2);
+        assert.equal(prop.radius, 2);
         assert.ok(prop.shape instanceof CircleShape);
         assert.equal(prop.shape.radius, 2);
         assert.ok(kineticStaticSlab.mass[prop._physId] > 0);

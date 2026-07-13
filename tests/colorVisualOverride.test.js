@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolveVisualOverrideColorTree, setPropVisualTint, visualOverrideCacheKey } from "../Libraries/Color/visualOverride.js";
+import { resolveVisualOverrideColorTree, mergePropVisualOverride, visualOverrideCacheId } from "../Libraries/Color/visualOverride.js";
 import propCatalog from "../Assets/props/index.js";
 
 describe("Color visualOverride", () => {
@@ -13,12 +13,12 @@ describe("Color visualOverride", () => {
     it("ball asset has no coat visuals", () => {
         assert.equal(propCatalog["ball"].visuals, undefined);
     });
-    it("visualOverrideCacheKey keys tinted props by hex", () => {
+    it("visualOverrideCacheId keys tinted props by hex", () => {
         const prop = {};
-        assert.equal(visualOverrideCacheKey(prop), "");
-        setPropVisualTint(prop, "#2a2a2a");
-        assert.equal(visualOverrideCacheKey(prop), "t2a2a2a");
-        setPropVisualTint(prop, "#ff0000");
-        assert.equal(visualOverrideCacheKey(prop), "tff0000");
+        assert.equal(visualOverrideCacheId(prop), 0);
+        mergePropVisualOverride(prop, { tint: "#2a2a2a" });
+        assert.equal(visualOverrideCacheId(prop), 0x2a2a2a);
+        mergePropVisualOverride(prop, { tint: "#ff0000" });
+        assert.equal(visualOverrideCacheId(prop), 0xff0000);
     });
 });

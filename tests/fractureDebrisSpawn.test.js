@@ -6,7 +6,7 @@ import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/EntityRegistry.js";
-import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
+import { mergePropVisualOverride } from "../Libraries/Color/visualOverride.js";
 import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { entityWallChunkTextureReady, entityFootprintId } from "../Core/engineMemory.js";
@@ -139,7 +139,7 @@ describe("fracture debris slab spawn", () => {
         const world = createFractureWorld();
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 32, 32);
-        setPropVisualTint(prop, "#c44a22");
+        mergePropVisualOverride(prop, { tint: "#c44a22" });
         const parentVo = prop.visualOverride;
         const result = spawnFractureShards(world, prop, 30);
         assert.ok(result);
@@ -155,7 +155,7 @@ describe("fracture debris slab spawn", () => {
         const world = createFractureWorld();
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 64, 64);
-        setPropVisualTint(prop, "#3366aa");
+        mergePropVisualOverride(prop, { tint: "#3366aa" });
         const first = spawnFractureShards(world, prop, 30);
         assert.ok(first);
         const parent = first.shards.reduce((a, b) => (a.footprintArea > b.footprintArea ? a : b));

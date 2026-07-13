@@ -5,18 +5,27 @@ alwaysApply: true
 
 # Test / production boundary
 
-## No test-only exports in Libraries/
+## No test-only exports in Libraries/ or Core/
 
-Test helpers belong in `tests/harness/`, not `Libraries/`.
+Test helpers belong in `tests/harness/`, not `Libraries/` or `Core/`.
 
-- Do **not** add `resetFooForTests`, `clearFooPools`, `getFooPoolSize`, or assert helpers to production modules.
+- Do **not** add `resetFooForTests`, `clearFooPools`, `getFooPoolSize`, pool/high-water getters, tint wrappers, string cache-key twins, or assert helpers to production modules.
+- Do **not** add injectable hooks that only tests wire (`setFooForTests`, sync hooks that Apps never sets).
 - If a test needs isolation (IDs, pools, slab pose checks), build it in `tests/harness/` importing production APIs — or fix production to be session-scoped so tests get isolation from fresh session construction.
 
-Before adding any new export under `Libraries/`, run:
+## Manual import-graph check (required — not optional scripts)
 
-```powershell
-npm run audit
-```
+Before adding or keeping any new export under `Libraries/` or `Core/`:
+
+1. Grep the whole repo for the symbol name (IDE find-references / ripgrep).
+2. Classify callers:
+   - **Apps/ or Libraries/ callers** → keep
+   - **Only `tests/`** → illegal — delete the export and rewrite the test to use the real product API, **or** wire the symbol into a real product path first
+   - **Zero callers** → delete
+3. Thin wrappers that only forward (`getFoo` → `prop.foo`, tint setters over `mergePropVisualOverride`) are illegal if only tests call them — tests use the underlying API.
+4. Batch “edit helpers” that only compose quiet+commit are illegal if Apps never calls them — tests compose the same quiet+commit sequence.
+
+`npm run audit` may catch `*ForTests` names and other hygiene. It is **not** the gate for orphan exports only tests import — the manual caller map above is.
 
 ## No production branches for tests
 
@@ -33,6 +42,7 @@ See also `no-shims-and-guards.mdc`, `.agents/AGENTS.md`.
 
 ## Review bar
 
-- New `Libraries/` export imported only from `tests/`? → Move to harness or delete.
+- New `Libraries/` / `Core/` export imported only from `tests/`? → Move to harness, delete, or wire into product.
 - Test file defines inline mock used in one place only? → OK; used 2+ times? → Harness.
 - Production code changed solely because a test couldn't set up state? → Fix the test harness, revert the prod branch.
+- Would a competent grep of the symbol show zero Apps/Libraries callers? → Do not ship it.

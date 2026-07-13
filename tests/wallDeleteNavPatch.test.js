@@ -2,13 +2,13 @@ import "./nodeCanvasSetup.js";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createDefaultMapGenBoundsConfig } from "../Libraries/Spatial/spatial.js";
-import { clearGridWallsBatch, clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit, RailWallBatch, unionCellBounds } from "../Libraries/Spatial/spatial.js";
+import { clearRailWallsQuiet, clearVoxelWallsQuiet, stampRailWallsQuiet, createDeferredGridWallCommit, RailWallBatch, unionCellBounds, commitGridWallBatch } from "../Libraries/Spatial/spatial.js";
 import {  isRailWallEdge  } from "../Libraries/Spatial/spatial.js";
 import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { getNavWalkableCellIndex, patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
+import { getNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { createSandboxSessionState } from "./harness/stateFactories.js";
 
@@ -44,8 +44,12 @@ async function createWallDeleteTestState() {
             notifyCount = 0;
         },
     };
-    state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     return state;
+}
+function clearGridWallsAndCommit(state, { voxels = [], rails = [] } = {}) {
+    const bounds = unionCellBounds(clearVoxelWallsQuiet(state, voxels), clearRailWallsQuiet(state, rails));
+    commitGridWallBatch(state, bounds);
+    return bounds;
 }
 function stampVoxelQuiet(state, col, row, heightLevel = 1) {
     const grid = state.obstacleGrid;
@@ -66,12 +70,12 @@ describe("wall delete batching (4a)", () => {
         assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(worldIdxAtCell(state.obstacleGrid,3, 3), 1)));
         terminateWorkerNavigation(state.nav);
     });
-    it("clearGridWallsBatch deletes voxel and rail in one nav invalidation", async () => {
+    it("quiet+commit deletes voxel and rail in one nav invalidation", async () => {
         const state = await createWallDeleteTestState();
         stampVoxelQuiet(state, 1, 1);
         stampRailWallsQuiet(state, RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 4, 4), 0));
         state.resetNotifyCount();
-        const bounds = clearGridWallsBatch(state, {
+        const bounds = clearGridWallsAndCommit(state, {
             voxels: [worldIdxAtCell(state.obstacleGrid,1, 1)],
             rails: RailWallBatch.single(worldIdxAtCell(state.obstacleGrid, 4, 4), 0),
         });
@@ -164,7 +168,7 @@ describe("wall delete nav patch (4a)", () => {
         assert.equal(getNavWalkableCellIndex(state).flags[idxBlocked], 0);
         assert.equal(grid.canStep(idxRail, idxNext, state.nav.topology), false);
         state.resetNotifyCount();
-        const bounds = clearGridWallsBatch(state, {
+        const bounds = clearGridWallsAndCommit(state, {
             voxels: [idxBlocked],
             rails: RailWallBatch.single(idxRail, 1),
         });

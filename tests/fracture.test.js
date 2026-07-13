@@ -9,14 +9,15 @@ function tryFractureKineticContact(tick, bodyA, bodyB, hitX, hitY, relativeSpeed
     tick.world.fractureEngine.flushDeferredFractures(tick.world, tick.frame);
 }
 import { FRACTURE_MAX_SHARDS_PER_SHATTER } from "../Libraries/Physics/fracture.js";
-import { transformPoint2DIntoF32 } from "../Libraries/Math/math.js";
-import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, kineticStaticSlab } from "../Core/engineMemory.js";
+import { rotateXYIntoF32 } from "../Libraries/Math/math.js";
+import { ENGINE_F32, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_AREA, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, kineticStaticSlab, M_VEC_A } from "../Core/engineMemory.js";
 import { satPolygonPolygonF32, PolygonShape } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
 import { liveFracturePropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
+import { bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import propCatalog from "../Assets/props/index.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 const originalMathRandom = Math.random;
@@ -25,18 +26,16 @@ const deterministicRandom = () => 0.5;
 function shardWorldBody(originX, originY, facing, geom) {
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    const worldBuf = new Float32Array(2);
-    transformPoint2DIntoF32(worldBuf, 0, originX, originY, geom.centroid.cx, geom.centroid.cy, cos, sin);
-    const worldX = worldBuf[0];
-    const worldY = worldBuf[1];
+    rotateXYIntoF32(M_VEC_A, geom.centroid.cx, geom.centroid.cy, cos, sin);
+    const worldX = originX + ENGINE_F32[M_VEC_A];
+    const worldY = originY + ENGINE_F32[M_VEC_A + 1];
     const flat = geom.footprintVertices;
     const count = flat.length;
     const verts = new Float32Array(count);
-    const outPoint = new Float32Array(2);
     for (let i = 0; i < count; i += 2) {
-        transformPoint2DIntoF32(outPoint, 0, worldX, worldY, flat[i], flat[i + 1], cos, sin);
-        verts[i] = outPoint[0];
-        verts[i + 1] = outPoint[1];
+        rotateXYIntoF32(M_VEC_A, flat[i], flat[i + 1], cos, sin);
+        verts[i] = worldX + ENGINE_F32[M_VEC_A];
+        verts[i + 1] = worldY + ENGINE_F32[M_VEC_A + 1];
     }
     return { x: worldX, y: worldY, facing, verts };
 }
@@ -99,8 +98,15 @@ describe("fracture", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         setupPropForFracture(prop, 12, 8);
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
+        prop._wallChunkTextureReady = true;
+        bindWallChunkTexturePipeline({
+            _wallChunkReady: true,
+            _wallChunkCapCanvas: { width: 128, height: 128 },
+            _wallChunkSideCanvas: { width: 128, height: 128 },
+            settings: { surfaceBakeScale: 1, cellSize: 16, cellsPerChunk: 8 },
+        });
         const draw = propCatalog["box"].drawRecipe;
-        const calls = { beginPath: 0, fill: 0, stroke: 0, fillStyle: null };
+        const calls = { beginPath: 0, fill: 0, stroke: 0, fillStyle: null, drawImage: 0 };
         const viewport = {
             x: 0,
             y: 0,
@@ -120,6 +126,14 @@ describe("fracture", () => {
             lineTo() {},
             closePath() {},
             createLinearGradient() { return { addColorStop() {} }; },
+            createPattern() { return { setTransform() {} }; },
+            save() {},
+            restore() {},
+            transform() {},
+            setTransform() {},
+            drawImage() { calls.drawImage++; },
+            clip() {},
+            getTransform() { return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; },
         };
         calls.beginPath = 0;
         calls.fill = 0;
@@ -133,9 +147,12 @@ describe("fracture", () => {
         calls.beginPath = 0;
         calls.fill = 0;
         calls.stroke = 0;
+        calls.drawImage = 0;
         draw(ctx, prop, viewport, false);
-        assert.ok(calls.fill > 1);
+        assert.ok(calls.drawImage > 0, "radial wall-chunk draw should blit textured side faces");
+        assert.ok(calls.fill >= 1, "radial wall-chunk draw should fill the cap");
         assert.equal(calls.stroke, 0);
+        bindWallChunkTexturePipeline(null);
     });
     it("box init has no poxel tessellation", () => {
         const prop = new WorldProp(0, 0, "box", 0);
@@ -328,8 +345,8 @@ describe("fracture", () => {
         applyPropBoxFootprint(glass, 24, 18);
         glass.vx = 0;
         ball.vx = -200;
-        assert.ok(satCheckCollision(glass, ball));
         const tick = createKineticTestTick([glass, ball]);
+        assert.ok(satCheckCollision(glass, ball));
         runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
         const count = liveFracturePropCount(tick.world);
         assert.ok(count > 2);

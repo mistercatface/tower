@@ -89,7 +89,7 @@ describe("polygon wall resolution", () => {
         assert.ok(shapeOverlapsWall(bar, wall));
         const resolver = new WallCollisionResolver();
         const frame = {
-            frameId: 1,
+            frameId: (resolveWall._nextFrameId = (resolveWall._nextFrameId || 0) + 1),
             kineticEids: Int32Array.of(bar._physId),
             kineticEidCount: 1,
             getWallCandidates: () => segs,

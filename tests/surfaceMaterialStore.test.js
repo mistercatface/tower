@@ -1,44 +1,24 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
+import { WorldObstacleGrid } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import {  gridNavCacheKey  } from "../Libraries/Spatial/spatial.js";
-import { drawProjectedWallFaceScalars, writeWallFaceScratch } from "../Libraries/Render/render.js";
+import { gridNavCacheKey } from "../Libraries/Spatial/spatial.js";
 import { resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, packChunkKey } from "../Libraries/Spatial/spatial.js";
 import { minCornerAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_TMP } from "../Core/engineMemory.js";
-
-function createPathOnlyContext() {
-    return {
-        beginPath() {},
-        moveTo() {},
-        lineTo() {},
-        closePath() {},
-        save() {},
-        clip() {},
-        restore() {},
-        fill() {},
-        set fillStyle(value) {
-            this._fillStyle = value;
-        },
-        get fillStyle() {
-            return this._fillStyle;
-        },
-    };
-}
 
 describe("surface material stores", () => {
     it("resolve to the base profile unless a sparse override exists", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
-        const idx = worldIdxAtCell(grid,1, 1);
+        const idx = worldIdxAtCell(grid, 1, 1);
         assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, "base", 0, idx), "base");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 1), 2, "base"), "base");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid, 1, 1), 2, "base"), "base");
         grid.setCellSurfaceProfileAtIdx(idx, "cell-profile");
         grid.setEdgeSurfaceProfile(idx, 2, "edge-profile");
         assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, "base", 0, idx), "cell-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 1), 2, "base"), "edge-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,1, 2), 0, "base"), "edge-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid, 1, 1), 2, "base"), "edge-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid, 1, 2), 0, "base"), "edge-profile");
     });
 
     it("material revisions do not change nav topology keys", () => {
@@ -46,7 +26,7 @@ describe("surface material stores", () => {
         grid.rebuildFixed(0, 0, 64, 64);
         const navKey = gridNavCacheKey(grid);
         const materialRevision = grid.surfaceMaterialRevision;
-        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 0, "rust");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid, 1, 1), 0, "rust");
         assert.equal(gridNavCacheKey(grid), navKey);
         assert.notEqual(grid.surfaceMaterialRevision, materialRevision);
     });
@@ -54,84 +34,37 @@ describe("surface material stores", () => {
     it("remaps material-only cells and edges when grid bounds expand", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 32, 32);
-        grid.setCellSurfaceProfileAtIdx(worldIdxAtCell(grid,0, 0), "cell-profile");
-        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 2, "edge-profile");
+        grid.setCellSurfaceProfileAtIdx(worldIdxAtCell(grid, 0, 0), "cell-profile");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid, 1, 1), 2, "edge-profile");
         minCornerAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP, -32, -16, 48, 32);
         grid.expandToCoverAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_TMP);
-        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, "base", 0, worldIdxAtCell(grid,1, 0)), "cell-profile");
-        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid,2, 1), 2, "base"), "edge-profile");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.Cell, "base", 0, worldIdxAtCell(grid, 1, 0)), "cell-profile");
+        assert.equal(resolveEdgeSurfaceProfileId(grid, worldIdxAtCell(grid, 2, 1), 2, "base"), "edge-profile");
     });
 
     it("uses resolved edge profile ids for rail wall atlas selection", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
-        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 1, "edge-profile");
-        let capturedProfileId = null;
-        const state = {
-            obstacleGrid: grid,
-            worldSurfaces: {
-                activeSurfaceProfileId: "base",
-                settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                surfaceSpace: { writeWallAtlasWrap() {} },
-                getOrEnsureWallAtlas(profileId) {
-                    capturedProfileId = profileId;
-                    return null;
-                },
-            },
-        };
-        const viewport = { x: 0, y: 0, cameraHeight: 256, perspectiveStrength: 1 };
-        writeWallFaceScratch(16, 0, 16, 1, worldIdxAtCell(grid, 1, 1), true);
-        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state);
-        assert.equal(capturedProfileId, "edge-profile");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid, 1, 1), 1, "edge-profile");
+        const idx = worldIdxAtCell(grid, 1, 1);
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.WallFace, "base", 8, idx, 1, true), "edge-profile");
     });
 
     it("uses resolved cell profile ids for voxel wall atlas selection", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 64, 64);
-        const idx = worldIdxAtCell(grid,1, 1);
+        const idx = worldIdxAtCell(grid, 1, 1);
         grid.setCellSurfaceProfileAtIdx(idx, "cell-profile");
-        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid,1, 1), 1, "edge-profile");
-        let capturedProfileId = null;
-        const state = {
-            obstacleGrid: grid,
-            worldSurfaces: {
-                activeSurfaceProfileId: "base",
-                settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                surfaceSpace: { writeWallAtlasWrap() {} },
-                getOrEnsureWallAtlas(profileId) {
-                    capturedProfileId = profileId;
-                    return null;
-                },
-            },
-        };
-        const viewport = { x: 0, y: 0, cameraHeight: 256, perspectiveStrength: 1 };
-        writeWallFaceScratch(16, 0, 16, 1, idx, false);
-        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state);
-        assert.equal(capturedProfileId, "cell-profile");
+        grid.setEdgeSurfaceProfile(worldIdxAtCell(grid, 1, 1), 1, "edge-profile");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.WallFace, "base", 8, idx, 1, false), "cell-profile");
     });
 
     it("falls back to the chunk profile for walls with no cell override", () => {
         const grid = new WorldObstacleGrid(16);
         grid.rebuildFixed(0, 0, 256, 256);
         grid.setChunkSurfaceProfileAtKey(packChunkKey(1, 1), "chunk-profile");
-        let capturedProfileId = null;
-        const state = {
-            obstacleGrid: grid,
-            worldSurfaces: {
-                activeSurfaceProfileId: "base",
-                settings: { floorShadow: "#000", cellsPerChunk: 8 },
-                surfaceSpace: { writeWallAtlasWrap() {} },
-                getOrEnsureWallAtlas(profileId) {
-                    capturedProfileId = profileId;
-                    return null;
-                },
-            },
-        };
-        const viewport = { x: 0, y: 0, cameraHeight: 256, perspectiveStrength: 1 };
         const idx = worldIdxAtCell(grid, 9, 9);
-        writeWallFaceScratch(16, 0, 16, 1, idx, false);
-        drawProjectedWallFaceScalars(createPathOnlyContext(), 0, 0, 16, 0, viewport, state);
-        assert.equal(capturedProfileId, "chunk-profile");
+        assert.equal(resolveSurfaceProfileId(grid, SURFACE_MATERIAL_OWNER.WallFace, "base", 8, idx, 1, false), "chunk-profile");
     });
 
     it("resolves chunk profiles and supports range assignment", () => {

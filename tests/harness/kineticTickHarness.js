@@ -196,9 +196,9 @@ export function assignPhysIdWithPose(body, physId) {
     const flags = worldPropBindFlags(body);
 
     body._physId = physId;
+    noteEntityEidHighWater(physId);
     invalidateKineticShapeGeom(physId);
     entityRefs[physId] = body;
-    normalizeKineticBody(body);
     entityAlive[physId] = 1;
     entityX[physId] = x;
     entityY[physId] = y;
@@ -207,6 +207,7 @@ export function assignPhysIdWithPose(body, physId) {
     entityW[physId] = w;
     entityFacing[physId] = facing;
     entityR[physId] = body.radius ?? 0;
+    normalizeKineticBody(body);
     entityRollQw[physId] = rqw;
     entityRollQx[physId] = rqx;
     entityRollQy[physId] = rqy;

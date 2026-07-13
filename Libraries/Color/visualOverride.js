@@ -5,20 +5,6 @@ export function stampPropVisualOverride(prop, override) {
 export function mergePropVisualOverride(prop, patch) {
     prop.visualOverride = { ...(prop.visualOverride ?? {}), ...patch };
 }
-export function setPropVisualTint(prop, tintHex) {
-    mergePropVisualOverride(prop, { tint: tintHex });
-}
-export function getPropVisualTint(prop) {
-    return prop.visualOverride?.tint ?? null;
-}
-export function visualOverrideCacheKey(prop) {
-    const vo = prop.visualOverride;
-    if (!vo) return "";
-    let key = "";
-    if (vo.tint) key += `t${vo.tint.slice(1).toLowerCase()}`;
-    if (vo.brightness != null && vo.brightness !== 1) key += `b${Math.round(vo.brightness * 100)}`;
-    return key;
-}
 export function visualOverrideCacheId(prop) {
     const vo = prop.visualOverride;
     if (!vo) return 0;
@@ -28,7 +14,7 @@ export function visualOverrideCacheId(prop) {
         id = parseInt(hex, 16) || 0;
     }
     if (vo.brightness != null && vo.brightness !== 1) id = (id ^ (Math.round(vo.brightness * 100) * 16777619)) >>> 0;
-    return id & 0xfffff;
+    return id >>> 0;
 }
 export function resolveVisualOverrideColorTree(prop, colorTree) {
     if (colorTree == null) return colorTree;

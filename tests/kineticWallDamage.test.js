@@ -10,7 +10,6 @@ import {  cellIsStaticWall  } from "../Libraries/Spatial/spatial.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import {  WorldObstacleGrid  } from "../Libraries/Spatial/spatial.js";
 import { createWorkerNavigation, terminateWorkerNavigation } from "./WorkerNavigationFactory.js";
-import { patchNavWalkableCellIndex } from "../Libraries/Navigation/navigation.js";
 import { gameWorldSurfaceSettings } from "../Render/WorldSurfaceBootstrap.js";
 import { EntityRegistry } from "../GameState/EntityRegistry.js";
 import { FractureEngine, FRACTURE_TUNING } from "../Libraries/Physics/fracture.js";
@@ -47,7 +46,6 @@ async function createWallDamageTestState(opts = {}) {
         kinetic: createKineticSession()
     };
     state.fractureEngine = new FractureEngine(state);
-    state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     return state;
 }
 function stampVoxel(grid, col, row, level = 1) {

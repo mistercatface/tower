@@ -5,7 +5,6 @@ import {
     buildNavComponentMap,
     createNavState,
     findNearestOpenCellIdx,
-    patchNavWalkableCellIndex,
     snapNavGoalWorld,
     replanCellIndicesFromWorldCoords,
     REPLAN_PRIORITY_TARGET,
@@ -18,7 +17,9 @@ import { runGameLaunch, GAME_LAUNCHERS } from "../../Libraries/Game/gameLaunch.j
 import {
     WorldObstacleGrid,
     createDefaultMapGenBoundsConfig,
-    clearGridWallsBatch,
+    clearVoxelWallsQuiet,
+    clearRailWallsQuiet,
+    commitGridWallBatch,
     cellIsStaticWall,
     isRailWallEdge,
     forEachGlobalCellInMapGenBounds,
@@ -112,7 +113,6 @@ export async function createSnakeNavStressState(seed) {
     const state = createSnakeEditorState(seed);
     state.appLaunch = { id: "snake", launcher: GAME_LAUNCHERS.snake };
     const ctx = await runGameLaunch(state, GAME_LAUNCHERS.snake);
-    state.nav.setNavWalkableSyncHook((damageBounds) => patchNavWalkableCellIndex(state, damageBounds));
     return { state, boid: ctx.boid, portalPair: ctx.portalPair };
 }
 
@@ -227,13 +227,13 @@ export async function breakRandomWall(state, rng) {
     if (pick < voxels.length) {
         const idx = voxels[pick];
         voxels.splice(pick, 1);
-        clearGridWallsBatch(state, { voxels: [idx] });
+        commitGridWallBatch(state, clearVoxelWallsQuiet(state, [idx]));
         return true;
     }
     pick -= voxels.length;
     const rail = rails[pick];
     rails.splice(pick, 1);
-    clearGridWallsBatch(state, { rails: RailWallBatch.single(rail.idx, rail.side) });
+    commitGridWallBatch(state, clearRailWallsQuiet(state, RailWallBatch.single(rail.idx, rail.side)));
     return true;
 }
 

@@ -14,7 +14,7 @@ import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBo
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
 import { overlayCommandSlab, clearOverlayCommands, beginOverlayPoly, writeOverlayPolyXY, stampPathDirect, stampPathPolyline, stampSelectionRing, stampFloorCellHighlight, stampVoxelCellHighlight, stampOverlayAabb, stampOverlaySegment, OVERLAY_STYLE_MARQUEE, OVERLAY_STYLE_RAIL_EDGE } from "../Render/render.js";
-import { serializeVisualOverride, stampPropVisualOverride } from "../Color/visualOverride.js";
+import { serializeVisualOverride, stampPropVisualOverride, resolveVisualOverrideColorTree } from "../Color/visualOverride.js";
 import { bindCanvasPointers, bindCanvasContextMenu, releasePointerCapture } from "../Input/canvasPointer.js";
 import { createCanvasToolStack } from "../Editor/canvasToolStack.js";
 import { createMarqueeSelectTool } from "../Editor/marqueeSelectTool.js";
@@ -2677,9 +2677,12 @@ const MAP_GEN_PALETTE_OPTIONS = [
     { key: "gen:railMaze", genKind: "railMaze", label: "Rail maze generation", swatch: "#ba68c8", glyph: "Rz" },
     { key: "gen:erase", genKind: "erase", label: "Wall eraser", swatch: "#f44336", glyph: "Er" },
 ];
-function resolvePropPaletteSwatch(asset) {
+function resolvePropPaletteSwatch(asset, prop = null) {
     const colors = asset?.visuals?.colors;
-    return colors?.bodyInspect ?? colors?.top ?? colors?.side ?? "#64748b";
+    if (!colors) return "#64748b";
+    const tree = { bodyInspect: colors.bodyInspect, top: colors.top, side: colors.side };
+    const resolved = resolveVisualOverrideColorTree(prop ?? {}, tree);
+    return resolved?.bodyInspect ?? resolved?.top ?? resolved?.side ?? "#64748b";
 }
 export function buildPlacePaletteItems(propIds) {
     const items = [];

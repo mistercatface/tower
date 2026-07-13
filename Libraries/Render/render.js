@@ -26,15 +26,6 @@ const WF_I_IS_EDGE_RAIL = 3;
 const WF_I_COUNT = 4;
 const wallFaceF32 = new Float32Array(WF_F_COUNT);
 const wallFaceI32 = new Int32Array(WF_I_COUNT);
-export function writeWallFaceScratch(wallHeight, wallBaseZ, wallCapHeight, gridSide, gridIdx, isEdgeRail, atlasFaceKind = WALL_ATLAS_FACE_NONE) {
-    wallFaceF32[WF_F_WALL_HEIGHT] = wallHeight;
-    wallFaceF32[WF_F_WALL_BASE_Z] = wallBaseZ;
-    wallFaceF32[WF_F_WALL_CAP_HEIGHT] = wallCapHeight;
-    wallFaceI32[WF_I_GRID_SIDE] = gridSide;
-    wallFaceI32[WF_I_GRID_IDX] = gridIdx;
-    wallFaceI32[WF_I_IS_EDGE_RAIL] = isEdgeRail ? 1 : 0;
-    wallFaceI32[WF_I_ATLAS_FACE_KIND] = atlasFaceKind;
-}
 function writeWallFaceFromRailBox(d, b) {
     wallFaceF32[WF_F_WALL_HEIGHT] = d[b + RAIL_BOX_WALL_HEIGHT];
     wallFaceF32[WF_F_WALL_BASE_Z] = d[b + RAIL_BOX_WALL_BASE_Z];
