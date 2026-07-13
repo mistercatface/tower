@@ -130,6 +130,16 @@ export function propFootprintHalfExtentsInto(buf, o, prop) {
     buf[o] = radius;
     buf[o + 1] = radius;
 }
+export function entityFootprintHalfExtentsInto(buf, o, eid) {
+    if (kineticDynamicSlab.shapeKind[eid] === SHAPE_TYPE_CIRCLE) {
+        const r = kineticDynamicSlab.r[eid];
+        buf[o] = r;
+        buf[o + 1] = r;
+        return;
+    }
+    buf[o] = kineticDynamicSlab.hx[eid];
+    buf[o + 1] = kineticDynamicSlab.hy[eid];
+}
 const FACING_STEPS_MAX = 360;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
 const sQuantizeSteps = { facing: 0, view: 0 };
@@ -173,7 +183,7 @@ export function getBaseSpriteCacheId(eid, deps) {
 }
 export function getPropStageBakeState(eid) {
     const prop = entityRefs[eid];
-    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+    entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, eid);
     const steps = resolvePropQuantizeSteps(eid);
     sStageProp.x = entityX[eid];
     sStageProp.y = entityY[eid];
