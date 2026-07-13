@@ -1,8 +1,8 @@
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom, computeFootprintIdFromSlab } from "../../Libraries/Physics/physics.js";
-import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater, releaseEntityEid } from "../../Core/entitySlots.js";
+import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticSlabSlot, computeFootprintIdFromSlab } from "../../Libraries/Physics/physics.js";
+import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater, releaseEntityEid, claimEntityEid } from "../../Core/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, entityFractureCooldown, entityFootprintId, entityGameId } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 export function snapshotKineticBodySlab(eids, count = eids.length) {
@@ -192,13 +192,17 @@ export function assignPhysIdWithPose(body, physId) {
     // Evaluate flags before body._physId is set
     const flags = worldPropBindFlags(body);
 
+    claimEntityEid(physId);
+
     if (body._physId !== undefined && body._physId !== physId) {
+        invalidateKineticSlabSlot(body._physId);
         releaseEntityEid(body._physId);
+    } else if (body._physId === undefined) {
+        invalidateKineticSlabSlot(physId);
     }
 
     body._physId = physId;
     noteEntityEidHighWater(physId);
-    invalidateKineticShapeGeom(physId);
     entityRefs[physId] = body;
     entityAlive[physId] = 1;
     entityX[physId] = x;
@@ -208,6 +212,7 @@ export function assignPhysIdWithPose(body, physId) {
     entityW[physId] = w;
     entityFacing[physId] = facing;
     entityR[physId] = body.radius ?? 0;
+    kineticDynamicSlab.partGeomOffset[physId] = -1;
     normalizeKineticBody(body);
     entityRollQw[physId] = rqw;
     entityRollQx[physId] = rqx;

@@ -461,6 +461,7 @@ function syncPolygonSlabBounds(eid) {
 export function stampKineticCircleRadius(eid, radius) {
     const slab = kineticDynamicSlab;
     slab.shapeKind[eid] = SHAPE_TYPE_CIRCLE;
+    slab.partCount[eid] = 1;
     slab.r[eid] = radius;
     slab.hx[eid] = 0;
     slab.hy[eid] = 0;
@@ -2906,9 +2907,14 @@ function narrowPhaseSatContact(pairs, pairIndex, contacts) {
 }
 function narrowPhaseKineticContacts(spatialFrame, pairs, contacts) {
     contacts.reset();
-    for (let i = 0; i < pairs.count; i++)
+    const alive = entityAlive;
+    for (let i = 0; i < pairs.count; i++) {
+        const physIdA = pairs.physIdA[i];
+        const physIdB = pairs.physIdB[i];
+        if (!alive[physIdA] || !alive[physIdB]) continue;
         if (pairs.static.tier[i] === KINETIC_PAIR_CIRCLE_CIRCLE) narrowPhaseCircleContact(pairs, i, contacts);
         else narrowPhaseSatContact(pairs, i, contacts);
+    }
 }
 function precomputeKineticContacts(spatialFrame, contacts) {
     const dynSlab = kineticDynamicSlab;

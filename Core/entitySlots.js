@@ -5,13 +5,18 @@ import { computeFootprintIdFromSlab } from "../Libraries/Physics/physics.js";
 let nextEid = 0;
 const eidFreeList = [];
 export function allocateEntityEid() {
-    if (eidFreeList.length) return eidFreeList.pop();
-    const eid = nextEid++;
+    const eid = eidFreeList.length ? eidFreeList.pop() : nextEid++;
     if (eid >= MAX_ENTITIES) throw new Error(`Entity eid limit exceeded: ${eid} >= ${MAX_ENTITIES}`);
+    kineticDynamicSlab.partGeomOffset[eid] = -1;
     return eid;
 }
 export function noteEntityEidHighWater(eid) {
     if (eid >= nextEid) nextEid = eid + 1;
+}
+export function claimEntityEid(eid) {
+    const idx = eidFreeList.indexOf(eid);
+    if (idx >= 0) eidFreeList.splice(idx, 1);
+    noteEntityEidHighWater(eid);
 }
 export function worldPropBindFlags(ref) {
     let flags = 0;

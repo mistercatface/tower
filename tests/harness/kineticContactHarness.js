@@ -66,6 +66,10 @@ export function checkPairAtSlabPose(bodyA, bodyB) {
     const physIdB = bodyB._physId;
     const geomA = slab.partGeomOffset[physIdA];
     const geomB = slab.partGeomOffset[physIdB];
+    const kindA = slab.shapeKind[physIdA];
+    const kindB = slab.shapeKind[physIdB];
+    const countA = slab.partCount[physIdA];
+    const countB = slab.partCount[physIdB];
     if (geomA < 0 || geomB < 0) throw new Error(`checkPairAtSlabPose: missing shape CSR for physId ${geomA < 0 ? physIdA : physIdB}`);
     const xA = slab.x[physIdA];
     const yA = slab.y[physIdA];
@@ -75,8 +79,6 @@ export function checkPairAtSlabPose(bodyA, bodyB) {
     const sinA = slab.sin[physIdA];
     const cosB = slab.cos[physIdB];
     const sinB = slab.sin[physIdB];
-    const countA = slab.partCount[physIdA];
-    const countB = slab.partCount[physIdB];
     for (let i = 0; i < countA; i++) for (let j = 0; j < countB; j++) if (satCheckPartRowsAtPose(geomA + i, geomB + j, xA, yA, cosA, sinA, xB, yB, cosB, sinB)) return true;
     return false;
 }

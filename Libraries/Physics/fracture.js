@@ -1,4 +1,5 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
+import { allocateEntityEid } from "../../Core/entitySlots.js";
 import propCatalog from "../../Assets/props/index.js";
 import { wakeKineticBody, writeLivePolygon, releaseLivePolygon, kineticFootprintArea, applyVelocityDamping, normalizeKineticBody, collisionPartsList, markHitCompoundParts, primitiveDragFrictionEid, kineticMassFromFootprint, kineticInertiaFromBody } from "./physics.js";
 import { kineticDynamicSlab, kineticStaticSlab, pendingWallBreaks, clearPendingBreakHash, pendingBreakRowForKey, insertPendingBreakKey, wallSpawnScratch, ENGINE_F32, ENGINE_U8, F_SHATTER_SEEDS, F_OUT_CENTROID_X, F_OUT_CENTROID_Y, F_OUT_AREA, F_OUT_RADIUS, F_OUT_CLOSEST_X, F_OUT_CLOSEST_Y, F_OUT_DEBRIS_START, F_OUT_DEBRIS_COUNT, F_OUT_MOTION_VX, F_OUT_MOTION_VY, F_OUT_MOTION_W, F_OUT_REMNANT, F_VEC_A, F_OUT_ORIGIN_X, F_OUT_ORIGIN_Y, F_OUT_FACING, F_OUT_IMPACT_LOCAL_X, F_OUT_IMPACT_LOCAL_Y, F_OUT_IMPACT_FORCE, F_OUT_VORONOI_HANDLE, F_OUT_VORONOI_VERTS, F_EDGE_P1X, F_EDGE_P1Y, F_EDGE_P2X, F_EDGE_P2Y, MAX_PENDING_WALL_BREAKS, deferredFractureSlab, entityRefs, entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityAgeMs, entityAlpha, viewBoundsBuf, VIEW_TIER_PROPS, entityFractureCooldown, entityFlags } from "../../Core/engineMemory.js";
@@ -270,124 +271,76 @@ class KineticDebrisBody {
         this.height = undefined;
         this.wallChunkProfileId = undefined;
         this.wallChunkHeightPx = undefined;
-        this._spawnSleeping = false;
-        this._spawnSleepFrames = 0;
-        this._spawnDead = false;
-        this.fractureEnabled = this.strategy?.fracture ? undefined : false; // Keep unmodified
-        this._spawnFractureCooldown = 0;
         this._listIndex = -1;
     }
     get isDead() {
-        const eid = this._physId;
-        return eid !== undefined ? (entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0 : !!this._spawnDead;
+        return (entityFlags[this._physId] & ENTITY_FLAG_DEAD) !== 0;
     }
     set isDead(v) {
-        const eid = this._physId;
-        if (eid !== undefined)
-            if (v) entityFlags[eid] |= ENTITY_FLAG_DEAD;
-            else entityFlags[eid] &= ~ENTITY_FLAG_DEAD;
-        this._spawnDead = !!v;
+        if (v) entityFlags[this._physId] |= ENTITY_FLAG_DEAD;
+        else entityFlags[this._physId] &= ~ENTITY_FLAG_DEAD;
     }
     get fractureEnabled() {
-        const eid = this._physId;
-        if (eid !== undefined) {
-            const flags = entityFlags[eid];
-            if ((flags & ENTITY_FLAG_FRACTURE_SET) === 0) return undefined;
-            return (flags & ENTITY_FLAG_FRACTURE_VAL) !== 0;
-        }
-        return this._spawnFractureEnabled;
+        const f = entityFlags[this._physId];
+        return f & ENTITY_FLAG_FRACTURE_SET ? (f & ENTITY_FLAG_FRACTURE_VAL) !== 0 : undefined;
     }
     set fractureEnabled(v) {
-        const eid = this._physId;
-        if (eid !== undefined)
-            if (v === undefined) entityFlags[eid] &= ~(ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
-            else {
-                entityFlags[eid] |= ENTITY_FLAG_FRACTURE_SET;
-                if (v) entityFlags[eid] |= ENTITY_FLAG_FRACTURE_VAL;
-                else entityFlags[eid] &= ~ENTITY_FLAG_FRACTURE_VAL;
-            }
-        this._spawnFractureEnabled = v;
+        if (v === undefined) entityFlags[this._physId] &= ~(ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
+        else entityFlags[this._physId] = ((entityFlags[this._physId] | ENTITY_FLAG_FRACTURE_SET) & ~ENTITY_FLAG_FRACTURE_VAL) | (v ? ENTITY_FLAG_FRACTURE_VAL : 0);
     }
     get _fractureCooldown() {
-        const eid = this._physId;
-        return eid !== undefined ? entityFractureCooldown[eid] : this._spawnFractureCooldown;
+        return entityFractureCooldown[this._physId];
     }
     set _fractureCooldown(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityFractureCooldown[eid] = v;
-        this._spawnFractureCooldown = v;
+        entityFractureCooldown[this._physId] = v;
     }
     get x() {
-        const eid = this._physId;
-        return eid !== undefined ? entityX[eid] : this._spawnX;
+        return entityX[this._physId];
     }
     set x(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityX[eid] = v;
-        else this._spawnX = v;
+        entityX[this._physId] = v;
     }
     get y() {
-        const eid = this._physId;
-        return eid !== undefined ? entityY[eid] : this._spawnY;
+        return entityY[this._physId];
     }
     set y(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityY[eid] = v;
-        else this._spawnY = v;
+        entityY[this._physId] = v;
     }
     get vx() {
-        const eid = this._physId;
-        return eid !== undefined ? entityVx[eid] : this._spawnVx;
+        return entityVx[this._physId];
     }
     set vx(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityVx[eid] = v;
-        else this._spawnVx = v;
+        entityVx[this._physId] = v;
     }
     get vy() {
-        const eid = this._physId;
-        return eid !== undefined ? entityVy[eid] : this._spawnVy;
+        return entityVy[this._physId];
     }
     set vy(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityVy[eid] = v;
-        else this._spawnVy = v;
+        entityVy[this._physId] = v;
     }
     get angularVelocity() {
-        const eid = this._physId;
-        return eid !== undefined ? entityW[eid] : this._spawnW;
+        return entityW[this._physId];
     }
     set angularVelocity(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityW[eid] = v;
-        else this._spawnW = v;
+        entityW[this._physId] = v;
     }
     get facing() {
-        const eid = this._physId;
-        return eid !== undefined ? entityFacing[eid] : this._spawnFacing;
+        return entityFacing[this._physId];
     }
     set facing(v) {
-        const eid = this._physId;
-        if (eid !== undefined) entityFacing[eid] = v;
-        else this._spawnFacing = v;
+        entityFacing[this._physId] = v;
     }
     get isSleeping() {
-        const eid = this._physId;
-        return eid !== undefined ? kineticDynamicSlab.sleeping[eid] !== 0 : !!this._spawnSleeping;
+        return kineticDynamicSlab.sleeping[this._physId] !== 0;
     }
     set isSleeping(v) {
-        const eid = this._physId;
-        if (eid !== undefined) kineticDynamicSlab.sleeping[eid] = v ? 1 : 0;
-        else this._spawnSleeping = !!v;
+        kineticDynamicSlab.sleeping[this._physId] = v ? 1 : 0;
     }
     get _sleepFrames() {
-        const eid = this._physId;
-        return eid !== undefined ? kineticDynamicSlab.sleepFrames[eid] : this._spawnSleepFrames;
+        return kineticDynamicSlab.sleepFrames[this._physId];
     }
     set _sleepFrames(v) {
-        const eid = this._physId;
-        if (eid !== undefined) kineticDynamicSlab.sleepFrames[eid] = v;
-        else this._spawnSleepFrames = v;
+        kineticDynamicSlab.sleepFrames[this._physId] = v;
     }
     get ageMs() {
         return entityAgeMs[this._physId];
@@ -454,6 +407,8 @@ class KineticDebrisStore {
         body.type = type;
         body.strategy = sharedWorldPropStrategy(type);
         const asset = propCatalog[type];
+        body._physId = allocateEntityEid();
+        entityRefs[body._physId] = body;
         body.height = resolveAssetPropHeight(asset);
         body.wallChunkProfileId = undefined;
         body.wallChunkHeightPx = undefined;
@@ -465,13 +420,12 @@ class KineticDebrisStore {
         body.radius = 0;
         body._fractureCooldown = 0;
         body._listIndex = -1;
-        delete body._physId;
-        body._spawnX = x;
-        body._spawnY = y;
-        body._spawnVx = 0;
-        body._spawnVy = 0;
-        body._spawnW = 0;
-        body._spawnFacing = facing;
+        body.x = x;
+        body.y = y;
+        body.vx = 0;
+        body.vy = 0;
+        body.angularVelocity = 0;
+        body.facing = facing;
         return body;
     }
     remove(body, spatialFrame) {
@@ -886,10 +840,9 @@ export class FractureEngine {
                 entityFlags[eid] &= ~ENTITY_FLAG_PENDING_FRACTURE;
                 FractureEngine._currentPropMotion(eid);
                 const shards = this.debris.spawnShardsFromFracture(prop, i);
-                if (!deferred.remnant[i]) {
+                if (!deferred.remnant[i])
                     if (prop.isKineticDebris) this.debris.remove(prop, spatialFrame);
                     else removeWorldPropFromState(world, prop, spatialFrame);
-                }
                 for (let j = 0; j < shards.length; j++) admitScratch.push(shards[j]);
                 releaseDebrisGeomRange(stores, deferred.debrisStart[i], deferred.debrisCount[i]);
             }
@@ -945,10 +898,9 @@ export class FractureEngine {
         const stores = world.fractureEngine.stores;
         FractureEngine._currentPropMotion(prop._physId);
         const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop);
-        if (!remnant) {
+        if (!remnant)
             if (prop.isKineticDebris) world.fractureEngine.debris.remove(prop, spatialFrame);
             else removeWorldPropFromState(world, prop, spatialFrame);
-        }
         if (shards.length) spatialFrame.admitKineticProps(shards, world);
         releaseDebrisGeomRange(stores, ENGINE_F32[F_OUT_DEBRIS_START], ENGINE_F32[F_OUT_DEBRIS_COUNT]);
         stores.debris.reset();
