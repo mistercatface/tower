@@ -1,4 +1,4 @@
-import { pruneKineticConstraintsForBody, normalizeKineticBody, entityContainsPointF32, ensureKineticShapeStamped, invalidateKineticShapeGeom } from "../Libraries/Physics/physics.js";
+import { pruneKineticConstraintsForBody, normalizeKineticBody, entityContainsPointF32, invalidateKineticShapeGeom } from "../Libraries/Physics/physics.js";
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, circleIntersectsAabbF32, centerReachAabbF32, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
@@ -97,7 +97,6 @@ export class EntityArena {
             if (flags & ENTITY_FLAG_KINETIC) {
                 invalidateKineticShapeGeom(eid);
                 normalizeKineticBody(ref);
-                ensureKineticShapeStamped(eid, ref);
             }
             this._bumpMembership();
             return;
@@ -111,7 +110,6 @@ export class EntityArena {
         if (flags & ENTITY_FLAG_KINETIC) {
             invalidateKineticShapeGeom(eid);
             normalizeKineticBody(ref);
-            ensureKineticShapeStamped(eid, ref);
         }
         this._gameIdToEid.set(ref.id, eid);
         this._addLiveEid(eid);

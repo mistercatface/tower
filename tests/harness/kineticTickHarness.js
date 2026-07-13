@@ -1,7 +1,7 @@
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom, ensureKineticShapeStamped } from "../../Libraries/Physics/physics.js";
+import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater } from "../../Core/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE, SHAPE_TYPE_CIRCLE } from "../../Core/engineEnums.js";
@@ -10,7 +10,7 @@ export function snapshotKineticBodySlab(eids, count = eids.length) {
         const eid = eids[i];
         const entity = entityRefs[eid];
         if (!entity) continue;
-        ensureKineticShapeStamped(eid, entity);
+        if (kineticDynamicSlab.partGeomOffset[eid] < 0) normalizeKineticBody(entity);
         if (kineticDynamicSlab.shapeKind[eid] !== SHAPE_TYPE_CIRCLE) {
             const angle = entityFacing[eid];
             kineticDynamicSlab.cos[eid] = Math.cos(angle);

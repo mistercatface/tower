@@ -50,7 +50,6 @@ import {
     P_WALL_VERTS,
     P_WALL_NORMS,
     P_COMPOUND,
-    entityRefs,
     entityAlive,
     entityFlags,
     entityFacing,
@@ -298,6 +297,10 @@ export function normalizeKineticBody(body) {
     slab.entityId[physId] = body.id ?? -1;
     slab.restitution[physId] = table.wallRestitution[row];
     slab.friction[physId] = table.wallFriction[row];
+    if (kineticDynamicSlab.partGeomOffset[physId] < 0) {
+        seedKineticBodyShapeFromBag(physId, body);
+        entityR[physId] = slabCollisionSpan(physId);
+    }
     return body;
 }
 function slabObbWorldCenterF32(eid) {
@@ -426,15 +429,6 @@ function seedKineticBodyShapeFromBag(eid, bag) {
         return;
     }
     throw new Error(`seedKineticBodyShapeFromBag: unknown shapeTypeId ${shape?.shapeTypeId}`);
-}
-export function ensureKineticShapeStamped(eid, bag = entityRefs[eid]) {
-    if (!bag) throw new Error(`ensureKineticShapeStamped: missing bag for unstamped eid ${eid}`);
-    const kinetic = (entityFlags[eid] & ENTITY_FLAG_KINETIC) !== 0 || bag.strategy?.isKinetic === true;
-    if (!kinetic) return;
-    if (kineticDynamicSlab.partGeomOffset[eid] >= 0) return;
-    normalizeKineticBody(bag);
-    seedKineticBodyShapeFromBag(eid, bag);
-    entityR[eid] = slabCollisionSpan(eid);
 }
 function syncKineticBodySlabPose(eid) {
     const slab = kineticDynamicSlab;

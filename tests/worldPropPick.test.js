@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { CircleShape, PolygonShape, ensureKineticShapeStamped, stampKineticCircleRadius, stampPrimitivePhysics, entityContainsPointF32 } from "../Libraries/Physics/physics.js";
+import { CircleShape, PolygonShape, normalizeKineticBody, stampKineticCircleRadius, stampPrimitivePhysics, entityContainsPointF32 } from "../Libraries/Physics/physics.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, SHAPE_TYPE_CIRCLE } from "../Core/engineEnums.js";
 import { entityFacing } from "../Core/engineMemory.js";
@@ -35,7 +35,7 @@ function stampPickBody(x, y, radius, shape, facing = 0) {
     };
     assignPhysIdWithPose(body, EID);
     entityFacing[EID] = facing;
-    ensureKineticShapeStamped(EID, body);
+    normalizeKineticBody(body);
     if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) stampKineticCircleRadius(EID, radius);
     return body;
 }
