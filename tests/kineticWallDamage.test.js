@@ -235,7 +235,7 @@ describe("kinetic wall damage", () => {
         assert.ok(!cellIsStaticWall(state.obstacleGrid, worldIdxAtCell(state.obstacleGrid,3, 3)));
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_voxel_chunk");
         assert.ok(shards.length > 0);
-        assert.ok(shards.every((s) => s.isKineticDebris && s._row >= 0));
+        assert.ok(shards.every((s) => s.isKineticDebris));
         assert.ok(shards.every((s) => s.height === 32));
         assert.ok(shards.every((s) => s.wallChunkProfileId === "chunk-profile"));
         assert.ok(shards.every((s) => Math.hypot(s.vx ?? 0, s.vy ?? 0) > 5));
@@ -343,7 +343,7 @@ describe("kinetic wall damage", () => {
         assert.ok(!isRailWallEdge(state.obstacleGrid.getCellEdge(worldIdxAtCell(state.obstacleGrid,4, 4), 1)));
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0);
-        assert.ok(shards.every((s) => s.isKineticDebris && s._row >= 0));
+        assert.ok(shards.every((s) => s.isKineticDebris));
         assert.ok(shards.every((s) => s.height === 32));
         assert.ok(shards.every((s) => s.wallChunkProfileId === "edge-profile"));
         assertNoWallChunkWorldProps(state);
@@ -374,7 +374,7 @@ describe("kinetic wall damage", () => {
         
         const shards = kineticDebrisList(state).filter((p) => p.type === "wall_rail_chunk");
         assert.ok(shards.length > 0, "Extreme impact force must produce debris");
-        assert.ok(shards.every((s) => s.isKineticDebris && s._row >= 0));
+        assert.ok(shards.every((s) => s.isKineticDebris));
         assertNoWallChunkWorldProps(state);
         
         terminateWorkerNavigation(state.nav);

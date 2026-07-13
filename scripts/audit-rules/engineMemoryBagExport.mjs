@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { issue, rel } from "../audit-shared.mjs";
 
-const ALLOWED_BAG_EXPORTS = new Set(["kineticDynamicSlab", "kineticStaticSlab", "kineticConstraintStore", "kineticConstraintSlab", "kineticContactBuffer", "kineticPairBuffer", "persistedKineticPairBuffer", "kineticDebrisSlab", "deferredFractureSlab", "primitivePhysics", "pendingWallBreaks", "wallSpawnScratch", "staticWallSegmentSlab", "warmStartState", "pairHashState", "propSpriteCacheSlab", "gridStampSpriteCacheSlab", "overlaySpriteCacheSlab", "wallFaceDrawMemoSlab"]);
+const ALLOWED_BAG_EXPORTS = new Set(["kineticDynamicSlab", "kineticStaticSlab", "kineticConstraintStore", "kineticConstraintSlab", "kineticContactBuffer", "kineticPairBuffer", "persistedKineticPairBuffer", "deferredFractureSlab", "primitivePhysics", "pendingWallBreaks", "wallSpawnScratch", "staticWallSegmentSlab", "warmStartState", "pairHashState", "propSpriteCacheSlab", "gridStampSpriteCacheSlab", "overlaySpriteCacheSlab", "wallFaceDrawMemoSlab"]);
 
 const bagExportRe = /^export const (\w+)\s*=\s*\{/gm;
 const xyBagRe = /^export const (\w+)\s*=\s*\{\s*(?:x|y|minX|col)\s*:/gm;

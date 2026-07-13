@@ -511,7 +511,6 @@ export const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
 export const pairHashGen = new Int32Array(PAIR_HASH_CAPACITY);
 export const pairHashState = { generation: 1 }; // bump to clear; wrap resets gen column
 // --- Debris / deferred fracture / pending wall breaks ---
-export const kineticDebrisSlab = { activeCount: 0, ageMs: new Float32Array(MAX_KINETIC_DEBRIS), alpha: new Float32Array(MAX_KINETIC_DEBRIS) };
 export const deferredFractureSlab = { count: 0, propRef: new Array(MAX_DEFERRED_FRACTURES), debrisStart: new Int32Array(MAX_DEFERRED_FRACTURES), debrisCount: new Int32Array(MAX_DEFERRED_FRACTURES), originX: new Float32Array(MAX_DEFERRED_FRACTURES), originY: new Float32Array(MAX_DEFERRED_FRACTURES), facing: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalX: new Float32Array(MAX_DEFERRED_FRACTURES), impactLocalY: new Float32Array(MAX_DEFERRED_FRACTURES), impactForce: new Float32Array(MAX_DEFERRED_FRACTURES), remnant: new Uint8Array(MAX_DEFERRED_FRACTURES) };
 export function resetDeferredFractureSlab() {
     const slab = deferredFractureSlab;

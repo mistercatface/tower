@@ -181,10 +181,10 @@ export function assignPhysIdWithPose(body, physId) {
     const rqz = body.rollQz ?? body._spawnRollQz ?? 0;
     const sleeping = body.isSleeping ? 1 : 0;
     const sleepFrames = body._sleepFrames ?? 0;
-    const ageMs = body.ageMs ?? 0;
+    const ageMs = body.isKineticDebris ? 0 : (body.ageMs ?? 0);
     // Evaluate ECS properties before body._physId is set
     const height = body.height ?? 0;
-    const alpha = body.alpha ?? 1.0;
+    const alpha = body.isKineticDebris ? 1.0 : (body.alpha ?? 1.0);
     const shapeKind = body.shape?.shapeTypeId ?? 0;
     const wallProfileId = body.wallChunkProfileId;
     const wallHeightPx = body.wallChunkHeightPx ?? 0;
