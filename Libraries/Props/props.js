@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid } from "../Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getFactionStr, getProfileId, getProfileStr } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
@@ -249,13 +249,13 @@ export function getPropStageBakeState(eid) {
     sStageProp.shape = prop.shape;
     sStageProp.collisionParts = prop.collisionParts;
     sStageProp.drawOutline = prop.drawOutline;
-    sStageProp.height = prop.height;
+    sStageProp.height = entityHeight[eid];
     sStageProp.visualOverride = prop.visualOverride;
-    sStageProp.faction = prop.faction;
+    sStageProp.faction = getFactionStr(entityFaction[eid]);
     sStageProp.ageMs = entityAgeMs[eid];
     sStageProp.id = prop.id;
-    sStageProp.wallChunkProfileId = prop.wallChunkProfileId;
-    sStageProp.wallChunkHeightPx = prop.wallChunkHeightPx;
+    sStageProp.wallChunkProfileId = getProfileStr(entityWallProfileId[eid]);
+    sStageProp.wallChunkHeightPx = entityWallHeightPx[eid];
     return sStageProp;
 }
 export function buildWorldPropStrategyFromAsset(asset) {
@@ -345,6 +345,60 @@ export class WorldProp {
         initWorldPropShape(this);
         normalizeKineticBody(this);
         delete this._physId;
+    }
+    get height() {
+        const eid = this._physId;
+        return eid !== undefined ? entityHeight[eid] : this._spawnHeight;
+    }
+    set height(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityHeight[eid] = v;
+        else this._spawnHeight = v;
+    }
+    get alpha() {
+        const eid = this._physId;
+        return eid !== undefined ? entityAlpha[eid] : this._spawnAlpha;
+    }
+    set alpha(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityAlpha[eid] = v;
+        else this._spawnAlpha = v;
+    }
+    get faction() {
+        const eid = this._physId;
+        return eid !== undefined ? getFactionStr(entityFaction[eid]) : this._spawnFaction;
+    }
+    set faction(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityFaction[eid] = getFactionId(v);
+        else this._spawnFaction = v;
+    }
+    get zIndex() {
+        const eid = this._physId;
+        return eid !== undefined ? entityZIndex[eid] : this._spawnZIndex;
+    }
+    set zIndex(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityZIndex[eid] = v;
+        else this._spawnZIndex = v;
+    }
+    get wallChunkProfileId() {
+        const eid = this._physId;
+        return eid !== undefined ? getProfileStr(entityWallProfileId[eid]) : this._spawnWallProfileId;
+    }
+    set wallChunkProfileId(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityWallProfileId[eid] = getProfileId(v);
+        else this._spawnWallProfileId = v;
+    }
+    get wallChunkHeightPx() {
+        const eid = this._physId;
+        return eid !== undefined ? entityWallHeightPx[eid] : this._spawnWallHeightPx;
+    }
+    set wallChunkHeightPx(v) {
+        const eid = this._physId;
+        if (eid !== undefined) entityWallHeightPx[eid] = v;
+        else this._spawnWallHeightPx = v;
     }
     get x() {
         const eid = this._physId;

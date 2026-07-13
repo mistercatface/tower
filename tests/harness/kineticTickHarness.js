@@ -3,7 +3,7 @@ import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
 import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater } from "../../Core/entitySlots.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getProfileId } from "../../Core/engineMemory.js";
 import { ROLL_DRIVE_NONE, SHAPE_TYPE_CIRCLE } from "../../Core/engineEnums.js";
 export function snapshotKineticBodySlab(eids, count = eids.length) {
     for (let i = 0; i < count; i++) {
@@ -182,6 +182,15 @@ export function assignPhysIdWithPose(body, physId) {
     const sleeping = body.isSleeping ? 1 : 0;
     const sleepFrames = body._sleepFrames ?? 0;
     const ageMs = body.ageMs ?? 0;
+    // Evaluate ECS properties before body._physId is set
+    const height = body.height ?? 0;
+    const alpha = body.alpha ?? 1.0;
+    const faction = body.faction;
+    const shapeKind = body.shape?.shapeTypeId ?? 0;
+    const wallProfileId = body.wallChunkProfileId;
+    const wallHeightPx = body.wallChunkHeightPx ?? 0;
+    const zIndex = body.zIndex ?? 10;
+
     body._physId = physId;
     invalidateKineticShapeGeom(physId);
     entityRefs[physId] = body;
@@ -203,6 +212,14 @@ export function assignPhysIdWithPose(body, physId) {
     kineticDynamicSlab.rollDriveKind[physId] = ROLL_DRIVE_NONE;
     entityFlags[physId] = worldPropBindFlags(body);
     entityRenderKeyId[physId] = body.strategy?.renderKeyId ?? 0;
+    // Populate new ECS SoA columns
+    entityHeight[physId] = height;
+    entityAlpha[physId] = alpha;
+    entityFaction[physId] = getFactionId(faction);
+    entityShapeKind[physId] = shapeKind;
+    entityWallProfileId[physId] = getProfileId(wallProfileId);
+    entityWallHeightPx[physId] = wallHeightPx;
+    entityZIndex[physId] = zIndex;
     if (body.strategy?.physicsRow != null) kineticStaticSlab.physicsRow[physId] = body.strategy.physicsRow;
     if (body.id != null) kineticStaticSlab.entityId[physId] = body.id;
     if (!body.isKineticDebris) {

@@ -340,7 +340,7 @@ export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, pa
     centerReachAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, worldX, worldY, padding + 48);
     const count = registry.queryInAabbF32(spatialFrame, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, "", null);
     const ids = registry.borrowedQueryIds("");
-    let best = null;
+    let bestEid = -1;
     let bestDistSq = Infinity;
     const pad = padding;
     for (let i = 0; i < count; i++) {
@@ -350,13 +350,12 @@ export function findWorldPropAtInView(registry, spatialFrame, worldX, worldY, pa
         const distSq = dx * dx + dy * dy;
         const r = entityR[eid] + pad;
         if (distSq > r * r * 4) continue;
-        const prop = entitySlotRef(eid);
-        if (!prop || prop.isDead) continue;
+        if ((entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0) continue;
         if (!entityContainsPointF32(eid, worldX, worldY, pad)) continue;
         if (distSq < bestDistSq) {
-            best = prop;
+            bestEid = eid;
             bestDistSq = distSq;
         }
     }
-    return best;
+    return bestEid !== -1 ? entitySlotRef(bestEid) : null;
 }

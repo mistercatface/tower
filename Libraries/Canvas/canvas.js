@@ -1,6 +1,6 @@
-﻿import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
+import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
 import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
@@ -860,6 +860,6 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
 }
 export function drawCachedPropSprite(ctx, eid, viewport, renderKey, draw, animFrame = 0, flatPresentation = false, beforeBake = null) {
     const slot = getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame, flatPresentation, beforeBake);
-    const alpha = entityRefs[eid].alpha;
-    blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, entityX[eid], entityY[eid], 0, alpha === undefined ? 1 : alpha);
+    const alpha = entityAlpha[eid];
+    blitAnchoredSprite(ctx, propSpriteCacheSlab, slot, entityX[eid], entityY[eid], 0, alpha);
 }

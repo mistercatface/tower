@@ -90,6 +90,14 @@ export const ENTITY_FLAG_ORIENT_TO_MOTION = 1 << 3;
 export const ENTITY_FLAG_RENDER_3D = 1 << 4;
 export const ENTITY_FLAG_CIRCLE_SHAPE = 1 << 5;
 //
+// Factions
+export const FACTION_NONE = 0;
+export const FACTION_ALPHA = 1;
+export const FACTION_BRAVO = 2;
+export const FACTION_CHARLIE = 3;
+export const FACTION_DELTA = 4;
+export const FACTION_ECHO = 5;
+//
 // Kinetic
 export const KINETIC_PAIR_CIRCLE_CIRCLE = 0;
 export const KINETIC_PAIR_CIRCLE_POLY = 1;
