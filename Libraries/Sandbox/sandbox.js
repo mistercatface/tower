@@ -1697,8 +1697,7 @@ function markPropRunInactive(activeRunEids, eid) {
 function forEachActivePropRunSlot(state, slab, eidToSlot, activeRunEids, tickFn, dt) {
     for (let i = activeRunEids.length - 1; i >= 0; i--) {
         const eid = activeRunEids[i];
-        const prop = state.entityRegistry.getRef(eid);
-        if (!prop || prop.isDead) {
+        if (!entityAlive[eid]) {
             const slot = eidToSlot.get(eid);
             if (slot != null) {
                 const session = slab.sessions[slot];

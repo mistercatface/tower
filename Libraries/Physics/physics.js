@@ -1063,10 +1063,6 @@ export function writeLivePolygon(body, src, floatCount) {
     bindLivePolyView(shape, preInsertVerts.buf, preInsertNorms.buf, off, floatCount);
     return shape;
 }
-export function ensureLivePolygonCapacity(body, floatCount) {
-    if (floatCount < 6 || (floatCount & 1) !== 0) throw new Error(`ensureLivePolygonCapacity requires even floatCount >= 6, got ${floatCount}`);
-    if (floatCount > MAX_LIVE_POLYGON_FLOATS) throw new Error(`ensureLivePolygonCapacity ${floatCount} exceeds MAX_LIVE_POLYGON_FLOATS`);
-}
 const MANIFOLD_MAX_POINTS = 2;
 export const SAT_RESULT = ENGINE_F32.subarray(P_SAT, P_SAT + 25);
 const clipX = ENGINE_F32.subarray(P_CLIP_X, P_CLIP_X + 4);
