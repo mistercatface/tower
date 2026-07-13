@@ -1,6 +1,7 @@
-import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
+import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
+import { EntityRegistry } from "../../GameState/EntityRegistry.js";
 import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticSlabSlot, computeFootprintIdFromSlab } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater, releaseEntityEid, claimEntityEid } from "../../Core/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, entityFractureCooldown, entityFootprintId, entityGameId } from "../../Core/engineMemory.js";
@@ -368,34 +369,18 @@ function applyHarnessPairOverrides(bodies) {
         if (body._overridePairRestitution != null) kineticStaticSlab.restitution[physId] = body._overridePairRestitution;
     }
 }
-export function createKineticTestRegistry(liveProps) {
-    return {
-        membershipGen: 0,
-        entityMeta: [],
-        getLive(id) {
-            for (let i = 0; i < liveProps.length; i++) if (liveProps[i].id === id) return liveProps[i];
-            return null;
-        },
-        forEachOfKind(kind, fn) {
-            if (kind !== "worldProp") return;
-            for (let i = 0; i < liveProps.length; i++) fn(liveProps[i]);
-        },
-        register(_kind, prop) {
-            if (!liveProps.includes(prop)) liveProps.push(prop);
-        },
-        unregister(prop) {
-            const index = liveProps.indexOf(prop);
-            if (index >= 0) liveProps.splice(index, 1);
-        },
-        beginMembershipBatch() {},
-        endMembershipBatch() {},
+export function createKineticTestWorld(initialProps = [], { constraintsDirty = false } = {}) {
+    const world = {
+        entityRegistry: new EntityRegistry(),
+        kinetic: createKineticSession({ constraintsDirty }),
+        obstacleGrid: { floorBeltCount: 0, activePortalCount: 0 },
     };
-}
-export function createKineticTestWorld(initialProps, { constraintsDirty = false } = {}) {
-    const liveProps = initialProps.slice();
-    const world = { entityRegistry: createKineticTestRegistry(liveProps), kinetic: createKineticSession({ constraintsDirty }) };
-    world.obstacleGrid = { floorBeltCount: 0, activePortalCount: 0 };
     world.fractureEngine = new FractureEngine(world);
+    for (let i = 0; i < initialProps.length; i++) {
+        const prop = initialProps[i];
+        if (prop._physId === undefined) assignPhysIdWithPose(prop, i);
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
+    }
     return world;
 }
 export function setupKineticTestFrame(bodies, cellSize = 50) {
@@ -414,8 +399,11 @@ export function setupKineticTestFrame(bodies, cellSize = 50) {
     return frame;
 }
 export function createKineticTestTick(initialProps, options = {}) {
-    const world = createKineticTestWorld(initialProps, options);
+    const world = createKineticTestWorld([], options);
     const frame = setupKineticTestFrame(initialProps, options.cellSize);
+    for (let i = 0; i < initialProps.length; i++) {
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, initialProps[i]);
+    }
     return { frame, world };
 }
 export function attachKineticTestTickFromState(state, props, cellSize = state.obstacleGrid?.cellSize ?? 16) {
@@ -431,7 +419,7 @@ export function attachKineticTestTickFromState(state, props, cellSize = state.ob
     snapshotKineticBodySlab(frame.kineticEids, frame.kineticEidCount);
     applyHarnessPairOverrides(props);
     frame.syncActiveKineticBodies();
-    return { frame, world: { entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox } };
+    return { frame, world: state };
 }
 export function snapshotKineticBodies(...bodies) {
     const eids = bodies.map((b) => b._physId);

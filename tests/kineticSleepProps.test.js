@@ -12,14 +12,14 @@ describe("kinetic sleep on proof props", () => {
     it("isolated crate sleeps after consecutive still frames", () => {
         const crate = new WorldProp(0, 0, "box", 0);
         const tick = createKineticTestTick([crate]);
-        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(crate.isSleeping, true);
     });
     it("resting crate stack can sleep together", () => {
         const bottom = new WorldProp(0, 0, "box", 0);
         const top = new WorldProp(0, 14, "box", 0);
         const tick = createKineticTestTick([bottom, top]);
-        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(bottom.isSleeping, true);
         assert.equal(top.isSleeping, true);
     });
@@ -28,7 +28,7 @@ describe("kinetic sleep on proof props", () => {
         const mover = new WorldProp(80, 0, "box", 0);
         mover.vx = 5;
         const tick = createKineticTestTick([rest, mover]);
-        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(rest.isSleeping, true);
         assert.equal(mover.isSleeping, false);
     });
@@ -38,16 +38,16 @@ describe("kinetic sleep on proof props", () => {
         wedge.vy = 0;
         wedge.angularVelocity = 0.12;
         const tick = createKineticTestTick([wedge]);
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(wedge.isSleeping, false);
         assert.ok(Math.abs(kineticDynamicSlab.w[wedge._physId]) > 0);
     });
     it("motion resets sleep counter on proof props", () => {
         const hex = new WorldProp(0, 0, "hex_block", 0);
         const tick = createKineticTestTick([hex]);
-        for (let i = 0; i < SLEEP_FRAMES - 1; i++) runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        for (let i = 0; i < SLEEP_FRAMES - 1; i++) runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         hex.vx = 5;
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(hex.isSleeping, false);
         assert.equal(hex._sleepFrames, 0);
     });

@@ -84,10 +84,10 @@ export function checkPairAtSlabPose(bodyA, bodyB) {
 }
 
 export function resolveKineticContactPass(tick) {
-    runCollisionPipeline(tick, () => {}, undefined, 1);
+    runCollisionPipeline(tick.frame, tick.world, () => {}, undefined, 1);
     return kineticContactBuffer;
 }
 
 export function resolveKineticContactPassWithEffects(tick) {
-    runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c), 1);
+    runCollisionPipeline(tick.frame, tick.world, () => {}, (frame, world, contacts) => world.fractureEngine.processKineticContactFractures(frame, world, contacts), 1);
 }

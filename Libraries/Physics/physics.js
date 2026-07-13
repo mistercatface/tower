@@ -119,7 +119,7 @@ import {
     GrowF32,
     entityShapeKind,
 } from "../../Core/engineMemory.js";
-import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_DEAD } from "../../Core/engineEnums.js";
+import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_DEAD, ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
 /** Library baseline — games override via `gameDefinition.physicsSettings`. */
 /** @typedef {typeof LIBRARY_PHYSICS_DEFAULTS} LibraryPhysicsSettings */
@@ -2085,11 +2085,11 @@ function appendIslandConstraintGroup(slab, count, store) {
     slab.groupCounts[slab.groupCount] = addedCount;
     slab.groupCount++;
 }
-function gatherKineticConstraintSlab(tick) {
+function gatherKineticConstraintSlab(frame, world) {
     const slab = kineticConstraintSlab;
     slab.reset();
-    const spatialFrame = tick.frame;
-    const session = tick.world.kinetic;
+    const spatialFrame = frame;
+    const session = world.kinetic;
     const plan = ensureKineticIslandPlan(session, spatialFrame.kineticEids, spatialFrame.kineticEidCount);
     const store = kineticConstraintStore;
     sBucketCounts.fill(0);
@@ -2518,17 +2518,17 @@ function gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab) {
     return false;
 }
 /** Collision substep: slab is authoritative pose; body synced only at pipeline boundaries. */
-function resolveGatheredKineticConstraintSlab(tick) {
+function resolveGatheredKineticConstraintSlab(frame, world) {
     const slab = kineticConstraintSlab;
     if (slab.count === 0) return;
-    const spatialFrame = tick.frame;
+    const spatialFrame = frame;
     if (gatheredConstraintSlabHasEvictedBodies(spatialFrame, slab)) {
-        gatherKineticConstraintSlab(tick);
+        gatherKineticConstraintSlab(frame, world);
         if (slab.count === 0) return;
     }
     projectKineticConstraintSlab(spatialFrame);
     projectIslandLinkCapsulesAgainstWalls(spatialFrame);
-    solveKineticConstraintSlab(spatialFrame, tick.world.kinetic);
+    solveKineticConstraintSlab(spatialFrame, world.kinetic);
 }
 export function measureConstraintSlabMaxError() {
     const slab = kineticConstraintSlab;
@@ -3034,10 +3034,10 @@ function applyKineticContactWake(contacts, spatialFrame) {
         spatialFrame.scheduleKineticActivation(eidB);
     }
 }
-function gatherKineticContactPairs(tick) {
-    const spatialFrame = tick.frame;
+function gatherKineticContactPairs(frame, world) {
+    const spatialFrame = frame;
     refreshActiveKineticBodySlabPose();
-    stampKineticPairGatherTopology(spatialFrame, tick.world.kinetic);
+    stampKineticPairGatherTopology(spatialFrame, world.kinetic);
     const pairs = kineticPairBuffer;
     gatherKineticCandidatePairs(spatialFrame, pairs);
     return pairs;
@@ -3046,11 +3046,11 @@ function bumpPairGatherStat(session, field) {
     if (!session.kineticPairGatherStats) session.kineticPairGatherStats = { full: 0, refresh: 0, patch: 0 };
     session.kineticPairGatherStats[field]++;
 }
-export function ensureKineticContactPairs(tick, outPairs) {
-    const session = tick.world.kinetic;
-    const spatialFrame = tick.frame;
+export function ensureKineticContactPairs(frame, world, outPairs) {
+    const session = world.kinetic;
+    const spatialFrame = frame;
     if (!session.substepPairsValid || kineticPairTopologyStale(spatialFrame)) {
-        gatherKineticContactPairs(tick);
+        gatherKineticContactPairs(frame, world);
         copyKineticPairBuffer(kineticPairBuffer, outPairs);
         session.substepPairsValid = true;
         bumpPairGatherStat(session, "full");
@@ -3060,7 +3060,7 @@ export function ensureKineticContactPairs(tick, outPairs) {
     stampKineticPairGatherTopology(spatialFrame, session);
     if (!compactSubstepKineticPairs(spatialFrame, outPairs)) {
         session.substepPairsValid = false;
-        return ensureKineticContactPairs(tick, outPairs);
+        return ensureKineticContactPairs(frame, world, outPairs);
     }
     bumpPairGatherStat(session, "refresh");
     const patchEids = session.substepPairPatchBodies;
@@ -3080,8 +3080,8 @@ function unionSleepContact(physIdA, physIdB, isResting) {
 }
 const sKineticContactStats = { innerIterations: 0, maxImpulse: 0, restingCount: 0, contactCount: 0 };
 const sKineticSolverStats = { outerIterations: 0, maxIterations: 0, pairCount: 0 };
-function resolveKineticContactPassWithPairs(tick, pairs) {
-    const spatialFrame = tick.frame;
+function resolveKineticContactPassWithPairs(frame, world, pairs) {
+    const spatialFrame = frame;
     const contacts = kineticContactBuffer;
     narrowPhaseKineticContacts(spatialFrame, pairs, contacts);
     if (contacts.count === 0) return contacts;
@@ -3092,7 +3092,7 @@ function resolveKineticContactPassWithPairs(tick, pairs) {
     sKineticContactStats.maxImpulse = ENGINE_F32[P_OUT_SOLVE_IMPULSE];
     sKineticContactStats.restingCount = ENGINE_F32[P_OUT_SOLVE_REST];
     sKineticContactStats.contactCount = contacts.count;
-    tick.world.kinetic.kineticContactStats = sKineticContactStats;
+    world.kinetic.kineticContactStats = sKineticContactStats;
     storeKineticWarmStartCache(contacts);
     applyKineticContactWake(contacts, spatialFrame);
     for (let i = 0; i < contacts.count; i++) unionSleepContact(contacts.physIdA[i], contacts.physIdB[i], contacts.dynamic.resting[i] === 1);
@@ -3264,21 +3264,21 @@ function resolveActiveBodyWalls(spatialFrame, resolveWalls) {
     }
 }
 /** Kinetic collision substeps: contact solve + wall resolve. */
-export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects, kineticIterations = collisionSettings.kineticIterations) {
-    const spatialFrame = tick.frame;
+export function runCollisionPipeline(frame, world, resolveWalls, applyContactSideEffects, kineticIterations = collisionSettings.kineticIterations) {
+    const spatialFrame = frame;
     const { velocityEpsilonSq, constraintErrorEpsilon } = collisionSettings.kineticEarlyOut;
     const hasActiveBodies = kineticDynamicSlab.activePhysCount > 0;
     let outerIterationsRun = 0;
     if (hasActiveBodies) {
         beginSleepIslands(spatialFrame);
-        gatherKineticConstraintSlab(tick);
-        ensureKineticContactPairs(tick, persistedKineticPairBuffer);
-        const patchBodies = tick.world.kinetic.substepPairPatchBodies ?? (tick.world.kinetic.substepPairPatchBodies = []);
+        gatherKineticConstraintSlab(frame, world);
+        ensureKineticContactPairs(frame, world, persistedKineticPairBuffer);
+        const patchBodies = world.kinetic.substepPairPatchBodies ?? (world.kinetic.substepPairPatchBodies = []);
         for (let iter = 0; iter < kineticIterations; iter++) {
             outerIterationsRun = iter + 1;
-            resolveKineticContactPassWithPairs(tick, persistedKineticPairBuffer);
-            applyContactSideEffects?.(tick, kineticContactBuffer);
-            resolveGatheredKineticConstraintSlab(tick);
+            resolveKineticContactPassWithPairs(frame, world, persistedKineticPairBuffer);
+            applyContactSideEffects?.(frame, world, kineticContactBuffer);
+            resolveGatheredKineticConstraintSlab(frame, world);
             const maxError = measureConstraintSlabMaxError();
             const maxSpeedSq = maxActiveKineticSpeedSq();
             const settled = maxError <= constraintErrorEpsilon && maxSpeedSq <= velocityEpsilonSq;
@@ -3291,12 +3291,12 @@ export function runCollisionPipeline(tick, resolveWalls, applyContactSideEffects
         sKineticSolverStats.outerIterations = outerIterationsRun;
         sKineticSolverStats.maxIterations = kineticIterations;
         sKineticSolverStats.pairCount = persistedKineticPairBuffer.count;
-        tick.world.kinetic.kineticSolverStats = sKineticSolverStats;
+        world.kinetic.kineticSolverStats = sKineticSolverStats;
     } else {
         sKineticSolverStats.outerIterations = 0;
         sKineticSolverStats.maxIterations = kineticIterations;
         sKineticSolverStats.pairCount = 0;
-        tick.world.kinetic.kineticSolverStats = sKineticSolverStats;
+        world.kinetic.kineticSolverStats = sKineticSolverStats;
     }
 }
 function applyKineticAcceleration(eid, ax, ay, dtSec) {
@@ -3425,10 +3425,9 @@ function applyFloorPortalTeleports(world, spatialFrame) {
         eg.forEachEidInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, -1, ++eg.queryGen, portalTeleportHandler);
     }
 }
-export function runKineticPhysics(tick, dt, hooks) {
-    const world = tick.world;
+export function runKineticPhysics(frame, world, dt, hooks) {
     world.simulationFrameHooks?.beforePhysics?.(world);
-    const spatialFrame = tick.frame;
+    const spatialFrame = frame;
     applyFloorBeltForces(world, spatialFrame, dt);
     applyFloorPortalTeleports(world, spatialFrame);
     const session = world.kinetic;
@@ -3453,7 +3452,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     const { velocityEpsilonSq } = collisionSettings.kineticEarlyOut;
     let substepsRun = steps;
     const resolveWalls = (eid) => hooks.resolveWalls(eid, spatialFrame);
-    world.entityRegistry.forEachOfKind("worldProp", (prop) => hooks.updatePropFrame(prop, dt, spatialFrame));
+    world.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => hooks.updatePropFrame(prop, dt, spatialFrame));
     world.fractureEngine.debris.tickFrames(dt, spatialFrame);
     const slab = kineticDynamicSlab;
     const dragFriction = primitivePhysics.dragFriction;
@@ -3480,7 +3479,7 @@ export function runKineticPhysics(tick, dt, hooks) {
             }
         }
         spatialFrame.reindexActiveKineticBodies();
-        runCollisionPipeline(tick, resolveWalls, hooks.applyContactSideEffects);
+        runCollisionPipeline(frame, world, resolveWalls, hooks.applyContactSideEffects);
         const maxSpeedSq = maxActiveKineticSpeedSq();
         const solverStats = world.kinetic.kineticSolverStats;
         const constraintsStable = !solverStats || solverStats.outerIterations < collisionSettings.kineticConstraints.iterations;
@@ -3493,7 +3492,7 @@ export function runKineticPhysics(tick, dt, hooks) {
     advanceKineticSleepIslands(spatialFrame, session);
     spatialFrame.syncActiveKineticBodies();
     world.simulationFrameHooks?.afterPhysics?.(world);
-    hooks.afterKineticPhysics?.(tick, dt);
+    hooks.afterKineticPhysics?.(frame, world, dt);
 }
 function countMotionSubsteps(dtMs, { maxStepPx = 4, maxSubsteps = 8 } = {}) {
     const slab = kineticDynamicSlab;

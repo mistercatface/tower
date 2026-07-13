@@ -13,7 +13,7 @@ describe("kinetic constraint solver", () => {
         const tick = createKineticTestTick([bodyA, bodyB]);
         addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength });
         bodyB.x = 50;
-        for (let pass = 0; pass < 8; pass++) runCollisionPipeline(tick, noop, noop);
+        for (let pass = 0; pass < 8; pass++) runCollisionPipeline(tick.frame, tick.world, noop, noop);
         const dist = Math.hypot(kineticDynamicSlab.x[bodyB._physId] - kineticDynamicSlab.x[bodyA._physId], kineticDynamicSlab.y[bodyB._physId] - kineticDynamicSlab.y[bodyA._physId]);
         assert.ok(Math.abs(dist - restLength) < 0.5, `expected ~${restLength}, got ${dist}`);
     });

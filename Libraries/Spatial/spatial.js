@@ -3060,7 +3060,7 @@ export class KineticSpatialFrame extends SpatialFrameCore {
     }
     repopulateFrameMembership(state) {
         this.kineticEidCount = 0;
-        state.entityRegistry.forEachOfKind("worldProp", (prop) => {
+        state.entityRegistry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
             const needBind = prop._physId === undefined || !entityAlive[prop._physId] || entityRefs[prop._physId] !== prop;
             let physId = prop._physId;
             if (physId === undefined) physId = allocateEntityEid();

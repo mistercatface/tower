@@ -19,7 +19,7 @@ describe("kinetic pair persistence", () => {
             const b = mockKineticCircle(14, 0, 10, -40, 0, { currentState: true });
             const tick = createKineticTestTick([a, b]);
             const ax0 = a.x;
-            runCollisionPipeline(tick, noop, noop);
+            runCollisionPipeline(tick.frame, tick.world, noop, noop);
             assert.equal(tick.world.kinetic.kineticSolverStats.outerIterations, 3);
             assert.equal(tick.world.kinetic.kineticSolverStats.pairCount, 1);
             assert.ok(a.x !== ax0 || b.x !== 14);
@@ -33,7 +33,7 @@ describe("kinetic pair persistence", () => {
             const bodyB = mockKineticCircle(20, 0, 10, 0, 0);
             const tick = createKineticTestTick([bodyA, bodyB]);
             addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 20 });
-            runCollisionPipeline(tick, noop, noop);
+            runCollisionPipeline(tick.frame, tick.world, noop, noop);
             snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
             assert.ok(bodiesMatchKineticSlab([bodyA, bodyB]));
             assert.ok(tick.world.kinetic.kineticSolverStats.outerIterations <= tick.world.kinetic.kineticSolverStats.maxIterations);
@@ -51,9 +51,9 @@ describe("kinetic pair persistence", () => {
             snapshotKineticBodySlab([0, 1], 2);
             assert.ok(satCheckCollision(ball, wedge));
             const tick = createKineticTestTick([ball, wedge]);
-            runCollisionPipeline(tick, noop, noop);
+            runCollisionPipeline(tick.frame, tick.world, noop, noop);
             wedge.vx = -25;
-            runCollisionPipeline(tick, noop, noop);
+            runCollisionPipeline(tick.frame, tick.world, noop, noop);
             assert.ok(!checkPairAtSlabPose(ball, wedge));
         });
     });
@@ -72,7 +72,7 @@ describe("kinetic pair persistence", () => {
                 b.x += b.vx * (dt / 1000);
             };
             const tick = createKineticTestTick([a, b]);
-            runKineticPhysics(tick, 100, kineticPhysicsHooks());
+            runKineticPhysics(tick.frame, tick.world, 100, kineticPhysicsHooks());
             const stats = tick.world.kinetic.kineticPairGatherStats;
             const substeps = tick.world.kinetic.motionSubstepStats.substepsRun;
             assert.equal(stats.full, 1);

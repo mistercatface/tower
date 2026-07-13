@@ -9,6 +9,7 @@ import { mockKineticBody, mockCircleProp, assignPhysIdWithPose, createKineticTes
 import { createKineticAdmitTestState } from "./harness/stateFactories.js";
 import { createFractureWorld } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
+import { ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleepFrames;
 const mockGrid = { minX: -500, maxX: 500, minY: -500, maxY: 500 };
 const mockState = createKineticAdmitTestState();
@@ -72,7 +73,7 @@ describe("active kinetic bodies", () => {
         const prop = mockKineticBody(false);
         const tick = createKineticTestTick([prop]);
         assert.equal(kineticDynamicSlab.activePhysCount, 1);
-        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        for (let i = 0; i < SLEEP_FRAMES; i++) runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(prop.isSleeping, true);
         tick.frame.syncActiveKineticBodies();
         assert.equal(kineticDynamicSlab.activePhysCount, 0);
@@ -81,7 +82,7 @@ describe("active kinetic bodies", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame(50);
         const prop = new WorldProp(0, 0, "box", 0);
-        world.entityRegistry.register("worldProp", prop);
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
         frame.begin(world);
         const physId = prop._physId;
         frame.begin(world);
@@ -95,7 +96,7 @@ describe("active kinetic bodies", () => {
         assignPhysIdWithPose(prop, eid);
         kineticDynamicSlab.partGeomOffset[eid] = -1;
         assert.equal(kineticDynamicSlab.partGeomOffset[eid], -1);
-        world.entityRegistry.register("worldProp", prop);
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
         frame.begin(world);
         assert.ok(kineticDynamicSlab.partGeomOffset[eid] >= 0);
         frame.syncActiveKineticBodies();

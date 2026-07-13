@@ -38,12 +38,12 @@ describe("kinetic pair stream", () => {
         top.vx = 0;
         bottom.vx = 0;
         const restingTick = createKineticTestTick([bottom, top]);
-        runCollisionPipeline(restingTick, noop, noop, 1);
+        runCollisionPipeline(restingTick.frame, restingTick.world, noop, noop, 1);
         assert.equal(restingTick.world.kinetic.kineticSolverStats.pairCount, 0);
         top.vx = 12;
         snapshotKineticBodySlab(kineticDynamicSlab.activePhysIds, kineticDynamicSlab.activePhysCount);
         const movingTick = createKineticTestTick([bottom, top]);
-        runCollisionPipeline(movingTick, noop, noop, 1);
+        runCollisionPipeline(movingTick.frame, movingTick.world, noop, noop, 1);
         assert.ok(movingTick.world.kinetic.kineticSolverStats.pairCount >= 1);
     });
     it("three-body contact resolves without leaving movers overlapped", () => {

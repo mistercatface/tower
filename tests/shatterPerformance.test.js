@@ -6,6 +6,7 @@ import { WorldProp } from "../Libraries/Props/props.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { createFractureWorld, setupPropForFracture, spawnFractureShards, liveWorldPropCount } from "./harness/fractureHarness.js";
+import { ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
 
 describe("Shatter / Debris Performance Fixes", () => {
     it("EntityRegistry membershipGen increments once for batch operations", () => {
@@ -74,13 +75,13 @@ describe("Shatter / Debris Performance Fixes", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
         const prop = new WorldProp(0, 0, "box", 0);
-        world.entityRegistry.register("worldProp", prop);
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
         frame.begin(world);
         const idA = prop._physId;
         const propB = new WorldProp(100, 0, "box", 0);
         frame.admitKineticProps([propB], world);
         assert.equal(propB._physId, idA + 1);
-        world.entityRegistry.register("worldProp", propB);
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, propB);
         frame.begin(world);
         assert.equal(prop._physId, idA);
         assert.equal(propB._physId, idA + 1);
@@ -90,14 +91,14 @@ describe("Shatter / Debris Performance Fixes", () => {
         const world = createFractureWorld();
         const frame = new KineticSpatialFrame();
         const prop = new WorldProp(0, 0, "box", 0);
-        world.entityRegistry.register("worldProp", prop);
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
         frame.begin(world);
         const releasedId = prop._physId;
         prop.vx = 999;
         removeWorldPropFromState(world, prop, frame);
         assert.equal(prop._physId, undefined);
         const replacement = new WorldProp(50, 0, "box", 0);
-        world.entityRegistry.register("worldProp", replacement);
+        world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, replacement);
         frame.begin(world);
         assert.equal(replacement._physId, releasedId);
         assert.equal(kineticDynamicSlab.vx[releasedId], 0);

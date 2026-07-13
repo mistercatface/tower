@@ -1,6 +1,7 @@
 import { addDistanceConstraint, getConnectedBodyIds } from "../../Libraries/Physics/physics.js";
 import { setCirclePropRadius, WorldProp } from "../../Libraries/Props/props.js";
 import { addWorldPropToState } from "../../GameState/EntityRegistry.js";
+import { ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
 
 function resolveSegmentPropId(index, { leaderIndex = 0, headPropId, bodyPropId, leaderPropId }) {
     const leaderId = leaderPropId ?? headPropId ?? bodyPropId;
@@ -116,7 +117,7 @@ export function growChainSegment(state, tailProp, options) {
         spawned.prop.spawnGroupId = spawnGroupId;
     }
     const restLength = spacing != null ? spacing * linkSlack : chainLinkRestLength(tailProp, spawned.prop, linkSlack);
-    const tailEid = state.entityRegistry.register("worldProp", tailProp);
+    const tailEid = state.entityRegistry.register(ENTITY_KIND_WORLD_PROP, tailProp);
     linkChainBodies(state, tailEid, spawned.eid, restLength);
     return spawned.prop;
 }

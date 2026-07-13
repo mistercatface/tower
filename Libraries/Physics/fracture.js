@@ -803,7 +803,7 @@ export class FractureEngine {
         const geom = new FractureGeomPool();
         this.stores = { geom, debris: new FractureDebrisStore(geom) };
     }
-    processKineticContactFractures(tick, contacts) {
+    processKineticContactFractures(frame, world, contacts) {
         if (contacts.count === 0) return;
         const slab = kineticDynamicSlab;
         for (let i = 0; i < contacts.count; i++) {
@@ -824,7 +824,7 @@ export class FractureEngine {
             const force = FractureEngine.impactForceFromContact(relSpeed, kineticStaticSlab.mass[physIdA], kineticStaticSlab.mass[physIdB]);
             this.queueFractureKineticContact(physIdA, physIdB, hitX, hitY, force, nx, ny);
         }
-        this.flushDeferredFractures(tick.world, tick.frame);
+        this.flushDeferredFractures(world, frame);
     }
     flushDeferredFractures(world, spatialFrame) {
         const deferred = deferredFractureSlab;

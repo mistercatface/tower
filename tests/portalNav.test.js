@@ -126,7 +126,7 @@ describe("portal nav", () => {
         const body = mockCircleProp(grid.gridCenterXByIdx(exitIdx), grid.gridCenterYByIdx(exitIdx), 5);
         const tick = createKineticTestTick([body], { cellSize: grid.cellSize });
         tick.world.obstacleGrid = grid;
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(body.x, entryX);
         assert.equal(body.y, entryY);
         assert.equal(body.vx, 0);
@@ -150,7 +150,7 @@ describe("portal nav", () => {
         body.angularVelocity = 3;
         const tick = createKineticTestTick([body], { cellSize: grid.cellSize });
         tick.world.obstacleGrid = grid;
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(body.x, entryX);
         assert.equal(body.y, entryY);
         assert.equal(body.vx, 0);

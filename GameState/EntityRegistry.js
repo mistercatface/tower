@@ -4,10 +4,8 @@ import { aabbHashF32, circleIntersectsAabbF32, centerReachAabbF32, hashString, m
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
 import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC } from "../Core/engineEnums.js";
 import { allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef, worldPropBindFlags } from "../Core/entitySlots.js";
-const KIND_CODE_WORLD_PROP = ENTITY_KIND_WORLD_PROP;
-const WORLD_PROP_KIND_HASH = hashString("worldProp");
 function filterQueryHash(filterId) {
-    return mixHash4(WORLD_PROP_KIND_HASH, filterId ? hashString(filterId) : 0, 0, 0);
+    return mixHash4(ENTITY_KIND_WORLD_PROP, filterId ? hashString(filterId) : 0, 0, 0);
 }
 function queryViewCacheMatchesF32(entry, spatialGen, membershipGen, buf, o, boundsHash, filterHash) {
     if (!entry) return false;
@@ -16,14 +14,10 @@ function queryViewCacheMatchesF32(entry, spatialGen, membershipGen, buf, o, boun
     if (entry.boundsHash !== boundsHash) return false;
     return entry.minX === buf[o] && entry.minY === buf[o + 1] && entry.maxX === buf[o + 2] && entry.maxY === buf[o + 3];
 }
-function kindStringToCode(kind) {
-    if (kind === "worldProp") return KIND_CODE_WORLD_PROP;
-    return ENTITY_KIND_NONE;
-}
 /**
  * Dense typed entity arena. Slot eid === physId. WorldProp bags live in entityRefs[eid].
  * Bind stamps entityFlags / entityRenderKeyId once from strategy; hot kinetic/rolls/render gates read columns.
- * getLive(gameId) is the editor/selection edge ? prefer getRef(eid) for physics-adjacent code.
+ * getLive(gameId) is the editor/selection edge — prefer getRef(eid) for physics-adjacent code.
  * View queries return count; ids via borrowedQueryIds(filterId). Match callbacks take eid.
  */
 export class EntityArena {
@@ -85,11 +79,10 @@ export class EntityArena {
         return entry;
     }
     register(kind, ref) {
-        const kindCode = kindStringToCode(kind);
         if (this._gameIdToEid.has(ref.id)) {
             const eid = this._gameIdToEid.get(ref.id);
             const flags = worldPropBindFlags(ref);
-            bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
+            bindEntitySlot(eid, kind, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
             ref._physId = eid;
             clearWorldPropSpawnPose(ref);
             if (flags & ENTITY_FLAG_KINETIC) {
@@ -102,7 +95,7 @@ export class EntityArena {
         let eid = ref._physId;
         if (eid === undefined) eid = this.allocateEid();
         const flags = worldPropBindFlags(ref);
-        bindEntitySlot(eid, kindCode, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
+        bindEntitySlot(eid, kind, ref, ref.id | 0, ref.x, ref.y, ref.radius, flags);
         ref._physId = eid;
         clearWorldPropSpawnPose(ref);
         if (flags & ENTITY_FLAG_KINETIC) {
@@ -124,7 +117,7 @@ export class EntityArena {
         this._bumpMembership();
     }
     clear(kind) {
-        if (!kind) {
+        if (kind === undefined || kind === null) {
             if (this._liveCount === 0 && this._gameIdToEid.size === 0) return;
             for (let i = 0; i < this._liveCount; i++) {
                 const eid = this._liveEids[i];
@@ -136,12 +129,11 @@ export class EntityArena {
             this._bumpMembership();
             return;
         }
-        const kindCode = kindStringToCode(kind);
         let removed = false;
         let i = 0;
         while (i < this._liveCount) {
             const eid = this._liveEids[i];
-            if (entityKind[eid] !== kindCode) {
+            if (entityKind[eid] !== kind) {
                 i++;
                 continue;
             }
@@ -169,10 +161,9 @@ export class EntityArena {
         return entitySlotRef(eid);
     }
     forEachOfKind(kind, fn) {
-        const kindCode = kindStringToCode(kind);
         for (let i = 0; i < this._liveCount; i++) {
             const eid = this._liveEids[i];
-            if (entityKind[eid] !== kindCode) continue;
+            if (entityKind[eid] !== kind) continue;
             const ref = entityRefs[eid];
             if (ref) fn(ref);
         }
@@ -243,7 +234,7 @@ export class EntityArena {
     _fillAllLiveWorldPropEids() {
         for (let i = 0; i < this._liveCount; i++) {
             const eid = this._liveEids[i];
-            if (entityKind[eid] !== KIND_CODE_WORLD_PROP) continue;
+            if (entityKind[eid] !== ENTITY_KIND_WORLD_PROP) continue;
             this._pushCandidateEid(eid);
         }
     }
@@ -262,7 +253,7 @@ export class EntityArena {
         this._candidateCount = 0;
         for (let i = 0; i < n; i++) {
             const eid = eidBuf[i];
-            if (!entityAlive[eid] || entityKind[eid] !== KIND_CODE_WORLD_PROP) continue;
+            if (!entityAlive[eid] || entityKind[eid] !== ENTITY_KIND_WORLD_PROP) continue;
             if (this._candidateSeenGen[eid] === queryGen) continue;
             this._candidateSeenGen[eid] = queryGen;
             this._pushCandidateEid(eid);
@@ -289,14 +280,12 @@ export class EntityArena {
 }
 export { EntityArena as EntityRegistry };
 export function addWorldPropToState(world, prop) {
-    return world.entityRegistry.register("worldProp", prop);
+    return world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
 }
 export function addWorldPropsToState(world, props) {
     world.entityRegistry.beginMembershipBatch();
     try {
-        for (let i = 0; i < props.length; i++) {
-            world.entityRegistry.register("worldProp", props[i]);
-        }
+        for (let i = 0; i < props.length; i++) world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, props[i]);
     } finally {
         world.entityRegistry.endMembershipBatch();
     }
@@ -309,14 +298,14 @@ export function removeWorldPropFromState(world, prop, spatialFrame, entityMeta =
     prop.isDead = true;
 }
 export function visitLiveWorldProps(registry, visit) {
-    registry.forEachOfKind("worldProp", (prop) => {
+    registry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
         if (prop.isDead) return;
         visit(prop);
     });
 }
 export function findLiveWorldProp(registry, pred) {
     let found = null;
-    registry.forEachOfKind("worldProp", (prop) => {
+    registry.forEachOfKind(ENTITY_KIND_WORLD_PROP, (prop) => {
         if (found || prop.isDead) return;
         if (pred(prop)) found = prop;
     });

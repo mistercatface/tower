@@ -12,7 +12,7 @@ describe("kinetic early-out", () => {
             const bodyB = mockKineticCircle(20, 0, 10, 0, 0);
             const tick = createKineticTestTick([bodyA, bodyB], { constraintsDirty: true });
             addDistanceConstraint(tick.world.kinetic, 0, 1, { restLength: 20 });
-            runCollisionPipeline(tick, noop, noop);
+            runCollisionPipeline(tick.frame, tick.world, noop, noop);
             assert.ok(tick.world.kinetic.kineticSolverStats.outerIterations < tick.world.kinetic.kineticSolverStats.maxIterations);
         });
     });

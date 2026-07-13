@@ -15,7 +15,7 @@ describe("kinetic substep early-out", () => {
             const prevDrag = primitivePhysics.dragFriction[row];
             primitivePhysics.dragFriction[row] = 80;
             try {
-                runKineticPhysics(tick, dt, kineticPhysicsHooks());
+                runKineticPhysics(tick.frame, tick.world, dt, kineticPhysicsHooks());
             } finally {
                 primitivePhysics.dragFriction[row] = prevDrag;
             }

@@ -39,7 +39,7 @@ describe("kinetic islands", () => {
         assert.ok(areKineticLinkNeighborsSlab(left._physId, center._physId));
         assert.ok(areKineticLinkNeighborsSlab(center._physId, right._physId));
         assert.ok(!areKineticLinkNeighborsSlab(left._physId, right._physId));
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(tick.world.kinetic.kineticSolverStats.pairCount, 0);
     });
 
@@ -50,7 +50,7 @@ describe("kinetic islands", () => {
         const bodies = [left, center, right];
         const tick = createKineticTestTick(bodies);
         linkChain(tick.world, bodies, 18);
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.ok(tick.world.kinetic.kineticSolverStats.pairCount >= 1);
     });
 
@@ -59,7 +59,7 @@ describe("kinetic islands", () => {
         const center = mockKineticCircle(18, 0, 10, 25, 0);
         const right = mockKineticCircle(36, 0, 10, 0, 0);
         const tick = createKineticTestTick([left, center, right]);
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.ok(tick.world.kinetic.kineticSolverStats.pairCount >= 1);
     });
 
@@ -70,14 +70,14 @@ describe("kinetic islands", () => {
         for (let i = 0; i < count; i++) bodies.push(mockKineticCircle(i * spacing, 0, 10, i === 5 ? 20 : 0, 0));
         const linkedTick = createKineticTestTick(bodies);
         linkChain(linkedTick.world, bodies, spacing);
-        runKineticPhysics(linkedTick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(linkedTick.frame, linkedTick.world, 16.667, kineticPhysicsHooks());
         const linkedPairs = linkedTick.world.kinetic.kineticSolverStats.pairCount;
 
         resetMockKineticCircleIds(100);
         const freeBodies = [];
         for (let i = 0; i < count; i++) freeBodies.push(mockKineticCircle(i * spacing, 0, 10, i === 5 ? 20 : 0, 0));
         const freeTick = createKineticTestTick(freeBodies);
-        runKineticPhysics(freeTick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(freeTick.frame, freeTick.world, 16.667, kineticPhysicsHooks());
         assert.ok(linkedPairs < freeTick.world.kinetic.kineticSolverStats.pairCount);
         assert.equal(linkedPairs, 0);
     });
@@ -89,7 +89,7 @@ describe("kinetic islands", () => {
         for (let i = 0; i < count; i++) bodies.push(mockKineticCircle(i * spacing, 0, 10, 0, 0));
         const tick = createKineticTestTick(bodies);
         linkChain(tick.world, bodies, spacing);
-        for (let pass = 0; pass < SLEEP_FRAMES; pass++) runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        for (let pass = 0; pass < SLEEP_FRAMES; pass++) runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         for (let i = 0; i < bodies.length; i++) assert.equal(bodies[i].isSleeping, true);
         assert.equal(kineticDynamicSlab.islandRoot[bodies[0]._physId], bodies[0].id);
         assert.equal(kineticDynamicSlab.islandRoot[bodies[count - 1]._physId], bodies[0].id);
@@ -163,7 +163,7 @@ describe("kinetic islands", () => {
         const bodies = [a, b, c];
         const tick = createKineticTestTick(bodies);
         for (let frame = 0; frame < SLEEP_FRAMES; frame++) {
-            runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+            runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         }
         assert.equal(a.isSleeping, true);
         assert.equal(b.isSleeping, true);
@@ -181,7 +181,7 @@ describe("kinetic islands", () => {
         tick.frame.syncActiveKineticBodies();
         assert.equal(a.isSleeping, true);
         assert.equal(b.isSleeping, false);
-        runKineticPhysics(tick, 16.667, kineticPhysicsHooks());
+        runKineticPhysics(tick.frame, tick.world, 16.667, kineticPhysicsHooks());
         assert.equal(a.isSleeping, false);
         assert.equal(a._sleepFrames, 0);
         assert.equal(b.isSleeping, false);

@@ -87,7 +87,7 @@ describe("kinetic topology lifecycle", () => {
         ball.vx = -200;
         const tick = createKineticTestTick([glass, ball]);
         assert.ok(satCheckCollision(glass, ball));
-        runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
+        runCollisionPipeline(tick.frame, tick.world, () => {}, (frame, world, c) => world.fractureEngine.processKineticContactFractures(frame, world, c));
         assert.ok(liveFracturePropCount(tick.world) > 2);
         assert.ok(!tick.world.entityRegistry.getLive(glass.id) || glass._fractureCooldown > 0);
     });

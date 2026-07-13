@@ -309,11 +309,7 @@ describe("kinetic wall damage", () => {
         const y0 = shard.y;
         const frame = kineticSpatial.begin(state);
         assert.ok(Array.from(frame.kineticEids.subarray(0, frame.kineticEidCount)).includes(shard._physId));
-        runKineticPhysics(
-            { frame, world: { obstacleGrid: state.obstacleGrid, entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, fractureEngine: state.fractureEngine } },
-            100,
-            kineticPhysicsHooks()
-        );
+        runKineticPhysics(frame, state, 100, kineticPhysicsHooks());
         assert.ok(Math.hypot(shard.x - x0, shard.y - y0) > 1);
         terminateWorkerNavigation(state.nav);
     });

@@ -41,7 +41,7 @@ describe("cross pinwheel prop", () => {
         assert.equal(pinwheel.angularVelocity, 0);
         const originalFacing = pinwheel.facing;
 
-        for (let i = 0; i < 12; i++) runKineticPhysics(tick, 16, kineticPhysicsHooks());
+        for (let i = 0; i < 12; i++) runKineticPhysics(tick.frame, tick.world, 16, kineticPhysicsHooks());
 
         assert.ok(Math.abs(pinwheel.angularVelocity) > 0.01, `Should have non-zero angular velocity, got ${pinwheel.angularVelocity}`);
         assert.notEqual(pinwheel.facing, originalFacing);

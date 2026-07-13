@@ -17,6 +17,7 @@ import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } 
 import { liveFracturePropCount, liveWorldPropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries } from "./harness/fractureHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
+import { ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
 import { bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import propCatalog from "../Assets/props/index.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
@@ -215,7 +216,7 @@ describe("fracture", () => {
         const tick = createKineticTestTick([]);
         const prop = new WorldProp(0, 0, "box", 0);
         prop.fractureEnabled = true;
-        tick.world.entityRegistry.register("worldProp", prop);
+        tick.world.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
         entityRefs[prop._physId] = prop;
         
         // Shatter the parent pane
@@ -379,7 +380,7 @@ describe("fracture", () => {
         ball.vx = -200;
         const tick = createKineticTestTick([glass, ball]);
         assert.ok(satCheckCollision(glass, ball));
-        runCollisionPipeline(tick, () => {}, (t, c) => t.world.fractureEngine.processKineticContactFractures(t, c));
+        runCollisionPipeline(tick.frame, tick.world, () => {}, (frame, world, c) => world.fractureEngine.processKineticContactFractures(frame, world, c));
         const count = liveFracturePropCount(tick.world);
         assert.ok(count > 2);
         assert.ok(count <= FRACTURE_MAX_SHARDS_PER_SHATTER + 2);

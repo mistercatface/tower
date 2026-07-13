@@ -38,26 +38,21 @@ function simulationKineticHooks(state) {
         resolveWalls(eid, frame) {
             return resolveKineticWallDamage(state, eid, frame);
         },
-        applyContactSideEffects(tick, contacts) {
-            tick.world.fractureEngine.processKineticContactFractures(tick, contacts);
+        applyContactSideEffects(frame, world, contacts) {
+            world.fractureEngine.processKineticContactFractures(frame, world, contacts);
         },
-        afterKineticPhysics(tick, dt) {
+        afterKineticPhysics(frame, world, dt) {
             state.appLaunch?.session?.afterKineticPhysics?.();
             applyPendingWallDamage(state);
-            if (state.gridWallDamage.lastSpawnedCount) state.fractureEngine.debris.integrateSpawned(tick.frame, state.gridWallDamage.lastSpawned, dt);
+            if (state.gridWallDamage.lastSpawnedCount) state.fractureEngine.debris.integrateSpawned(frame, state.gridWallDamage.lastSpawned, dt);
         },
     };
 }
-/** @param {import("./state.js").TileLabGameState} state @param {import("../../Libraries/Spatial/spatial.js").KineticSpatialFrame} frame */
-function kineticTickFromState(state, frame) {
-    return { frame, world: { entityRegistry: state.entityRegistry, kinetic: state.kinetic, sandbox: state.sandbox, simulationFrameHooks: state.simulationFrameHooks, fractureEngine: state.fractureEngine, obstacleGrid: state.obstacleGrid } };
-}
-/** @param {import("./state.js").TileLabGameState} state @param {number} dt */
-function runSimulationTick(state, dt) {
+function runSimulationTick(state, dt, hooks) {
     const simDt = dt * state.selectedSpeed;
     state.gameTime += simDt;
     const spatialFrame = kineticSpatial.begin(state);
-    runKineticPhysics(kineticTickFromState(state, spatialFrame), simDt, simulationKineticHooks(state));
+    runKineticPhysics(spatialFrame, state, simDt, hooks);
     FloorBelt.syncAnimFromBodies(state, spatialFrame, simDt);
     FloatingText.updateAll(state, simDt);
 }
@@ -92,6 +87,7 @@ export function createEditorApp(options = {}) {
         document.head.appendChild(link);
     }
     installEditorDefaults(state);
+    const kineticHooks = simulationKineticHooks(state);
     const pauseManager = new PauseManager(state);
     installRadioOverlay(document.getElementById("gameWrapper"), { eventBus: events, requestPause: (reason) => pauseManager.pause(reason), requestResume: (reason) => pauseManager.resume(reason), content: { conversations: {}, speakers: {}, mainCharacterId: "player" } });
     const playbackHandlers = {
@@ -116,7 +112,7 @@ export function createEditorApp(options = {}) {
         tickSandboxCameraFollow(state.viewport, state, state.entityRegistry, dt);
         state.appLaunch?.session?.tick(dt);
         state.sandbox.controller?.tick(dt);
-        if (!state.isPaused) runSimulationTick(state, dt);
+        if (!state.isPaused) runSimulationTick(state, dt, kineticHooks);
         else {
             kineticSpatial.begin(state);
             FloatingText.updateAll(state, dt);

@@ -4,7 +4,7 @@ import { createKineticSession } from "../../Libraries/Physics/physics.js";
 import { SandboxWorldState } from "../../Libraries/Sandbox/sandbox.js";
 import { WorldObstacleGrid } from "../../Libraries/Spatial/spatial.js";
 import { createDefaultSandboxBehaviors, createSandboxController } from "../../Libraries/Sandbox/sandbox.js";
-import { EDITOR_NAV_MODE_HPA } from "../../Core/engineEnums.js";
+import { EDITOR_NAV_MODE_HPA, ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
 import { recomputeViewBounds } from "../../Core/engineMemory.js";
 
 export function createSandboxDragTestState() {
@@ -55,7 +55,7 @@ export function createGrabDragTestState() {
 }
 
 export function registerGrabDragTestProp(state, prop) {
-    state.entityRegistry.register("worldProp", prop);
+    state.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
     return prop;
 }
 

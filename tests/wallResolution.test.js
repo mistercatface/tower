@@ -100,10 +100,10 @@ describe("polygon wall resolution", () => {
         appendActiveKineticBodySlabPhysId(bar._physId);
         const session = createKineticSession();
         const world = {
-            entityRegistry: { getLive: (id) => (id === bar.id ? bar : null), forEachOfKind() {} },
+            entityRegistry: { getLive: (id) => (id === bar.id ? bar : null) },
             kinetic: session,
         };
-        runCollisionPipeline({ frame, world }, (eid) => resolver.resolve(eid, frame), undefined, 1);
+        runCollisionPipeline(frame, world, (eid) => resolver.resolve(eid, frame), undefined, 1);
         assert.ok(!shapeOverlapsWall(bar, wall));
     });
     it("wall hit wakes a sleeping polygon", () => {
