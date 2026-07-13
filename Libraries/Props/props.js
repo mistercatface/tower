@@ -9,6 +9,7 @@ import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { visualOverrideCacheId } from "../Color/visualOverride.js";
 import { transitionEntity } from "../FSM/transition.js";
+import { invalidatePropStaticKey } from "../Canvas/canvas.js";
 import propCatalog from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
@@ -92,13 +93,7 @@ export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: PROP_RENDER
 export function invalidatePropFootprintKey(prop) {
     prop._footprintKey = undefined;
     prop._footprintId = undefined;
-    prop._cachedStaticKey = undefined;
-    prop._staticKeyFacing = undefined;
-    prop._staticKeyVo = undefined;
-    prop._staticKeyAttachment = undefined;
-    prop._staticKeyPhysicsKey = undefined;
-    prop._staticKeyCustom = undefined;
-    prop._staticKeyRoll = undefined;
+    if (prop._physId !== undefined) invalidatePropStaticKey(prop._physId);
 }
 export function applyPropBoxFootprint(prop, hx, hy) {
     const n = 8;

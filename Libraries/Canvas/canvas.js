@@ -673,6 +673,17 @@ function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) 
         if (childDraw) childDraw(ctx, child, viewport, flatPresentation);
     }
 }
+const MAX_ENTITIES = 4096;
+const staticKeyFacing = new Float32Array(MAX_ENTITIES);
+const staticKeyVo = new Int32Array(MAX_ENTITIES);
+const staticKeyAttachment = new Int32Array(MAX_ENTITIES);
+const staticKeyPhysicsKey = new Int32Array(MAX_ENTITIES);
+const staticKeyCustom = new Int32Array(MAX_ENTITIES);
+const staticKeyRoll = new Int32Array(MAX_ENTITIES);
+const cachedStaticKey = new BigUint64Array(MAX_ENTITIES);
+export function invalidatePropStaticKey(eid) {
+    cachedStaticKey[eid] = 0n;
+}
 export function getPropStaticKey(eid, renderKey) {
     const prop = entityRefs[eid];
     const facing = readEntityFacing(prop);
@@ -683,19 +694,19 @@ export function getPropStaticKey(eid, renderKey) {
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const customKey = prop.strategy?.getCustomSpriteCacheKey?.(prop) ?? prop.getCustomSpriteCacheKey?.(prop) ?? "";
     const customId = typeof customKey === "number" ? customKey & SPRITE_KEY_PART_MASK : hashSpriteKeyString(customKey);
-    if (prop._staticKeyFacing === facing && prop._staticKeyVo === voId && prop._staticKeyAttachment === attachmentId && prop._staticKeyPhysicsKey === physicsId && prop._staticKeyCustom === customId && (!rolls || prop._staticKeyRoll === rollId) && prop._cachedStaticKey !== undefined) return prop._cachedStaticKey;
+    if (staticKeyFacing[eid] === facing && staticKeyVo[eid] === voId && staticKeyAttachment[eid] === attachmentId && staticKeyPhysicsKey[eid] === physicsId && staticKeyCustom[eid] === customId && (!rolls || staticKeyRoll[eid] === rollId) && cachedStaticKey[eid] !== 0n) return cachedStaticKey[eid];
     const k1 = BigInt(resolveRenderKeyId(renderKey));
     const k2 = BigInt(customId);
     const k3 = BigInt(physicsId & SPRITE_KEY_PART_MASK);
     const k4 = BigInt(attachmentId & SPRITE_KEY_PART_MASK);
     const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
-    prop._staticKeyFacing = facing;
-    prop._staticKeyVo = voId;
-    prop._staticKeyAttachment = attachmentId;
-    prop._staticKeyPhysicsKey = physicsId;
-    prop._staticKeyCustom = customId;
-    if (rolls) prop._staticKeyRoll = rollId;
-    prop._cachedStaticKey = staticKey;
+    staticKeyFacing[eid] = facing;
+    staticKeyVo[eid] = voId;
+    staticKeyAttachment[eid] = attachmentId;
+    staticKeyPhysicsKey[eid] = physicsId;
+    staticKeyCustom[eid] = customId;
+    if (rolls) staticKeyRoll[eid] = rollId;
+    cachedStaticKey[eid] = staticKey;
     return staticKey;
 }
 function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flatPresentation = false, beforeBake = null) {

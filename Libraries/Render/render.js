@@ -1,4 +1,4 @@
-import { traceAabbRect, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolylineF32, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, traceCircle } from "../Canvas/canvas.js";
+import { traceAabbRect, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolylineF32, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, traceCircle, invalidatePropStaticKey } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
 import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, entityX, entityY, entityFlags, entityRenderKeyId, entityRefs, GrowF32, entityWallProfileId, entityWallHeightPx, getProfileStr } from "../../Core/engineMemory.js";
@@ -1617,11 +1617,7 @@ function prepareWallChunkPropTextures(state, eid) {
     const ready = worldSurfaces._wallChunkReady;
     const prop = entityRefs[eid];
     if (prop) {
-        if (prop._wallChunkTextureReady !== ready) {
-            prop._cachedStaticKey = undefined;
-            prop._staticKeyPhysicsKey = undefined;
-            prop._staticKeyCustom = undefined;
-        }
+        if (prop._wallChunkTextureReady !== ready) invalidatePropStaticKey(eid);
         prop._wallChunkTextureReady = ready;
     }
 }

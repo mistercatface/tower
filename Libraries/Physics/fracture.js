@@ -479,13 +479,6 @@ class KineticDebrisStore {
         body.height = resolveAssetPropHeight(asset);
         body.visualOverride = undefined;
         body.faction = undefined;
-        body._cachedStaticKey = undefined;
-        body._staticKeyFacing = undefined;
-        body._staticKeyVo = undefined;
-        body._staticKeyAttachment = undefined;
-        body._staticKeyPhysicsKey = undefined;
-        body._staticKeyCustom = undefined;
-        body._staticKeyRoll = undefined;
         body.wallChunkProfileId = undefined;
         body.wallChunkHeightPx = undefined;
         body._wallChunkTextureReady = undefined;
