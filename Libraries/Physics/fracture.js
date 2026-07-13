@@ -646,15 +646,15 @@ class KineticDebrisStore {
             drawQueue.push(drawKindProp, 0, body._physId, dx * dx + dy * dy);
         }
     }
-    integrateSpawned(spatialFrame, bodies, dtMs) {
-        if (!bodies.length || dtMs <= 0) return;
+    integrateSpawned(spatialFrame, eids, dtMs) {
+        if (!eids.length || dtMs <= 0) return;
         const integrated = this._integratedScratch;
         integrated.length = 0;
-        for (let i = 0; i < bodies.length; i++) {
-            const body = bodies[i];
-            if (body.isDead || body.isSleeping) continue;
-            body.tickPropSubstep(dtMs);
-            integrated.push(body._physId);
+        for (let i = 0; i < eids.length; i++) {
+            const eid = eids[i];
+            if ((entityFlags[eid] & ENTITY_FLAG_DEAD) !== 0 || kineticDynamicSlab.sleeping[eid] !== 0) continue;
+            applyVelocityDamping(eid, dtMs, primitiveDragFrictionEid(eid));
+            integrated.push(eid);
         }
         if (!integrated.length) return;
         spatialFrame.reindexKineticBodies(integrated, integrated.length);
@@ -837,7 +837,7 @@ export function applyPendingWallDamage(state) {
     lastSpawned.length = 0;
     for (let i = 0; i < spawn.count; i++) {
         const shards = state.fractureEngine.debris.spawnFromBreakRow(spawn, i, spatialFrame);
-        for (let j = 0; j < shards.length; j++) lastSpawned.push(shards[j]);
+        for (let j = 0; j < shards.length; j++) lastSpawned.push(shards[j]._physId);
     }
     wallDamage.lastCommitBounds = commitBounds;
     wallDamage.lastSpawnedCount = lastSpawned.length;
