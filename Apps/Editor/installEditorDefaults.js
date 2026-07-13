@@ -2,7 +2,6 @@ import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { replaceRecordContents } from "../../Libraries/Config/mergeConfig.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../../Libraries/Viewport/Viewport.js";
 import { collisionSettings, LIBRARY_COLLISION_DEFAULTS, physicsSettings, LIBRARY_PHYSICS_DEFAULTS } from "../../Libraries/Physics/physics.js";
-import { defaultPropPixelSize, setPropPixelSize } from "../../Core/GamePropPixelSize.js";
 import { propQuantizeSteps, LIBRARY_PROP_QUANTIZE_STEPS } from "../../Libraries/Props/props.js";
 import { gameWorldSurfaceSettings, replaceGameWorldSurfaceSettings, TILE_WORKER_URL } from "../../Render/WorldSurfaceBootstrap.js";
 import { configureTileWorkerCoordinator, TileWorkerCoordinator } from "../../Libraries/WorldSurface/worldSurface.js";
@@ -21,7 +20,6 @@ export function installEditorDefaults(state) {
     replaceRecordContents(collisionSettings, structuredClone(LIBRARY_COLLISION_DEFAULTS));
     replaceRecordContents(physicsSettings, structuredClone(LIBRARY_PHYSICS_DEFAULTS));
     replaceRecordContents(propQuantizeSteps, structuredClone(LIBRARY_PROP_QUANTIZE_STEPS));
-    setPropPixelSize(defaultPropPixelSize);
     clearPropSpriteCache();
     const worldSurfaces = state.worldSurfaces;
     const settings = gameWorldSurfaceSettings;

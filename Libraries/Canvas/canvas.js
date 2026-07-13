@@ -4,7 +4,7 @@ import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
 import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr, entityFlags, entityFacing } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
 import { packRollOrientId } from "../Physics/physics.js";
-import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
+import { propPixelSize, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto } from "../Props/props.js";
 import propCatalog, { NEXT_RENDER_KEY_ID } from "../../Assets/props/index.js";
 export function getCanvasLineScale(ctx) {
@@ -698,19 +698,18 @@ function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flat
     const dx = entityX[eid] - px;
     const dy = entityY[eid] - py;
     const viewStep = resolvePropQuantizeSteps(eid).view;
-    const pixelSize = resolvePropPixelSizeForProp(prop);
     const staticKey = getPropStaticKey(eid, renderKey);
     let key = staticKey;
     key = (key << 12n) | BigInt(flatPresentation ? 0 : packQuantizedViewBucket(dx, dy, viewStep));
     key = (key << 16n) | BigInt(animFrame & 0xffff);
-    key = (key << 16n) | BigInt((pixelSize ?? 0) & 0xffff);
+    key = (key << 16n) | BigInt(propPixelSize & 0xffff);
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
     key = (key << 1n) | BigInt(flatPresentation ? 1 : 0);
     return propSpriteCacheSlab.getOrBake(key, () => {
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
         const stageR = Math.max(prop.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         const worldDiameter = stageR * 2;
-        const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter, zoom);
+        const bakeScale = resolvePropBakeScale(worldDiameter, zoom);
         const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = PROP_STAGE_PADDING + stageR * 1.3;
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
@@ -750,7 +749,7 @@ function getOrBakeSharedGridStampFilmstrip(viewport, renderKey, stripKey, halfX,
     const pixelSize = Math.round(worldDiameter * zoom);
     const key = buildSharedGridStampFilmstripKey(renderKey, stripKey, zoom, pixelSize);
     return gridStampSpriteCacheSlab.getOrBake(key, () => {
-        const bakeScale = resolvePropBakeScale(worldDiameter, undefined, false, zoom);
+        const bakeScale = resolvePropBakeScale(worldDiameter, zoom);
         const frameSpan = Math.ceil((stageR * 2.6 + GRID_STAMP_STAGE_PADDING * 2) * bakeScale);
         const anchorX = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
         const anchorY = GRID_STAMP_STAGE_PADDING + stageR * 1.3;
@@ -829,7 +828,7 @@ export function drawCachedOverlayGlyph(ctx, worldX, worldY, viewport, renderKey,
     key = (key << 12n) | BigInt(packQuantizedViewBucket(worldX - px, worldY - py));
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
     const slot = overlaySpriteCacheSlab.getOrBake(key, () => {
-        const bakeScale = resolvePropBakeScale(worldSpan, undefined, false, zoom);
+        const bakeScale = resolvePropBakeScale(worldSpan, zoom);
         const stageSpan = Math.ceil((worldSpan + OVERLAY_STAGE_PADDING * 2) * bakeScale);
         const anchorX = worldSpan / 2 + OVERLAY_STAGE_PADDING;
         const anchorY = worldSpan / 2 + OVERLAY_STAGE_PADDING;
