@@ -18,11 +18,6 @@ export const PROP_DRAW_WALL_CHUNK = 1;
 export const PROP_RENDER_MODE_NONE = 0;
 export const PROP_RENDER_MODE_3D = 1;
 //
-export const ATTACH_HEADING_FACING = 0;
-export const ATTACH_HEADING_VELOCITY = 1;
-//
-export const ATTACH_OFFSET_PARENT_RADIUS = 1;
-//
 export const WORLD_RENDER_MODE_FLAT2D = 0;
 export const WORLD_RENDER_MODE_RADIAL_SPHERES = 1;
 export const WORLD_RENDER_MODE_RADIAL = 2;

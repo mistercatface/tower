@@ -284,7 +284,6 @@ export const entityWallProfileId = new Uint8Array(MAX_ENTITIES);
 export const entityWallHeightPx = new Float32Array(MAX_ENTITIES);
 export const entityFractureCooldown = new Uint16Array(MAX_ENTITIES);
 export const entityStaticKeyFacing = new Float32Array(MAX_ENTITIES);
-export const entityStaticKeyAttachment = new Int32Array(MAX_ENTITIES);
 export const entityStaticKeyPhysicsKey = new Int32Array(MAX_ENTITIES);
 export const entityStaticKeyCustom = new Int32Array(MAX_ENTITIES);
 export const entityStaticKeyRoll = new Int32Array(MAX_ENTITIES);

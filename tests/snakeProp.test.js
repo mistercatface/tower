@@ -33,7 +33,5 @@ describe("snake prop kinetic chain spawning", () => {
             assert.ok(kineticConstraintStore.restLength[i] > 0);
             assert.ok(Number.isFinite(kineticConstraintStore.restLength[i]));
         }
-
-        assert.ok(propCatalog["snake"].visuals.attachments.some(a => a.id === "movement_arrow"));
     });
 });

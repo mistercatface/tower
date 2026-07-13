@@ -1,11 +1,11 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex, hashString, mixHash4 } from "../Math/math.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
-import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyAttachment, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr } from "../../Core/engineMemory.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr } from "../../Core/engineMemory.js";
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
 import { packRollOrientId, readEntityFacing } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
-import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, getVisualAttachmentSpriteCacheId, resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps } from "../Props/props.js";
+import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto } from "../Props/props.js";
 import propCatalog, { NEXT_RENDER_KEY_ID } from "../../Assets/props/index.js";
 export function getCanvasLineScale(ctx) {
     return 1 / Math.max(0.001, ctx.getTransform().a);
@@ -665,30 +665,19 @@ export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, frameIndex =
     ctx.globalAlpha = prevAlpha;
 }
 const PROP_STAGE_PADDING = 40;
-function drawVisualAttachmentList(ctx, attachments, viewport, flatPresentation) {
-    for (let i = 0; i < attachments.length; i++) {
-        const child = attachments[i];
-        const childRenderKey = child.getRender3DKey?.() ?? child.strategy?.render3DKey;
-        const childDraw = propCatalog[childRenderKey]?.drawRecipe;
-        if (childDraw) childDraw(ctx, child, viewport, flatPresentation);
-    }
-}
 export function getPropStaticKey(eid, renderKey) {
     const prop = entityRefs[eid];
     const facing = readEntityFacing(prop);
-    const attachmentId = getVisualAttachmentSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const rolls = !!prop.strategy?.rolls;
     const rollId = rolls ? packRollOrientId(prop, resolvePropQuantizeSteps(prop).facing) : 0;
     const physicsId = getBaseSpriteCacheId(prop, PROP_SPRITE_KEY_DEPS);
     const customId = entityWallProfileId[eid] !== 0 ? getWallChunkSpriteCacheKey(eid) : 0;
-    if (entityStaticKeyFacing[eid] === facing && entityStaticKeyAttachment[eid] === attachmentId && entityStaticKeyPhysicsKey[eid] === physicsId && entityStaticKeyCustom[eid] === customId && (!rolls || entityStaticKeyRoll[eid] === rollId) && entityCachedStaticKey[eid] !== 0n) return entityCachedStaticKey[eid];
+    if (entityStaticKeyFacing[eid] === facing && entityStaticKeyPhysicsKey[eid] === physicsId && entityStaticKeyCustom[eid] === customId && (!rolls || entityStaticKeyRoll[eid] === rollId) && entityCachedStaticKey[eid] !== 0n) return entityCachedStaticKey[eid];
     const k1 = BigInt(resolveRenderKeyId(renderKey));
     const k2 = BigInt(customId);
     const k3 = BigInt(physicsId & SPRITE_KEY_PART_MASK);
-    const k4 = BigInt(attachmentId & SPRITE_KEY_PART_MASK);
-    const staticKey = (k1 << 60n) | (k2 << 40n) | (k3 << 20n) | k4;
+    const staticKey = (k1 << 40n) | (k2 << 20n) | k3;
     entityStaticKeyFacing[eid] = facing;
-    entityStaticKeyAttachment[eid] = attachmentId;
     entityStaticKeyPhysicsKey[eid] = physicsId;
     entityStaticKeyCustom[eid] = customId;
     if (rolls) entityStaticKeyRoll[eid] = rollId;
@@ -719,10 +708,8 @@ function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flat
     key = (key << 16n) | BigInt(packZoomKeyBucket(zoom) & 0xffff);
     key = (key << 1n) | BigInt(flatPresentation ? 1 : 0);
     return propSpriteCacheSlab.getOrBake(key, () => {
-        const parentFacing = quantizeAngle(readEntityFacing(prop), resolvePropQuantizeSteps(prop).facing);
         propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
-        const baseR = Math.max(prop.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
-        const stageR = Math.max(baseR, resolveVisualAttachmentBakeRadius(prop, parentFacing));
+        const stageR = Math.max(prop.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
         const worldDiameter = stageR * 2;
         const bakeScale = resolvePropBakeScaleForProp(prop, worldDiameter, zoom);
         const stageSpan = Math.ceil((stageR * 2.6 + PROP_STAGE_PADDING * 2) * bakeScale);
@@ -732,13 +719,10 @@ function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flat
         const ctx = canvas.getContext("2d");
         const stageProp = getPropStageBakeState(eid);
         stageProp.radius = prop.radius;
-        const attachments = resolveVisualAttachmentProps(stageProp);
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
         ctx.translate(anchorX - entityX[eid], anchorY - entityY[eid]);
-        drawVisualAttachmentList(ctx, attachments.before, viewport, flatPresentation);
         draw(ctx, stageProp, viewport, flatPresentation);
-        drawVisualAttachmentList(ctx, attachments.after, viewport, flatPresentation);
         ctx.restore();
         writeSpriteBakeOuts(bakeScale, anchorX, anchorY, stageSpan / bakeScale, stageSpan / bakeScale, 1, stageSpan);
         return canvas;

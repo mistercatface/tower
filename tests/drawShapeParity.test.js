@@ -7,9 +7,8 @@ import { createWallChunkDraw, bindWallChunkTexturePipeline } from "../Libraries/
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
 import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
-import { ATTACH_HEADING_FACING, ATTACH_OFFSET_PARENT_RADIUS, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
+import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
-import { resolveVisualAttachmentBakeRadius, resolveVisualAttachmentProps, getVisualAttachmentSpriteCacheId } from "../Libraries/Props/props.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
 import propCatalog from "../Assets/props/index.js";
 import { gridSettings } from "../Config/world.js";
@@ -185,60 +184,5 @@ describe("draw shape parity", () => {
         const triangle = new WorldProp(0, 0, "boid_triangle", 0);
         assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
         assert.equal(resolvePropQuantizeSteps(triangle).facing, 64);
-    });
-    it("boid triangle declares a render-only tri wedge facing attachment", () => {
-        const attachment = propCatalog["boid_triangle"].visuals.attachments[0];
-        assert.equal(attachment.id, "movement_arrow");
-        assert.equal(attachment.propId, "tri_wedge");
-        assert.equal(attachment.heading, ATTACH_HEADING_FACING);
-        assert.equal(attachment.offsetSpace, ATTACH_OFFSET_PARENT_RADIUS);
-        assert.equal(attachment.inheritTint, undefined);
-    });
-    it("visual attachments resolve from quantized facing", () => {
-        const prop = new WorldProp(0, 0, "boid_triangle", 0);
-        prop.facing = Math.PI / 2;
-        const stageProp = getPropStageBakeState(bindStageProp(prop));
-        const qHeading = quantizeAngle(prop.facing, resolvePropQuantizeSteps(prop).facing);
-        const attachments = resolveVisualAttachmentProps(stageProp);
-        assert.equal(attachments.before.length, 0);
-        assert.equal(attachments.after.length, 1);
-        const child = attachments.after[0];
-        assert.equal(child instanceof WorldProp, false);
-        assert.equal(child.type, "tri_wedge");
-        assert.ok(Math.abs(child.x) < 1e-6);
-        assert.ok(Math.abs(child.y - prop.radius * 1.65) < 1e-6);
-        assert.ok(Math.abs(child.facing - (qHeading - Math.PI / 2)) < 1e-6);
-        assert.ok(child.radius < new WorldProp(0, 0, "tri_wedge", 0).radius);
-    });
-    it("visual attachments scale and offset from parent radius", () => {
-        const small = new WorldProp(0, 0, "boid_triangle", 0);
-        const large = new WorldProp(0, 0, "boid_triangle", 0);
-        setCirclePropRadius(large, small.radius * 2);
-        small.vx = 30;
-        large.vx = 30;
-        const smallChild = resolveVisualAttachmentProps(getPropStageBakeState(bindStageProp(small))).after[0];
-        const largeChild = resolveVisualAttachmentProps(getPropStageBakeState(bindStageProp(large))).after[0];
-        assert.ok(Math.abs(largeChild.x - smallChild.x * 2) < 1e-6);
-        assert.ok(Math.abs(largeChild.radius - smallChild.radius * 2) < 1e-6);
-        assert.ok(Math.abs(largeChild.height - smallChild.height * 2) < 1e-6);
-        assert.ok(smallChild.height < gridSettings.cellSize);
-    });
-    it("visual attachments expand bake bounds and facing cache keys", () => {
-        const right = new WorldProp(0, 0, "boid_triangle", 0);
-        const down = new WorldProp(0, 0, "boid_triangle", 0);
-        right.facing = 0;
-        down.facing = Math.PI / 2;
-        const parentRadius = right.radius;
-        assert.ok(resolveVisualAttachmentBakeRadius(right, 0) > parentRadius);
-        assert.notEqual(
-            getVisualAttachmentSpriteCacheId(right, { quantizeAngleIndex }),
-            getVisualAttachmentSpriteCacheId(down, { quantizeAngleIndex }),
-        );
-    });
-    it("boid triangle cache keys change on finer facing buckets", () => {
-        const base = new WorldProp(0, 0, "boid_triangle", 0);
-        const turned = new WorldProp(0, 0, "boid_triangle", 0);
-        turned.facing = (Math.PI * 2) / resolvePropQuantizeSteps(turned).facing;
-        assert.notEqual(getVisualAttachmentSpriteCacheId(base, { quantizeAngleIndex }), getVisualAttachmentSpriteCacheId(turned, { quantizeAngleIndex }));
     });
 });

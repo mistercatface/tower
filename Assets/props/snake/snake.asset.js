@@ -1,2 +1,2 @@
-import { PROP_PRIMITIVE_SPHERE, ATTACH_HEADING_FACING, ATTACH_OFFSET_PARENT_RADIUS } from "../../../Core/engineEnums.js";
-export default { id: "snake", primitive: PROP_PRIMITIVE_SPHERE, sandbox: { tags: ["shapes", "nav"], spawnLabel: "Snake Chain" }, physics: { radius: 4, rolls: true, orientToMotion: true, canChain: true, quantizeSteps: { facing: 64 } }, visuals: { attachments: [{ id: "movement_arrow", propId: "tri_wedge", heading: ATTACH_HEADING_FACING, offsetSpace: ATTACH_OFFSET_PARENT_RADIUS, offset: { x: 1.65, y: 0 }, facingOffset: -Math.PI / 2, radiusScale: 0.66, layer: 1 }] } };
+import { PROP_PRIMITIVE_SPHERE } from "../../../Core/engineEnums.js";
+export default { id: "snake", primitive: PROP_PRIMITIVE_SPHERE, sandbox: { tags: ["shapes", "nav"], spawnLabel: "Snake Chain" }, physics: { radius: 4, rolls: true, orientToMotion: true, canChain: true, quantizeSteps: { facing: 64 } } };

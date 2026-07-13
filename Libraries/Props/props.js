@@ -1,8 +1,8 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid, computeFootprintIdFromSlab } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, getProfileStr, entityFractureCooldown, entityCachedStaticKey, entityFootprintId } from "../../Core/engineMemory.js";
-import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
-import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
+import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
+import { ensureFlatVerts, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
@@ -529,148 +529,6 @@ export class WorldProp {
         this.tickPropFrame(dt, state, spatialFrame);
         this.tickPropSubstep(dt);
     }
-}
-/**
- * Asset-level fixed child visuals. These are render-only and never become
- * WorldProp entities, collision bodies, exported props, or selectable objects.
- *
- * @typedef {object} PropVisualAttachment
- * @property {string} id Stable attachment id for cache keys.
- * @property {string} propId Child prop asset id to draw.
- * @property {{ x?: number, y?: number }} [offset] Local parent-facing offset.
- * @property {"world" | "parentRadius"} [offsetSpace] Whether offset is world units or parent-radius units.
- * @property {number} [facingOffset] Rotation added to the parent quantized facing.
- * @property {"facing" | "velocity"} [heading] Heading source for offset and rotation.
- * @property {number} [minHeadingSpeed] Minimum speed for velocity heading; below this falls back to facing.
- * @property {number} [scale] Visual scale applied to the child footprint.
- * @property {number} [radiusScale] Child visual radius as a multiplier of parent radius.
- * @property {number} [layer] Negative draws before parent, non-negative after.
- */
-function normalizeAttachmentScale(scale) {
-    return Number.isFinite(scale) && scale > 0 ? scale : 1;
-}
-function resolveAttachmentHeading(prop, cfg) {
-    if (cfg.heading === ATTACH_HEADING_VELOCITY) {
-        const vx = prop.vx ?? 0;
-        const vy = prop.vy ?? 0;
-        const speed = Math.hypot(vx, vy);
-        const minSpeed = cfg.minHeadingSpeed ?? 0.25;
-        if (speed >= minSpeed) return Math.atan2(vy, vx);
-    }
-    return readEntityFacing(prop);
-}
-function resolveQuantizedAttachmentHeading(prop, cfg) {
-    return quantizeAngle(resolveAttachmentHeading(prop, cfg), resolvePropQuantizeSteps(prop).facing);
-}
-function resolveAttachmentOffsetScale(parentProp, cfg) {
-    return cfg.offsetSpace === ATTACH_OFFSET_PARENT_RADIUS ? parentProp.radius : 1;
-}
-function scaleVirtualPropShape(prop, scale) {
-    if (scale === 1) return;
-    const shape = prop.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) {
-        prop.shape = new CircleShape(shape.radius * scale);
-        prop.radius = prop.shape.radius;
-        if (prop.height != null) prop.height *= scale;
-        return;
-    }
-    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-        const n = shape.vertices.length;
-        const verts = shape.vertices;
-        for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;
-        writeLivePolygon(prop, POLYGON_SCALE_SCRATCH, n);
-        if (prop.height != null) prop.height *= scale;
-    }
-}
-function resolveVirtualPropScale(parentProp, childProp, cfg) {
-    const baseScale = normalizeAttachmentScale(cfg.scale);
-    if (!Number.isFinite(cfg.radiusScale) || cfg.radiusScale <= 0) return baseScale;
-    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, childProp);
-    const childRadius = Math.max(childProp.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
-    if (childRadius <= 0) return baseScale;
-    return baseScale * ((parentProp.radius * cfg.radiusScale) / childRadius);
-}
-/** @param {object} prop */
-export function getPropVisualAttachmentConfigs(prop) {
-    const attachments = propCatalog[prop?.type]?.visuals?.attachments;
-    return Array.isArray(attachments) ? attachments : [];
-}
-export function getVisualAttachmentSpriteCacheId(prop, deps) {
-    const attachments = getPropVisualAttachmentConfigs(prop);
-    if (!attachments.length) return 0;
-    const facingSteps = resolvePropQuantizeSteps(prop).facing;
-    let h = 2166136261;
-    for (let i = 0; i < attachments.length; i++) {
-        const cfg = attachments[i];
-        if (!cfg?.id || !cfg.propId) continue;
-        const headingIndex = deps.quantizeAngleIndex(resolveAttachmentHeading(prop, cfg), facingSteps);
-        const offset = cfg.offset ?? {};
-        const fields = [hashStringPart(cfg.id), hashStringPart(cfg.propId), headingIndex, Math.round((offset.x ?? 0) * 100), Math.round((offset.y ?? 0) * 100), cfg.offsetSpace === ATTACH_OFFSET_PARENT_RADIUS ? 1 : 0, Math.round((cfg.facingOffset ?? 0) * 10000), Math.round(normalizeAttachmentScale(cfg.scale) * 100), Math.round((cfg.radiusScale ?? 0) * 100), cfg.heading === ATTACH_HEADING_VELOCITY ? 1 : 0, cfg.layer | 0];
-        for (let f = 0; f < fields.length; f++) {
-            h ^= fields[f] >>> 0;
-            h = Math.imul(h, 16777619);
-        }
-    }
-    return (h >>> 0) & 0xfffff;
-}
-function hashStringPart(s) {
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) {
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-}
-function createVirtualAttachmentProp(parentProp, cfg, heading) {
-    const childAsset = propCatalog[cfg.propId];
-    if (!childAsset) return null;
-    const strategy = sharedWorldPropStrategy(cfg.propId);
-    const offset = cfg.offset ?? {};
-    const offsetScale = resolveAttachmentOffsetScale(parentProp, cfg);
-    const localX = (offset.x ?? 0) * offsetScale;
-    const localY = (offset.y ?? 0) * offsetScale;
-    rotateXYIntoF32(M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
-    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: resolveAssetPropHeight(childAsset), _visualAttachmentId: cfg.id };
-    stampSurfaceProfileFields(prop, childAsset);
-    if (parentProp.wallChunkProfileId) prop.wallChunkProfileId = parentProp.wallChunkProfileId;
-    initWorldPropShape(prop);
-    scaleVirtualPropShape(prop, resolveVirtualPropScale(parentProp, prop, cfg));
-    return prop;
-}
-/**
- * @param {object} parentProp Parent prop in stage coordinates with quantized facing.
- * @returns {{ before: object[], after: object[] }}
- */
-export function resolveVisualAttachmentProps(parentProp) {
-    const before = [];
-    const after = [];
-    const attachments = getPropVisualAttachmentConfigs(parentProp);
-    for (let i = 0; i < attachments.length; i++) {
-        const cfg = attachments[i];
-        if (!cfg?.id || !cfg.propId) continue;
-        const heading = resolveQuantizedAttachmentHeading(parentProp, cfg);
-        const child = createVirtualAttachmentProp(parentProp, cfg, heading);
-        if (!child) continue;
-        if ((cfg.layer ?? 0) < 0) before.push(child);
-        else after.push(child);
-    }
-    return { before, after };
-}
-/** @param {object} prop */
-export function resolveVisualAttachmentBakeRadius(prop, parentFacing) {
-    const attachments = getPropVisualAttachmentConfigs(prop);
-    let radius = 0;
-    for (let i = 0; i < attachments.length; i++) {
-        const cfg = attachments[i];
-        if (!cfg?.id || !cfg.propId) continue;
-        const heading = cfg.heading === ATTACH_HEADING_VELOCITY ? resolveQuantizedAttachmentHeading(prop, cfg) : parentFacing;
-        const child = createVirtualAttachmentProp({ ...prop, x: 0, y: 0, facing: parentFacing }, cfg, heading);
-        if (!child) continue;
-        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, child);
-        const childRadius = Math.max(child.radius, ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]);
-        radius = Math.max(radius, Math.hypot(child.x, child.y) + childRadius);
-    }
-    return radius;
 }
 export function registerPropDrawRecipe(asset) {
     if (asset.physics?.renderMode === PROP_RENDER_MODE_NONE) {

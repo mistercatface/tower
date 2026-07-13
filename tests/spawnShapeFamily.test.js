@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive, resolveVisualAttachmentProps } from "../Libraries/Props/props.js";
+import { propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A, entityWallProfileId, getProfileId } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld, createSandboxControllerSession, createSandboxTestController } from "./harness/stateFactories.js";
 import { bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
@@ -165,23 +165,5 @@ describe("sphere surface profile draw", () => {
         };
         draw(ctx, prop, viewport, false);
         assert.equal(fills, 0);
-    });
-
-    it("boid attachment stamps profile from parent", () => {
-        const parent = new WorldProp(0, 0, "boid_triangle", 0);
-        parent._wallChunkTextureReady = true;
-        const { after } = resolveVisualAttachmentProps(parent);
-        assert.ok(after.length >= 1);
-        const wedge = after[0];
-        assert.equal(wedge.type, "tri_wedge");
-        assert.equal(wedge.wallChunkProfileId, "poolTableFelt");
-    });
-
-    it("boid attachment inherits parent surface profile override", () => {
-        const parent = new WorldProp(0, 0, "boid_triangle", 0);
-        parent.wallChunkProfileId = "tomatoGarden";
-        parent._wallChunkTextureReady = true;
-        const { after } = resolveVisualAttachmentProps(parent);
-        assert.equal(after[0].wallChunkProfileId, "tomatoGarden");
     });
 });
