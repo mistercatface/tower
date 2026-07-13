@@ -18,6 +18,8 @@ import {
     kineticDynamicSlab,
     recomputeViewBounds,
     getProfileId,
+    entityR,
+    VIEW_TIER_PROPS,
 } from "../Core/engineMemory.js";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { tickEntityFrames } from "../Libraries/Physics/physics.js";
@@ -108,6 +110,27 @@ describe("debris arena contracts", () => {
         }
         assert.ok(found, "DEBRIS must enter DRAW_KIND_PROP queue without debris.appendVisibleProps");
         assert.equal(world.fractureEngine.debris, undefined);
+    });
+
+    it("C8: large entityR DEBRIS stays in view when centroid is outside by 0.6R", () => {
+        const { world, frame } = realFrameWorld();
+        const prop = new WorldProp(120, 0, "wall_voxel_chunk", 0);
+        applyPropBoxFootprint(prop, 8, 8);
+        const eid = world.entityRegistry.register(ENTITY_KIND_DEBRIS, prop);
+        frame.admitKineticEids([eid], 1, world);
+        frame.begin(world);
+        const R = 80;
+        entityR[eid] = R;
+        entityFlags[eid] |= ENTITY_FLAG_RENDER_3D;
+        // Props tier: center 0 halfW 50 + pad 20 → maxX=70. Centroid x=120 → 50 outside (>R/2, <R).
+        recomputeViewBounds(0, 0, 50, 50);
+        const match3d = (e) => (entityFlags[e] & ENTITY_FLAG_RENDER_3D) !== 0;
+        // null frame → live-list candidates; fine cull must use full entityR (not radius/2)
+        const count = world.entityRegistry.queryViewTier(null, VIEW_TIER_PROPS, "3d", match3d);
+        const ids = world.entityRegistry.borrowedQueryIds("3d");
+        let found = false;
+        for (let i = 0; i < count; i++) if (ids[i] === eid) found = true;
+        assert.ok(found, "full-R circle cull must keep large shard visible when only centroid is off-screen");
     });
 
     it("C5: sandbox WORLD_PROP walks ignore DEBRIS", () => {

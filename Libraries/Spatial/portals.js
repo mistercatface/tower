@@ -1,6 +1,6 @@
 import { BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, drawCachedGridStampFilmstripShared, warmSharedGridStampFilmstripCache } from "../Canvas/canvas.js";
 import { forEachCardinalNeighborIdx } from "./spatial.js";
-import { ensureGrowI32, circleInViewBounds, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
+import { ensureGrowI32, circleIntersectsAabbF32, viewBoundsBuf, VIEW_TIER_PROPS } from "../../Core/engineMemory.js";
 import { GRID_STAMP_RENDER_KEY_PORTAL } from "../../Core/engineEnums.js";
 export const PORTAL_NONE = -1;
 const PORTAL_STRIP_EXIT = 0;
@@ -141,7 +141,7 @@ function portalDrawForStripKey(stripKey) {
 function drawPortalStamp(ctx, grid, viewport, idx, stripKey, frameIndex, halfX) {
     const x = grid.gridCenterXByIdx(idx);
     const y = grid.gridCenterYByIdx(idx);
-    if (!circleInViewBounds(x, y, grid.cellHalfSize, VIEW_TIER_PROPS)) return;
+    if (!circleIntersectsAabbF32(x, y, grid.cellHalfSize, viewBoundsBuf, VIEW_TIER_PROPS)) return;
     drawCachedGridStampFilmstripShared(ctx, x, y, halfX, viewport, GRID_STAMP_RENDER_KEY_PORTAL, stripKey, 0, portalDrawForStripKey(stripKey), frameIndex, BELT_FILMSTRIP_FRAMES);
 }
 export class FloorPortalDrawCache {

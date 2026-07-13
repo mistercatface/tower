@@ -581,7 +581,7 @@ export class FractureEngine {
                 prop.wallChunkHeightPx = wallChunkHeightPx;
             }
             if (shardHeight != null) prop.height = shardHeight;
-            if (fractureBurst) FractureEngine._applyShardBurstImpulse(prop, cx, cy);
+            if (fractureBurst) FractureEngine._applyShardBurstImpulse(prop._physId, cx, cy);
             this.world.entityRegistry.register(ENTITY_KIND_DEBRIS, prop);
             spawnedScratch.push(prop);
         }
@@ -993,7 +993,7 @@ export class FractureEngine {
         ENGINE_F32[F_OUT_MOTION_VY] = entityVy[eid];
         ENGINE_F32[F_OUT_MOTION_W] = entityW[eid];
     }
-    static _applyShardBurstImpulse(frag, cx, cy) {
+    static _applyShardBurstImpulse(eid, cx, cy) {
         const originX = ENGINE_F32[F_OUT_ORIGIN_X];
         const originY = ENGINE_F32[F_OUT_ORIGIN_Y];
         const facing = ENGINE_F32[F_OUT_FACING];
@@ -1011,10 +1011,10 @@ export class FractureEngine {
         const dy = worldPosY - impactWorldY;
         const dist = Math.hypot(dx, dy);
         if (dist > 1e-6) {
-            frag.vx += (dx / dist) * burst;
-            frag.vy += (dy / dist) * burst;
+            entityVx[eid] += (dx / dist) * burst;
+            entityVy[eid] += (dy / dist) * burst;
         }
-        frag.angularVelocity += (nextFractureRand() - 0.5) * FRACTURE_TUNING.burst.spinScale;
-        frag._fractureCooldown = FRACTURE_TUNING.shared.cooldown;
+        entityW[eid] += (nextFractureRand() - 0.5) * FRACTURE_TUNING.burst.spinScale;
+        entityFractureCooldown[eid] = FRACTURE_TUNING.shared.cooldown;
     }
 }

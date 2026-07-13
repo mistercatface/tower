@@ -3,7 +3,7 @@ import { CorridorPathfinder, createNavGraphView } from "../Navigation/navigation
 import { createSeededRng } from "../Math/math.js";
 import { BELT_FILMSTRIP_FRAMES, BELT_FRAME_MS, warmSharedGridStampFilmstripCache, drawCachedGridStampFilmstripShared, getCanvasLineScale } from "../Canvas/canvas.js";
 import { GRID_NAV_EPOCH_FLOOR, GRID_STAMP_RENDER_KEY_FLOOR_BELT } from "../../Core/engineEnums.js";
-import { circleInViewBounds, VIEW_TIER_PROPS, entityX, entityY } from "../../Core/engineMemory.js";
+import { circleIntersectsAabbF32, viewBoundsBuf, VIEW_TIER_PROPS, entityX, entityY } from "../../Core/engineMemory.js";
 export const DEFAULT_FLOOR_BELT_FORCE = 500;
 const BELT_DIR_X = Int8Array.from([0, 1, 0, -1]);
 const BELT_DIR_Y = Int8Array.from([-1, 0, 1, 0]);
@@ -738,7 +738,7 @@ export class FloorBeltDrawCache {
             const cellIdx = this.idx[i];
             const x = grid.gridCenterXByIdx(cellIdx);
             const y = grid.gridCenterYByIdx(cellIdx);
-            if (!circleInViewBounds(x, y, cellHalf, VIEW_TIER_PROPS)) continue;
+            if (!circleIntersectsAabbF32(x, y, cellHalf, viewBoundsBuf, VIEW_TIER_PROPS)) continue;
             const packed = grid.floorPacked[cellIdx];
             const frameIndex = Math.floor(grid._floorBeltAnimMs[cellIdx] / BELT_FRAME_MS) % BELT_FILMSTRIP_FRAMES;
             drawCachedGridStampFilmstripShared(ctx, x, y, cellHalf, viewport, GRID_STAMP_RENDER_KEY_FLOOR_BELT, BeltPacked.stripKey(packed), BeltPacked.flowAngle(packed), beltDrawForPacked(packed), frameIndex, BELT_FILMSTRIP_FRAMES);

@@ -339,13 +339,10 @@ export function recomputeViewBounds(centerX, centerY, halfW, halfH) {
         viewBoundsBuf[o + 3] = centerY + halfH + pad;
     }
 }
-export function circleInViewBounds(worldX, worldY, radius = 0, tierO = VIEW_TIER_PROPS) {
-    const half = radius / 2;
-    const minX = worldX - half;
-    const minY = worldY - half;
-    const maxX = worldX + half;
-    const maxY = worldY + half;
-    return !(maxX < minX || maxY < minY || minX > viewBoundsBuf[tierO + 2] || maxX < viewBoundsBuf[tierO] || minY > viewBoundsBuf[tierO + 3] || maxY < viewBoundsBuf[tierO + 1]);
+export function circleIntersectsAabbF32(circleX, circleY, radius, buf, o) {
+    const dx = Math.max(0, buf[o] - circleX, circleX - buf[o + 2]);
+    const dy = Math.max(0, buf[o + 1] - circleY, circleY - buf[o + 3]);
+    return dx * dx + dy * dy <= radius * radius;
 }
 // --- Physics capacity / open-address hash caps ---
 export const MAX_PHYS_BODIES = MAX_ENTITIES;

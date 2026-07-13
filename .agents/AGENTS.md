@@ -52,7 +52,7 @@ Anything else must throw. Wall shatter goes quiet clear → `commitGridWallBatch
 ## 6. Viewport / view bounds dialect
 
 - Camera AABB: `viewBoundsBuf` + `VIEW_TIER_CLIP` / `VIEW_TIER_PROPS` / `VIEW_TIER_STRUCTURE` / `VIEW_TIER_CHUNKS` number consts in `Core/engineMemory.js` (session SoA, 4 tiers × stride 4). No `VIEW_TIER` object bag.
-- Viewport zoom/position APIs call `recomputeViewBounds`; never store tiers on Viewport. Use `circleInViewBounds` for visibility (not `viewport.circleInBounds`).
+- Viewport zoom/position APIs call `recomputeViewBounds`; never store tiers on Viewport. Use `circleIntersectsAabbF32(…, viewBoundsBuf, VIEW_TIER_PROPS)` for visibility (not `viewport.circleInBounds`).
 - Never put camera tiers in `ENGINE_F32` Bounds bank (`B_*` are ephemeral scratch only).
 - Viewport screen/world mapping is `(buf, o, …)` only (`screenToWorldF32` / `worldToScreenF32`) — **no** `return { x, y }`.
 - View → registry queries return **count**; ids via `borrowedQueryIds(filterId)`. Camera: `queryViewTier(spatialFrame, tierO, filterId, match)`. Scratch AABB: `queryInAabbF32(…, buf, o, …)`. Intersection is circle vs AABB via eid SoA (`entityX`/`entityY`/`entityR`). Match callbacks take **eid** (not WorldProp bags). No criteria/`opts` bags; no `queryPropIdsInView` passthrough. Do not reintroduce `BRIDGE_AABB` on that path.

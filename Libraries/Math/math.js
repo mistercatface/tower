@@ -464,14 +464,6 @@ export function pointInAabbF32(px, py, buf, o) {
 export function aabbOverlapF32(bufA, oA, bufB, oB) {
     return bufA[oA] <= bufB[oB + 2] && bufA[oA + 2] >= bufB[oB] && bufA[oA + 1] <= bufB[oB + 3] && bufA[oA + 3] >= bufB[oB + 1];
 }
-export function circleIntersectsAabbF32(circleX, circleY, radius, buf, o) {
-    const half = radius / 2;
-    const minX = circleX - half;
-    const minY = circleY - half;
-    const maxX = circleX + half;
-    const maxY = circleY + half;
-    return !(maxX < minX || maxY < minY || minX > buf[o + 2] || maxX < buf[o] || minY > buf[o + 3] || maxY < buf[o + 1]);
-}
 /** Writes minX,minY,maxX,maxY at buf[o..o+3]. */
 export function minCornerAabbF32(buf, o, minX, minY, width, height) {
     buf[o] = minX;
