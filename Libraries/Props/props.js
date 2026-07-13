@@ -1,6 +1,6 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
 import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid, computeFootprintIdFromSlab } from "../Physics/physics.js";
-import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, getProfileStr, entityFractureCooldown, entityCachedStaticKey, entityFootprintId } from "../../Core/engineMemory.js";
+import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, getProfileStr, entityFractureCooldown, entityCachedStaticKey, entityFootprintId, entityRenderKeyId } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
@@ -8,7 +8,7 @@ import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGH
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
 import { drawFloorPortals } from "../Spatial/portals.js";
 import { transitionEntity } from "../FSM/transition.js";
-import propCatalog from "../../Assets/props/index.js";
+import propCatalog, { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
 import { gridSettings } from "../../Config/world.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 /** @typedef {typeof LIBRARY_PROP_QUANTIZE_STEPS} LibraryPropQuantizeSteps */
@@ -133,31 +133,37 @@ export function propFootprintHalfExtentsInto(buf, o, prop) {
 }
 const FACING_STEPS_MAX = 360;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
-function deriveFacingStepsFromFootprint(prop, baselineSteps) {
-    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
-    const worldDiameter = Math.max(ENGINE_F32[M_VEC_A], ENGINE_F32[M_VEC_A + 1]) * 2;
+const sQuantizeSteps = { facing: 0, view: 0 };
+const sHalfExtents = { x: 0, y: 0 };
+const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined };
+function deriveFacingStepsFromFootprintEid(eid, baselineSteps) {
+    const shapeKind = entityShapeKind[eid];
+    let worldDiameter;
+    if (shapeKind === SHAPE_TYPE_POLYGON) {
+        const hx = kineticDynamicSlab.hx[eid];
+        const hy = kineticDynamicSlab.hy[eid];
+        worldDiameter = Math.max(hx, hy) * 2;
+    } else worldDiameter = entityR[eid] * 2;
     if (worldDiameter <= FACING_STEPS_BASELINE_DIAMETER) return baselineSteps;
     const scaled = Math.round((baselineSteps * worldDiameter * 6) / FACING_STEPS_BASELINE_DIAMETER);
     return Math.min(FACING_STEPS_MAX, scaled);
 }
-const sQuantizeSteps = { facing: 0, view: 0 };
-const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined };
-export function resolvePropQuantizeSteps(prop) {
+export function resolvePropQuantizeSteps(eid) {
     const defaults = propQuantizeSteps;
-    const override = prop.strategy?.quantizeSteps;
-    const derivedFacing = deriveFacingStepsFromFootprint(prop, defaults.facing);
+    const renderKeyId = entityRenderKeyId[eid];
+    const asset = propCatalogByRenderKeyId[renderKeyId];
+    const override = asset?.physics?.quantizeSteps;
+    const derivedFacing = deriveFacingStepsFromFootprintEid(eid, defaults.facing);
     sQuantizeSteps.facing = override?.facing ?? derivedFacing;
     sQuantizeSteps.view = override?.view ?? defaults.view ?? 30;
     return sQuantizeSteps;
 }
 export function getBaseSpriteCacheId(eid, deps) {
-    const prop = entityRefs[eid];
     const { quantizeAngleIndex } = deps;
-    const steps = resolvePropQuantizeSteps(prop);
+    const steps = resolvePropQuantizeSteps(eid);
     let orient;
-    if (prop.strategy?.rolls) orient = packRollOrientId(eid, steps.facing);
-    else orient = quantizeAngleIndex(prop.facing, steps.facing);
+    if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) orient = packRollOrientId(eid, steps.facing);
+    else orient = quantizeAngleIndex(entityFacing[eid], steps.facing);
     const foot = entityFootprintId[eid];
     let h = 2166136261;
     h ^= orient >>> 0;
@@ -169,7 +175,7 @@ export function getBaseSpriteCacheId(eid, deps) {
 export function getPropStageBakeState(eid) {
     const prop = entityRefs[eid];
     propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
-    const steps = resolvePropQuantizeSteps(prop);
+    const steps = resolvePropQuantizeSteps(eid);
     sStageProp.x = entityX[eid];
     sStageProp.y = entityY[eid];
     sStageProp.radius = entityR[eid];

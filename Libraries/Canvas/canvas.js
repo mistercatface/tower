@@ -1,8 +1,8 @@
 import { WORLD_SURFACE_DEFAULTS } from "../../Config/world.js";
 import { quantizeAngle, quantizeAngleIndex, hashString, mixHash4 } from "../Math/math.js";
 import { getSurfaceProfileRevision } from "../WorldSurface/worldSurface.js";
-import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr } from "../../Core/engineMemory.js";
-import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT } from "../../Core/engineEnums.js";
+import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCacheSlab, overlaySpriteCacheSlab, I_SPRITE_KEY_LO, I_SPRITE_KEY_HI, R_SPRITE_BAKE_SCALE, R_SPRITE_ANCHOR_X, R_SPRITE_ANCHOR_Y, R_SPRITE_DRAW_W, R_SPRITE_DRAW_H, R_SPRITE_FRAME_COUNT, R_SPRITE_FRAME_WIDTH, entityX, entityY, entityRefs, entityAlpha, entityStaticKeyFacing, entityStaticKeyPhysicsKey, entityStaticKeyCustom, entityStaticKeyRoll, entityCachedStaticKey, entityWallProfileId, entityWallHeightPx, entityWallChunkTextureReady, entityFootprintId, getProfileStr, entityFlags, entityFacing } from "../../Core/engineMemory.js";
+import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
 import { packRollOrientId } from "../Physics/physics.js";
 import { resolvePropBakeScaleForProp, resolvePropPixelSizeForProp, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
 import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto } from "../Props/props.js";
@@ -666,10 +666,9 @@ export function blitAnchoredSprite(ctx, slab, slot, worldX, worldY, frameIndex =
 }
 const PROP_STAGE_PADDING = 40;
 export function getPropStaticKey(eid, renderKey) {
-    const prop = entityRefs[eid];
-    const facing = prop.facing;
-    const rolls = !!prop.strategy?.rolls;
-    const rollId = rolls ? packRollOrientId(eid, resolvePropQuantizeSteps(prop).facing) : 0;
+    const facing = entityFacing[eid];
+    const rolls = (entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0;
+    const rollId = rolls ? packRollOrientId(eid, resolvePropQuantizeSteps(eid).facing) : 0;
     const physicsId = getBaseSpriteCacheId(eid, PROP_SPRITE_KEY_DEPS);
     const customId = entityWallProfileId[eid] !== 0 ? getWallChunkSpriteCacheKey(eid) : 0;
     if (entityStaticKeyFacing[eid] === facing && entityStaticKeyPhysicsKey[eid] === physicsId && entityStaticKeyCustom[eid] === customId && (!rolls || entityStaticKeyRoll[eid] === rollId) && entityCachedStaticKey[eid] !== 0n) return entityCachedStaticKey[eid];
@@ -698,7 +697,7 @@ function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flat
     const zoom = viewport.zoom ?? 1;
     const dx = entityX[eid] - px;
     const dy = entityY[eid] - py;
-    const viewStep = resolvePropQuantizeSteps(prop).view;
+    const viewStep = resolvePropQuantizeSteps(eid).view;
     const pixelSize = resolvePropPixelSizeForProp(prop);
     const staticKey = getPropStaticKey(eid, renderKey);
     let key = staticKey;

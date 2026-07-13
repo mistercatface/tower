@@ -176,13 +176,17 @@ describe("draw shape parity", () => {
         const crate = new WorldProp(0, 0, "box", 0);
         const plank = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(plank, 64, 8);
-        assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
-        assert.equal(resolvePropQuantizeSteps(plank).facing, 360);
+        const crateEid = bindStageProp(crate);
+        const plankEid = bindStageProp(plank);
+        assert.equal(resolvePropQuantizeSteps(crateEid).facing, 16);
+        assert.equal(resolvePropQuantizeSteps(plankEid).facing, 360);
     });
     it("boid triangle uses finer facing quantization through its prop strategy", () => {
         const crate = new WorldProp(0, 0, "box", 0);
         const triangle = new WorldProp(0, 0, "boid_triangle", 0);
-        assert.equal(resolvePropQuantizeSteps(crate).facing, 16);
-        assert.equal(resolvePropQuantizeSteps(triangle).facing, 64);
+        const crateEid = bindStageProp(crate);
+        const triangleEid = bindStageProp(triangle);
+        assert.equal(resolvePropQuantizeSteps(crateEid).facing, 16);
+        assert.equal(resolvePropQuantizeSteps(triangleEid).facing, 64);
     });
 });
