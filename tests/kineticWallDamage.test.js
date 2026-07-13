@@ -300,18 +300,57 @@ describe("kinetic wall damage", () => {
                 return true;
             },
         };
-        resolveKineticWallDamage(state, 0, wallDebrisTestFrame());
+        const frame = kineticSpatial.begin(state);
+        resolveKineticWallDamage(state, 0, frame);
         applyPendingWallDamage(state);
         const shard = kineticDebrisList(state).find((p) => p.type === "wall_voxel_chunk");
         assert.ok(shard);
-        shard.vx = 120;
-        shard.vy = 60;
+        assert.ok(Math.hypot(shard.vx, shard.vy) > 5, "spawn impulse must survive admit bind");
         const x0 = shard.x;
         const y0 = shard.y;
-        const frame = kineticSpatial.begin(state);
-        assert.ok(Array.from(frame.kineticEids.subarray(0, frame.kineticEidCount)).includes(shard._physId));
-        runKineticPhysics(frame, state, 100, kineticPhysicsHooks());
+        state.fractureEngine.debris.integrateSpawned(frame, state.gridWallDamage.lastSpawned, 16);
+        assert.ok(Math.hypot(shard.x - x0, shard.y - y0) > 0.5, "integrateSpawned must move shards on spawn frame");
+        const frame2 = kineticSpatial.begin(state);
+        assert.ok(Array.from(frame2.kineticEids.subarray(0, frame2.kineticEidCount)).includes(shard._physId));
+        runKineticPhysics(frame2, state, 100, kineticPhysicsHooks());
         assert.ok(Math.hypot(shard.x - x0, shard.y - y0) > 1);
+        terminateWorkerNavigation(state.nav);
+    });
+    it("recycled debris bags keep spawn impulse after admit (stale _spawnVx must not wipe SoA)", async () => {
+        const state = await createWallDamageTestState();
+        state.gridWallDamage = createGridWallDamage(state, WALL_DAMAGE);
+        state.fractureEngine = new FractureEngine(state);
+        state.kinetic = createKineticSession();
+        stampVoxel(state.obstacleGrid, 3, 3, 2);
+        state.obstacleGrid.setChunkSurfaceProfileAtKey(packChunkKey(0, 0), "chunk-profile", gameWorldSurfaceSettings.cellsPerChunk);
+        stampWallHitSource(0, 560, 0, 1);
+        state.wallResolver = {
+            hits: wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 3, 3), { contactX: 3 * 16 + 8, contactY: 3 * 16 + 8 })]),
+            resolve() {
+                return true;
+            },
+        };
+        let frame = kineticSpatial.begin(state);
+        resolveKineticWallDamage(state, 0, frame);
+        applyPendingWallDamage(state);
+        const first = kineticDebrisList(state).slice();
+        assert.ok(first.length > 0);
+        for (let i = 0; i < first.length; i++) state.fractureEngine.debris.remove(first[i], frame);
+        assert.equal(kineticDebrisList(state).length, 0);
+        stampVoxel(state.obstacleGrid, 5, 5, 2);
+        stampWallHitSource(0, 560, 0, 1);
+        state.wallResolver = {
+            hits: wallHitBuffer([voxelHit(worldIdxAtCell(state.obstacleGrid, 5, 5), { contactX: 5 * 16 + 8, contactY: 5 * 16 + 8 })]),
+            resolve() {
+                return true;
+            },
+        };
+        frame = kineticSpatial.begin(state);
+        resolveKineticWallDamage(state, 0, frame);
+        applyPendingWallDamage(state);
+        const recycled = kineticDebrisList(state);
+        assert.ok(recycled.length > 0);
+        assert.ok(recycled.every((s) => Math.hypot(s.vx, s.vy) > 5), "recycled admit must not zero spawn velocity via stale _spawnVx");
         terminateWorkerNavigation(state.nav);
     });
     it("rail wall hit clears edge wall, spawns a rail chunk prop, and fractures it", async () => {
