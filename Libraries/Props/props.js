@@ -251,25 +251,19 @@ export class WorldProp {
         const asset = propCatalog[type];
         this.type = type;
         this.strategy = sharedWorldPropStrategy(type);
-        
         const eid = this._physId;
         entityRefs[eid] = this;
-
         this.stateData = {};
         this.height = resolveAssetPropHeight(asset);
         this.collisionParts = undefined;
         this.spawnGroupId = undefined;
-
         releaseLivePolygon(this);
         this.shape = undefined;
         this.drawOutline = undefined;
         this.footprintArea = undefined;
-
         stampSurfaceProfileFields(this, asset);
         initWorldPropShape(this);
-
         const spawnFacing = resolvePropSpawnFacing(this, facing);
-        
         this.facing = spawnFacing;
         this.rollQw = 1;
         this.rollQx = 0;
@@ -280,13 +274,9 @@ export class WorldProp {
         this.ageMs = 0;
         this.alpha = 1.0;
         this._fractureCooldown = 0;
-
         const flags = worldPropBindFlags(this);
-
         bindEntitySlot(eid, ENTITY_KIND_NONE, this, this.id, x, y, this.radius, flags);
-
         this.fractureEnabled = this.strategy.fracture ? undefined : false;
-
         invalidateEntityFootprint(eid);
     }
     get isDead() {
@@ -302,13 +292,10 @@ export class WorldProp {
         return (flags & ENTITY_FLAG_FRACTURE_VAL) !== 0;
     }
     set fractureEnabled(v) {
-        if (v === undefined) {
-            if (this.strategy?.fracture) {
-                entityFlags[this._physId] |= (ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
-            } else {
-                entityFlags[this._physId] &= ~(ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
-            }
-        } else {
+        if (v === undefined)
+            if (this.strategy?.fracture) entityFlags[this._physId] |= ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL;
+            else entityFlags[this._physId] &= ~(ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL);
+        else {
             entityFlags[this._physId] |= ENTITY_FLAG_FRACTURE_SET;
             if (v) entityFlags[this._physId] |= ENTITY_FLAG_FRACTURE_VAL;
             else entityFlags[this._physId] &= ~ENTITY_FLAG_FRACTURE_VAL;
