@@ -63,10 +63,6 @@ export function assetSupportsDragInteraction(asset) {
 export function entitySupportsDragInteraction(eid) {
     return (entityFlags[eid] & ENTITY_FLAG_KINETIC) !== 0 && (entityFlags[eid] & ENTITY_FLAG_DEAD) === 0;
 }
-export function resolveDragInteractionBehaviorId(asset, dragInteractionMode = DEFAULT_DRAG_INTERACTION_MODE) {
-    if (!assetSupportsDragInteraction(asset)) return null;
-    return dragInteractionMode === SANDBOX_BEHAVIOR_GRAB_DRAG ? SANDBOX_BEHAVIOR_GRAB_DRAG : SANDBOX_BEHAVIOR_DRAG_LAUNCH;
-}
 export function resolveDragInteractionBehavior(eid, state, behaviorById) {
     if (!entitySupportsDragInteraction(eid)) return null;
     if (!entityAlive[eid]) return null;

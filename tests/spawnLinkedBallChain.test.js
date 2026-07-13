@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { isChainSteeringTarget, growChainSegment, linkedChainOccupiedCellIndices, tryExportLinkedBallChainSpawnGroup } from "../Libraries/Sandbox/sandbox.js";
+import { isChainSteeringTarget } from "../Libraries/Sandbox/sandbox.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { kineticConstraintStore } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
-import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
+import { spawnLinkedBallChain, growChainSegment } from "./harness/spawnAgentChainHarness.js";
 
 const CHAIN_OPTIONS = { segmentCount: 3, spacing: 16, ballType: "ball", growDirX: -1, growDirY: 0, exportType: "test_chain", linkSlack: 1, faction: "alpha" };
 
@@ -27,27 +27,6 @@ describe("spawnLinkedBallChain", () => {
             chain.members.map((prop) => prop.id).sort((a, b) => a - b),
         );
         for (let i = 0; i < kineticConstraintStore.count; i++) assert.ok(Math.abs(kineticConstraintStore.restLength[i] - 16) < 1e-6);
-    });
-    it("exports linked chain spawn groups with segment count and anchor position", () => {
-        const state = createSandboxKineticWorld();
-        const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid,8, 8), CHAIN_OPTIONS);
-        const exported = tryExportLinkedBallChainSpawnGroup(chain.members);
-        assert.ok(exported);
-        assert.equal(exported.type, CHAIN_OPTIONS.exportType);
-        assert.equal(exported.segmentCount, 3);
-        assert.equal(exported.x, chain.head.x);
-        assert.equal(exported.y, chain.head.y);
-    });
-    it("linkedChainOccupiedCellIndices lists unique grid cells occupied by members", () => {
-        const state = createSandboxKineticWorld();
-        const chain = spawnLinkedBallChain(state, worldIdxAtCell(state.obstacleGrid,10, 10), CHAIN_OPTIONS);
-        const indices = linkedChainOccupiedCellIndices(chain.members, state.obstacleGrid);
-        assert.ok(indices.size >= 2);
-        assert.ok(indices.has(worldIdxAtCell(state.obstacleGrid,10, 10)));
-        for (let i = 0; i < chain.members.length; i++) {
-            const idx = state.obstacleGrid.worldToIdx(chain.members[i].x, chain.members[i].y);
-            assert.ok(indices.has(idx));
-        }
     });
     it("growChainSegment links a new tail segment at spacing", () => {
         const state = createSandboxKineticWorld();

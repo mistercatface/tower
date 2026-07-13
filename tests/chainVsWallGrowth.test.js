@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 import { getConnectedBodyIds } from "../Libraries/Physics/physics.js";
-import { growChainSegment } from "../Libraries/Sandbox/sandbox.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
-import { spawnLinkedBallChain } from "./harness/spawnAgentChainHarness.js";
+import { spawnLinkedBallChain, growChainSegment } from "./harness/spawnAgentChainHarness.js";
 
 const CHAIN_OPTIONS = {
     segmentCount: 3,

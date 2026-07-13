@@ -13,8 +13,7 @@ import {
 } from "../Libraries/Spatial/spatial.js";
 import { staticWallSegmentSlab, resetStaticWallSegmentSlab, MAX_STATIC_WALL_SEGMENTS } from "../Core/engineMemory.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
-import { mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import {mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
 
 function stampBlockedCell(grid, col, row) {
     grid.grid[worldIdxAtCell(grid, col, row)] = 1;

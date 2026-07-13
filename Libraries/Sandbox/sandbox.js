@@ -2,7 +2,7 @@ import { BeltPacked, FloorBelt, FloorBeltDrawCache } from "../Spatial/belts.js";
 import { PortalLink } from "../Spatial/portals.js";
 import { migrateMapGenBoundsForMode, syncMapGenBoundsFromPlay, cellIsStaticWall, railWallEdgeAt, getRailWallInfo, cellInRect, getVoxelWallInfo, applyFloorCellEdit, isCanonicalEdgeRepresentativeIdx, commitGridNavEdit, bumpGridNavEpoch, applyStampedGridWallsFromSnapshot, clearAllStampedGridWalls, listPlacedRailWalls, listPlacedVoxelWalls, clearFloorCellNavEdit, unionCellBounds, clearRailWallAt, clearVoxelWallAt, ensureObstacleGridAtWorld, hitTestRailWallEdgeAtWorld, stampRailWallAt, setVoxelWallHeightAt, stampVoxelWallAt, cellEdgeEndpointsIdx, formatGridWallEdgeSideLabel, repaintMapGenRegionSurfaceIfStamped } from "../Spatial/spatial.js";
 import { visitLiveWorldProps, addWorldPropToState, removeWorldPropFromState, findLiveWorldProp, addWorldPropsToState, findWorldPropAtInView } from "../../GameState/EntityRegistry.js";
-import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, removeKineticConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
+import { applyKineticConstraintsFromSnapshot, clearKineticConstraints, collectKineticConstraintsSnapshot, clearGroundRollDrive, decelerateRoll, steerRollToward, snapMoveTargetToCellCenter, addDistanceConstraint, getConnectedBodyIds, wakeKineticBody, PolygonShape, physicsSettings, entityContainedInAabbF32, readEntityFacing } from "../Physics/physics.js";
 import { kineticDynamicSlab, kineticConstraintStore, ENGINE_BOUNDS_BASE, B_TMP, ENGINE_F32, M_VEC_A, N_OUT_XY, N_OUT_FLOW, N_OUT_STEER, VIEW_TIER_CHUNKS, S_EDGE_P1X, S_EDGE_P1Y, S_EDGE_P2X, S_EDGE_P2Y, createGroundNavRunSlab, allocGroundNavRunSlot, freeGroundNavRunSlot, clearGroundNavRunSlab, entityFlags, entityX, entityY, entityR, entityGameId, entityAlive, entityRenderKeyId } from "../../Core/engineMemory.js";
 import { appendActionRow, appendEditorHint, appendSelectField, appendNumberField, appendInstanceList, appendCheckboxField, appendEditorSubhead, appendTranslateFields } from "../UI/paramFields.js";
 import { setFormFieldName } from "../UI/Component.js";
@@ -1508,40 +1508,6 @@ export function spawnAgentChain(state, anchorIdx, spec) {
     setChainHead(state, meta, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
 }
-export function growChainSegment(state, tailProp, options) {
-    const spacing = options.spacing;
-    const ballType = options.ballType;
-    const growDirX = options.growDirX ?? -1;
-    const growDirY = options.growDirY ?? 0;
-    const faction = options.faction ?? tailProp.faction;
-    const exportType = options.exportType ?? null;
-    const spawnGroupId = options.spawnGroupId ?? tailProp.spawnGroupId;
-    const linkSlack = options.linkSlack ?? 1;
-    const segmentRadius = options.segmentRadius ?? null;
-    const offset = { x: spacing * growDirX, y: spacing * growDirY };
-    const segment = spawnPlacedSandboxProp(state, tailProp.x + offset.x, tailProp.y + offset.y, ballType, faction);
-    if (segmentRadius != null) setCirclePropRadius(segment, segmentRadius);
-    if (spawnGroupId) {
-        segment.spawnGroupId = spawnGroupId;
-        if (exportType) segment.spawnGroupExportType = exportType;
-    }
-    addChainLink(state, tailProp.id, segment.id, linkSlack);
-    return segment;
-}
-export function linkedChainOccupiedCellIndices(members, grid) {
-    const indices = new Set();
-    for (let i = 0; i < members.length; i++) {
-        const idx = grid.worldToIdx(members[i].x, members[i].y);
-        if (idx >= 0) indices.add(idx);
-    }
-    return indices;
-}
-export function tryExportLinkedBallChainSpawnGroup(members) {
-    const exportType = members[0].spawnGroupExportType;
-    if (!exportType) return null;
-    const anchor = members.find((prop) => prop.spawnGroupAnchor) ?? members[0];
-    return { type: exportType, x: anchor.x, y: anchor.y, facing: anchor.facing, faction: anchor.faction, segmentCount: members.length };
-}
 export function isChainLinkBall(prop) {
     if (!prop || (entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) === 0) return false;
     if (prop.strategy?.canChain) return true;
@@ -1572,12 +1538,6 @@ export function findDistanceConstraintBetween(state, bodyAId, bodyBId) {
     }
     return -1;
 }
-export function removeChainLinkBetween(state, bodyAId, bodyBId) {
-    const id = findDistanceConstraintBetween(state, bodyAId, bodyBId);
-    if (id < 0) return false;
-    removeKineticConstraint(state.kinetic, id);
-    return true;
-}
 export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLengthOverride = null) {
     if (fromPropId === toPropId) return false;
     const bodyA = state.entityRegistry.getLive(fromPropId);
@@ -1590,18 +1550,6 @@ export function addChainLink(state, fromPropId, toPropId, linkSlack = 1, restLen
 }
 export function resolveChainLinkRestLength(bodyA, bodyB, linkSlack) {
     return (bodyA.radius + bodyB.radius) * linkSlack;
-}
-export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
-    const members = new Set(memberIds);
-    const store = kineticConstraintStore;
-    for (let i = 0; i < store.count; i++) {
-        if (store.type[i] !== CONSTRAINT_TYPE_DISTANCE) continue;
-        if (!members.has(store.bodyAId[i]) || !members.has(store.bodyBId[i])) continue;
-        const pa = store.physIdA[i];
-        const pb = store.physIdB[i];
-        if (!entityAlive[pa] || !entityAlive[pb]) continue;
-        store.restLength[i] = (entityR[pa] + entityR[pb]) * linkSlack;
-    }
 }
 export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {
     for (let i = 0; i < propIds.length; i++) if (entityMeta.isChainHead(propIds[i])) return state.entityRegistry.getLive(propIds[i]);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { contactWarmStartKeyFromPairKey, pairPhysKey, quantizeContactFeatureId } from "../Libraries/Physics/physics.js";
+import { contactWarmStartKeyFromPairKey, pairPhysKey } from "../Libraries/Physics/physics.js";
 
 describe("kinetic contact manifold keys", () => {
     it("opposing normals get different warm-start keys for the same pair", () => {
@@ -10,14 +10,7 @@ describe("kinetic contact manifold keys", () => {
         assert.notEqual(right, left);
     });
 
-    it("quantizes nearby normals into the same feature bucket", () => {
-        const a = quantizeContactFeatureId(1, 0);
-        const b = quantizeContactFeatureId(0.98, 0.08);
-        assert.equal(a, b);
-    });
-
-    it("zero normal maps to feature id 0", () => {
-        assert.equal(quantizeContactFeatureId(0, 0), 0);
+    it("zero normal packs into warm-start key from pair key alone", () => {
         const pairKey = pairPhysKey(1, 3);
         assert.equal(contactWarmStartKeyFromPairKey(pairKey, 0, 0), pairKey * 65536);
     });

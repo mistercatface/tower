@@ -4,7 +4,7 @@ import propCatalog from "../Assets/props/index.js";
 import { BeltPacked } from "../Libraries/Spatial/belts.js";
 import { EDITOR_NAV_MODE_HPA, ROLL_DRIVE_THRUST, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GROUND_HPA } from "../Core/engineEnums.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
-import { resolveDragInteractionBehaviorId, assetSupportsDragInteraction } from "../Libraries/Sandbox/dragBehaviors.js";
+import { assetSupportsDragInteraction } from "../Libraries/Sandbox/dragBehaviors.js";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
 import {
     createSandboxDragTestState,
@@ -12,6 +12,10 @@ import {
 } from "./harness/sandboxDragHarness.js";
 import { worldIdxAtCell } from "./harness/testGridUtils.js";
 
+function resolveDragInteractionBehaviorId(asset, dragInteractionMode) {
+    if (!assetSupportsDragInteraction(asset)) return null;
+    return dragInteractionMode === SANDBOX_BEHAVIOR_GRAB_DRAG ? SANDBOX_BEHAVIOR_GRAB_DRAG : SANDBOX_BEHAVIOR_DRAG_LAUNCH;
+}
 describe("drag interaction mode", () => {
     it("kinetic shape assets support drag; floor belts do not", () => {
         assert.equal(assetSupportsDragInteraction(propCatalog.ball), true);

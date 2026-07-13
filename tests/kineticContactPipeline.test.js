@@ -1,12 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { readEntityFacing, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { readEntityFacing } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY } from "../Core/engineEnums.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
-import { createKineticTestTick, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import {createKineticTestTick, mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
 import { checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 
 function largeBall(x, y) {

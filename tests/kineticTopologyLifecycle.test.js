@@ -2,13 +2,12 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { kineticSpatial } from "../Libraries/Spatial/spatial.js";
 import { createKineticTestTick, createKineticTestWorld, mockKineticCircle, setupKineticTestFrame } from "./harness/kineticTickHarness.js";
-import { addDistanceConstraint } from "../Libraries/Physics/physics.js";
+import { addDistanceConstraint, clearKineticConstraints } from "../Libraries/Physics/physics.js";
 import { bakeKineticIslandPlan, ensureKineticIslandPlan, clearActiveKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";
 import { getKineticTopologyGeneration, stampKineticPairGatherTopology, kineticPairTopologyStale } from "../Libraries/Physics/physics.js";
 import { removeWorldPropFromState } from "../GameState/EntityRegistry.js";
 import { entityRefs } from "../Core/engineMemory.js";
-import { removeChainLinkBetween } from "../Libraries/Sandbox/sandbox.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
@@ -19,10 +18,6 @@ import { liveFracturePropCount } from "./harness/fractureHarness.js";
 
 function createTestWorld(initialProps) {
     return createKineticTestWorld(initialProps, { constraintsDirty: false });
-}
-
-function chainLinkState(world) {
-    return { ...world, sandbox: {} };
 }
 
 describe("kinetic topology lifecycle", () => {
@@ -64,13 +59,12 @@ describe("kinetic topology lifecycle", () => {
         assert.ok(!tick.world.worldProps.includes(glass) || glass._fractureCooldown > 0);
     });
 
-    it("removeChainLinkBetween bumps topology and rebuilds island plan", () => {
+    it("clearing and re-adding a link bumps topology and rebuilds island plan", () => {
         const a = mockKineticCircle(0, 0, 10);
         const b = mockKineticCircle(18, 0, 10);
         const c = mockKineticCircle(36, 0, 10);
         const bodies = [a, b, c];
         const world = createTestWorld(bodies);
-        const state = chainLinkState(world);
         addDistanceConstraint(world.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
         addDistanceConstraint(world.kinetic, { bodyA: b, bodyB: c, restLength: 18 });
         const frame = setupKineticTestFrame(bodies);
@@ -78,7 +72,8 @@ describe("kinetic topology lifecycle", () => {
         assert.equal(kineticDynamicSlab.islandRoot[a._physId], a.id);
         assert.equal(kineticDynamicSlab.islandRoot[c._physId], a.id);
         const genBefore = getKineticTopologyGeneration(world.kinetic);
-        removeChainLinkBetween(state, b.id, c.id);
+        clearKineticConstraints(world.kinetic);
+        addDistanceConstraint(world.kinetic, { bodyA: a, bodyB: b, restLength: 18 });
         assert.ok(getKineticTopologyGeneration(world.kinetic) > genBefore);
         ensureKineticIslandPlan(world.kinetic, frame.kineticEids, frame.kineticEidCount);
         assert.notEqual(kineticDynamicSlab.islandRoot[c._physId], kineticDynamicSlab.islandRoot[a._physId]);

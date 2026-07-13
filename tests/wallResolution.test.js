@@ -1,14 +1,18 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp, applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { satCheckPolygonVsWallSegment, readEntityFacing, SAT_RESULT, resolveAgainstWallSegmentsSlab, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, snapshotKineticBodySlab, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Libraries/Physics/physics.js";
+import { satPolygonVsWallSegmentF32, readEntityFacing, SAT_RESULT, resolveAgainstWallSegmentsSlab, createWallHitBuffer, runCollisionPipeline, WallCollisionResolver, createKineticSession, clearActiveKineticBodySlab, appendActiveKineticBodySlabPhysId } from "../Libraries/Physics/physics.js";
 import { computeWallBreakStrength } from "../Libraries/Physics/fracture.js";
 import { dotXY } from "../Libraries/Math/math.js";
 import { staticWallSegmentSlab, kineticStaticSlab } from "../Core/engineMemory.js";
 import { mockWallSegment, wallSegIds } from "./harness/wallSegmentHarness.js";
-import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import {assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
 function shapeOverlapsWall(prop, segId) {
-    return satCheckPolygonVsWallSegment(prop.x, prop.y, readEntityFacing(prop), prop.shape, segId);
+    const shape = prop.shape;
+    const vo = shape._vertOffset || 0;
+    const n = shape._floatCount != null ? shape._floatCount : shape.vertices.length;
+    const angle = readEntityFacing(prop);
+    return satPolygonVsWallSegmentF32(prop.x, prop.y, Math.cos(angle), Math.sin(angle), shape.vertices, shape.normals, vo, n, segId);
 }
 function wallRestitution(prop) {
     return kineticStaticSlab.restitution[prop._physId];
@@ -56,7 +60,11 @@ describe("polygon wall resolution", () => {
         assert.ok(shapeOverlapsWall(wedge, floor));
         resolveWallUntilClear(wedge, segs);
         const slab = staticWallSegmentSlab;
-        const collided = satCheckPolygonVsWallSegment(wedge.x, wedge.y, readEntityFacing(wedge), wedge.shape, floor);
+        const angle = readEntityFacing(wedge);
+        const shape = wedge.shape;
+        const vo = shape._vertOffset || 0;
+        const n = shape._floatCount != null ? shape._floatCount : shape.vertices.length;
+        const collided = satPolygonVsWallSegmentF32(wedge.x, wedge.y, Math.cos(angle), Math.sin(angle), shape.vertices, shape.normals, vo, n, floor);
         if (collided) assert.ok(SAT_RESULT[2] < -0.5 || dotXY(SAT_RESULT[1], SAT_RESULT[2], 0, wedge.y - slab.y[floor]) > 0);
         assert.ok(!shapeOverlapsWall(wedge, floor));
     });

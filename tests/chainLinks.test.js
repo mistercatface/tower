@@ -1,10 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { getConnectedBodyIds, CircleShape, createKineticSession } from "../Libraries/Physics/physics.js";
-import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, resyncChainLinkRestLengths, setChainHead, SandboxEntityMetaStore } from "../Libraries/Sandbox/sandbox.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { addChainLink, hasChainMembership, isChainSteeringTarget, resolveChainLinkRestLength, setChainHead, SandboxEntityMetaStore } from "../Libraries/Sandbox/sandbox.js";
 import { mockBall, resetMockBallIds, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { kineticConstraintStore, entityR } from "../Core/engineMemory.js";
+import { kineticConstraintStore } from "../Core/engineMemory.js";
 
 function createState(props) {
     for (let i = 0; i < props.length; i++) {
@@ -31,17 +30,6 @@ describe("chain links", () => {
         assert.ok(addChainLink(state, a.id, b.id, 1.05));
         assert.equal(kineticConstraintStore.count, 1);
         assert.ok(Math.abs(kineticConstraintStore.restLength[0] - resolveChainLinkRestLength(a, b, 1.05)) < 1e-5);
-    });
-    it("resyncChainLinkRestLengths updates rest lengths after prop scale", () => {
-        resetMockBallIds(1);
-        const a = mockBall(0, 0);
-        const b = mockBall(8.4, 0);
-        const state = createState([a, b]);
-        addChainLink(state, a.id, b.id, 1.05);
-        setCirclePropRadius(a, 3);
-        setCirclePropRadius(b, 3);
-        resyncChainLinkRestLengths(state, [a.id, b.id], 1.05);
-        assert.ok(Math.abs(kineticConstraintStore.restLength[0] - (entityR[a._physId] + entityR[b._physId]) * 1.05) < 1e-5);
     });
     it("chain tail is not a steering target but head is", () => {
         resetMockBallIds(1);

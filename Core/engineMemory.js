@@ -477,7 +477,6 @@ export const sleepComponentRoot = new Int32Array(MAX_PHYS_BODIES);
 export const sleepComponentMaxSpeedSq = new Float32Array(MAX_PHYS_BODIES);
 export const sleepComponentHasBlocker = new Uint8Array(MAX_PHYS_BODIES);
 export const sleepComponentMemberCount = new Int32Array(MAX_PHYS_BODIES);
-export const sleepNeighborEids = new GrowI32(256);
 // --- Open-address pair hash (kinetic pair patch) ---
 export const pairHashKeys = new Float64Array(PAIR_HASH_CAPACITY);
 export const pairHashGen = new Int32Array(PAIR_HASH_CAPACITY);

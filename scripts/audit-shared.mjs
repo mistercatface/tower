@@ -12,6 +12,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "agentPose",
     "allocLiveGeomSpan",
     "allowsKineticCollisionPair",
+    "allowsKineticCollisionPairSlab",
     "applyChunkGeometryToProp",
     "applyFractureGeometryToProp",
     "assetSupportsDragLaunch",
@@ -44,6 +45,7 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "appendDragLaunchOverlayCommands",
     "ensureTargetWorld",
     "getOrCreatePropRun",
+    "growChainSegment",
     "GRAB_DRAG_BEHAVIOR_ID",
     "DRAG_LAUNCH_BEHAVIOR_ID",
     "DIRECT_GROUND_NAV_BEHAVIOR_ID",
@@ -104,6 +106,21 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "separateAlongNormal",
     "primitiveDragFriction",
     "resolveBodyAgainstWallSegments",
+    "resyncChainLinkRestLengths",
+    "removeChainLinkBetween",
+    "linkedChainOccupiedCellIndices",
+    "tryExportLinkedBallChainSpawnGroup",
+    "checkPairCollisionAtSlabPose",
+    "satCheckShapesAtPose",
+    "satCheckPolygonVsWallSegment",
+    "getConnectedComponentPath",
+    "areBodiesConnected",
+    "getConstraintIslands",
+    "quantizeContactFeatureId",
+    "writeKineticLinkNeighbors",
+    "evaluateKineticSleepEligible",
+    "evaluateKineticIslandSleepEligible",
+    "hasSleepBlockingNeighbor",
     "quantizeCardinalAngle",
     "queryPropIdsInView",
     "radiusAtT",
@@ -111,11 +128,13 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "releaseLiveGeomSpan",
     "remapChunkCoord",
     "removeSandboxWorldProp",
+    "removeKineticConstraint",
     "resolveBodyRadius",
     "resolveChunkBaseProfileIdAtIdx",
     "resolveChunkSurfaceProfileIdAtKey",
     "resolveCellSurfaceProfileId",
     "resolveDragLaunchConfig",
+    "resolveDragInteractionBehaviorId",
     "resolvePaintCellSize",
     "resolveWallSurfaceProfileId",
     "runCellularAutomataBuffer",
@@ -125,10 +144,12 @@ export const DELETED_PASSTHROUGH_EXPORTS = [
     "scaleAtHeight",
     "selectionRingRadius",
     "setPropRadius",
+    "shareKineticIsland",
     "sleepContactBuffer",
     "SS_AXES",
     "SS_CELL",
     "SS_DRAW",
+    "snapshotKineticBodySlab",
     "snapshotWorldCol",
     "snapshotWorldRow",
     "spawnLinkedBallChain",
@@ -234,7 +255,12 @@ export const LEGACY_SCALAR_SYMBOLS = [
     { pattern: /\bneedsWallCollision\b/, label: "needsWallCollision", onlyUnder: "Libraries/" },
     { pattern: /\bupdatePropSubstep\b/, label: "updatePropSubstep", onlyUnder: "Libraries/" },
     { pattern: /\bupdatePropSubstep\b/, label: "updatePropSubstep", onlyFile: "Apps/Editor/engine.js" },
-    { pattern: /function snapshotKineticBodySlab[\s\S]{0,500}?\w+\[\w+\]\._physId/, label: "bag ._physId in snapshotKineticBodySlab", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function snapshotKineticBodySlab\b/, label: "deleted snapshotKineticBodySlab", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function allowsKineticCollisionPairSlab\b/, label: "deleted allowsKineticCollisionPairSlab", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function removeKineticConstraint\b/, label: "deleted removeKineticConstraint", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function shareKineticIsland\b/, label: "deleted shareKineticIsland", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function growChainSegment\b/, label: "deleted growChainSegment", onlyFile: "Libraries/Sandbox/sandbox.js" },
+    { pattern: /export function resolveDragInteractionBehaviorId\b/, label: "deleted resolveDragInteractionBehaviorId", onlyFile: "Libraries/Sandbox/dragBehaviors.js" },
     { pattern: /function refreshActiveKineticBodySlabPose\s*\(\s*[^)\s]/, label: "bag-arg refreshActiveKineticBodySlabPose", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /\bgetLive\s*\(/, label: "getLive in dragBehaviors", onlyFile: "Libraries/Sandbox/dragBehaviors.js" },
     { pattern: /\bgetRef\s*\(/, label: "getRef in dragBehaviors", onlyFile: "Libraries/Sandbox/dragBehaviors.js" },
@@ -245,6 +271,21 @@ export const LEGACY_SCALAR_SYMBOLS = [
     { pattern: /export function separateAlongNormal\s*\(/, label: "bag separateAlongNormal", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /export function primitiveDragFriction\s*\(/, label: "bag primitiveDragFriction", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /export function resolveBodyAgainstWallSegments\s*\(/, label: "resolveBodyAgainstWallSegments", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function resyncChainLinkRestLengths\s*\(/, label: "resyncChainLinkRestLengths", onlyFile: "Libraries/Sandbox/sandbox.js" },
+    { pattern: /export function removeChainLinkBetween\s*\(/, label: "removeChainLinkBetween", onlyFile: "Libraries/Sandbox/sandbox.js" },
+    { pattern: /export function linkedChainOccupiedCellIndices\s*\(/, label: "linkedChainOccupiedCellIndices", onlyFile: "Libraries/Sandbox/sandbox.js" },
+    { pattern: /export function tryExportLinkedBallChainSpawnGroup\s*\(/, label: "tryExportLinkedBallChainSpawnGroup", onlyFile: "Libraries/Sandbox/sandbox.js" },
+    { pattern: /export function checkPairCollisionAtSlabPose\s*\(/, label: "checkPairCollisionAtSlabPose", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function satCheckShapesAtPose\s*\(/, label: "satCheckShapesAtPose", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function satCheckPolygonVsWallSegment\s*\(/, label: "satCheckPolygonVsWallSegment", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function getConnectedComponentPath\s*\(/, label: "getConnectedComponentPath", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function areBodiesConnected\s*\(/, label: "areBodiesConnected", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function getConstraintIslands\s*\(/, label: "getConstraintIslands", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function quantizeContactFeatureId\s*\(/, label: "quantizeContactFeatureId", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function writeKineticLinkNeighbors\s*\(/, label: "writeKineticLinkNeighbors", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function evaluateKineticSleepEligible\s*\(/, label: "evaluateKineticSleepEligible", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function evaluateKineticIslandSleepEligible\s*\(/, label: "evaluateKineticIslandSleepEligible", onlyFile: "Libraries/Physics/physics.js" },
+    { pattern: /export function hasSleepBlockingNeighbor\s*\(/, label: "hasSleepBlockingNeighbor", onlyFile: "Libraries/Physics/physics.js" },
     { pattern: /function forEachActivePropRunSlot[\s\S]{0,1200}?getLive\s*\(/, label: "getLive in forEachActivePropRunSlot", onlyFile: "Libraries/Sandbox/sandbox.js" },
     { pattern: /function forEachActivePropRunSlot[\s\S]{0,1200}?getRef\s*\(/, label: "getRef in forEachActivePropRunSlot", onlyFile: "Libraries/Sandbox/sandbox.js" },
     { pattern: /Libraries\/Entity\//, label: "Libraries/Entity/" },
@@ -293,7 +334,8 @@ export function collectJsFiles(root, pathFilter = null) {
 }
 
 export function isTestFile(relPath) {
-    return relPath.replace(/\\/g, "/").includes("/tests/");
+    const p = relPath.replace(/\\/g, "/");
+    return p.startsWith("tests/") || p.includes("/tests/");
 }
 
 export function isProdConsumer(relPath) {
@@ -307,6 +349,7 @@ export function issue(ruleId, severity, file, message, line = null) {
 }
 
 const exportRe = /^export (?:async )?(?:function|const|class) (\w+)/gm;
+const exportFunctionRe = /^export (?:async )?function (\w+)/gm;
 const importNamedRe = /import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
 const importDefaultRe = /import\s+(\w+)\s+from\s*["']([^"']+)["']/g;
 const forTestsNameRe = /ForTests?$/;
@@ -357,25 +400,67 @@ export function importsLibrary(from) {
     return from.includes("/Libraries/") || from.startsWith("../Libraries/") || from.startsWith("../../Libraries/");
 }
 
+function countSymbolHits(src, symbol) {
+    const re = new RegExp(`\\b${symbol}\\b`, "g");
+    const hits = src.match(re);
+    return hits ? hits.length : 0;
+}
+
+export function scanCallSiteOrphans(root, files) {
+    const prodRoots = ["Libraries/", "Apps/", "GameState/", "Core/", "Config/", "Assets/"];
+    const prodFiles = files.filter((f) => {
+        const r = rel(root, f);
+        return prodRoots.some((p) => r.startsWith(p));
+    });
+    const testFiles = files.filter((f) => isTestFile(rel(root, f)));
+    const libFiles = files.filter((f) => {
+        const r = rel(root, f);
+        return r.startsWith("Libraries/Sandbox/") || r.startsWith("Libraries/Physics/");
+    });
+    const orphans = [];
+    for (const file of libFiles) {
+        const defRel = rel(root, file);
+        const src = fs.readFileSync(file, "utf8");
+        exportFunctionRe.lastIndex = 0;
+        let m;
+        while ((m = exportFunctionRe.exec(src))) {
+            const symbol = m[1];
+            if (forTestsNameRe.test(symbol)) continue;
+            let prodHits = 0;
+            const prodHitFiles = [];
+            for (const pf of prodFiles) {
+                const pr = rel(root, pf);
+                const hits = countSymbolHits(fs.readFileSync(pf, "utf8"), symbol);
+                if (hits === 0) continue;
+                if (pr === defRel) {
+                    if (hits <= 1) continue;
+                    prodHits += hits - 1;
+                    prodHitFiles.push(pr);
+                } else {
+                    prodHits += hits;
+                    prodHitFiles.push(pr);
+                }
+            }
+            if (prodHits > 0) continue;
+            const testUsers = [];
+            for (const tf of testFiles) {
+                if (countSymbolHits(fs.readFileSync(tf, "utf8"), symbol) > 0) testUsers.push(rel(root, tf));
+            }
+            if (testUsers.length === 0) continue;
+            orphans.push({ symbol, defFiles: [defRel], testUsers: [...new Set(testUsers)] });
+        }
+    }
+    return orphans;
+}
+
 export function scanTestLeaks(root, files) {
     const libFiles = files.filter((f) => rel(root, f).startsWith("Libraries/"));
     const exports = libraryExports(root, libFiles);
-    const importRecords = collectImports(root, files).filter((r) => importsLibrary(r.from));
     const forbidden = [];
-    const leaks = [];
     for (const [symbol, defFiles] of exports) {
-        if (forTestsNameRe.test(symbol)) {
-            forbidden.push({ symbol, defFiles });
-            continue;
-        }
-        const users = importRecords.filter((r) => !r.default && r.name === symbol);
-        if (users.length === 0) continue;
-        const testUsers = users.filter((u) => isTestFile(u.file));
-        const prodUsers = users.filter((u) => isProdConsumer(u.file));
-        if (testUsers.length > 0 && prodUsers.length === 0) {
-            leaks.push({ symbol, defFiles, testUsers: [...new Set(testUsers.map((u) => u.file))] });
-        }
+        if (forTestsNameRe.test(symbol)) forbidden.push({ symbol, defFiles });
     }
+    const leaks = scanCallSiteOrphans(root, files);
     return { forbidden, leaks };
 }
 

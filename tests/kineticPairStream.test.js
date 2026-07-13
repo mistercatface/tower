@@ -1,13 +1,16 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { readEntityFacing, SAT_RESULT, separateAlongNormalSlab, allowsKineticCollisionPairSlab, pairBroadphaseOverlapSlab, snapshotKineticBodySlab, gatherKineticCandidatePairs, normalizeKineticBody } from "../Libraries/Physics/physics.js";
+import { readEntityFacing, SAT_RESULT, separateAlongNormalSlab, allowsKineticCollisionPairOrderSlab, isKinematicallyActiveSlab, pairBroadphaseOverlapSlab, gatherKineticCandidatePairs, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { kineticDynamicSlab, entityRefs, kineticPairBuffer } from "../Core/engineMemory.js";
-import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
 import { resolveKineticContactPass } from "./harness/kineticContactHarness.js";
 
 const pairBuffer = kineticPairBuffer;
+function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
+    return allowsKineticCollisionPairOrderSlab(physIdA, physIdB) && overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
+}
 function separatePairUntilClear(a, b, maxPasses = 8) {
     if (a._physId === undefined) assignPhysIdWithPose(a, 0);
     if (b._physId === undefined) assignPhysIdWithPose(b, 1);

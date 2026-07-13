@@ -1,11 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { circleCircleContact, readEntityFacing, SAT_RESULT, snapshotKineticBodySlab, classifyKineticPairTierSlab, gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
+import { circleCircleContact, readEntityFacing, SAT_RESULT, classifyKineticPairTierSlab, gatherKineticCandidatePairs } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND } from "../Core/engineEnums.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
-import { createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import {createKineticTestTick, mockKineticCircle, setupKineticTestFrame, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { kineticPairBuffer, kineticDynamicSlab } from "../Core/engineMemory.js";
 

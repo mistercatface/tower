@@ -1,11 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius } from "../Libraries/Props/props.js";
-import { readEntityFacing, SAT_RESULT, separateAlongNormalSlab, gatherKineticContactPairs, resolveKineticContactPassWithPairs, snapshotKineticBodySlab, normalizeKineticBody } from "../Libraries/Physics/physics.js";
+import { readEntityFacing, SAT_RESULT, separateAlongNormalSlab, gatherKineticContactPairs, resolveKineticContactPassWithPairs, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
 import { kineticDynamicSlab, entityRefs } from "../Core/engineMemory.js";
-import { createKineticTestTick, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import {createKineticTestTick, mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab} from "./harness/kineticTickHarness.js";
 import { dotXY } from "../Libraries/Math/math.js";
 function pairStillOverlaps(a, b) {
     if (!satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape)) return false;

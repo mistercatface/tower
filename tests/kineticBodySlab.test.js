@@ -1,8 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
-import { mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
+import { mockKineticCircle, assignPhysIdWithPose, snapshotKineticBodySlab } from "./harness/kineticTickHarness.js";
 import { bodiesMatchKineticSlab } from "./harness/kineticSlabHarness.js";
 import { pairBroadphaseOverlapSlab, pairCircleCircleOverlapSlab } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab } from "../Core/engineMemory.js";

@@ -1,4 +1,4 @@
-import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabbF32, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, normalizeAngle, rotateAngleTowards, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, emptyAabbF32, growAabbFromCenterF32, padAabbF32, centerReachAabbF32, earClipConvexPartsInto, pointInPolygon } from "../Math/math.js";
+import { multiplyQuatInto, axisAngleQuatInto, rotateVecByQuatInto, distanceToAabbF32, rotateXYIntoF32, distanceSqToLineSegment, quantizeAngle, clamp, lengthXY, dotXY, addXY, speedSqXY, normalizeAngle, rotateAngleTowards, polygonSecondMomentAboutCentroid2D, polygonSignedArea2D, polygonCentroid2DInto, reversePolygonWinding, findExtremeVertexIndex, findClosestWorldVertexIndex, computeCompoundLocalBoundsF32, convexFootprintHalfExtents, boxLocalFootprint, padAabbF32, centerReachAabbF32, earClipConvexPartsInto, pointInPolygon } from "../Math/math.js";
 import {
     ENGINE_F32,
     ENGINE_U8,
@@ -103,7 +103,6 @@ import {
     sleepComponentMaxSpeedSq,
     sleepComponentHasBlocker,
     sleepComponentMemberCount,
-    sleepNeighborEids,
     pairHashKeys,
     pairHashGen,
     pairHashState,
@@ -1285,7 +1284,7 @@ export function markHitCompoundParts(parts, lx, ly) {
     ENGINE_U8[best] = 1;
     return 1;
 }
-function satCheckPartRowsAtPose(partRowA, partRowB, xA, yA, cosA, sinA, xB, yB, cosB, sinB) {
+export function satCheckPartRowsAtPose(partRowA, partRowB, xA, yA, cosA, sinA, xB, yB, cosB, sinB) {
     const slab = kineticDynamicSlab;
     const kindA = slab.partShapeKind[partRowA];
     const kindB = slab.partShapeKind[partRowB];
@@ -1297,20 +1296,6 @@ function satCheckPartRowsAtPose(partRowA, partRowB, xA, yA, cosA, sinA, xB, yB, 
         if (hit) satSwapCirclePolyContactFeatures();
         return hit;
     }
-    return false;
-}
-export function checkPairCollisionAtSlabPose(physIdA, physIdB, xA, yA, xB, yB) {
-    const slab = kineticDynamicSlab;
-    const geomA = slab.partGeomOffset[physIdA];
-    const geomB = slab.partGeomOffset[physIdB];
-    if (geomA < 0 || geomB < 0) throw new Error(`checkPairCollisionAtSlabPose: missing shape CSR for physId ${geomA < 0 ? physIdA : physIdB}`);
-    const cosA = slab.cos[physIdA];
-    const sinA = slab.sin[physIdA];
-    const cosB = slab.cos[physIdB];
-    const sinB = slab.sin[physIdB];
-    const countA = slab.partCount[physIdA];
-    const countB = slab.partCount[physIdB];
-    for (let i = 0; i < countA; i++) for (let j = 0; j < countB; j++) if (satCheckPartRowsAtPose(geomA + i, geomB + j, xA, yA, cosA, sinA, xB, yB, cosB, sinB)) return true;
     return false;
 }
 export function circleCircleContact(xA, yA, rA, xB, yB, rB) {
@@ -1366,32 +1351,6 @@ function satSwapCirclePolyContactFeatures() {
         SAT_RESULT[offset + 3] = fA;
     }
 }
-export function satCheckShapesAtPose(xA, yA, cosA, sinA, shapeA, xB, yB, cosB, sinB, shapeB) {
-    if (!shapeA || !shapeB) return false;
-    const kindA = shapeA.shapeTypeId;
-    const kindB = shapeB.shapeTypeId;
-    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_CIRCLE) return circleCircleContact(xA, yA, shapeA.radius, xB, yB, shapeB.radius);
-    if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_POLYGON) {
-        const voA = shapeA._vertOffset || 0;
-        const nA = shapeA._floatCount != null ? shapeA._floatCount : shapeA.vertices.length;
-        const voB = shapeB._vertOffset || 0;
-        const nB = shapeB._floatCount != null ? shapeB._floatCount : shapeB.vertices.length;
-        return satPolygonPolygonF32(xA, yA, cosA, sinA, shapeA.vertices, shapeA.normals, voA, nA, xB, yB, cosB, sinB, shapeB.vertices, shapeB.normals, voB, nB);
-    }
-    if (kindA === SHAPE_TYPE_CIRCLE && kindB === SHAPE_TYPE_POLYGON) {
-        const voB = shapeB._vertOffset || 0;
-        const nB = shapeB._floatCount != null ? shapeB._floatCount : shapeB.vertices.length;
-        return satCirclePolygonF32(xA, yA, shapeA.radius, xB, yB, cosB, sinB, shapeB.vertices, shapeB.normals, voB, nB);
-    }
-    if (kindA === SHAPE_TYPE_POLYGON && kindB === SHAPE_TYPE_CIRCLE) {
-        const voA = shapeA._vertOffset || 0;
-        const nA = shapeA._floatCount != null ? shapeA._floatCount : shapeA.vertices.length;
-        const hit = satCirclePolygonF32(xB, yB, shapeB.radius, xA, yA, cosA, sinA, shapeA.vertices, shapeA.normals, voA, nA);
-        if (hit) satSwapCirclePolyContactFeatures();
-        return hit;
-    }
-    return false;
-}
 const sWallVerts = ENGINE_F32.subarray(P_WALL_VERTS, P_WALL_VERTS + 8);
 const sWallNorms = ENGINE_F32.subarray(P_WALL_NORMS, P_WALL_NORMS + 8);
 function fillWallBoxF32(segId) {
@@ -1408,18 +1367,13 @@ function fillWallBoxF32(segId) {
     sWallVerts[7] = hy;
     rebuildLivePolygonNormals(sWallVerts, sWallNorms, 8);
 }
-function satPolygonVsWallSegmentF32(px, py, cos, sin, verts, norms, vo, n, segId) {
+export function satPolygonVsWallSegmentF32(px, py, cos, sin, verts, norms, vo, n, segId) {
     fillWallBoxF32(segId);
     const slab = staticWallSegmentSlab;
     const angle = slab.angle[segId];
     return satPolygonPolygonF32(px, py, cos, sin, verts, norms, vo, n, slab.x[segId], slab.y[segId], Math.cos(angle), Math.sin(angle), sWallVerts, sWallNorms, 0, 8);
 }
-export function satCheckPolygonVsWallSegment(px, py, angle, shape, segId) {
-    const vo = shape._vertOffset || 0;
-    const n = shape._floatCount != null ? shape._floatCount : shape.vertices.length;
-    return satPolygonVsWallSegmentF32(px, py, Math.cos(angle), Math.sin(angle), shape.vertices, shape.normals, vo, n, segId);
-}
-function satPolygonPolygonF32(xA, yA, cosA, sinA, vertsA, normsA, voA, nA, xB, yB, cosB, sinB, vertsB, normsB, voB, nB) {
+export function satPolygonPolygonF32(xA, yA, cosA, sinA, vertsA, normsA, voA, nA, xB, yB, cosB, sinB, vertsB, normsB, voB, nB) {
     let minOverlap = Infinity;
     let minNormalX = 0;
     let minNormalY = 0;
@@ -1503,7 +1457,7 @@ function satPolygonPolygonF32(xA, yA, cosA, sinA, vertsA, normsA, voA, nA, xB, y
     SAT_RESULT[8] = pointCount;
     return true;
 }
-function satCirclePolygonF32(cxCircle, cyCircle, radius, pxPoly, pyPoly, cosP, sinP, verts, norms, vo, n) {
+export function satCirclePolygonF32(cxCircle, cyCircle, radius, pxPoly, pyPoly, cosP, sinP, verts, norms, vo, n) {
     if (isNaN(cxCircle) || isNaN(cyCircle) || isNaN(pxPoly) || isNaN(pyPoly)) return false;
     let minOverlap = Infinity;
     let minNormalX = 0;
@@ -1767,15 +1721,6 @@ function normalizeEntityRollQuat(physId) {
     entityRollQy[physId] /= len;
     entityRollQz[physId] /= len;
 }
-export function snapshotKineticBodySlab(eids, count = eids.length) {
-    for (let i = 0; i < count; i++) {
-        const eid = eids[i];
-        const entity = entityRefs[eid];
-        if (!entity) continue;
-        ensureKineticShapeStamped(eid, entity);
-        syncKineticBodySlabPose(eid);
-    }
-}
 export function refreshActiveKineticBodySlabPose() {
     const slab = kineticDynamicSlab;
     for (let i = 0; i < slab.activePhysCount; i++) syncKineticBodySlabPose(slab.activePhysIds[i]);
@@ -1785,10 +1730,6 @@ export function allowsKineticCollisionPairOrderSlab(physIdA, physIdB) {
     // Undirected dedup only when B can also be a gather primary (kinematically active).
     if (isKinematicallyActiveSlab(physIdB) && kineticStaticSlab.entityId[physIdA] >= kineticStaticSlab.entityId[physIdB]) return false;
     return true;
-}
-export function allowsKineticCollisionPairSlab(physIdA, physIdB, overlaps) {
-    if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) return false;
-    return overlaps && (isKinematicallyActiveSlab(physIdA) || isKinematicallyActiveSlab(physIdB));
 }
 function kineticPairPassesBroadphase(physIdA, physIdB) {
     if (!allowsKineticCollisionPairOrderSlab(physIdA, physIdB)) return false;
@@ -2634,7 +2575,7 @@ function getGraphCache(session) {
     const version = getKineticConstraintsVersion(session);
     let cache = session._kineticConstraintGraphCache;
     if (!cache || cache.version !== version) {
-        cache = { version, paths: new Map(), connectedIds: new Map(), islands: null };
+        cache = { version, connectedIds: new Map() };
         session._kineticConstraintGraphCache = cache;
     }
     return cache;
@@ -2654,63 +2595,6 @@ export function getConnectedBodyIds(session, bodyId) {
     }
     for (let i = 0; i < members.length; i++) cache.connectedIds.set(members[i], members);
     return members;
-}
-export function getConnectedComponentPath(session, endpointId) {
-    const cache = getGraphCache(session);
-    if (cache.paths.has(endpointId)) return cache.paths.get(endpointId);
-    const ordered = [endpointId];
-    const visited = [endpointId];
-    let current = endpointId;
-    while (true) {
-        let next = null;
-        forEachConstraintNeighborBodyId(current, (candidate) => {
-            if (next != null) return;
-            if (visited.indexOf(candidate) < 0) next = candidate;
-        });
-        if (next == null) break;
-        ordered.push(next);
-        visited.push(next);
-        current = next;
-    }
-    cache.paths.set(endpointId, ordered);
-    return ordered;
-}
-export function areBodiesConnected(session, bodyAId, bodyBId) {
-    if (bodyAId === bodyBId) return true;
-    return getConnectedBodyIds(session, bodyAId).includes(bodyBId);
-}
-export function getConstraintIslands(session) {
-    const cache = getGraphCache(session);
-    if (cache.islands) return cache.islands;
-    const store = kineticConstraintStore;
-    const seeds = [];
-    for (let i = 0; i < store.count; i++) {
-        const a = store.bodyAId[i];
-        const b = store.bodyBId[i];
-        if (seeds.indexOf(a) < 0) seeds.push(a);
-        if (seeds.indexOf(b) < 0) seeds.push(b);
-    }
-    const seen = [];
-    const islands = [];
-    for (let s = 0; s < seeds.length; s++) {
-        const startId = seeds[s];
-        if (seen.indexOf(startId) >= 0) continue;
-        const island = [];
-        const stack = [startId];
-        seen.push(startId);
-        while (stack.length > 0) {
-            const current = stack.pop();
-            island.push(current);
-            forEachConstraintNeighborBodyId(current, (next) => {
-                if (seen.indexOf(next) >= 0) return;
-                seen.push(next);
-                stack.push(next);
-            });
-        }
-        islands.push(island);
-    }
-    cache.islands = islands;
-    return islands;
 }
 export function createKineticSession({ constraintsDirty = false, constraintsVersion = 0, topologyGeneration = 0, nextConstraintId = 1 } = {}) {
     kineticConstraintStore.count = 0;
@@ -2778,15 +2662,6 @@ function swapRemoveConstraintRow(store, row) {
         store.accumulatedImpulse[row] = store.accumulatedImpulse[last];
     }
     store.count = last;
-}
-export function removeKineticConstraint(session, constraintId) {
-    const store = kineticConstraintStore;
-    for (let i = 0; i < store.count; i++) {
-        if (store.id[i] !== constraintId) continue;
-        swapRemoveConstraintRow(store, i);
-        markKineticConstraintsDirty(session);
-        return;
-    }
 }
 export function clearKineticConstraints(session) {
     if (kineticConstraintStore.count === 0) return;
@@ -2864,19 +2739,10 @@ export function worldAnchorFromSlab(physId, localX, localY, slab, destOffset) {
 }
 export const PAIR_KEY_SCALE = 1_000_000;
 const WARM_START_FEATURE_STRIDE = 65536;
-const FEATURE_ANGLE_BUCKETS = 32;
 function packContactFeature(partIndex, edgeFeature) {
     if ((partIndex & ~0xff) !== 0) throw new Error(`packContactFeature: partIndex ${partIndex} exceeds Uint8`);
     if (partIndex === 0) return edgeFeature & 0xff;
     return partIndex & 0xff;
-}
-export function quantizeContactFeatureId(nx, ny) {
-    if (nx === 0 && ny === 0) return 0;
-    const angle = Math.atan2(ny, nx);
-    let bucket = Math.round((angle / (Math.PI * 2)) * FEATURE_ANGLE_BUCKETS);
-    if (bucket < 0) bucket += FEATURE_ANGLE_BUCKETS;
-    if (bucket >= FEATURE_ANGLE_BUCKETS) bucket = 0;
-    return bucket & 0x1f;
 }
 export function contactWarmStartKeyFromPairKey(pairKey, featureA = 0, featureB = 0) {
     const featureKey = (featureA & 0xff) | ((featureB & 0xff) << 8);
@@ -3697,26 +3563,6 @@ function sortLinkNeighborSlice(offset, count) {
 export function resetKineticLinkNeighborArena() {
     kineticDynamicSlab.linkNeighborEidsUsed = 0;
 }
-export function writeKineticLinkNeighbors(physId, neighborPhysIds) {
-    const slab = kineticDynamicSlab;
-    if (!neighborPhysIds || neighborPhysIds.length === 0) {
-        slab.linkNeighborOffset[physId] = 0;
-        slab.linkNeighborCount[physId] = 0;
-        return;
-    }
-    ensureLinkNeighborArena(slab.linkNeighborEidsUsed + neighborPhysIds.length);
-    const offset = slab.linkNeighborEidsUsed;
-    let count = 0;
-    for (let i = 0; i < neighborPhysIds.length; i++) {
-        const n = neighborPhysIds[i];
-        if (n === undefined || n === -1) continue;
-        slab.linkNeighborEids[offset + count++] = n;
-    }
-    sortLinkNeighborSlice(offset, count);
-    slab.linkNeighborOffset[physId] = offset;
-    slab.linkNeighborCount[physId] = count;
-    slab.linkNeighborEidsUsed = offset + count;
-}
 const islandBakeDegree = new Int32Array(MAX_PHYS_BODIES);
 const islandBakeFill = new Int32Array(MAX_PHYS_BODIES);
 const islandBakeVisited = new Uint8Array(MAX_PHYS_BODIES);
@@ -3803,11 +3649,6 @@ export function ensureKineticIslandPlan(session, eids, count = eids.length) {
     if (plan && plan.version === version) return plan;
     bakeKineticIslandPlan(session, eids, count);
     return session._kineticIslandPlan;
-}
-export function shareKineticIsland(eidA, eidB) {
-    const root = kineticDynamicSlab.islandRoot[eidA];
-    if (root === -1) return false;
-    return root === kineticDynamicSlab.islandRoot[eidB];
 }
 export function areKineticLinkNeighborsSlab(physIdA, physIdB) {
     const count = kineticDynamicSlab.linkNeighborCount[physIdA];
@@ -3942,40 +3783,6 @@ export function advanceKineticSleep(eid, eligible, requiredFrames = collisionSet
     }
     sleepFrames[eid]++;
     if (sleepFrames[eid] >= requiredFrames) sleeping[eid] = 1;
-}
-export function hasSleepBlockingNeighbor(eid, neighborEids, neighborCount = neighborEids.length) {
-    const sleeping = kineticDynamicSlab.sleeping;
-    for (let i = 0; i < neighborCount; i++) {
-        const eidB = neighborEids[i];
-        if (eidB === eid) continue;
-        if ((entityFlags[eidB] & ENTITY_FLAG_KINETIC) === 0) continue;
-        if (shareKineticIsland(eid, eidB)) continue;
-        if (!pairBroadphaseOverlapSlab(eid, eidB)) continue;
-        if (sleeping[eidB]) continue;
-        if (isKinematicallyActiveSlab(eidB)) return true;
-    }
-    return false;
-}
-export function evaluateKineticSleepEligible(eid, neighborEids, neighborCount = neighborEids.length) {
-    return canSleepKinetic(eid) && !hasSleepBlockingNeighbor(eid, neighborEids, neighborCount);
-}
-export function evaluateKineticIslandSleepEligible(islandEids, spatialFrame) {
-    emptyAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY);
-    for (let i = 0; i < islandEids.length; i++) {
-        const eid = islandEids[i];
-        if (!canSleepKinetic(eid)) return false;
-        const extent = slabCollisionSpan(eid);
-        growAabbFromCenterF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, kineticDynamicSlab.x[eid], kineticDynamicSlab.y[eid], extent, extent);
-    }
-    const eg = spatialFrame.entityGrid;
-    padAabbF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, ENGINE_F32, ENGINE_BOUNDS_BASE + B_QUERY, eg.maxInsertedExtent + neighborQueryPadForExtent(Number.MAX_SAFE_INTEGER));
-    let n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, 0, sleepNeighborEids.buf.length);
-    while (n < 0) {
-        sleepNeighborEids.ensure(sleepNeighborEids.buf.length * 2);
-        n = spatialFrame.collectEntityEidsInBoundsF32(ENGINE_F32, ENGINE_BOUNDS_BASE + B_PAD, sleepNeighborEids.buf, 0, sleepNeighborEids.buf.length);
-    }
-    for (let i = 0; i < islandEids.length; i++) if (hasSleepBlockingNeighbor(islandEids[i], sleepNeighborEids.buf, n)) return false;
-    return true;
 }
 export function applyVelocityDamping(eid, dtMs, friction = 8.0, integrateFacing = true, snapSpeed = 1) {
     const dyn = kineticDynamicSlab;
