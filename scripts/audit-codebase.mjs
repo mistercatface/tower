@@ -32,9 +32,6 @@ Options:
   --json       Machine-readable output
   --help, -h   This help
 
-Related:
-  tests/passthroughGuard.test.js   same DELETED_PASSTHROUGH_EXPORTS list
-
 Rules (${rules.length}):
 ${rules.map((r) => `  ${r.id} (${r.severity}) — ${r.description}`).join("\n")}
 `);

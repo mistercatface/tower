@@ -25,7 +25,7 @@ npm run audit                                       # fail-only gate
 npm run audit:all                                   # failures + warnings
 ```
 
-`node scripts/audit-codebase.mjs --help` lists rules. Fail on: non-index re-export barrels, deleted passthrough symbols in monoliths, legacy sandbox drag APIs, test-only library exports, inline `mock*` factories in test files (use harness), `*_SCRATCH` exports from hot-path libs, new XY/AABB bag exports from `Core/engineMemory.js`, legacy viewport/scalar symbols.
+`node scripts/audit-codebase.mjs --help` lists rules. Fail on: non-index re-export barrels, `ForTests` library exports, inline `mock*` factories in test files (use harness), `*_SCRATCH` exports from hot-path libs, new XY/AABB bag exports from `Core/engineMemory.js`.
 
 Warnings (`--warn`) are baseline debt — do not introduce new failures. Also warn on: F32→object rebox, module `*_SCRATCH`, pair-return bags, object-bag `*Into*`, dual bag+F32 APIs, hot-path `.push({`.
 
