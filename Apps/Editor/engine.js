@@ -41,7 +41,7 @@ function simulationKineticHooks(state) {
         afterKineticPhysics(frame, world, dt) {
             state.appLaunch?.session?.afterKineticPhysics?.();
             applyPendingWallDamage(state);
-            if (state.gridWallDamage.lastSpawnedCount) state.fractureEngine.debris.integrateSpawned(frame, state.gridWallDamage.lastSpawned, dt);
+            if (state.gridWallDamage.lastSpawnedCount) state.fractureEngine.integrateSpawned(frame, state.gridWallDamage.lastSpawned, dt);
         },
     };
 }

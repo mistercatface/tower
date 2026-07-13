@@ -22,7 +22,7 @@ import { createRealWorldSurfaces, seedStaticRoofCacheKeys } from "./harness/wall
 import { collectVoxelWallFacesInAabbFlatF32 } from "../Libraries/World/wallGridBake.js";
 import { VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE } from "../Libraries/World/wallGridStride.js";
 import { StrideFloatList } from "../Libraries/World/StrideFloatList.js";
-import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
+import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, ENTITY_KIND_WORLD_PROP, ENTITY_KIND_DEBRIS } from "../Core/engineEnums.js";
 import { assertDebrisKind } from "./harness/fractureHarness.js";
 const WALL_DAMAGE = { minStrikeSpeed: 28, referenceMaxSpeed: 560, minBreakStrength: 0.1 };
 function stampWallHitSource(eid, vx, vy, mass = 1) {
@@ -68,9 +68,11 @@ function wallDebrisTestFrame(extra = {}) {
     };
 }
 function kineticDebrisList(state) {
-    const store = state.fractureEngine.debris;
     const out = [];
-    for (let i = 0; i < store.liveCount; i++) out.push(entityRefs[store.liveEids[i]]);
+    state.entityRegistry.forEachOfKind(ENTITY_KIND_DEBRIS, (p) => {
+        if (p.isDead) return;
+        out.push(p);
+    });
     return out;
 }
 function assertNoWallChunkWorldProps(state) {
@@ -312,7 +314,7 @@ describe("kinetic wall damage", () => {
         assert.ok(Math.hypot(shard.vx, shard.vy) > 5, "spawn impulse must survive admit bind");
         const x0 = shard.x;
         const y0 = shard.y;
-        state.fractureEngine.debris.integrateSpawned(frame, state.gridWallDamage.lastSpawned, 16);
+        state.fractureEngine.integrateSpawned(frame, state.gridWallDamage.lastSpawned, 16);
         assert.ok(Math.hypot(shard.x - x0, shard.y - y0) > 0.5, "integrateSpawned must move shards on spawn frame");
         const frame2 = kineticSpatial.begin(state);
         assert.ok(Array.from(frame2.kineticEids.subarray(0, frame2.kineticEidCount)).includes(shard._physId));
@@ -339,7 +341,7 @@ describe("kinetic wall damage", () => {
         applyPendingWallDamage(state);
         const first = kineticDebrisList(state).slice();
         assert.ok(first.length > 0);
-        for (let i = 0; i < first.length; i++) state.fractureEngine.debris.removeEid(first[i]._physId, frame);
+        for (let i = 0; i < first.length; i++) state.fractureEngine.releaseDebrisEid(first[i]._physId, frame);
         assert.equal(kineticDebrisList(state).length, 0);
         stampVoxel(state.obstacleGrid, 5, 5, 2);
         stampWallHitSource(0, 560, 0, 1);

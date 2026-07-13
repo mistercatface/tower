@@ -43,11 +43,11 @@ describe("Shatter / Debris Performance Fixes", () => {
             releaseEntityEid(eid);
         } };
         for (let i = result.shards.length - 1; i >= 0; i--) {
-            world.fractureEngine.debris.removeEid(result.shards[i]._physId, spatialFrame);
+            world.fractureEngine.releaseDebrisEid(result.shards[i]._physId, spatialFrame);
         }
 
         assert.ok(FractureEngine.fracturePropOnImpact(prop, 0, 0, 30, world.fractureEngine));
-        const spawnedAgain = world.fractureEngine.debris.spawnShardsFromFracture(prop);
+        const spawnedAgain = world.fractureEngine.spawnShardsFromFracture(prop);
         assert.ok(spawnedAgain.length >= 2);
 
         for (const body of spawnedAgain) {

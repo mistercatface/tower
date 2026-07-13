@@ -2,7 +2,10 @@ import { pruneKineticConstraintsForBody, normalizeKineticBody, entityContainsPoi
 import { MAX_ENTITIES } from "../Core/engineLimits.js";
 import { aabbHashF32, circleIntersectsAabbF32, centerReachAabbF32, hashString, mixHash4, padAabbF32 } from "../Libraries/Math/math.js";
 import { ENGINE_F32, ENGINE_BOUNDS_BASE, B_QUERY, B_PAD, ensureGrowI32, viewBoundsBuf, entityAlive, entityKind, entityFlags, entityGameId, entityRefs, entityX, entityY, entityR } from "../Core/engineMemory.js";
-import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC } from "../Core/engineEnums.js";
+import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_DEBRIS, ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC } from "../Core/engineEnums.js";
+function isPropDrawKind(kind) {
+    return kind === ENTITY_KIND_WORLD_PROP || kind === ENTITY_KIND_DEBRIS;
+}
 import { allocateEntityEid, bindEntitySlot, clearWorldPropSpawnPose, entitySlotRef, worldPropBindFlags } from "../Core/entitySlots.js";
 function filterQueryHash(filterId) {
     return mixHash4(ENTITY_KIND_WORLD_PROP, filterId ? hashString(filterId) : 0, 0, 0);
@@ -204,7 +207,7 @@ export class EntityArena {
     _fillAllLiveWorldPropEids() {
         for (let i = 0; i < this._liveCount; i++) {
             const eid = this._liveEids[i];
-            if (entityKind[eid] !== ENTITY_KIND_WORLD_PROP) continue;
+            if (!isPropDrawKind(entityKind[eid])) continue;
             this._pushCandidateEid(eid);
         }
     }
@@ -223,7 +226,7 @@ export class EntityArena {
         this._candidateCount = 0;
         for (let i = 0; i < n; i++) {
             const eid = eidBuf[i];
-            if (!entityAlive[eid] || entityKind[eid] !== ENTITY_KIND_WORLD_PROP) continue;
+            if (!entityAlive[eid] || !isPropDrawKind(entityKind[eid])) continue;
             if (this._candidateSeenGen[eid] === queryGen) continue;
             this._candidateSeenGen[eid] = queryGen;
             this._pushCandidateEid(eid);

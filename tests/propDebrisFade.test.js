@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp, applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { createKineticTestTick } from "./harness/kineticTickHarness.js";
-import { createFractureWorld } from "./harness/fractureHarness.js";
+import { createFractureWorld, liveDebrisEids } from "./harness/fractureHarness.js";
 import { entityAlpha, entityFadeOutMs, entityFadeDurationMs } from "../Core/engineMemory.js";
 import { tickEntityFrames } from "../Libraries/Physics/physics.js";
 import { KineticSpatialFrame } from "../Libraries/Spatial/spatial.js";
@@ -45,10 +45,9 @@ describe("prop debris fade-out and removal", () => {
 
     it("kinetic rail debris fades entityAlpha before despawn", () => {
         const world = createFractureWorld();
-        const store = world.fractureEngine.debris;
-        const body = store.acquireBody("wall_rail_chunk", 0, 0, 0);
+        const body = world.fractureEngine.acquireDebrisProp("wall_rail_chunk", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 2);
-        store._addLiveEid(body._physId);
+        world.fractureEngine._registerDebrisProp(body);
         const frame = new KineticSpatialFrame(16);
         frame.resetFrame(world.obstacleGrid);
         frame.admitKineticEids([body._physId], 1, world);
@@ -59,13 +58,13 @@ describe("prop debris fade-out and removal", () => {
 
         tickEntityFrames(frame, world, 5000);
         assert.equal(entityAlpha[eid], 1);
-        assert.ok(store.liveCount === 1 && store.liveEids[0] === eid);
+        assert.equal(liveDebrisEids(world.entityRegistry).length, 1);
 
         tickEntityFrames(frame, world, 500);
         assert.equal(entityAlpha[eid], 0.5);
-        assert.ok(store.liveCount === 1 && store.liveEids[0] === eid);
+        assert.equal(liveDebrisEids(world.entityRegistry).length, 1);
 
         tickEntityFrames(frame, world, 500);
-        assert.equal(store.liveCount, 0);
+        assert.equal(liveDebrisEids(world.entityRegistry).length, 0);
     });
 });

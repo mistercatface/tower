@@ -9,7 +9,7 @@ import { applyVelocityDamping, primitiveDragFrictionEid } from "../Libraries/Phy
 describe("kinetic debris damping", () => {
     it("pose accessors read and write entity columns when _physId is set", () => {
         const world = createFractureWorld();
-        const body = world.fractureEngine.debris.acquireBody("box", 0, 0, 0);
+        const body = world.fractureEngine.acquireDebrisProp("box", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 8);
         assignPhysIdWithPose(body, 0);
         body.vx = 200;
@@ -32,7 +32,7 @@ describe("kinetic debris damping", () => {
 
     it("applyVelocityDamping clears debris velocity on entity columns", () => {
         const world = createFractureWorld();
-        const body = world.fractureEngine.debris.acquireBody("box", 0, 0, 0);
+        const body = world.fractureEngine.acquireDebrisProp("box", 0, 0, 0);
         applyPropBoxFootprint(body, 8, 8);
         assignPhysIdWithPose(body, 0);
         body.vx = 200;

@@ -17,7 +17,7 @@ import { createKineticTestTick, assignPhysIdWithPose, snapshotKineticBodySlab } 
 import { liveFracturePropCount, liveWorldPropCount, createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, shatterPolygon, materializeDebrisGeometries, assertDebrisKind } from "./harness/fractureHarness.js";
 import { resolveKineticContactPassWithEffects } from "./harness/kineticContactHarness.js";
 import { runCollisionPipeline } from "../Libraries/Physics/physics.js";
-import { ENTITY_KIND_WORLD_PROP } from "../Core/engineEnums.js";
+import { ENTITY_KIND_WORLD_PROP, ENTITY_KIND_DEBRIS } from "../Core/engineEnums.js";
 import { bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import propCatalog from "../Assets/props/index.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
@@ -244,8 +244,9 @@ describe("fracture", () => {
         
         // Verify it was shattered again (removed or cooldown set)
         let live = false;
-        const store = tick.world.fractureEngine.debris;
-        for (let i = 0; i < store.liveCount; i++) if (store.liveEids[i] === shardEid) live = true;
+        tick.world.entityRegistry.forEachOfKind(ENTITY_KIND_DEBRIS, (p) => {
+            if (p._physId === shardEid) live = true;
+        });
         assert.ok(!live || entityFractureCooldown[shardEid] > 0);
     });
     it("shatterPolygon splits non-rect shard geometry", () => {

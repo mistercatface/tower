@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
 import { getBaseSpriteCacheId, applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
-import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, liveWorldPropCount, assertDebrisKind, stubEvictKineticEid } from "./harness/fractureHarness.js";
+import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint, liveWorldPropCount, liveDebrisEids, assertDebrisKind, stubEvictKineticEid } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { addWorldPropsToState, removeWorldPropEid } from "../GameState/EntityRegistry.js";
 import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
@@ -84,20 +84,19 @@ describe("fracture debris slab spawn", () => {
 
     it("pooled debris bodies reset wall-chunk presentation before box spawn", () => {
         const world = createFractureWorld();
-        const store = world.fractureEngine.debris;
-        const wall = store.acquireBody("wall_voxel_chunk", 0, 0, 0);
+        const wall = world.fractureEngine.acquireDebrisProp("wall_voxel_chunk", 0, 0, 0);
         wall.wallChunkProfileId = "stale_profile";
         wall.wallChunkHeightPx = 64;
         wall.height = 48;
-        store._addLiveEid(wall._physId);
-        store.removeEid(wall._physId, { evictKineticEid: stubEvictKineticEid });
-        const glass = store.acquireBody("box", 10, 10, 0);
+        world.fractureEngine._registerDebrisProp(wall);
+        world.fractureEngine.releaseDebrisEid(wall._physId, { evictKineticEid: stubEvictKineticEid });
+        const glass = world.fractureEngine.acquireDebrisProp("box", 10, 10, 0);
         assert.equal(glass.wallChunkProfileId, undefined);
-        assert.equal(glass.wallChunkHeightPx, undefined);
+        assert.equal(glass.wallChunkHeightPx || 0, 0);
         assert.equal(glass.height, 16);
     });
 
-    it("commitFractureResult places shards on debris slab not worldProps", () => {
+    it("commitFractureResult places shards as DEBRIS not WORLD_PROP", () => {
         const world = createFractureWorld();
         const prop = new WorldProp(50, 50, "box", 0);
         setupPropForFracture(prop, 32, 32, 0);
@@ -108,7 +107,7 @@ describe("fracture debris slab spawn", () => {
         assert.ok(shards.length >= 2);
         assert.ok(shards.every((s) => assertDebrisKind(s)));
         assert.equal(liveWorldPropCount(world.entityRegistry), 0);
-        assert.equal(world.fractureEngine.debris.liveCount, shards.length);
+        assert.equal(liveDebrisEids(world.entityRegistry).length, shards.length);
     });
 
     it("spawnFractureShards leaves registry empty", () => {

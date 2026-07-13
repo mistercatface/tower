@@ -3435,7 +3435,7 @@ function applyFloorPortalTeleports(world, spatialFrame) {
 }
 const fadeRemoveScratch = new GrowI32(16);
 export function removeLiveKineticEid(world, eid, spatialFrame, entityMeta = null) {
-    if (entityKind[eid] === ENTITY_KIND_DEBRIS) world.fractureEngine.debris.removeEid(eid, spatialFrame);
+    if (entityKind[eid] === ENTITY_KIND_DEBRIS) world.fractureEngine.releaseDebrisEid(eid, spatialFrame);
     else removeWorldPropEid(world, eid, spatialFrame, entityMeta);
 }
 export function tickEntityFrames(frame, world, dt) {

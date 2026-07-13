@@ -51,10 +51,34 @@ export function collectLiveWorldProps(registry) {
     return props;
 }
 
-export function liveDebrisBodies(store) {
+export function liveDebrisBodies(registryOrStore) {
     const out = [];
-    for (let i = 0; i < store.liveCount; i++) out.push(entityRefs[store.liveEids[i]]);
+    if (registryOrStore && typeof registryOrStore.forEachOfKind === "function") {
+        registryOrStore.forEachOfKind(ENTITY_KIND_DEBRIS, (prop) => {
+            if (prop.isDead) return;
+            out.push(prop);
+        });
+        return out;
+    }
+    if (registryOrStore?.liveEids) {
+        for (let i = 0; i < registryOrStore.liveCount; i++) out.push(entityRefs[registryOrStore.liveEids[i]]);
+    }
     return out;
+}
+
+export function liveDebrisEids(registry) {
+    const eids = [];
+    registry.forEachOfKind(ENTITY_KIND_DEBRIS, (prop) => {
+        if (prop.isDead) return;
+        eids.push(prop._physId);
+    });
+    return eids;
+}
+
+export function eidInKineticFrame(frame, eid) {
+    const all = frame.kineticEids;
+    for (let i = 0; i < frame.kineticEidCount; i++) if (all[i] === eid) return true;
+    return false;
 }
 
 export function assertDebrisKind(body) {
@@ -67,13 +91,10 @@ export function liveFracturePropCount(world) {
         if (prop.isDead) return;
         if (prop.type === "box") count++;
     });
-    const store = world.fractureEngine?.debris;
-    if (store) {
-        for (let i = 0; i < store.liveCount; i++) {
-            const body = entityRefs[store.liveEids[i]];
-            if (body && !body.isDead && body.type === "box") count++;
-        }
-    }
+    world.entityRegistry.forEachOfKind(ENTITY_KIND_DEBRIS, (prop) => {
+        if (prop.isDead) return;
+        if (prop.type === "box") count++;
+    });
     return count;
 }
 
@@ -142,7 +163,7 @@ export function shatterFootprint(hx, hy, hitX, hitY, impactForce = 10) {
 
 export function spawnFractureShards(world, prop, impactForce = 30, hitX = 0, hitY = 0) {
     if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce, world.fractureEngine)) return null;
-    const shards = world.fractureEngine.debris.spawnShardsFromFracture(prop);
+    const shards = world.fractureEngine.spawnShardsFromFracture(prop);
     return { shards };
 }
 
