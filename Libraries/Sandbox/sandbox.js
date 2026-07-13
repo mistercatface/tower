@@ -1855,7 +1855,7 @@ export function createDirectGroundNavBehavior(state) {
             return writeMoveTargetFromSlotInto(buf, o, slab, eidToSlot.get(eid));
         },
         tick(eid, dt) {
-            if (!state.entityRegistry.getRef(eid)) return;
+            if (!entityAlive[eid]) return;
             const slot = eidToSlot.get(eid);
             if (slot != null) tickSteering(eid, slot);
         },
@@ -1962,7 +1962,7 @@ export function createFlowGroundNavBehavior(state) {
             return writeMoveTargetFromSlotInto(buf, o, slab, eidToSlot.get(eid));
         },
         tick(eid, dt) {
-            if (!state.entityRegistry.getRef(eid)) return;
+            if (!entityAlive[eid]) return;
             const slot = eidToSlot.get(eid);
             if (slot != null) tickSteering(eid, slot);
         },
@@ -2088,7 +2088,7 @@ export function createHpaGroundNavBehavior(state) {
             return writeMoveTargetFromSlotInto(buf, o, slab, eidToSlot.get(eid));
         },
         tick(eid, dt) {
-            if (!state.entityRegistry.getRef(eid)) return;
+            if (!entityAlive[eid]) return;
             const slot = eidToSlot.get(eid);
             if (slot != null) tickSteering(eid, slot, dt);
         },

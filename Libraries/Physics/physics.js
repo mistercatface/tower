@@ -3857,12 +3857,6 @@ export function areKineticLinkNeighborsSlab(physIdA, physIdB) {
     }
     return false;
 }
-export function areKineticLinkNeighbors(bodyA, bodyB) {
-    const physIdA = bodyA._physId;
-    const physIdB = bodyB._physId;
-    if (physIdA === undefined || physIdA === -1 || physIdB === undefined || physIdB === -1) return false;
-    return areKineticLinkNeighborsSlab(physIdA, physIdB);
-}
 function find(i) {
     let root = i;
     while (sleepIslandParent[root] !== root) root = sleepIslandParent[root];
