@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { FractureEngine } from "../Libraries/Physics/fracture.js";
-import { getBaseSpriteCacheId, applyPropBoxFootprint, propShapeFootprintId } from "../Libraries/Props/props.js";
+import { getBaseSpriteCacheId, applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { createFractureWorld, setupPropForFracture, spawnFractureShards, shatterFootprint } from "./harness/fractureHarness.js";
 import { WorldProp } from "../Libraries/Props/props.js";
@@ -9,7 +9,7 @@ import { addWorldPropsToState, removeWorldPropFromState } from "../GameState/Ent
 import { setPropVisualTint } from "../Libraries/Color/visualOverride.js";
 import { getPropStaticKey, getWallChunkSpriteCacheKey } from "../Libraries/Canvas/canvas.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { entityWallChunkTextureReady } from "../Core/engineMemory.js";
+import { entityWallChunkTextureReady, entityFootprintId } from "../Core/engineMemory.js";
 
 const spriteCacheKeyDeps = { quantizeAngleIndex };
 
@@ -27,6 +27,8 @@ describe("fracture debris slab spawn", () => {
     it("distinct irregular shard footprints get distinct sprite cache keys", () => {
         const a = new WorldProp(0, 0, "box", 0);
         const b = new WorldProp(0, 0, "box", 0);
+        assignPhysIdWithPose(a, 1);
+        assignPhysIdWithPose(b, 2);
         a.fractureEnabled = true;
         b.fractureEnabled = true;
         FractureEngine.applyPropFractureGeometry(a, {
@@ -39,7 +41,7 @@ describe("fracture debris slab spawn", () => {
             footprintArea: 200,
             boundingRadius: 16,
         });
-        assert.notEqual(propShapeFootprintId(a), propShapeFootprintId(b));
+        assert.notEqual(entityFootprintId[a._physId], entityFootprintId[b._physId]);
         assert.notEqual(getBaseSpriteCacheId(a, spriteCacheKeyDeps), getBaseSpriteCacheId(b, spriteCacheKeyDeps));
     });
 

@@ -1,10 +1,9 @@
 import { PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON } from "../../Core/engineEnums.js";
 import { FractureEngine } from "../../Libraries/Physics/fracture.js";
 import { KineticSpatialFrame } from "../../Libraries/Spatial/spatial.js";
-import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom } from "../../Libraries/Physics/physics.js";
+import { CircleShape, normalizeKineticBody, createKineticSession, stampPrimitivePhysics, kineticInertiaFromBody, invalidateKineticShapeGeom, computeFootprintIdFromSlab } from "../../Libraries/Physics/physics.js";
 import { clearWorldPropSpawnPose, worldPropBindFlags, noteEntityEidHighWater } from "../../Core/entitySlots.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityRefs, entityFlags, entityRenderKeyId, entityAlive, kineticStaticSlab, kineticDynamicSlab, entityHeight, entityAlpha, entityFaction, entityShapeKind, entityWallProfileId, entityWallHeightPx, entityZIndex, getFactionId, getProfileId, entityFractureCooldown, entityStateTimer, entityFootprintId } from "../../Core/engineMemory.js";
-import { propShapeFootprintId } from "../../Libraries/Props/props.js";
 import { ROLL_DRIVE_NONE, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 export function snapshotKineticBodySlab(eids, count = eids.length) {
     for (let i = 0; i < count; i++) {
@@ -199,6 +198,7 @@ export function assignPhysIdWithPose(body, physId) {
     body._physId = physId;
     invalidateKineticShapeGeom(physId);
     entityRefs[physId] = body;
+    normalizeKineticBody(body);
     entityAlive[physId] = 1;
     entityX[physId] = x;
     entityY[physId] = y;
@@ -227,7 +227,7 @@ export function assignPhysIdWithPose(body, physId) {
     entityZIndex[physId] = zIndex;
     entityFractureCooldown[physId] = fractureCooldown;
     entityStateTimer[physId] = stateTimer;
-    entityFootprintId[physId] = propShapeFootprintId(body);
+    entityFootprintId[physId] = computeFootprintIdFromSlab(physId);
     if (body.strategy?.physicsRow != null) kineticStaticSlab.physicsRow[physId] = body.strategy.physicsRow;
     if (body.id != null) kineticStaticSlab.entityId[physId] = body.id;
     if (!body.isKineticDebris) {

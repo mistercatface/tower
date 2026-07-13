@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps, invalidateEntityFootprint } from "../Libraries/Props/props.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createWallChunkDraw, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
@@ -32,14 +32,18 @@ describe("draw shape parity", () => {
     it("hex and tri wedge bucket different sprite cache footprints", () => {
         const hex = new WorldProp(0, 0, "hex_block", 0);
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);
+        bindStageProp(hex);
+        bindStageProp(wedge);
         const hexKey = getBaseSpriteCacheId(hex, cacheKeyDeps);
         const wedgeKey = getBaseSpriteCacheId(wedge, cacheKeyDeps);
         assert.notEqual(hexKey, wedgeKey);
     });
     it("resized custom box changes sprite cache footprint bucket", () => {
         const prop = new WorldProp(0, 0, "box", 0);
+        bindStageProp(prop);
         const before = getBaseSpriteCacheId(prop, cacheKeyDeps);
         applyPropBoxFootprint(prop, 12, 5);
+        invalidateEntityFootprint(prop._physId);
         const after = getBaseSpriteCacheId(prop, cacheKeyDeps);
         assert.notEqual(before, after);
         assert.equal(typeof after, "number");

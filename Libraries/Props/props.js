@@ -64,7 +64,7 @@ export function scalePolygonPropFootprint(prop, scale) {
     writeLivePolygon(prop, POLYGON_SCALE_SCRATCH, n);
     if (prop.height != null) prop.height *= scale;
     prop.stateTimer = (prop.stateTimer ?? 0) + 1;
-    invalidatePropFootprintKey(prop);
+    invalidateEntityFootprint(prop._physId);
     normalizeKineticBody(prop);
     wakeKineticBody(prop._physId);
 }
@@ -82,17 +82,14 @@ export function setCirclePropRadius(prop, radius) {
     if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`setCirclePropRadius requires a circle prop, got shapeTypeId=${shape?.shapeTypeId}`);
     prop.shape = new CircleShape(radius);
     prop.radius = radius;
-    invalidatePropFootprintKey(prop);
-    if (prop._physId !== undefined) stampKineticCircleRadius(prop._physId, radius);
+    invalidateEntityFootprint(prop._physId);
+    stampKineticCircleRadius(prop._physId, radius);
     normalizeKineticBody(prop);
     wakeKineticBody(prop._physId);
 }
 /** Shared defaults for world prop strategies (WorldProp reads these via buildWorldPropStrategyFromAsset). */
 export const PROP_STRATEGY_DEFAULTS = { isKinetic: true, renderMode: PROP_RENDER_MODE_3D, render3DKey: null, renderKeyId: 0, inspectKey: null, rolls: false, orientToMotion: false };
-export function invalidatePropFootprintKey(prop) {
-    prop._footprintKey = undefined;
-    prop._footprintId = undefined;
-    const eid = prop._physId;
+export function invalidateEntityFootprint(eid) {
     entityCachedStaticKey[eid] = 0n;
     entityFootprintId[eid] = computeFootprintIdFromSlab(eid);
 }
@@ -108,7 +105,6 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     fp[6] = -hx;
     fp[7] = hy;
     writeLivePolygon(prop, fp, n);
-    invalidatePropFootprintKey(prop);
     normalizeKineticBody(prop);
 }
 export function initWorldPropShape(prop) {
@@ -118,11 +114,9 @@ export function initWorldPropShape(prop) {
             writeLivePolygon(prop, template, template.length);
             prop.collisionParts = undefined;
             prop.drawOutline = undefined;
-            invalidatePropFootprintKey(prop);
             return;
         }
         applyCompoundFootprint(prop, template);
-        invalidatePropFootprintKey(prop);
         return;
     }
     releaseLivePolygon(prop);
@@ -130,7 +124,6 @@ export function initWorldPropShape(prop) {
     prop.shape = new CircleShape(prop.radius);
     prop.collisionParts = undefined;
     prop.drawOutline = undefined;
-    invalidatePropFootprintKey(prop);
 }
 export function propFootprintHalfExtentsInto(buf, o, prop) {
     const shape = prop.shape;
@@ -142,44 +135,6 @@ export function propFootprintHalfExtentsInto(buf, o, prop) {
     const radius = shape.radius;
     buf[o] = radius;
     buf[o + 1] = radius;
-}
-export function propShapeFootprintId(prop) {
-    if (prop._footprintId !== undefined) return prop._footprintId;
-    const shape = prop.shape;
-    let id;
-    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-        let hash = 2166136261;
-        function mixVerts(verts) {
-            const count = verts.length;
-            hash ^= count >>> 0;
-            hash = Math.imul(hash, 16777619);
-            for (let i = 0; i < count; i++) {
-                const q = Math.round(verts[i] * 8);
-                hash ^= q;
-                hash = Math.imul(hash, 16777619);
-            }
-        }
-        const outline = prop.drawOutline;
-        if (outline?.length >= 6) mixVerts(outline);
-        else {
-            const parts = prop.collisionParts;
-            if (parts?.length > 1) {
-                hash ^= parts.length >>> 0;
-                hash = Math.imul(hash, 16777619);
-                for (let p = 0; p < parts.length; p++) mixVerts(parts[p].vertices);
-            } else mixVerts(shape.vertices);
-        }
-        id = hash >>> 0;
-        if (prop.chunks?.length) id = (id ^ Math.imul(prop.chunks.length, 16777619)) >>> 0;
-    } else {
-        if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`propShapeFootprintId: unknown shapeTypeId ${shape?.shapeTypeId}`);
-        id = Math.round(shape.radius * 4) >>> 0;
-    }
-    prop._footprintId = id & 0xfffff;
-    return prop._footprintId;
-}
-function propShapeFootprintKey(prop) {
-    return `f${propShapeFootprintId(prop)}`;
 }
 const FACING_STEPS_MAX = 360;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
@@ -207,7 +162,7 @@ export function getBaseSpriteCacheId(prop, deps) {
     let orient;
     if (prop.strategy?.rolls) orient = packRollOrientId(prop, steps.facing);
     else orient = quantizeAngleIndex(readEntityFacing(prop), steps.facing);
-    const foot = propShapeFootprintId(prop);
+    const foot = entityFootprintId[prop._physId];
     const vo = visualOverrideCacheId(prop);
     let h = 2166136261;
     h ^= orient >>> 0;
@@ -335,7 +290,6 @@ export class WorldProp {
         this.wallChunkProfileId = undefined;
         this.wallChunkHeightPx = undefined;
         stampSurfaceProfileFields(this, asset);
-        this._footprintKey = undefined;
         initWorldPropShape(this);
         normalizeKineticBody(this);
         delete this._physId;
@@ -658,7 +612,6 @@ function scaleVirtualPropShape(prop, scale) {
         prop.shape = new CircleShape(shape.radius * scale);
         prop.radius = prop.shape.radius;
         if (prop.height != null) prop.height *= scale;
-        invalidatePropFootprintKey(prop);
         return;
     }
     if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
@@ -667,7 +620,6 @@ function scaleVirtualPropShape(prop, scale) {
         for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;
         writeLivePolygon(prop, POLYGON_SCALE_SCRATCH, n);
         if (prop.height != null) prop.height *= scale;
-        invalidatePropFootprintKey(prop);
     }
 }
 function resolveVirtualPropScale(parentProp, childProp, cfg) {
@@ -718,7 +670,7 @@ function createVirtualAttachmentProp(parentProp, cfg, heading) {
     const localX = (offset.x ?? 0) * offsetScale;
     const localY = (offset.y ?? 0) * offsetScale;
     rotateXYIntoF32(M_VEC_A, localX, localY, Math.cos(heading), Math.sin(heading));
-    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: resolveAssetPropHeight(childAsset), visualOverride: undefined, _visualAttachmentId: cfg.id, _footprintKey: undefined };
+    const prop = { type: cfg.propId, strategy, x: parentProp.x + ENGINE_F32[M_VEC_A], y: parentProp.y + ENGINE_F32[M_VEC_A + 1], facing: heading + (cfg.facingOffset ?? 0), height: resolveAssetPropHeight(childAsset), visualOverride: undefined, _visualAttachmentId: cfg.id };
     stampSurfaceProfileFields(prop, childAsset);
     if (parentProp.wallChunkProfileId) prop.wallChunkProfileId = parentProp.wallChunkProfileId;
     initWorldPropShape(prop);

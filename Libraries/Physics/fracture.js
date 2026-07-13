@@ -5,7 +5,7 @@ import { kineticDynamicSlab, kineticStaticSlab, kineticDebrisSlab, pendingWallBr
 import { WALL_SEG_VOXEL, WALL_SEG_EDGE_RAIL, KINETIC_PAIR_CIRCLE_CIRCLE, SHAPE_TYPE_POLYGON, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "../../Core/engineEnums.js";
 import { createDeferredGridWallCommit, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, resolveEdgeSurfaceProfileId, isRailWallEdge, cellIsStaticWall, cellEdgeEndpointsIdx, RailWallBatch, edgeRailEmitOwner, edgeNeighborIdx, edgeRailCollisionThicknessPx, railWallCapLevel, neighborFillLevel } from "../Spatial/spatial.js";
 import { convexFootprintHalfExtents, polygonCentroid2DInto, pointInPolygon, polygonSignedArea2D, deterministicUnitRandom } from "../Math/math.js";
-import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidatePropFootprintKey, resolveAssetPropHeight } from "../Props/props.js";
+import { applyPropBoxFootprint, sharedWorldPropStrategy, invalidateEntityFootprint, resolveAssetPropHeight } from "../Props/props.js";
 import { stampPropVisualOverride } from "../Color/visualOverride.js";
 export const FRACTURE_TUNING = { shared: { minPieceSize: 5, cooldown: 8, refSpan: 40, sizeForceExp: 1.25 }, default: { impactThreshold: 6, minShardArea: 12, maxShardsPerShatter: 12 }, wallSpawn: { forceBias: 10 }, burst: { maxBurst: 35, baseBurst: 8, burstForceScale: 0.12, spinScale: 0.4 } };
 const DEFAULT_FRACTURE_CONFIG = Object.freeze({ impactThreshold: FRACTURE_TUNING.default.impactThreshold, minShardArea: FRACTURE_TUNING.default.minShardArea, maxShardsPerShatter: FRACTURE_TUNING.default.maxShardsPerShatter });
@@ -41,7 +41,6 @@ function copyDebrisPolygonGeometry(dst, src) {
     writeLivePolygon(dst, verts, n);
     dst.footprintArea = src.footprintArea;
     dst.radius = src.radius;
-    invalidatePropFootprintKey(dst);
 }
 const kineticDebrisFreePool = [];
 let kineticDebrisNextId = 0x50000000;
@@ -282,7 +281,6 @@ class KineticDebrisBody {
         this._spawnFractureCooldown = 0;
         this._spawnStateTimer = 0;
         this._listIndex = -1;
-        this._footprintKey = undefined;
     }
     get isDead() {
         const eid = this._physId;
@@ -450,7 +448,7 @@ class KineticDebrisStore {
         this.world = world;
         this._bodies = [];
         this._integratedScratch = [];
-        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined, _footprintKey: undefined };
+        this._breakSource = { id: -1, type: "", strategy: null, x: 0, y: 0, vx: 0, vy: 0, angularVelocity: 0, facing: 0, shape: null, chunks: undefined, footprintArea: undefined, radius: 0, wallChunkProfileId: undefined, wallChunkHeightPx: undefined, height: undefined };
     }
     list() {
         return this._bodies;
@@ -1049,7 +1047,7 @@ export class FractureEngine {
         writeLivePolygon(prop, src, n);
         prop.footprintArea = geometry.footprintArea;
         prop.radius = geometry.boundingRadius;
-        invalidatePropFootprintKey(prop);
+        invalidateEntityFootprint(prop._physId);
         normalizeKineticBody(prop);
     }
     static applyPropFractureGeometryFromDebris(prop, stores, debrisIndex) {
@@ -1063,7 +1061,7 @@ export class FractureEngine {
         prop.collisionParts = undefined;
         prop.footprintArea = debris.footprintArea[debrisIndex];
         prop.radius = debris.boundingRadius[debrisIndex];
-        invalidatePropFootprintKey(prop);
+        invalidateEntityFootprint(prop._physId);
         normalizeKineticBody(prop);
     }
     static propFractureSpan(prop) {
