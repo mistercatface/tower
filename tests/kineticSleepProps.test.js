@@ -1,15 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { readEntityFacing, SAT_RESULT } from "../Libraries/Physics/physics.js";
+import { readEntityFacing, SAT_RESULT, separateAlongNormalSlab, LIBRARY_COLLISION_DEFAULTS, advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor, isKinematicallyActiveSlab, pairBroadphaseOverlapSlab, allowsKineticCollisionPairSlab, snapshotKineticBodySlab, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
-import { separateAlongNormal } from "../Libraries/Physics/physics.js";
-import { LIBRARY_COLLISION_DEFAULTS } from "../Libraries/Physics/physics.js";
-import { advanceKineticSleep, evaluateKineticSleepEligible, hasSleepBlockingNeighbor } from "../Libraries/Physics/physics.js";
-import { isKinematicallyActiveSlab, pairBroadphaseOverlapSlab, allowsKineticCollisionPairSlab, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
 import { entityRefs } from "../Core/engineMemory.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 const SLEEP_FRAMES = LIBRARY_COLLISION_DEFAULTS.kineticSleepFrames;
 const EMPTY_NEIGHBOR_EIDS = new Int32Array(0);
 function bindPair(a, b) {
@@ -25,15 +20,19 @@ function neighborEids(...bodies) {
     return eids;
 }
 function separatePairUntilClear(a, b, maxPasses = 8) {
+    if (a._physId === undefined) assignPhysIdWithPose(a, 0);
+    if (b._physId === undefined) assignPhysIdWithPose(b, 1);
+    normalizeKineticBody(a);
+    normalizeKineticBody(b);
     for (let pass = 0; pass < maxPasses; pass++) {
         const collided = satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
-        if (!collided) return;
+        if (!collided || SAT_RESULT[0] < 1e-5) return;
         const overlap = SAT_RESULT[0];
         const nx = SAT_RESULT[1];
         const ny = SAT_RESULT[2];
         const coincident = SAT_RESULT[5] !== 0;
         if (coincident) return;
-        separateAlongNormal(a, b, nx, ny, overlap, kineticMassFromFootprint(a), kineticMassFromFootprint(b));
+        separateAlongNormalSlab(a._physId, b._physId, nx, ny, overlap);
     }
 }
 describe("kinetic sleep on proof props", () => {

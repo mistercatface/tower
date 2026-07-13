@@ -255,11 +255,6 @@ export function stampPrimitivePhysics(strategy, row = primitivePhysicsRow(strate
     strategy.physicsRow = row;
     return strategy;
 }
-export function primitiveDragFriction(bodyOrStrategy) {
-    const eid = bodyOrStrategy._physId;
-    const row = eid !== undefined && eid !== -1 ? kineticStaticSlab.physicsRow[eid] : bodyOrStrategy.physicsRow;
-    return primitivePhysics.dragFriction[row];
-}
 export function primitiveDragFrictionEid(eid) {
     return primitivePhysics.dragFriction[kineticStaticSlab.physicsRow[eid]];
 }
@@ -1600,23 +1595,8 @@ export function applySlabPositionCorrection(physId, normalX, normalY, overlap) {
     kineticDynamicSlab.x[physId] += normalX * overlap;
     kineticDynamicSlab.y[physId] += normalY * overlap;
 }
-/**
- * Mass-weighted separation of two overlapping bodies.
- * @param {{ x: number, y: number }} a — mutated in place
- * @param {{ x: number, y: number }} b — mutated in place
- */
-export function separateAlongNormal(a, b, normalX, normalY, overlap, massA, massB) {
-    const totalMass = massA + massB;
-    addXY(a, -normalX * overlap * (massB / totalMass), -normalY * overlap * (massB / totalMass));
-    addXY(b, normalX * overlap * (massA / totalMass), normalY * overlap * (massA / totalMass));
-}
 /** Circle centers closer than this share no valid contact normal — unstack only, no impulse. */
 export const COINCIDENT_CIRCLE_EPS = 1e-10;
-/**
- * Positional unstack when circle centers coincide (invalid state; breaks symmetry for next pass).
- * @param {{ x: number, y: number }} a — mutated in place
- * @param {{ x: number, y: number }} b — mutated in place
- */
 export function computeCircleWallContact(buf, o, ex, ey, normalX, normalY, radius) {
     buf[o] = ex - normalX * radius;
     buf[o + 1] = ey - normalY * radius;
@@ -1902,7 +1882,8 @@ function appendWallHit(outHits, approachDot, normalX, normalY, contactX, contact
     outHits.flags[i] = slab.flags[segId];
     outHits.count = i + 1;
 }
-function resolveAgainstWallSegmentsSlab(physId, segIds, restitution, friction, passes, shouldBreakWallHit, outHits) {
+export function resolveAgainstWallSegmentsSlab(physId, segIds, restitution, friction, passes, shouldBreakWallHit, outHits) {
+    if (outHits) outHits.count = 0;
     const dyn = kineticDynamicSlab;
     const wallSlab = staticWallSegmentSlab;
     const geom0 = dyn.partGeomOffset[physId];
@@ -1982,11 +1963,6 @@ function resolveAgainstWallSegmentsSlab(physId, segIds, restitution, friction, p
         }
     }
     return collided;
-}
-export function resolveBodyAgainstWallSegments(eid, segIds, restitution = 0, friction = 0.9, shouldBreakWallHit = null, outHits = null, passes = 2) {
-    if (eid === undefined || eid === -1) throw new Error("resolveBodyAgainstWallSegments requires eid");
-    if (outHits) outHits.count = 0;
-    return resolveAgainstWallSegmentsSlab(eid, segIds, restitution, friction, passes, shouldBreakWallHit, outHits);
 }
 const wallResolvedFrameByEid = new Int32Array(MAX_PHYS_BODIES);
 wallResolvedFrameByEid.fill(-1);

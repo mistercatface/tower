@@ -1597,10 +1597,10 @@ export function resyncChainLinkRestLengths(state, memberIds, linkSlack) {
     for (let i = 0; i < store.count; i++) {
         if (store.type[i] !== CONSTRAINT_TYPE_DISTANCE) continue;
         if (!members.has(store.bodyAId[i]) || !members.has(store.bodyBId[i])) continue;
-        const bodyA = state.entityRegistry.getLive(store.bodyAId[i]);
-        const bodyB = state.entityRegistry.getLive(store.bodyBId[i]);
-        if (!bodyA || !bodyB || bodyA.isDead || bodyB.isDead) continue;
-        store.restLength[i] = resolveChainLinkRestLength(bodyA, bodyB, linkSlack);
+        const pa = store.physIdA[i];
+        const pb = store.physIdB[i];
+        if (!entityAlive[pa] || !entityAlive[pb]) continue;
+        store.restLength[i] = (entityR[pa] + entityR[pb]) * linkSlack;
     }
 }
 export function resolveGroundNavSteeringProp(state, entityMeta, propIds) {

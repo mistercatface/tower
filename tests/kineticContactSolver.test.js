@@ -1,25 +1,25 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint } from "../Libraries/Props/props.js";
-import { readEntityFacing, SAT_RESULT, snapshotKineticBodySlab } from "../Libraries/Physics/physics.js";
+import { WorldProp, applyPropBoxFootprint, setCirclePropRadius } from "../Libraries/Props/props.js";
+import { readEntityFacing, SAT_RESULT, separateAlongNormalSlab, gatherKineticContactPairs, resolveKineticContactPassWithPairs, snapshotKineticBodySlab, normalizeKineticBody } from "../Libraries/Physics/physics.js";
 import { satCheckCollision } from "./harness/satCollisionHarness.js";
-import { separateAlongNormal } from "../Libraries/Physics/physics.js";
 import { resolveKineticContactPass, checkPairAtSlabPose } from "./harness/kineticContactHarness.js";
-import { gatherKineticContactPairs, resolveKineticContactPassWithPairs } from "../Libraries/Physics/physics.js";
 import { kineticDynamicSlab, entityRefs } from "../Core/engineMemory.js";
 import { createKineticTestTick, mockKineticCircle, assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
-import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import { dotXY } from "../Libraries/Math/math.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
 function pairStillOverlaps(a, b) {
-    return satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
+    if (!satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape)) return false;
+    return SAT_RESULT[0] >= 1e-5;
 }
 function separatePairUntilClear(a, b, maxPasses = 8) {
+    if (a._physId === undefined) assignPhysIdWithPose(a, 0);
+    if (b._physId === undefined) assignPhysIdWithPose(b, 1);
+    normalizeKineticBody(a);
+    normalizeKineticBody(b);
     let last = null;
     for (let pass = 0; pass < maxPasses; pass++) {
         const collided = satCheckCollision(a.x, a.y, readEntityFacing(a), a.shape, b.x, b.y, readEntityFacing(b), b.shape);
-        if (!collided) return last;
+        if (!collided || SAT_RESULT[0] < 1e-5) return last;
         last = {
             overlap: SAT_RESULT[0],
             nx: SAT_RESULT[1],
@@ -29,7 +29,7 @@ function separatePairUntilClear(a, b, maxPasses = 8) {
             featureB: SAT_RESULT[7]
         };
         if (last.coincident) break;
-        separateAlongNormal(a, b, last.nx, last.ny, last.overlap, kineticMassFromFootprint(a), kineticMassFromFootprint(b));
+        separateAlongNormalSlab(a._physId, b._physId, last.nx, last.ny, last.overlap);
     }
     return last;
 }

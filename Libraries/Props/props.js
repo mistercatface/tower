@@ -1,5 +1,5 @@
 import { removeWorldPropFromState } from "../../GameState/EntityRegistry.js";
-import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFriction } from "../Physics/physics.js";
+import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, readEntityFacing, applyVelocityDamping, integratePropMotion, kineticInertiaFromBody, normalizeKineticBody, quantizeBodyRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, primitiveDragFrictionEid } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ATTACH_HEADING_VELOCITY, ATTACH_OFFSET_PARENT_RADIUS } from "../../Core/engineEnums.js";
 import { ensureFlatVerts, quantizeAngleIndex, convexFootprintHalfExtents, vertCount, quantizeAngle, rotateXYIntoF32, CARDINAL_FACING_STEPS, rotateAngleTowards, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
@@ -505,7 +505,7 @@ export class WorldProp {
         if (this.isSleeping) return;
         const eid = this._physId;
         if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) integratePropMotion(eid, dt);
-        else applyVelocityDamping(eid, dt, primitiveDragFriction(this));
+        else applyVelocityDamping(eid, dt, primitiveDragFrictionEid(eid));
         if ((entityFlags[eid] & ENTITY_FLAG_ORIENT_TO_MOTION) !== 0) {
             const vx = entityVx[eid];
             const vy = entityVy[eid];

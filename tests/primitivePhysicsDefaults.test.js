@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { WorldProp, buildWorldPropStrategyFromAsset, applyPropBoxFootprint } from "../Libraries/Props/props.js";
 import { primitivePhysics } from "../Core/engineMemory.js";
-import { kineticMassFromFootprint, primitiveDragFriction } from "../Libraries/Physics/physics.js";
+import { kineticMassFromFootprint } from "../Libraries/Physics/physics.js";
 import propCatalog from "../Assets/props/index.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -39,8 +39,8 @@ describe("primitive physics SoA", () => {
         assert.equal(box.wallPhysics, undefined);
         assert.equal(primitivePhysics.density[ball.physicsRow], primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
         assert.equal(primitivePhysics.density[box.physicsRow], primitivePhysics.density[PRIMITIVE_PHYSICS_ROW_POLYGON]);
-        assert.equal(primitiveDragFriction(ball), primitivePhysics.dragFriction[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
-        assert.equal(primitiveDragFriction(box), primitivePhysics.dragFriction[PRIMITIVE_PHYSICS_ROW_POLYGON]);
+        assert.equal(primitivePhysics.dragFriction[ball.physicsRow], primitivePhysics.dragFriction[PRIMITIVE_PHYSICS_ROW_CIRCLE]);
+        assert.equal(primitivePhysics.dragFriction[box.physicsRow], primitivePhysics.dragFriction[PRIMITIVE_PHYSICS_ROW_POLYGON]);
         assert.equal(primitivePhysics.wallFriction[boid.physicsRow], primitivePhysics.wallFriction[ball.physicsRow]);
         assert.equal(primitivePhysics.density[pinwheel.physicsRow], primitivePhysics.density[box.physicsRow]);
     });
