@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { spawnPlacedSandboxProp } from "../Libraries/Sandbox/sandbox.js";
-import { setCirclePropRadius, getPolygonPropBoundingRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
+import { setCirclePropRadius, setPolygonPropBoundingRadius } from "../Libraries/Props/props.js";
 import { getBaseSpriteCacheId } from "../Libraries/Props/props.js";
 import { CircleShape } from "../Libraries/Physics/physics.js";
-import { kineticStaticSlab } from "../Core/engineMemory.js";
+import { kineticStaticSlab, kineticDynamicSlab } from "../Core/engineMemory.js";
 import { WorldProp } from "../Libraries/Props/props.js";
 import { createSandboxKineticWorld } from "./harness/stateFactories.js";
 
@@ -27,9 +27,9 @@ describe("propScale", () => {
 
     it("setPropRadius rescales polygon props", () => {
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);
-        const baseline = getPolygonPropBoundingRadius(wedge);
+        const baseline = kineticDynamicSlab.r[wedge._physId];
         setPolygonPropBoundingRadius(wedge, 2);
-        assert.ok(Math.abs(getPolygonPropBoundingRadius(wedge) - 2) < 0.01);
+        assert.ok(Math.abs(kineticDynamicSlab.r[wedge._physId] - 2) < 0.01);
         assert.ok(wedge.shape.vertices.every((val) => Math.abs(val) <= 2.5));
         assert.ok(baseline > 9);
     });

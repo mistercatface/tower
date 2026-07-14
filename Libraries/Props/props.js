@@ -49,9 +49,6 @@ export const PROP_PRIMITIVE_BUILDERS = [];
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] = createSpherePrimitive;
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON] = createWallChunkDraw;
 if (PROP_PRIMITIVE_BUILDERS.length !== PROP_PRIMITIVE_COUNT || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON]) throw new Error("PROP_PRIMITIVE_BUILDERS incomplete relative to PROP_PRIMITIVE_COUNT");
-export function getPolygonPropBoundingRadius(prop) {
-    return prop.radius;
-}
 export function scalePolygonPropFootprint(prop, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const shape = prop.shape;
@@ -66,7 +63,7 @@ export function scalePolygonPropFootprint(prop, scale) {
     wakeKineticBody(prop._physId);
 }
 export function setPolygonPropBoundingRadius(prop, boundingRadius) {
-    const currentRadius = getPolygonPropBoundingRadius(prop);
+    const currentRadius = kineticDynamicSlab.r[prop._physId];
     if (!currentRadius || currentRadius <= 0) throw new Error(`setPolygonPropBoundingRadius requires a polygon prop with positive radius, got ${currentRadius}`);
     scalePolygonPropFootprint(prop, boundingRadius / currentRadius);
 }
