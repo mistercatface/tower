@@ -1,13 +1,14 @@
 import { traceAabbRect, strokeSegment, traceSegment, fillStrokeCircle, strokeCircle, strokeOpenPolylineF32, traceClosedFlatPolygon, traceFlatQuad, fillRgbaBuffer, fillRgbaRect, strokeAxisLineRgba, createOffscreenCanvas, resizeOffscreenCanvas, drawCachedOverlayGlyph, drawCachedPropSprite, drawImageQuadFromFlatRingsWithBaseTransform, drawImageQuadWithBaseTransformScalars, drawImageTriangleWithBaseTransformScalars, blitMaskOverlay, addMaskPathFill, cutOutRadialSoftDisc, fillMaskBase, traceWoundFlatQuad, traceCircle } from "../Canvas/canvas.js";
 import { isRailWallEdge, forEachCellEdge, gridNavCacheKey, resolveElevationAlpha, extrudeLocalVertsInto, isOutwardFaceTowardViewer, projectWorldPoint, projectWorldQuad, resolveSurfaceProfileId, SURFACE_MATERIAL_OWNER, cellInRect, floorOccupancyStampDrawCacheKey, projectWallShadowQuadScreen, collectExposedWallEdgesInAabbF32 } from "../Spatial/spatial.js";
 import { quantizeAngleIndex, normalizeXYInto, lengthXY, flatQuadOverlapAabbF32, aabbFromTwoPointsF32, distanceSqToAabbF32, centerReachAabbF32, hashString, mixHash4 } from "../Math/math.js";
-import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, entityX, entityY, entityFlags, entityRenderKeyId, GrowF32, entityWallProfileId, entityWallHeightPx, getProfileStr, entityCachedStaticKey, entityWallChunkTextureReady } from "../../Core/engineMemory.js";
-import { transformRollVertexInto } from "../Physics/physics.js";
-import { DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE } from "../../Core/engineEnums.js";
+import { ENGINE_F32, ENGINE_U8, ENGINE_BOUNDS_BASE, B_TMP, M_OUT_NX, M_OUT_NY, M_OUT_LEN, M_OUT_VX, M_OUT_VY, M_OUT_VZ, S_OUT_XY, S_OUT_SCREEN, S_AABB, S_QUAD, R_QUAD_A, R_SUBDIV, R_CAP_CORNERS, R_CAP_UV, R_CAP_SRC, R_CHEVRON, R_FACE_BAND_BOT, R_FACE_BAND_TOP, U8_FACE_VISIBLE, MAX_PRISM_FACES, wallFaceDrawMemoSlab, clearWallFaceDrawMemoSlab, viewBoundsBuf, VIEW_TIER_PROPS, VIEW_TIER_STRUCTURE, VIEW_TIER_CHUNKS, entityX, entityY, entityFlags, entityRenderKeyId, GrowF32, entityWallProfileId, entityWallHeightPx, getProfileStr, entityCachedStaticKey, entityWallChunkTextureReady, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityR, entityHeight, entityFacing, entityRefs } from "../../Core/engineMemory.js";
+import { transformRollVertexInto, quantizeRollQuatF32 } from "../Physics/physics.js";
+import { DRAW_KIND_PROP, DRAW_KIND_VOXEL, DRAW_KIND_RAIL, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_NORMAL, OVERLAY_CMD_AABB, OVERLAY_CMD_CIRCLE_STROKE, OVERLAY_CMD_CIRCLE_FILL_STROKE, OVERLAY_CMD_SEGMENT, OVERLAY_CMD_POLYLINE, OVERLAY_CMD_AIM_SEGMENT, OVERLAY_RENDER_KEY_SELECTION_RING, OVERLAY_RENDER_KEY_PATH_DESTINATION, OVERLAY_RENDER_KEY_GRID_CELL_HIGHLIGHT, OVERLAY_RENDER_KEY_PATH_DEBUG_NODE, WALL_FACE_ATLAS_MISS, WALL_FACE_SUBDIV_NONE, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
 import { collectVoxelWallFacesInAabbFlatF32, collectRailWallBoxesInAabbF32, flatRailWallCapUvCornersIntoFlat, resolveWallCapHeightPx } from "../World/wallGridBake.js";
 import { VOXEL_FACE_CX, VOXEL_FACE_CY, VOXEL_FACE_OUT_X, VOXEL_FACE_OUT_Y, VOXEL_FACE_X1, VOXEL_FACE_Y1, VOXEL_FACE_X2, VOXEL_FACE_Y2, VOXEL_FACE_WALL_HEIGHT, VOXEL_FACE_WALL_BASE_Z, VOXEL_FACE_WALL_CAP_HEIGHT, VOXEL_FACE_GRID_SIDE, VOXEL_FACE_GRID_IDX, VOXEL_FACE_STRIDE, RAIL_BOX_MIN_X, RAIL_BOX_MAX_X, RAIL_BOX_MIN_Y, RAIL_BOX_MAX_Y, RAIL_BOX_INNER_P1X, RAIL_BOX_INNER_P1Y, RAIL_BOX_INNER_P2X, RAIL_BOX_INNER_P2Y, RAIL_BOX_OUTER_P1X, RAIL_BOX_OUTER_P1Y, RAIL_BOX_OUTER_P2X, RAIL_BOX_OUTER_P2Y, RAIL_BOX_INWARD_X, RAIL_BOX_INWARD_Y, RAIL_BOX_CX, RAIL_BOX_CY, RAIL_BOX_WALL_CAP_HEIGHT, RAIL_BOX_WALL_HEIGHT, RAIL_BOX_WALL_BASE_Z, RAIL_BOX_GRID_SIDE, RAIL_BOX_GRID_IDX, RAIL_BOX_STRIDE } from "../World/wallGridStride.js";
 import { StrideFloatList } from "../World/StrideFloatList.js";
 import { propCatalogByRenderKeyId } from "../../Assets/props/index.js";
+import { resolvePropQuantizeSteps } from "../Props/props.js";
 import { getSurfaceProfileRevision, SS_POINTS } from "../WorldSurface/worldSurface.js";
 const WALL_ATLAS_FACE_NONE = 0;
 const WALL_ATLAS_FACE_INNER = 1;
@@ -606,9 +607,9 @@ export function drawOverlayCommands(ctx, slab, viewport) {
 function ensureFlatProjectedVertScratch(count) {
     if (flatProjectedVerts.length < count * 2) flatProjectedVerts = new Float32Array(count * 2);
 }
-export function projectPropVertexScalarsInto(out8, offset, prop, viewport, lx, ly, lz) {
-    const wx = prop.x + lx;
-    const wy = prop.y + ly;
+export function projectPropVertexScalarsInto(out8, offset, eid, viewport, lx, ly, lz) {
+    const wx = entityX[eid] + lx;
+    const wy = entityY[eid] + ly;
     if (Math.abs(lz) <= 0.001) {
         out8[offset] = wx;
         out8[offset + 1] = wy;
@@ -679,7 +680,7 @@ function pushSphereFace(i0, i1, i2, panel) {
     sSphereFacePanel[f] = panel;
     sSphereFaceDepth[f] = (sSphereVertZ[i0] + sSphereVertZ[i1] + sSphereVertZ[i2]) / 3;
 }
-function isSphereFaceVisible(prop, viewport, i0, i1, i2) {
+function isSphereFaceVisible(eid, viewport, i0, i1, i2) {
     const v0lx = sSphereVertLx[i0];
     const v0ly = sSphereVertLy[i0];
     const v0z = sSphereVertZ[i0];
@@ -698,21 +699,21 @@ function isSphereFaceVisible(prop, viewport, i0, i1, i2) {
     const nx = ay * bz - az * by;
     const ny = az * bx - ax * bz;
     const nz = ax * by - ay * bx;
-    const cx = prop.x + (v0lx + v1lx + v2lx) / 3;
-    const cy = prop.y + (v0ly + v1ly + v2ly) / 3;
+    const cx = entityX[eid] + (v0lx + v1lx + v2lx) / 3;
+    const cy = entityY[eid] + (v0ly + v1ly + v2ly) / 3;
     const cz = (v0z + v1z + v2z) / 3;
     const vx = viewport.x - cx;
     const vy = viewport.y - cy;
     const vz = viewport.cameraHeight - cz;
     return nx * vx + ny * vy + nz * vz > 0;
 }
-function drawSphereFaceTextured(ctx, prop, viewport, i0, i1, i2) {
+function drawSphereFaceTextured(ctx, eid, viewport, i0, i1, i2) {
     const canvas = wallChunkPipeline._wallChunkCapCanvas;
     if (!canvas) return;
     ensureFlatProjectedVertScratch(3);
-    projectPropVertexScalarsInto(flatProjectedVerts, 0, prop, viewport, sSphereVertLx[i0], sSphereVertLy[i0], sSphereVertZ[i0]);
-    projectPropVertexScalarsInto(flatProjectedVerts, 2, prop, viewport, sSphereVertLx[i1], sSphereVertLy[i1], sSphereVertZ[i1]);
-    projectPropVertexScalarsInto(flatProjectedVerts, 4, prop, viewport, sSphereVertLx[i2], sSphereVertLy[i2], sSphereVertZ[i2]);
+    projectPropVertexScalarsInto(flatProjectedVerts, 0, eid, viewport, sSphereVertLx[i0], sSphereVertLy[i0], sSphereVertZ[i0]);
+    projectPropVertexScalarsInto(flatProjectedVerts, 2, eid, viewport, sSphereVertLx[i1], sSphereVertLy[i1], sSphereVertZ[i1]);
+    projectPropVertexScalarsInto(flatProjectedVerts, 4, eid, viewport, sSphereVertLx[i2], sSphereVertLy[i2], sSphereVertZ[i2]);
     let minX = flatProjectedVerts[0];
     let maxX = minX;
     let minY = flatProjectedVerts[1];
@@ -853,31 +854,41 @@ export function buildSphereMesh(radius, latBands, lonBands, qw, qx, qy, qz) {
 }
 export const SPHERE_LON_BANDS = 6;
 export const SPHERE_LAT_BANDS = 5;
-export function drawFlatSphereDisc(ctx, prop, radius) {
-    if (!(wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas && fillCapPathWithChunkTexture(ctx, prop.x, prop.y))) return;
-    traceCircle(ctx, prop.x, prop.y, radius);
+export function drawFlatSphereDisc(ctx, eid, radius) {
+    const x = entityX[eid];
+    const y = entityY[eid];
+    if (!(wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas && fillCapPathWithChunkTexture(ctx, x, y))) return;
+    traceCircle(ctx, x, y, radius);
     ctx.closePath();
     ctx.fill();
 }
-export function drawSphere(ctx, prop, viewport) {
+export function drawSphere(ctx, eid, viewport) {
     if (!(wallChunkPipeline?._wallChunkReady && wallChunkPipeline._wallChunkCapCanvas)) return;
-    const radius = prop.radius;
-    const qw = prop.rollQw ?? 1;
-    const qx = prop.rollQx ?? 0;
-    const qy = prop.rollQy ?? 0;
-    const qz = prop.rollQz ?? 0;
+    const radius = entityR[eid];
+    let qw = 1,
+        qx = 0,
+        qy = 0,
+        qz = 0;
+    if ((entityFlags[eid] & ENTITY_FLAG_ROLLS) !== 0) {
+        const steps = resolvePropQuantizeSteps(eid);
+        quantizeRollQuatF32(entityRollQw[eid], entityRollQx[eid], entityRollQy[eid], entityRollQz[eid], steps.facing);
+        qw = ENGINE_F32[M_OUT_QW];
+        qx = ENGINE_F32[M_OUT_QX];
+        qy = ENGINE_F32[M_OUT_QY];
+        qz = ENGINE_F32[M_OUT_QZ];
+    }
     buildSphereMesh(radius, SPHERE_LAT_BANDS, SPHERE_LON_BANDS, qw, qx, qy, qz);
     let backN = 0;
     let frontN = 0;
     for (let f = 0; f < sSphereFaceCount; f++)
-        if (isSphereFaceVisible(prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f])) sSphereFrontOrder[frontN++] = f;
+        if (isSphereFaceVisible(eid, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f])) sSphereFrontOrder[frontN++] = f;
         else sSphereBackOrder[backN++] = f;
     sortSphereFaceOrder(sSphereBackOrder, backN);
     sortSphereFaceOrder(sSphereFrontOrder, frontN);
     const drawPass = (order, count) => {
         for (let i = 0; i < count; i++) {
             const f = order[i];
-            drawSphereFaceTextured(ctx, prop, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f]);
+            drawSphereFaceTextured(ctx, eid, viewport, sSphereFaceI0[f], sSphereFaceI1[f], sSphereFaceI2[f]);
         }
     };
     drawPass(sSphereBackOrder, backN);
@@ -925,11 +936,11 @@ function fillCapPathWithChunkTexture(ctx, originX, originY) {
     ctx.beginPath();
     return true;
 }
-function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha) {
+function drawTexturedPrism(ctx, eid, localVerts, count, height, facing, alpha) {
     const ws = wallChunkPipeline;
     const textureScale = ws.settings.surfaceBakeScale;
     const sideCanvas = ws._wallChunkSideCanvas;
-    const sideSrcHeight = (prop.wallChunkHeightPx ?? height) * textureScale;
+    const sideSrcHeight = (entityWallHeightPx[eid] ?? height) * textureScale;
     for (let pass = 0; pass < 2; pass++) {
         const wantFront = pass === 1;
         for (let i = 0; i < count; i++) {
@@ -959,33 +970,33 @@ function drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha) 
         ctx.fill();
     }
 }
-export function drawWallChunkTextured(ctx, prop, viewport, localVerts) {
+export function drawWallChunkTextured(ctx, eid, viewport, localVerts) {
     if (!wallChunkPipeline?._wallChunkReady) return false;
     const count = localVerts.length / 2;
     if (count < 3) return false;
-    const height = prop.height ?? DEFAULT_PROP_HEIGHT;
-    const facing = prop.facing;
+    const height = entityHeight[eid] ?? DEFAULT_PROP_HEIGHT;
+    const facing = entityFacing[eid];
     ensurePrismScratch(count);
-    const cx = prop.x;
-    const cy = prop.y;
+    const cx = entityX[eid];
+    const cy = entityY[eid];
     const alpha = resolveElevationAlpha(height, viewport);
     projectWorldPoint(ENGINE_F32, S_OUT_XY, cx, cy, height, viewport);
     const topX = ENGINE_F32[S_OUT_XY];
     const topY = ENGINE_F32[S_OUT_XY + 1];
     extrudeLocalVertsInto(sBaseRing, sTopRing, localVerts, cx, cy, topX, topY, alpha, facing);
     classifyPrismFaces(count, viewport, cx, cy);
-    drawTexturedPrism(ctx, prop, localVerts, count, height, facing, alpha);
+    drawTexturedPrism(ctx, eid, localVerts, count, height, facing, alpha);
     return true;
 }
-export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing) {
+export function drawFlatWallChunkCap(ctx, eid, localVerts, facing = entityFacing[eid]) {
     if (!wallChunkPipeline?._wallChunkReady) return false;
     const count = localVerts.length / 2;
     if (count < 3) return false;
     ensurePrismScratch(count);
     const cos = Math.cos(facing);
     const sin = Math.sin(facing);
-    const px = prop.x;
-    const py = prop.y;
+    const px = entityX[eid];
+    const py = entityY[eid];
     for (let i = 0; i < count; i++) {
         const lx = localVerts[i * 2];
         const ly = localVerts[i * 2 + 1];
@@ -997,30 +1008,31 @@ export function drawFlatWallChunkCap(ctx, prop, localVerts, facing = prop.facing
     ctx.fill();
     return true;
 }
-function drawWallChunkContour(ctx, prop, viewport, flatPresentation, localVerts) {
+function drawWallChunkContour(ctx, eid, viewport, flatPresentation, localVerts) {
     if (!localVerts || localVerts.length < 6) return;
     if (flatPresentation) {
-        drawFlatWallChunkCap(ctx, prop, localVerts);
+        drawFlatWallChunkCap(ctx, eid, localVerts);
         return;
     }
-    drawWallChunkTextured(ctx, prop, viewport, localVerts);
+    drawWallChunkTextured(ctx, eid, viewport, localVerts);
 }
 export function createWallChunkDraw() {
-    return (ctx, prop, viewport, flatPresentation) => {
-        const outline = prop.drawOutline;
+    return (ctx, eid, viewport, flatPresentation) => {
+        const prop = entityRefs[eid];
+        const outline = prop?.drawOutline;
         if (outline) {
-            drawWallChunkContour(ctx, prop, viewport, flatPresentation, outline);
+            drawWallChunkContour(ctx, eid, viewport, flatPresentation, outline);
             return;
         }
-        const parts = prop.collisionParts;
+        const parts = prop?.collisionParts;
         if (parts?.length > 1) {
             for (let i = 0; i < parts.length; i++) {
                 const verts = parts[i].vertices;
-                if (verts?.length >= 6) drawWallChunkContour(ctx, prop, viewport, flatPresentation, verts);
+                if (verts?.length >= 6) drawWallChunkContour(ctx, eid, viewport, flatPresentation, verts);
             }
             return;
         }
-        drawWallChunkContour(ctx, prop, viewport, flatPresentation, prop.shape?.vertices);
+        drawWallChunkContour(ctx, eid, viewport, flatPresentation, prop?.shape?.vertices);
     };
 }
 function parallelInsertionSort(kinds, baseIndices, depths, eids, start, end) {

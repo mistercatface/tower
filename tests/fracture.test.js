@@ -139,7 +139,7 @@ describe("fracture", () => {
         calls.beginPath = 0;
         calls.fill = 0;
         calls.stroke = 0;
-        draw(ctx, prop, viewport, true);
+        draw(ctx, prop._physId, viewport, true);
         assert.equal(calls.beginPath, 1);
         assert.equal(calls.fill, 1);
         assert.ok(calls.fillStyle);
@@ -149,7 +149,7 @@ describe("fracture", () => {
         calls.fill = 0;
         calls.stroke = 0;
         calls.drawImage = 0;
-        draw(ctx, prop, viewport, false);
+        draw(ctx, prop._physId, viewport, false);
         assert.ok(calls.drawImage > 0, "radial wall-chunk draw should blit textured side faces");
         assert.ok(calls.fill >= 1, "radial wall-chunk draw should fill the cap");
         assert.equal(calls.stroke, 0);

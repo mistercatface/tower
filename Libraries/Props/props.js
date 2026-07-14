@@ -29,12 +29,12 @@ export function formatSandboxSpawnLabel(propId) {
 }
 const POLYGON_SCALE_SCRATCH = new Float32Array(1024);
 export function createSpherePrimitive() {
-    return (ctx, prop, viewport, flatPresentation) => {
+    return (ctx, eid, viewport, flatPresentation) => {
         if (flatPresentation) {
-            drawFlatSphereDisc(ctx, prop, prop.radius);
+            drawFlatSphereDisc(ctx, eid, entityR[eid]);
             return;
         }
-        drawSphere(ctx, prop, viewport);
+        drawSphere(ctx, eid, viewport);
     };
 }
 function stampSurfaceProfileFields(prop, asset) {
@@ -132,8 +132,6 @@ export function entityFootprintHalfExtentsInto(buf, o, eid) {
 const FACING_STEPS_MAX = 360;
 const FACING_STEPS_BASELINE_DIAMETER = 16;
 const sQuantizeSteps = { facing: 0, view: 0 };
-const sHalfExtents = { x: 0, y: 0 };
-const sStageProp = { x: 0, y: 0, radius: 0, facing: 0, rollQw: 1, rollQx: 0, rollQy: 0, rollQz: 0, halfExtents: sHalfExtents, strategy: null, type: null, shape: null, collisionParts: null, drawOutline: null, height: undefined, ageMs: 0, id: 0, wallChunkProfileId: null, wallChunkHeightPx: undefined };
 function deriveFacingStepsFromFootprintEid(eid, baselineSteps) {
     const shapeKind = entityShapeKind[eid];
     let worldDiameter;
@@ -169,40 +167,6 @@ export function getBaseSpriteCacheId(eid, deps) {
     h ^= foot >>> 0;
     h = Math.imul(h, 16777619);
     return (h >>> 0) & 0xfffff;
-}
-export function getPropStageBakeState(eid) {
-    const prop = entityRefs[eid];
-    entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, eid);
-    const steps = resolvePropQuantizeSteps(eid);
-    sStageProp.x = entityX[eid];
-    sStageProp.y = entityY[eid];
-    sStageProp.radius = entityR[eid];
-    sHalfExtents.x = ENGINE_F32[M_VEC_A];
-    sHalfExtents.y = ENGINE_F32[M_VEC_A + 1];
-    sStageProp.facing = quantizeAngle(entityFacing[eid], steps.facing);
-    if (prop.strategy?.rolls) {
-        quantizeRollQuatF32(entityRollQw[eid], entityRollQx[eid], entityRollQy[eid], entityRollQz[eid], steps.facing);
-        sStageProp.rollQw = ENGINE_F32[M_OUT_QW];
-        sStageProp.rollQx = ENGINE_F32[M_OUT_QX];
-        sStageProp.rollQy = ENGINE_F32[M_OUT_QY];
-        sStageProp.rollQz = ENGINE_F32[M_OUT_QZ];
-    } else {
-        sStageProp.rollQw = 1;
-        sStageProp.rollQx = 0;
-        sStageProp.rollQy = 0;
-        sStageProp.rollQz = 0;
-    }
-    sStageProp.strategy = prop.strategy;
-    sStageProp.type = prop.type;
-    sStageProp.shape = prop.shape;
-    sStageProp.collisionParts = prop.collisionParts;
-    sStageProp.drawOutline = prop.drawOutline;
-    sStageProp.height = entityHeight[eid];
-    sStageProp.ageMs = entityAgeMs[eid];
-    sStageProp.id = prop.id;
-    sStageProp.wallChunkProfileId = getProfileStr(entityWallProfileId[eid]);
-    sStageProp.wallChunkHeightPx = entityWallHeightPx[eid];
-    return sStageProp;
 }
 export function buildWorldPropStrategyFromAsset(asset) {
     if (!asset?.physics) {

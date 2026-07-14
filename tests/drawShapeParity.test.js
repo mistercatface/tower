@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, getBaseSpriteCacheId, getPropStageBakeState, entityFootprintHalfExtentsInto, resolvePropQuantizeSteps, invalidateEntityFootprint } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, getBaseSpriteCacheId, entityFootprintHalfExtentsInto, resolvePropQuantizeSteps, invalidateEntityFootprint } from "../Libraries/Props/props.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createWallChunkDraw, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
@@ -47,15 +47,7 @@ describe("draw shape parity", () => {
         assert.notEqual(before, after);
         assert.equal(typeof after, "number");
     });
-    it("sprite bake stage passes live polygon verts to draw", () => {
-        const prop = new WorldProp(0, 0, "hex_block", 0);
-        const eid = bindStageProp(prop);
-        const stageProp = getPropStageBakeState(eid);
-        assert.equal(stageProp.shape.vertices.length / 2, 6);
-        assert.equal(stageProp.shape.vertices[0], prop.shape.vertices[0]);
-        entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, eid);
-        assert.equal(stageProp.halfExtents.x, ENGINE_F32[M_VEC_A]);
-    });
+
     it("polygon primitive fills flat silhouette in 2d from live shape", () => {
         const prop = new WorldProp(0, 0, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
@@ -86,7 +78,7 @@ describe("draw shape parity", () => {
             cameraHeight: DEFAULT_CAMERA_HEIGHT,
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
-        draw(ctx, prop, viewport, true);
+        draw(ctx, prop._physId, viewport, true);
         assert.equal(calls.beginPath, 1);
         assert.equal(calls.fill, 1);
         assert.equal(calls.stroke, 0);
@@ -134,7 +126,7 @@ describe("draw shape parity", () => {
             cameraHeight: DEFAULT_CAMERA_HEIGHT,
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
-        draw(ctx, prop, viewport, true);
+        draw(ctx, prop._physId, viewport, true);
         assert.equal(createPattern, 1);
         assert.equal(fills, 1);
         assert.equal(drawImage, 0);
@@ -168,7 +160,7 @@ describe("draw shape parity", () => {
             cameraHeight: DEFAULT_CAMERA_HEIGHT,
             perspectiveStrength: DEFAULT_PERSPECTIVE_STRENGTH,
         };
-        draw(ctx, prop, viewport, false);
+        draw(ctx, prop._physId, viewport, false);
         assert.equal(calls.fill, 0);
         assert.equal(calls.stroke, 0);
     });

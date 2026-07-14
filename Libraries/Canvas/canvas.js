@@ -5,7 +5,7 @@ import { ENGINE_F32, ENGINE_I32, M_VEC_A, propSpriteCacheSlab, gridStampSpriteCa
 import { SPRITE_CACHE_FLAG_LIVE, SPRITE_CACHE_FLAG_BITMAP, OVERLAY_RENDER_KEY_FLOATING_TEXT, ENTITY_FLAG_ROLLS } from "../../Core/engineEnums.js";
 import { packRollOrientId } from "../Physics/physics.js";
 import { propPixelSize, quantizePropBakeZoom, resolvePropBakeScale } from "../../Core/GamePropPixelSize.js";
-import { resolvePropQuantizeSteps, getBaseSpriteCacheId, getPropStageBakeState, entityFootprintHalfExtentsInto } from "../Props/props.js";
+import { resolvePropQuantizeSteps, getBaseSpriteCacheId, entityFootprintHalfExtentsInto } from "../Props/props.js";
 import propCatalog, { NEXT_RENDER_KEY_ID } from "../../Assets/props/index.js";
 export function getCanvasLineScale(ctx) {
     return 1 / Math.max(0.001, ctx.getTransform().a);
@@ -714,12 +714,10 @@ function getOrBakePropSprite(eid, viewport, renderKey, draw, animFrame = 0, flat
         const anchorY = PROP_STAGE_PADDING + stageR * 1.3;
         const canvas = acquireOffscreenCanvas(stageSpan, stageSpan);
         const ctx = canvas.getContext("2d");
-        const stageProp = getPropStageBakeState(eid);
-        stageProp.radius = entityR[eid];
         ctx.save();
         if (bakeScale !== 1) ctx.scale(bakeScale, bakeScale);
         ctx.translate(anchorX - entityX[eid], anchorY - entityY[eid]);
-        draw(ctx, stageProp, viewport, flatPresentation);
+        draw(ctx, eid, viewport, flatPresentation);
         ctx.restore();
         writeSpriteBakeOuts(bakeScale, anchorX, anchorY, stageSpan / bakeScale, stageSpan / bakeScale, 1, stageSpan);
         return canvas;
