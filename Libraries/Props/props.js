@@ -53,7 +53,6 @@ export function scalePolygonPropFootprint(eid, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
     const prop = entityRefs[eid];
     const shape = prop.shape;
-    if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) throw new Error(`scalePolygonPropFootprint requires a polygon prop, got shapeTypeId=${shape?.shapeTypeId}`);
     const n = shape.vertices.length;
     const verts = shape.vertices;
     for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;
