@@ -28,7 +28,7 @@ describe("propScale", () => {
     it("setPropRadius rescales polygon props", () => {
         const wedge = new WorldProp(0, 0, "tri_wedge", 0);
         const baseline = kineticDynamicSlab.r[wedge._physId];
-        setPolygonPropBoundingRadius(wedge, 2);
+        setPolygonPropBoundingRadius(wedge._physId, 2);
         assert.ok(Math.abs(kineticDynamicSlab.r[wedge._physId] - 2) < 0.01);
         assert.ok(wedge.shape.vertices.every((val) => Math.abs(val) <= 2.5));
         assert.ok(baseline > 9);

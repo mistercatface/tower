@@ -914,7 +914,7 @@ function spawnSnapshotProp(state, entry) {
     if (halfExtents) applyPropBoxFootprint(prop, halfExtents.x, halfExtents.y);
     const eid = state.entityRegistry.register(ENTITY_KIND_WORLD_PROP, prop);
     if (entry.radius != null)
-        if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop, entry.radius);
+        if (prop.shape.shapeTypeId === SHAPE_TYPE_POLYGON) setPolygonPropBoundingRadius(prop._physId, entry.radius);
         else setCirclePropRadius(prop, entry.radius);
     if (entry.wallChunkProfileId) applyPropSurfaceProfile(prop, entry.wallChunkProfileId);
     return { prop, eid };

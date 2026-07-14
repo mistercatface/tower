@@ -49,8 +49,9 @@ export const PROP_PRIMITIVE_BUILDERS = [];
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] = createSpherePrimitive;
 PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON] = createWallChunkDraw;
 if (PROP_PRIMITIVE_BUILDERS.length !== PROP_PRIMITIVE_COUNT || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_SPHERE] || !PROP_PRIMITIVE_BUILDERS[PROP_PRIMITIVE_POLYGON]) throw new Error("PROP_PRIMITIVE_BUILDERS incomplete relative to PROP_PRIMITIVE_COUNT");
-export function scalePolygonPropFootprint(prop, scale) {
+export function scalePolygonPropFootprint(eid, scale) {
     if (scale <= 0) throw new Error(`Polygon prop scale must be > 0, got ${scale}`);
+    const prop = entityRefs[eid];
     const shape = prop.shape;
     if (shape.shapeTypeId !== SHAPE_TYPE_POLYGON) throw new Error(`scalePolygonPropFootprint requires a polygon prop, got shapeTypeId=${shape?.shapeTypeId}`);
     const n = shape.vertices.length;
@@ -58,14 +59,13 @@ export function scalePolygonPropFootprint(prop, scale) {
     for (let i = 0; i < n; i++) POLYGON_SCALE_SCRATCH[i] = verts[i] * scale;
     writeLivePolygon(prop, POLYGON_SCALE_SCRATCH, n);
     if (prop.height != null) prop.height *= scale;
-    invalidateEntityFootprint(prop._physId);
+    invalidateEntityFootprint(eid);
     normalizeKineticBody(prop);
-    wakeKineticBody(prop._physId);
+    wakeKineticBody(eid);
 }
-export function setPolygonPropBoundingRadius(prop, boundingRadius) {
-    const currentRadius = kineticDynamicSlab.r[prop._physId];
-    if (!currentRadius || currentRadius <= 0) throw new Error(`setPolygonPropBoundingRadius requires a polygon prop with positive radius, got ${currentRadius}`);
-    scalePolygonPropFootprint(prop, boundingRadius / currentRadius);
+export function setPolygonPropBoundingRadius(eid, boundingRadius) {
+    const currentRadius = kineticDynamicSlab.r[eid];
+    scalePolygonPropFootprint(eid, boundingRadius / currentRadius);
 }
 export function setCirclePropRadius(prop, radius) {
     if (radius <= 0) throw new Error(`Circle prop radius must be > 0, got ${radius}`);
