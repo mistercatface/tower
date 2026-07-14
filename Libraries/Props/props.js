@@ -2,7 +2,7 @@ import { allocateEntityEid, bindEntitySlot, worldPropBindFlags } from "../../Cor
 import { writeLivePolygon, releaseLivePolygon, CircleShape, stampKineticCircleRadius, wakeKineticBody, kineticInertiaFromBody, normalizeKineticBody, quantizeRollQuatF32, packRollOrientId, applyCompoundFootprint, stampPrimitivePhysics, primitivePhysicsRow, computeFootprintIdFromSlab } from "../Physics/physics.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityRollQw, entityRollQx, entityRollQy, entityRollQz, entityAgeMs, entityFlags, entityRefs, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, getProfileStr, entityFractureCooldown, entityCachedStaticKey, entityFootprintId, entityRenderKeyId } from "../../Core/engineMemory.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, ENTITY_FLAG_ROLLS, PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PROP_PRIMITIVE_COUNT, PROP_DRAW_WALL_CHUNK, PROP_RENDER_MODE_NONE, PROP_RENDER_MODE_3D, ENTITY_FLAG_DEAD, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_KIND_NONE } from "../../Core/engineEnums.js";
-import { ensureFlatVerts, convexFootprintHalfExtents, vertCount, quantizeAngle, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
+import { ensureFlatVerts, vertCount, quantizeAngle, deterministicUnitRandom, polygonIsConvex } from "../Math/math.js";
 import { ENGINE_F32, M_VEC_A, M_OUT_QW, M_OUT_QX, M_OUT_QY, M_OUT_QZ } from "../../Core/engineMemory.js";
 import { drawSphere, drawFlatSphereDisc, createWallChunkDraw, DEFAULT_PROP_HEIGHT } from "../Render/render.js";
 import { drawFloorOccupancyBelts } from "../Spatial/belts.js";
@@ -118,17 +118,6 @@ export function initWorldPropShape(prop) {
     prop.shape = new CircleShape(prop.radius);
     prop.collisionParts = undefined;
     prop.drawOutline = undefined;
-}
-export function propFootprintHalfExtentsInto(buf, o, prop) {
-    const shape = prop.shape;
-    if (shape.shapeTypeId === SHAPE_TYPE_POLYGON) {
-        convexFootprintHalfExtents(buf, o, shape.vertices);
-        return;
-    }
-    if (shape.shapeTypeId !== SHAPE_TYPE_CIRCLE) throw new Error(`propFootprintHalfExtentsInto: unknown shapeTypeId ${shape?.shapeTypeId}`);
-    const radius = shape.radius;
-    buf[o] = radius;
-    buf[o + 1] = radius;
 }
 export function entityFootprintHalfExtentsInto(buf, o, eid) {
     if (kineticDynamicSlab.shapeKind[eid] === SHAPE_TYPE_CIRCLE) {

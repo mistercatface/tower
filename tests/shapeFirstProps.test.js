@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, propFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, entityFootprintHalfExtentsInto } from "../Libraries/Props/props.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
@@ -32,7 +32,7 @@ describe("shape-first props", () => {
     it("box footprint can be resized after spawn", () => {
         const prop = new WorldProp(10, 20, "box", 0);
         applyPropBoxFootprint(prop, 12, 5);
-        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+        entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop._physId);
         assert.equal(ENGINE_F32[M_VEC_A], 12);
         assert.equal(ENGINE_F32[M_VEC_A + 1], 5);
         assert.equal(prop.shape.vertices.length / 2, 4);

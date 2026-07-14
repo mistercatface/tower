@@ -10,7 +10,7 @@ import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
 import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE, ENTITY_FLAG_KINETIC, ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
-import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, propFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
+import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, getPolygonPropBoundingRadius, entityFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
 import { overlayCommandSlab, clearOverlayCommands, beginOverlayPoly, writeOverlayPolyXY, stampPathDirect, stampPathPolyline, stampSelectionRing, stampFloorCellHighlight, stampVoxelCellHighlight, stampOverlayAabb, stampOverlaySegment, OVERLAY_STYLE_MARQUEE, OVERLAY_STYLE_RAIL_EDGE } from "../Render/render.js";
@@ -2541,7 +2541,7 @@ function appendShapeFamilyFields(body, state, spec) {
     }
     if (isPolygonFamilyAsset(asset)) {
         if (isResizableBoxSpawnAsset(asset)) {
-            propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp);
+            entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp._physId);
             const spanX = ENGINE_F32[M_VEC_A];
             const spanY = ENGINE_F32[M_VEC_A + 1];
             appendShapeFamilyBoxFields(
@@ -2549,12 +2549,12 @@ function appendShapeFamilyFields(body, state, spec) {
                 Math.round(spanX * 2),
                 Math.round(spanY * 2),
                 (width) => {
-                    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp);
+                    entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp._physId);
                     applyPropBoxFootprint(selectedProp, width / 2, ENGINE_F32[M_VEC_A + 1]);
                     dirty();
                 },
                 (height) => {
-                    propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp);
+                    entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, selectedProp._physId);
                     applyPropBoxFootprint(selectedProp, ENGINE_F32[M_VEC_A], height / 2);
                     dirty();
                 },

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { propFootprintHalfExtentsInto, WorldProp, createSpherePrimitive } from "../Libraries/Props/props.js";
+import { entityFootprintHalfExtentsInto, WorldProp, createSpherePrimitive } from "../Libraries/Props/props.js";
 import { ENGINE_F32, M_VEC_A, entityWallProfileId, getProfileId } from "../Core/engineMemory.js";
 import { createSandboxKineticWorld, createSandboxControllerSession, createSandboxTestController } from "./harness/stateFactories.js";
 import { collectLiveWorldProps } from "./harness/fractureHarness.js";
@@ -82,7 +82,7 @@ describe("spawn shape family defaults", () => {
         assert.equal(prop.fractureEnabled, false);
         assert.equal(prop.wallChunkProfileId, "poolTableFelt");
         assert.equal(prop.wallChunkHeightPx, 16);
-        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+        entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop._physId);
         assert.equal(Math.round(ENGINE_F32[M_VEC_A] * 2), 24);
         assert.equal(Math.round(ENGINE_F32[M_VEC_A + 1] * 2), 32);
     });

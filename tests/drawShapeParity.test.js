@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, getBaseSpriteCacheId, getPropStageBakeState, propFootprintHalfExtentsInto, resolvePropQuantizeSteps, invalidateEntityFootprint } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, getBaseSpriteCacheId, getPropStageBakeState, entityFootprintHalfExtentsInto, resolvePropQuantizeSteps, invalidateEntityFootprint } from "../Libraries/Props/props.js";
 import { setCirclePropRadius } from "../Libraries/Props/props.js";
 import { createWallChunkDraw, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
@@ -53,7 +53,7 @@ describe("draw shape parity", () => {
         const stageProp = getPropStageBakeState(eid);
         assert.equal(stageProp.shape.vertices.length / 2, 6);
         assert.equal(stageProp.shape.vertices[0], prop.shape.vertices[0]);
-        propFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, prop);
+        entityFootprintHalfExtentsInto(ENGINE_F32, M_VEC_A, eid);
         assert.equal(stageProp.halfExtents.x, ENGINE_F32[M_VEC_A]);
     });
     it("polygon primitive fills flat silhouette in 2d from live shape", () => {
