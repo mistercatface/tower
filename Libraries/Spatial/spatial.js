@@ -3206,8 +3206,6 @@ export class KineticSpatialFrame extends SpatialFrameCore {
         const vy = kineticDynamicSlab.vy[eid];
         const w = kineticDynamicSlab.w[eid];
         if (prop) {
-            prop._spawnX = x;
-            prop._spawnY = y;
             prop._spawnVx = vx;
             prop._spawnVy = vy;
             prop._spawnW = w;

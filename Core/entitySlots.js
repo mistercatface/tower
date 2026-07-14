@@ -96,8 +96,6 @@ export function bindEntitySlot(eid, kind, ref, gameId, x, y, r, flags) {
     entityFadeDurationMs[eid] = ref.strategy?.fadeOutDurationMs ?? 1000;
 }
 export function clearWorldPropSpawnPose(ref) {
-    delete ref._spawnX;
-    delete ref._spawnY;
     delete ref._spawnVx;
     delete ref._spawnVy;
     delete ref._spawnW;

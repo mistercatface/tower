@@ -37,10 +37,10 @@ export function createSpherePrimitive() {
         drawSphere(ctx, eid, viewport);
     };
 }
-function stampSurfaceProfileFields(prop, asset) {
+function stampSurfaceProfileFields(eid, asset, height) {
     if (!assetUsesWallChunkSurface(asset)) return;
-    prop.wallChunkProfileId = asset.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt;
-    prop.wallChunkHeightPx = prop.height;
+    entityWallProfileId[eid] = getProfileId(asset.visuals?.surfaceProfileId ?? SURFACE_PROFILE_ID.poolTableFelt);
+    entityWallHeightPx[eid] = height;
 }
 function assetUsesWallChunkSurface(asset) {
     return asset?.primitive === PROP_PRIMITIVE_POLYGON || asset?.primitive === PROP_PRIMITIVE_SPHERE;
@@ -210,7 +210,7 @@ export class WorldProp {
         this.shape = undefined;
         this.drawOutline = undefined;
         this.footprintArea = undefined;
-        stampSurfaceProfileFields(this, asset);
+        stampSurfaceProfileFields(eid, asset, this.height);
         initWorldPropShape(this);
         this.facing = facing;
         this.rollQw = 1;
