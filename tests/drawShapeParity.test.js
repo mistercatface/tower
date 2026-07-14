@@ -1,16 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { WorldProp } from "../Libraries/Props/props.js";
-import { applyPropBoxFootprint, getBaseSpriteCacheId, entityFootprintHalfExtentsInto, resolvePropQuantizeSteps, invalidateEntityFootprint } from "../Libraries/Props/props.js";
-import { setCirclePropRadius } from "../Libraries/Props/props.js";
+import { applyPropBoxFootprint, getBaseSpriteCacheId, resolvePropQuantizeSteps, invalidateEntityFootprint } from "../Libraries/Props/props.js";
 import { createWallChunkDraw, bindWallChunkTexturePipeline } from "../Libraries/Render/render.js";
 import { kineticFootprintArea } from "../Libraries/Physics/physics.js";
 import { polygonSignedArea2D } from "../Libraries/Math/math.js";
-import { quantizeAngleIndex, quantizeAngle } from "../Libraries/Math/math.js";
+import { quantizeAngleIndex } from "../Libraries/Math/math.js";
 import { SHAPE_TYPE_POLYGON } from "../Core/engineEnums.js";
-import { ENGINE_F32, M_VEC_A } from "../Core/engineMemory.js";
 import { DEFAULT_CAMERA_HEIGHT, DEFAULT_PERSPECTIVE_STRENGTH } from "../Libraries/Viewport/Viewport.js";
-import propCatalog from "../Assets/props/index.js";
 import { gridSettings } from "../Config/world.js";
 import { assignPhysIdWithPose } from "./harness/kineticTickHarness.js";
 const cacheKeyDeps = { quantizeAngleIndex };
