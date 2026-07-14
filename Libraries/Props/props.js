@@ -188,21 +188,16 @@ export function sharedWorldPropStrategy(type) {
     return strategy;
 }
 let nextWorldPropId = 1;
-function resolvePropSpawnFacing(prop, facing) {
-    if (facing != null) return prop.strategy.cardinalFacing ? quantizeAngle(facing, CARDINAL_FACING_STEPS) : facing;
-    if (prop.strategy.cardinalFacing) return quantizeAngle(0, CARDINAL_FACING_STEPS);
-    return deterministicUnitRandom(Math.imul(prop.id, 2654435761)) * Math.PI * 2;
-}
 // WorldProp lifecycle: (1) birth - new WorldProp() or sandbox spawn; (2) live - registry/kinetic membership; (3) death - removeWorldPropEid.
 export class WorldProp {
-    constructor(x, y, type, facing = null) {
+    constructor(x, y, type, facing = 0) {
         this.id = nextWorldPropId++;
         this._distSq = 0;
         this.shape = null;
         this._physId = allocateEntityEid();
         this.initializeSpawn(x, y, type, facing);
     }
-    initializeSpawn(x, y, type, facing = null) {
+    initializeSpawn(x, y, type, facing = 0) {
         const asset = propCatalog[type];
         this.type = type;
         this.strategy = sharedWorldPropStrategy(type);
@@ -217,8 +212,7 @@ export class WorldProp {
         this.footprintArea = undefined;
         stampSurfaceProfileFields(this, asset);
         initWorldPropShape(this);
-        const spawnFacing = resolvePropSpawnFacing(this, facing);
-        this.facing = spawnFacing;
+        this.facing = facing;
         this.rollQw = 1;
         this.rollQx = 0;
         this.rollQy = 0;
