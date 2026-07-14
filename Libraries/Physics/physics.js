@@ -124,6 +124,7 @@ import {
     GrowI32,
     GrowF32,
     entityShapeKind,
+    entityRefs,
 } from "../../Core/engineMemory.js";
 import { CONSTRAINT_TYPE_DISTANCE, CONSTRAINT_TYPE_ANGLE, SHAPE_TYPE_CIRCLE, SHAPE_TYPE_POLYGON, PROP_PRIMITIVE_SPHERE, KINETIC_PAIR_CIRCLE_CIRCLE, KINETIC_PAIR_CIRCLE_POLY, KINETIC_PAIR_POLY_POLY, KINETIC_PAIR_COMPOUND, ROLL_DRIVE_NONE, ROLL_DRIVE_THRUST, ROLL_DRIVE_BRAKE, PRIMITIVE_PHYSICS_ROW_CIRCLE, PRIMITIVE_PHYSICS_ROW_POLYGON, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_DEAD, ENTITY_KIND_DEBRIS } from "../../Core/engineEnums.js";
 import { BeltPacked, DEFAULT_FLOOR_BELT_FORCE } from "../Spatial/belts.js";
@@ -283,27 +284,27 @@ export function kineticInertiaFromBody(body) {
     const r = shape.radius;
     return (m * r * r) / 2;
 }
-export function normalizeKineticBody(body) {
+export function normalizeKineticBody(eid) {
+    if (eid === undefined) return;
+    const body = entityRefs[eid];
+    if (!body) return;
     const strategy = body.strategy;
-    const physId = body._physId;
-    if (physId === undefined) return body;
     const slab = kineticStaticSlab;
     const row = strategy.physicsRow;
-    slab.physicsRow[physId] = row;
+    slab.physicsRow[eid] = row;
     const table = primitivePhysics;
     const mass = kineticMassFromFootprint(body);
-    slab.mass[physId] = mass;
-    slab.invMass[physId] = 1 / mass;
+    slab.mass[eid] = mass;
+    slab.invMass[eid] = 1 / mass;
     const moment = kineticInertiaFromBody(body);
-    slab.invI[physId] = moment > 0 ? 1 / moment : 0;
-    slab.entityId[physId] = body.id;
-    slab.restitution[physId] = table.wallRestitution[row];
-    slab.friction[physId] = table.wallFriction[row];
-    if (kineticDynamicSlab.partGeomOffset[physId] < 0) {
-        seedKineticBodyShapeFromBag(physId, body);
-        entityR[physId] = slabCollisionSpan(physId);
+    slab.invI[eid] = moment > 0 ? 1 / moment : 0;
+    slab.entityId[eid] = body.id;
+    slab.restitution[eid] = table.wallRestitution[row];
+    slab.friction[eid] = table.wallFriction[row];
+    if (kineticDynamicSlab.partGeomOffset[eid] < 0) {
+        seedKineticBodyShapeFromBag(eid, body);
+        entityR[eid] = slabCollisionSpan(eid);
     }
-    return body;
 }
 function slabObbWorldCenterF32(eid) {
     const slab = kineticDynamicSlab;

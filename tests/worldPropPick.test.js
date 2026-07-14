@@ -35,7 +35,7 @@ function stampPickBody(x, y, radius, shape, facing = 0) {
     };
     assignPhysIdWithPose(body, EID);
     entityFacing[EID] = facing;
-    normalizeKineticBody(body);
+    normalizeKineticBody(EID);
     if (shape.shapeTypeId === SHAPE_TYPE_CIRCLE) stampKineticCircleRadius(EID, radius);
     return body;
 }

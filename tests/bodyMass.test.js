@@ -90,7 +90,7 @@ describe("bodyMass", () => {
         assert.ok(Math.abs(primitivePhysics.density[prop.strategy.physicsRow] - 0.007958) < 1e-6);
         assert.ok(kineticMassFromFootprint(prop) > 0);
         assignPhysIdWithPose(prop, 0);
-        normalizeKineticBody(prop);
+        normalizeKineticBody(0);
         assert.ok(kineticStaticSlab.mass[prop._physId] > 0);
     });
 });

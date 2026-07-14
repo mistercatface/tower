@@ -127,7 +127,7 @@ export function shatterPolygon(flatVerts, hitX, hitY, impactForce = 10) {
     const prop = new WorldProp(0, 0, "box", 0);
     prop.fractureEnabled = true;
     writeLivePolygon(prop, flatVerts, flatVerts.length);
-    normalizeKineticBody(prop);
+    normalizeKineticBody(prop._physId);
     if (!FractureEngine.fracturePropOnImpact(prop, hitX, hitY, impactForce, engine)) {
         stores.debris.reset();
         return [];

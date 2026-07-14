@@ -23,7 +23,7 @@ describe("cross pinwheel prop", () => {
         assert.ok(kineticMassFromFootprint(pinwheel) > 0);
         assert.ok(kineticInertiaFromBody(pinwheel) > 0);
         assignPhysIdWithPose(pinwheel, 0);
-        normalizeKineticBody(pinwheel);
+        normalizeKineticBody(0);
         assert.ok(kineticStaticSlab.invMass[0] > 0);
     });
 

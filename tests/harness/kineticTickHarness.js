@@ -11,7 +11,7 @@ export function snapshotKineticBodySlab(eids, count = eids.length) {
         const eid = eids[i];
         const entity = entityRefs[eid];
         if (!entity) continue;
-        if (kineticDynamicSlab.partGeomOffset[eid] < 0) normalizeKineticBody(entity);
+        if (kineticDynamicSlab.partGeomOffset[eid] < 0) normalizeKineticBody(eid);
         if (kineticDynamicSlab.shapeKind[eid] !== SHAPE_TYPE_CIRCLE) {
             const angle = entityFacing[eid];
             kineticDynamicSlab.cos[eid] = Math.cos(angle);
@@ -216,7 +216,7 @@ export function assignPhysIdWithPose(body, physId) {
     entityFacing[physId] = facing;
     entityR[physId] = body.radius ?? 0;
     kineticDynamicSlab.partGeomOffset[physId] = -1;
-    normalizeKineticBody(body);
+    normalizeKineticBody(physId);
     entityRollQw[physId] = rqw;
     entityRollQx[physId] = rqx;
     entityRollQy[physId] = rqy;
@@ -269,7 +269,7 @@ export function mockKineticBody(isSleeping = false) {
         shape: new CircleShape(radius),
     };
     assignPhysIdWithPose(body, nextMockPhysId++);
-    normalizeKineticBody(body);
+    normalizeKineticBody(body._physId);
     return body;
 }
 export function mockCircleProp(x, y, radius) {
@@ -289,7 +289,7 @@ export function mockCircleProp(x, y, radius) {
         },
         shape: new CircleShape(radius),
     };
-    normalizeKineticBody(body);
+    if (body._physId !== undefined) normalizeKineticBody(body._physId);
     return body;
 }
 export const noop = () => {};
@@ -309,7 +309,7 @@ export function mockBall(x, y, overrides = {}) {
     const shape = overrides.shape ?? new CircleShape(4);
     const body = { id: overrides.id ?? nextMockBallId++, x, y, vx: 0, vy: 0, angularVelocity: 0, radius: shape.radius, type: "ball", shape, ...overrides };
     body.strategy = stampPrimitivePhysics({ isKinetic: true, ...body.strategy }, PRIMITIVE_PHYSICS_ROW_CIRCLE);
-    normalizeKineticBody(body);
+    if (body._physId !== undefined) normalizeKineticBody(body._physId);
     return body;
 }
 export function mockRollingProp(overrides = {}) {
@@ -327,7 +327,7 @@ export function mockRollingProp(overrides = {}) {
         entityRollQy[body._physId] = body._spawnRollQy ?? 0;
         entityRollQz[body._physId] = body._spawnRollQz ?? 0;
     }
-    normalizeKineticBody(body);
+    normalizeKineticBody(body._physId);
     return body;
 }
 export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
@@ -362,7 +362,7 @@ export function mockKineticCircle(x, y, radius, vx = 0, vy = 0, options = {}) {
             this.vy *= 0.02;
         };
     else if (options.update) body.update = options.update;
-    normalizeKineticBody(body);
+    if (body._physId !== undefined) normalizeKineticBody(body._physId);
     return body;
 }
 function applyHarnessPairOverrides(bodies) {

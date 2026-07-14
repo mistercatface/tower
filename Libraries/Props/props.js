@@ -59,7 +59,7 @@ export function scalePolygonPropFootprint(eid, scale) {
     writeLivePolygon(prop, POLYGON_SCALE_SCRATCH, n);
     if (prop.height != null) prop.height *= scale;
     invalidateEntityFootprint(eid);
-    normalizeKineticBody(prop);
+    normalizeKineticBody(eid);
     wakeKineticBody(eid);
 }
 export function setPolygonPropBoundingRadius(eid, boundingRadius) {
@@ -73,7 +73,7 @@ export function setCirclePropRadius(prop, radius) {
     prop.shape = new CircleShape(radius);
     prop.radius = radius;
     stampKineticCircleRadius(prop._physId, radius);
-    normalizeKineticBody(prop);
+    normalizeKineticBody(prop._physId);
     invalidateEntityFootprint(prop._physId);
     wakeKineticBody(prop._physId);
 }
@@ -95,7 +95,7 @@ export function applyPropBoxFootprint(prop, hx, hy) {
     fp[6] = -hx;
     fp[7] = hy;
     writeLivePolygon(prop, fp, n);
-    normalizeKineticBody(prop);
+    normalizeKineticBody(prop._physId);
 }
 export function initWorldPropShape(prop) {
     const template = prop.strategy.localFootprint;

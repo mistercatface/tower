@@ -87,7 +87,7 @@ export class EntityArena {
             clearWorldPropSpawnPose(ref);
             if (flags & ENTITY_FLAG_KINETIC) {
                 invalidateKineticShapeGeom(eid);
-                normalizeKineticBody(ref);
+                normalizeKineticBody(eid);
             }
             this._bumpMembership();
             return eid;
@@ -100,7 +100,7 @@ export class EntityArena {
         clearWorldPropSpawnPose(ref);
         if (flags & ENTITY_FLAG_KINETIC) {
             invalidateKineticShapeGeom(eid);
-            normalizeKineticBody(ref);
+            normalizeKineticBody(eid);
         }
         this._gameIdToEid.set(ref.id, eid);
         this._addLiveEid(eid);

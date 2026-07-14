@@ -767,7 +767,7 @@ export class FractureEngine {
         prop.footprintArea = geometry.footprintArea;
         prop.radius = geometry.boundingRadius;
         invalidateEntityFootprint(prop._physId);
-        normalizeKineticBody(prop);
+        normalizeKineticBody(prop._physId);
     }
     static applyPropFractureGeometryFromDebris(prop, stores, debrisIndex) {
         const debris = stores.debris;
