@@ -87,6 +87,7 @@ export const ENTITY_FLAG_CIRCLE_SHAPE = 1 << 5;
 export const ENTITY_FLAG_FRACTURE_SET = 1 << 6;
 export const ENTITY_FLAG_FRACTURE_VAL = 1 << 7;
 export const ENTITY_FLAG_PENDING_FRACTURE = 1 << 8;
+export const ENTITY_FLAG_CHAIN_LINK = 1 << 9;
 //
 // Kinetic
 export const KINETIC_PAIR_CIRCLE_CIRCLE = 0;

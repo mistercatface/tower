@@ -9,7 +9,7 @@ import { setFormFieldName } from "../UI/Component.js";
 import { SliderControl } from "../UI/controls/SliderControl.js";
 import { shippedSurfaceProfileIds } from "../../Config/procedural/profiles.js";
 import { SURFACE_PROFILE_ID } from "../../Config/procedural/profileIds.js";
-import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE, ENTITY_FLAG_KINETIC, ENTITY_KIND_WORLD_PROP } from "../../Core/engineEnums.js";
+import { PROP_PRIMITIVE_SPHERE, PROP_PRIMITIVE_POLYGON, PATH_OVERLAY_MODE_FLOW, PATH_OVERLAY_MODE_HPA, SANDBOX_PATH_VISUAL_OFF, SANDBOX_PATH_VISUAL_NORMAL, SANDBOX_PATH_VISUAL_COUNT, WALL_STAMP_VOXEL, WALL_STAMP_RAIL, EDITOR_NAV_MODE_FLOW, EDITOR_NAV_MODE_HPA, GRID_NAV_EPOCH_WALL, GRID_NAV_EPOCH_FLOOR, GRID_NAV_EPOCH_TOPOLOGY, GRID_NAV_EPOCH_COUNT, CONSTRAINT_TYPE_DISTANCE, SHAPE_TYPE_POLYGON, SANDBOX_BEHAVIOR_DRAG_LAUNCH, SANDBOX_BEHAVIOR_GRAB_DRAG, SANDBOX_BEHAVIOR_GROUND_DIRECT, SANDBOX_BEHAVIOR_GROUND_FLOW, SANDBOX_BEHAVIOR_GROUND_HPA, GROUND_NAV_RUN_HAS_TARGET, GROUND_NAV_RUN_DRAGGING, GROUND_NAV_RUN_MOVE_ACTIVE, ENTITY_FLAG_KINETIC, ENTITY_KIND_WORLD_PROP, ENTITY_FLAG_CHAIN_LINK } from "../../Core/engineEnums.js";
 import { WorldProp, applyPropBoxFootprint, setCirclePropRadius, setPolygonPropBoundingRadius, entityFootprintHalfExtentsInto, formatPropTypeLabel, formatSandboxSpawnLabel } from "../Props/props.js";
 import { convexFootprintHalfExtents, centeredAabbF32, quantizeAngleIndex, aabbFromTwoPointsF32, emptyAabbF32, growAabbFromCenterF32 } from "../Math/math.js";
 import { sampleFlowDirection, writeSabPathOverlayInto, HpaNavSession, snapNavGoalWorld, navHasPath, REPLAN_PRIORITY_TARGET, REPLAN_TARGET_MOVE_PX, PathReplanManager } from "../Navigation/navigation.js";
@@ -1298,7 +1298,7 @@ function createSandboxSession(state) {
         },
         setSelectedChainHead(enabled) {
             const prop = this.getSelectedProp();
-            if (!prop || !isChainLinkBall(prop)) return;
+            if (!prop || !isChainLinkBall(prop._physId)) return;
             if (enabled) setChainHead(state, state.sandbox.entityMeta, prop.id);
             else state.sandbox.entityMeta.setChainHead(prop.id, false);
             notifyUi();
@@ -1489,10 +1489,8 @@ function spawnAgentChain(state, anchorIdx, spec) {
     setChainHead(state, meta, leader.id);
     return { leader, leaderIndex, head: props[0], tail: props[props.length - 1], members: props, spawnGroupId: resolvedGroupId };
 }
-function isChainLinkBall(prop) {
-    if (!prop || (entityFlags[prop._physId] & ENTITY_FLAG_KINETIC) === 0) return false;
-    if (prop.strategy?.canChain) return true;
-    return sandboxTagsMatchFilter("nav", sandboxAssetTags(propCatalog[prop.type]));
+function isChainLinkBall(eid) {
+    return (entityFlags[eid] & ENTITY_FLAG_CHAIN_LINK) !== 0;
 }
 function hasChainMembership(state, propId) {
     const store = kineticConstraintStore;
@@ -1504,7 +1502,7 @@ function isChainSteeringTarget(state, entityMeta, propId) {
     if (hasChainMembership(state, propId)) return false;
     const prop = state.entityRegistry.getLive(propId);
     if (!prop || prop.isDead) return false;
-    return isChainLinkBall(prop);
+    return isChainLinkBall(prop._physId);
 }
 function setChainHead(state, entityMeta, propId) {
     const members = getConnectedBodyIds(state.kinetic, propId);
@@ -2787,7 +2785,7 @@ export function appendSandboxSelectionPanel(body, controller, refreshPanel) {
 function appendSelectedPropInspector(body, state, controller, selectedProp, refreshPanel) {
     appendSandboxWorldPropInspectorFields(body, selectedProp, { state, onChange: refreshPanel });
     if (isBallFamilyAsset(propCatalog[selectedProp.type]) || isPolygonFamilyAsset(propCatalog[selectedProp.type])) appendShapeFamilySelectedFields(body, state, selectedProp);
-    if (isChainLinkBall(selectedProp)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
+    if (isChainLinkBall(selectedProp._physId)) appendChainLinkInspector(body, { isChainHead: () => controller.session.isSelectedChainHead(), setChainHead: (enabled) => controller.session.setSelectedChainHead(enabled) });
     appendCheckboxField(body, "Focus", {
         name: "cameraFocus",
         checked: controller.isCameraTarget(selectedProp),

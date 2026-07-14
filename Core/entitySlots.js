@@ -1,7 +1,8 @@
 import { MAX_ENTITIES } from "./engineLimits.js";
-import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE, PROP_RENDER_MODE_3D, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL } from "./engineEnums.js";
+import { ENTITY_KIND_NONE, ENTITY_FLAG_DEAD, ENTITY_FLAG_KINETIC, ENTITY_FLAG_ROLLS, ENTITY_FLAG_ORIENT_TO_MOTION, ENTITY_FLAG_RENDER_3D, ENTITY_FLAG_CIRCLE_SHAPE, PROP_RENDER_MODE_3D, SHAPE_TYPE_CIRCLE, ENTITY_FLAG_FRACTURE_SET, ENTITY_FLAG_FRACTURE_VAL, ENTITY_FLAG_CHAIN_LINK } from "./engineEnums.js";
 import { entityX, entityY, entityVx, entityVy, entityW, entityFacing, entityR, entityAgeMs, entityFadeOutMs, entityFadeDurationMs, entityKind, entityFlags, entityAlive, entityGameId, entityRenderKeyId, entityRefs, entityGridTileIdx, entityRollQw, entityRollQx, entityRollQy, entityRollQz, kineticDynamicSlab, entityHeight, entityAlpha, entityShapeKind, entityWallProfileId, entityWallHeightPx, getProfileId, entityFractureCooldown, entityCachedStaticKey, entityWallChunkTextureReady, entityFootprintId } from "./engineMemory.js";
 import { computeFootprintIdFromSlab } from "../Libraries/Physics/physics.js";
+import propCatalog from "../Assets/props/index.js";
 let nextEid = 0;
 const eidFreeList = [];
 export function allocateEntityEid() {
@@ -29,6 +30,9 @@ export function worldPropBindFlags(ref) {
     if (ref.shape?.shapeTypeId === SHAPE_TYPE_CIRCLE) flags |= ENTITY_FLAG_CIRCLE_SHAPE;
     if (ref.fractureEnabled === false) flags |= ENTITY_FLAG_FRACTURE_SET;
     else if (ref.fractureEnabled === true || strategy?.fracture) flags |= ENTITY_FLAG_FRACTURE_SET | ENTITY_FLAG_FRACTURE_VAL;
+    const tags = propCatalog[ref.type]?.sandbox?.tags;
+    const hasNavTag = Array.isArray(tags) && tags.includes("nav");
+    if (strategy?.canChain || hasNavTag) flags |= ENTITY_FLAG_CHAIN_LINK;
     return flags;
 }
 export function releaseEntityEid(eid) {
